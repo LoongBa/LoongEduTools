@@ -353,3 +353,83 @@ body {
   .app-header { padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px)); }
   .app-footer { padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)); }
 }
+
+/* ---------- 计时挑战：倒计时 ---------- */
+.quiz-timer {
+  font-size: 14px;
+  font-weight: 600;
+  color: #165dff;
+  min-width: 60px;
+  text-align: center;
+}
+
+.quiz-timer.danger { color: #f5222d; }
+
+/* ---------- 计时模式选择弹窗 ---------- */
+.timer-overlay {
+  position: fixed;
+  top: 0; right: 0; bottom: 0; left: 0;
+  inset: 0; /* Chrome 61 回退用 top/right/bottom/left，新浏览器用 inset */
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 999;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+}
+
+.timer-box {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 20px 24px;
+  width: 82%;
+  max-width: 320px;
+  text-align: center;
+}
+
+.timer-box .btn {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+}
+
+/* ---------- 勋章墙：3 列网格（不用 flex gap，用百分比宽度 + margin） ---------- */
+.badge-grid {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-flex-wrap: wrap;
+  flex-wrap: wrap;
+}
+
+.badge-item {
+  width: 30%;
+  margin: 1.66%;
+  box-sizing: border-box;
+  background: #f7f8fa;
+  border-radius: 10px;
+  padding: 10px;
+  text-align: center;
+}
+
+.badge-icon {
+  font-size: 26px;
+  margin-bottom: 4px;
+}
+
+.badge-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2329;
+}
+
+.badge-desc {
+  font-size: 11px;
+  color: #8a919f;
+  margin-top: 2px;
+}

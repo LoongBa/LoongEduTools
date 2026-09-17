@@ -23,6 +23,9 @@
   var headerEl = document.getElementById('app-header');
   var viewEl = document.getElementById('view');
 
+  /* 家长面板隐藏入口：标题 5 秒内连点 5 次 */
+  var headerTaps = 0, headerTapTimer = null;
+
   /* ---------- 知识点定义（id → 名称 + 展示） ---------- */
   var POINTS = {
     /* 一年级 */
@@ -113,6 +116,19 @@
     var name = APP.meta && APP.meta.name ? APP.meta.name : '数学口算';
     var t = makeEl('span', 'header-title', title || name);
     brand.appendChild(t);
+    /* 家长面板隐藏入口：5 秒内连续点按标题 5 次触发 viewParent() */
+    var onTitleTap = function () {
+      headerTaps += 1;
+      if (headerTapTimer) { clearTimeout(headerTapTimer); }
+      headerTapTimer = setTimeout(function () { headerTaps = 0; }, 5000);
+      if (headerTaps >= 5) {
+        headerTaps = 0;
+        if (headerTapTimer) { clearTimeout(headerTapTimer); }
+        viewParent();
+      }
+    };
+    t.addEventListener('touchstart', onTitleTap);
+    t.addEventListener('mousedown', onTitleTap);
     if (APP.meta && APP.meta.version) {
       brand.appendChild(makeEl('span', 'header-ver', 'v' + APP.meta.version));
     }
@@ -194,7 +210,9 @@
     top.appendChild(makeEl('div', 'quiz-progress',
       '第 ' + (state.idx + 1) + ' / ' + state.quiz.length + ' 题'));
     if (state.timerTotal > 0) {
-      top.appendChild(makeEl('div', 'quiz-timer', '⏱ --:--'));
+      var timerEl = makeEl('div', 'quiz-timer', '⏱ --:--');
+      timerEl.id = 'quiz-timer'; // 与 updateTimerDisplay 的 getElementById('quiz-timer') 对齐
+      top.appendChild(timerEl);
     }
     top.appendChild(makeEl('div', 'quiz-combo', state.combo >= 2 ? '🔥' + state.combo : ''));
 

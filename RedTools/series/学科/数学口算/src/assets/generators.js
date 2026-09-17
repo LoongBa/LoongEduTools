@@ -206,12 +206,13 @@
     /* ===== 四年级 ===== */
     g4_big: {
       gen: function () {
-        // 大数改写：以万/亿作单位（答案纯数字，单位在题面）
+        // 大数改写：以万/亿作单位（只出整万/整亿数，答案精确整数，单位在题面）
+        // 注：非整万数（如 87173570=?万 → 8717.357万）键盘无法输入小数答案，
+        //     且"省略尾数"语义需四舍五入；故限定整万/整亿，保证答案唯一可输入。
         var kind = ri(0, 1);
         if (kind === 0) {
           var w = ri(1, 9999);
-          var rest = ri(0, 9999);
-          var num = w * 10000 + rest;
+          var num = w * 10000;
           return { type: 'g4_big', text: num + ' = ? 万', answer: w };
         }
         var yi = ri(1, 999);
@@ -388,7 +389,38 @@
 
   /* ---------- 反推校验（Oracle P0 要求） ---------- */
   /* 生成后用数学运算反向验算答案，校验失败则重新生成。
-     仅做校验，不改变 gen() 出题逻辑。 */
+     仅做校验，不改变 gen() 出题逻辑。
+     所有类型均从题面 text 解析数字与运算符、重算并与 q.answer 等价比较。 */
+
+  /* 数值等价比较（容差 1e-6，与 main.js checkAnswer 一致） */
+  function near(x, y) {
+    return Math.abs(x - y) < 1e-6;
+  }
+
+  /* 分数等价比较：answer（"p/q" 字符串 / 整数串 / 数字）与 n/d 约分后是否等价。
+     answer 为 "p/q" 时额外校验已约分（gcd == 1）。 */
+  function fracEq(ans, n, d) {
+    var r = reduceFrac(n, d);
+    if (typeof ans === 'number') {
+      if (!isFinite(ans)) return false;
+      return near(ans, r[0] / r[1]);
+    }
+    if (typeof ans !== 'string') return false;
+    var fm = ans.match(/^(-?\d+)\/(-?\d+)$/);
+    if (fm) {
+      var fn = Number(fm[1]), fd = Number(fm[2]);
+      if (fd === 0) return false;
+      if (gcd(fn, fd) !== 1) return false; // 答案必须已约分
+      var ra = reduceFrac(fn, fd);
+      return ra[0] === r[0] && ra[1] === r[1];
+    }
+    if (ans.match(/^-?\d+$/)) {
+      // 整数结果（如 "3/3" 约分 → "1"）：约分后分母必须为 1
+      return r[1] === 1 && Number(ans) === r[0];
+    }
+    return false;
+  }
+
   function validate(q) {
     if (!q || !q.text || q.answer === undefined || q.answer === null) return false;
     var a = q.answer;
@@ -399,108 +431,249 @@
     var matched = true;
     switch (q.type) {
 
-      /* === 整数运算 === */
+      /* === 整数加减：a + b = / a - b = === */
       case 'g1_10addsub':
-      case 'g1_100':
-      case 'g2_100':
-      case 'g2_mult':
-      case 'g3_mult1':
-      case 'g3_mult2':
-        // 答案必须是整数
-        if (typeof a !== 'number' || a !== Math.floor(a)) return false;
-        break;
-
       case 'g1_20add':
       case 'g1_20sub':
-        // 答案 1-20 整数
-        if (typeof a !== 'number' || a < 1 || a > 20 || a !== Math.floor(a)) return false;
+      case 'g1_100':
+      case 'g2_100':
+      case 'g3_wan': {
+        var iPair = t.match(/(-?\d+)\s*([+-])\s*(-?\d+)\s*=/);
+        if (!iPair) { matched = false; break; }
+        var iVal = iPair[2] === '+'
+          ? Number(iPair[1]) + Number(iPair[3])
+          : Number(iPair[1]) - Number(iPair[3]);
+        if (typeof a !== 'number' || a !== Math.floor(a) || !near(iVal, a)) {
+          matched = false;
+        }
         break;
+      }
 
+      /* === 整数乘法：a × b = === */
+      case 'g2_mult':
+      case 'g3_mult1':
+      case 'g3_mult2': {
+        var mulPair = t.match(/(-?\d+)\s*×\s*(-?\d+)\s*=/);
+        if (!mulPair) { matched = false; break; }
+        var mulVal = Number(mulPair[1]) * Number(mulPair[2]);
+        if (typeof a !== 'number' || a !== Math.floor(a) || !near(mulVal, a)) {
+          matched = false;
+        }
+        break;
+      }
+
+      /* === 整除：被除数 ÷ 除数 = 答案 === */
       case 'g2_div':
       case 'g3_div1':
       case 'g4_div2': {
-        // 除法：答案整数，且被除数 = 除数 × 答案
-        if (typeof a !== 'number' || a !== Math.floor(a)) return false;
+        if (typeof a !== 'number' || a !== Math.floor(a)) { matched = false; break; }
         var divParts = t.replace(/\s/g, '').split(/[÷=]/);
         // 例: "24÷6=" → divParts = ["24", "6", ""]
         if (divParts.length >= 2) {
           var dividend = Number(divParts[0]);
           var divisor = Number(divParts[1]);
-          if (divisor !== 0 && dividend !== divisor * Number(a)) return false;
+          if (!isFinite(dividend) || !isFinite(divisor) || divisor === 0 ||
+              !near(dividend / divisor, a)) {
+            matched = false;
+          }
         }
         break;
       }
 
-      case 'g2_mixed':
-      case 'g4_simple':
-        // 混合运算/简算：答案必须是整数
-        if (typeof a !== 'number' || a !== Math.floor(a)) return false;
+      /* === 混合运算：a × b + c / p ÷ d + f / (g + h) × i / g × (h + i) === */
+      case 'g2_mixed': {
+        var mxVal;
+        var paren1 = t.match(/[\(（]\s*(-?\d+)\s*\+\s*(-?\d+)\s*[\)）]\s*×\s*(-?\d+)\s*=/);
+        var paren2 = t.match(/(-?\d+)\s*×\s*[\(（]\s*(-?\d+)\s*\+\s*(-?\d+)\s*[\)）]\s*=/);
+        if (paren1) {
+          mxVal = (Number(paren1[1]) + Number(paren1[2])) * Number(paren1[3]);
+        } else if (paren2) {
+          mxVal = Number(paren2[1]) * (Number(paren2[2]) + Number(paren2[3]));
+        } else {
+          var divAdd = t.match(/(-?\d+)\s*÷\s*(-?\d+)\s*\+\s*(-?\d+)\s*=/);
+          if (divAdd && Number(divAdd[2]) !== 0) {
+            mxVal = Number(divAdd[1]) / Number(divAdd[2]) + Number(divAdd[3]);
+          } else {
+            var mulAdd = t.match(/(-?\d+)\s*×\s*(-?\d+)\s*\+\s*(-?\d+)\s*=/);
+            if (!mulAdd) { matched = false; break; }
+            mxVal = Number(mulAdd[1]) * Number(mulAdd[2]) + Number(mulAdd[3]);
+          }
+        }
+        if (typeof a !== 'number' || a !== Math.floor(a) || !near(mxVal, a)) {
+          matched = false;
+        }
         break;
+      }
 
-      case 'g3_wan':
-        // 万以内加减：答案整数
-        if (typeof a !== 'number' || a !== Math.floor(a)) return false;
-        break;
-
+      /* === 大数改写：整万/整亿，答案精确整数 === */
       case 'g4_big': {
-        // 大数改写：答案整数（万/亿单位），并反推题面数字
-        if (typeof a !== 'number' || a !== Math.floor(a)) return false;
+        if (typeof a !== 'number' || a !== Math.floor(a)) { matched = false; break; }
         var eqIdx = t.indexOf('=');
         var qIdx = t.indexOf('?');
-        if (eqIdx < 0 || qIdx < 0) return false;
+        if (eqIdx < 0 || qIdx < 0) { matched = false; break; }
         var numVal = Number(t.substring(0, eqIdx).replace(/[\s,]/g, ''));
         var unit = t.substring(qIdx + 1).replace(/\s/g, '');
-        if (!isFinite(numVal)) return false;
+        if (!isFinite(numVal)) { matched = false; break; }
         if (unit === '万') {
-          if (Math.floor(numVal / 10000) !== a) return false;
+          // 题面必须是整万数，答案 = 万位数值（精确相等，不允许截断/四舍五入）
+          if (numVal % 10000 !== 0 || numVal / 10000 !== a) { matched = false; }
         } else if (unit === '亿') {
-          if (Math.floor(numVal / 100000000) !== a) return false;
+          if (numVal % 100000000 !== 0 || numVal / 100000000 !== a) { matched = false; }
+        } else {
+          matched = false;
         }
         break;
       }
 
-      /* === 小数运算 === */
-      case 'g4_dec':
-      case 'g5_decmul':
-      case 'g5_decdiv':
-        // 小数：答案必须是有限小数（不是 NaN/Infinity）
-        if (typeof a !== 'number' || !isFinite(a)) return false;
-        break;
-
-      /* === 分数运算 === */
-      case 'g3_frac':
-      case 'g5_frac1':
-      case 'g5_frac2':
-      case 'g6_fracmul':
-      case 'g6_fracdiv':
-      case 'g6_ratio':
-        // 分数答案：字符串 "n/d"（已约分）或整数/数字结果
-        if (typeof a === 'number') {
-          if (!isFinite(a)) return false;
-        } else if (typeof a === 'string') {
-          // 约分后为整数的结果（如 "1"）→ 有效
-          if (a.match(/^-?\d+$/)) { break; }
-          var fracMatch = a.match(/^(-?\d+)\/(-?\d+)$/);
-          if (!fracMatch) return false;
-          var fn = Number(fracMatch[1]), fd = Number(fracMatch[2]);
-          if (fd === 0) return false;
-          // 约分检查：gcd(|fn|, |fd|) 应为 1
-          var ga = Math.abs(fn), gb = Math.abs(fd);
-          while (gb) { var gt = ga % gb; ga = gb; gb = gt; }
-          if (ga !== 1) return false; // 未约分
+      /* === 简便计算：a × 25 × 4 / c × 125 × 8 / d + e + f === */
+      case 'g4_simple': {
+        var spVal;
+        if (t.indexOf('+') >= 0) {
+          var add3 = t.match(/(-?\d+)\s*\+\s*(-?\d+)\s*\+\s*(-?\d+)\s*=/);
+          if (!add3) { matched = false; break; }
+          spVal = Number(add3[1]) + Number(add3[2]) + Number(add3[3]);
         } else {
-          return false;
+          var mul3 = t.match(/(-?\d+)\s*×\s*(-?\d+)\s*×\s*(-?\d+)\s*=/);
+          if (!mul3) { matched = false; break; }
+          spVal = Number(mul3[1]) * Number(mul3[2]) * Number(mul3[3]);
+        }
+        if (typeof a !== 'number' || a !== Math.floor(a) || !near(spVal, a)) {
+          matched = false;
         }
         break;
+      }
 
-      /* === 百分数 === */
-      case 'g6_pct':
-        // 答案可以是数字（小数/整数）或字符串（分数）
-        if (typeof a === 'number' && !isFinite(a)) return false;
-        if (typeof a === 'string' &&
-            !a.match(/^-?\d+(\.\d+)?$/) &&
-            !a.match(/^(-?\d+)\/(-?\d+)$/)) return false;
+      /* === 一位小数加减 === */
+      case 'g4_dec': {
+        var decPair = t.match(/(-?\d+(?:\.\d+)?)\s*([+-])\s*(-?\d+(?:\.\d+)?)\s*=/);
+        if (!decPair) { matched = false; break; }
+        var decVal = decPair[2] === '+'
+          ? Number(decPair[1]) + Number(decPair[3])
+          : Number(decPair[1]) - Number(decPair[3]);
+        if (typeof a !== 'number' || !near(decVal, a)) { matched = false; }
         break;
+      }
+
+      /* === 小数×整数 / 小数×小数 === */
+      case 'g5_decmul': {
+        var dmPair = t.match(/(-?\d+(?:\.\d+)?)\s*×\s*(-?\d+(?:\.\d+)?)\s*=/);
+        if (!dmPair) { matched = false; break; }
+        var dmVal = Number(dmPair[1]) * Number(dmPair[2]);
+        if (typeof a !== 'number' || !near(dmVal, a)) { matched = false; }
+        break;
+      }
+
+      /* === 小数÷整数 === */
+      case 'g5_decdiv': {
+        var ddPair = t.match(/(-?\d+(?:\.\d+)?)\s*÷\s*(-?\d+(?:\.\d+)?)\s*=/);
+        if (!ddPair) { matched = false; break; }
+        var ddDiv = Number(ddPair[2]);
+        if (ddDiv === 0) { matched = false; break; }
+        if (typeof a !== 'number' || !near(Number(ddPair[1]) / ddDiv, a)) {
+          matched = false;
+        }
+        break;
+      }
+
+      /* === 分数加减（含通分） === */
+      case 'g3_frac':
+      case 'g5_frac2': {
+        var abPair = t.match(/(-?\d+)\s*\/\s*(-?\d+)\s*([+-])\s*(-?\d+)\s*\/\s*(-?\d+)\s*=/);
+        if (!abPair) { matched = false; break; }
+        var n1 = Number(abPair[1]), d1 = Number(abPair[2]);
+        var n2 = Number(abPair[4]), d2 = Number(abPair[5]);
+        if (d1 === 0 || d2 === 0) { matched = false; break; }
+        var fDen = d1 * d2;
+        var fNum = abPair[3] === '+' ? n1 * d2 + n2 * d1 : n1 * d2 - n2 * d1;
+        if (!fracEq(a, fNum, fDen)) { matched = false; }
+        break;
+      }
+
+      /* === 约分 / 分数化小数 === */
+      case 'g5_frac1': {
+        if (t.indexOf('约分') >= 0) {
+          var redPair = t.match(/(-?\d+)\s*\/\s*(-?\d+)\s*约分/);
+          if (!redPair) { matched = false; break; }
+          var redDen = Number(redPair[2]);
+          if (redDen === 0) { matched = false; break; }
+          if (!fracEq(a, Number(redPair[1]), redDen)) { matched = false; }
+        } else {
+          var fdecPair = t.match(/(-?\d+)\s*\/\s*(-?\d+)\s*=\s*\?\s*小数/);
+          if (!fdecPair) { matched = false; break; }
+          var fdecDen = Number(fdecPair[2]);
+          if (fdecDen === 0) { matched = false; break; }
+          if (typeof a !== 'number' || !near(Number(fdecPair[1]) / fdecDen, a)) {
+            matched = false;
+          }
+        }
+        break;
+      }
+
+      /* === 分数×分数 === */
+      case 'g6_fracmul': {
+        var fmPair = t.match(/(-?\d+)\s*\/\s*(-?\d+)\s*×\s*(-?\d+)\s*\/\s*(-?\d+)\s*=/);
+        if (!fmPair) { matched = false; break; }
+        var na = Number(fmPair[1]), da = Number(fmPair[2]);
+        var nb = Number(fmPair[3]), db = Number(fmPair[4]);
+        if (da === 0 || db === 0) { matched = false; break; }
+        if (!fracEq(a, na * nb, da * db)) { matched = false; }
+        break;
+      }
+
+      /* === 分数÷分数（乘倒数） === */
+      case 'g6_fracdiv': {
+        var fdPair = t.match(/(-?\d+)\s*\/\s*(-?\d+)\s*÷\s*(-?\d+)\s*\/\s*(-?\d+)\s*=/);
+        if (!fdPair) { matched = false; break; }
+        var aa = Number(fdPair[1]), ba = Number(fdPair[2]);
+        var ab = Number(fdPair[3]), bb = Number(fdPair[4]);
+        if (ba === 0 || ab === 0) { matched = false; break; }
+        if (!fracEq(a, aa * bb, ba * ab)) { matched = false; }
+        break;
+      }
+
+      /* === 百分数互化 === */
+      case 'g6_pct': {
+        var pctMatch;
+        if (t.indexOf('分数') >= 0) {
+          pctMatch = t.match(/(-?\d+)\s*%\s*=\s*\?\s*分数/);
+          if (!pctMatch) { matched = false; break; }
+          if (!fracEq(a, Number(pctMatch[1]), 100)) { matched = false; }
+        } else if (t.indexOf('小数') >= 0) {
+          pctMatch = t.match(/(-?\d+)\s*%\s*=\s*\?\s*小数/);
+          if (!pctMatch) { matched = false; break; }
+          if (typeof a !== 'number' || !near(Number(pctMatch[1]) / 100, a)) {
+            matched = false;
+          }
+        } else {
+          pctMatch = t.match(/(-?\d+(?:\.\d+)?)\s*=\s*\?\s*%/);
+          if (!pctMatch) { matched = false; break; }
+          if (typeof a !== 'number' || !near(Number(pctMatch[1]) * 100, a)) {
+            matched = false;
+          }
+        }
+        break;
+      }
+
+      /* === 化简比 / 求比值 === */
+      case 'g6_ratio': {
+        var ratioMatch;
+        if (t.indexOf('化简') >= 0) {
+          ratioMatch = t.match(/(-?\d+)\s*:\s*(-?\d+)\s*化简/);
+          if (!ratioMatch) { matched = false; break; }
+          var rDen = Number(ratioMatch[2]);
+          if (rDen === 0) { matched = false; break; }
+          if (!fracEq(a, Number(ratioMatch[1]), rDen)) { matched = false; }
+        } else {
+          ratioMatch = t.match(/(-?\d+)\s*:\s*(-?\d+)\s*比值/);
+          if (!ratioMatch) { matched = false; break; }
+          var bDen = Number(ratioMatch[2]);
+          if (bDen === 0) { matched = false; break; }
+          if (typeof a !== 'number' || !near(Number(ratioMatch[1]) / bDen, a)) {
+            matched = false;
+          }
+        }
+        break;
+      }
 
       default:
         matched = false;
