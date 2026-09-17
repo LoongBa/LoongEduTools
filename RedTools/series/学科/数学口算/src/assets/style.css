@@ -1,0 +1,355 @@
+/* ============================================================
+   数学口算 — 样式（Chrome 61 基线层）
+   约束：无 flex gap / aspect-ratio / clamp / 逻辑属性 / :has
+   ============================================================ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body { height: 100%; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+               "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: #f2f3f5;
+  color: #1f2329;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-flex-direction: column;
+  flex-direction: column;
+  height: 100vh;
+  height: calc(var(--app-height, 100vh));
+}
+
+/* ---------- 顶栏 ---------- */
+.app-header {
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 0 auto;
+  flex: 0 0 auto;
+  padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  background: #ffffff;
+  border-bottom: 1px solid #e5e6eb;
+}
+
+.header-brand {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  padding: 10px 16px;
+}
+
+.header-icon {
+  width: 32px;
+  height: 32px;
+  margin-right: 8px;
+  border-radius: 8px;
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 0 auto;
+  flex: 0 0 auto;
+}
+
+.header-title { font-size: 17px; font-weight: 600; }
+
+.header-ver {
+  margin-left: 6px;
+  font-size: 10px;
+  color: #c9cdd4;
+}
+
+/* ---------- 主体 ---------- */
+.app-main {
+  -webkit-box-flex: 1;
+  -webkit-flex: 1 1 auto;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+.view { padding: 12px 16px; max-width: 720px; margin: 0 auto; }
+
+/* ---------- 通用按钮 ---------- */
+.btn {
+  min-height: 48px;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  color: #165dff;
+  background: #eef3ff;
+  cursor: pointer;
+  -webkit-box-flex: 1;
+  -webkit-flex: 1 1 auto;
+  flex: 1 1 auto;
+}
+
+.btn:active { opacity: 0.7; }
+.btn-primary { background: #165dff; color: #ffffff; }
+
+/* ---------- 首页：选年级 ---------- */
+.page-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 8px 0 12px;
+  text-align: center;
+}
+
+.grade-grid {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-flex-wrap: wrap;
+  flex-wrap: wrap;
+}
+
+.grade-grid > * {
+  width: 33.333%;
+  padding: 5px;
+}
+
+.grade-btn {
+  width: 100%;
+  min-height: 56px;
+  border: none;
+  border-radius: 10px;
+  font-size: 17px;
+  font-weight: 600;
+  color: #1f2329;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* ---------- 知识点列表 ---------- */
+.point-list { margin-top: 4px; }
+
+.point-item {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: justify;
+  -webkit-justify-content: space-between;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: #ffffff;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.point-name { font-size: 15px; font-weight: 600; }
+
+.point-meta { font-size: 12px; color: #8a919f; margin-top: 3px; }
+
+.point-stars { font-size: 13px; color: #f5a623; }
+
+/* ---------- 练习页 ---------- */
+.quiz-top {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-pack: justify;
+  -webkit-justify-content: space-between;
+  justify-content: space-between;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.quiz-progress { font-size: 14px; color: #4e5969; }
+.quiz-combo { font-size: 14px; color: #f5a623; font-weight: 600; min-width: 48px; text-align: right; }
+
+.quiz-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 28px 20px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  min-height: 160px;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+}
+
+.quiz-expression { font-size: 34px; font-weight: 700; letter-spacing: 2px; }
+
+.quiz-answer-area { min-height: 48px; margin-top: 10px; }
+.quiz-answer { font-size: 30px; font-weight: 700; color: #165dff; min-height: 42px; }
+
+.quiz-feedback {
+  min-height: 36px;
+  margin-top: 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.quiz-feedback.ok { color: #00a854; }
+.quiz-feedback.bad { color: #f5222d; }
+
+/* 数字键盘 */
+.keypad {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-flex-wrap: wrap;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.keypad > * {
+  width: 33.333%;
+  padding: 5px;
+}
+
+.key-btn {
+  width: 100%;
+  min-height: 56px;
+  border: none;
+  border-radius: 10px;
+  font-size: 22px;
+  font-weight: 600;
+  background: #ffffff;
+  color: #1f2329;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.key-btn:active { background: #eef3ff; }
+
+/* ---------- 结果页 ---------- */
+.result-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 24px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 16px;
+}
+
+.result-score { font-size: 42px; font-weight: 800; color: #165dff; }
+
+.result-stats {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.result-stat {
+  margin: 0 14px;
+  font-size: 14px;
+  color: #4e5969;
+  text-align: center;
+}
+
+.result-stat b { display: block; font-size: 20px; color: #1f2329; }
+
+.btn-row {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  margin-top: 12px;
+}
+
+.btn-row > * + * { margin-left: 10px; }
+
+/* ---------- 底栏 ---------- */
+.app-footer {
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 0 auto;
+  flex: 0 0 auto;
+  background: #ffffff;
+  border-top: 1px solid #e5e6eb;
+  padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+}
+
+.footer-nav {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  padding: 8px 12px 10px;
+}
+
+.footer-nav > * + * { margin-left: 10px; }
+
+.footer-btn {
+  min-width: 64px;
+  padding: 9px 0;
+  font-size: 13px;
+  color: #165dff;
+  text-align: center;
+  border-radius: 8px;
+  background: #f2f3f5;
+}
+
+/* ---------- 打卡日历 ---------- */
+.calendar {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.calendar-grid {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-flex-wrap: wrap;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.calendar-grid > * { width: 14.28%; padding: 4px; }
+
+.cal-day {
+  width: 100%;
+  padding: 8px 0;
+  text-align: center;
+  font-size: 13px;
+  border-radius: 6px;
+  color: #8a919f;
+  background: #f7f8fa;
+}
+
+.cal-day.done { background: #ff9c1a; color: #ffffff; font-weight: 700; }
+
+.cal-day.today { outline: 2px solid #165dff; }
+
+.streak-info { text-align: center; margin-top: 10px; font-size: 14px; color: #4e5969; }
+.streak-info b { color: #ff9c1a; }
+
+/* 安全区增强 */
+@supports ((padding-bottom: var(--safe-area-inset-bottom)) or (padding-bottom: env(safe-area-inset-bottom))) {
+  .app-header { padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px)); }
+  .app-footer { padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)); }
+}

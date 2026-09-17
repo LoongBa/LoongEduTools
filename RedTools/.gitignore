@@ -1,0 +1,25 @@
+# ===== RedTools 忽略规则 =====
+
+# 构建产物（build_all.py 全量生成，不入库）
+dist/
+
+# 发布目录：全部生成物不入库。
+# 发布文案.txt 为人工维护唯一入库项，提交时用 git add -f 强制添加
+# （gitignore 的 ! 反向规则无法恢复已忽略目录内的文件，故用 -f）
+publish/
+
+# 压缩包（zip 产物 + skill 源包，源包已解压到 .skill/ 入库）
+# 注意：*.skill 会误伤 .skill/ 目录（模式匹配任意路径段），
+#       故源包仅精确忽略根目录下的 skill 源包文件名。
+*.zip
+minitool-zip-builder-1.6.0.skill
+
+# Python
+__pycache__/
+*.py[cod]
+
+# 临时 / 系统
+*.tmp
+*.bak
+Thumbs.db
+.DS_Store

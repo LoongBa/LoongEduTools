@@ -1,0 +1,358 @@
+/* ============================================================
+   新英语四上点读1单元 — 样式（Chrome 61 基线层）
+   ------------------------------------------------------------
+   基线：Chrome 61 可用（Flexbox、CSS Variables、calc、媒体查询）
+   增强层：仅通过 @supports / 能力检测启用（见文件尾部）
+   ============================================================ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+               "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: #f2f3f5;
+  color: #1f2329;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-flex-direction: column;
+  flex-direction: column;
+  height: 100vh;
+  height: calc(var(--app-height, 100vh));
+}
+
+/* ---------- 顶栏 ---------- */
+.app-header {
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 0 auto;
+  flex: 0 0 auto;
+  padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  background: #ffffff;
+  border-bottom: 1px solid #e5e6eb;
+}
+
+.header-title {
+  padding: 12px 16px;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.header-brand {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+}
+
+.header-icon {
+  width: 36px;
+  height: 36px;
+  margin-right: 8px;
+  border-radius: 8px;
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 0 auto;
+  flex: 0 0 auto;
+}
+
+.header-sub {
+  font-size: 12px;
+  font-weight: 400;
+  color: #8a919f;
+  margin-top: 2px;
+}
+
+.header-ver {
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 400;
+  color: #c9cdd4;
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 0 auto;
+  flex: 0 0 auto;
+}
+
+/* ---------- 单元切换 ---------- */
+.unit-tabs {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  overflow-x: auto;
+  padding: 0 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.unit-tab {
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 0 auto;
+  flex: 0 0 auto;
+  margin: 0 4px;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: #4e5969;
+  border-radius: 16px;
+  white-space: nowrap;
+}
+
+.unit-tab.is-active {
+  background: #165dff;
+  color: #ffffff;
+}
+
+.unit-tab + .unit-tab {
+  margin-left: 4px;
+}
+
+/* ---------- 主体（可滚动） ---------- */
+.app-main {
+  -webkit-box-flex: 1;
+  -webkit-flex: 1 1 auto;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  padding: 10px 0;
+}
+
+/* ---------- 页面（课本图 + 热区） ---------- */
+.page-sheet {
+  position: relative;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  background: #ffffff;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+  touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.page-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+}
+
+/* 热区：归一化坐标 → 百分比定位（left/top/right/bottom 由 JS 计算）
+   点读模式下虚线框标出可点区域 */
+.hotspot {
+  position: absolute;
+  border-radius: 2px;
+  cursor: pointer;
+  background: transparent;
+  border: 1px dashed rgba(22, 93, 255, 0.55);
+  -webkit-transition: background-color 0.15s ease, border-color 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.hotspot.is-playing {
+  background: rgba(22, 93, 255, 0.18);
+  border: 2px solid #165dff;
+}
+
+/* ---------- 模式切换条 ---------- */
+.mode-bar {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  padding: 0 16px 10px;
+}
+
+.mode-switch {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  background: #f2f3f5;
+  border-radius: 18px;
+  padding: 3px;
+}
+
+.mode-btn {
+  padding: 6px 22px;
+  font-size: 13px;
+  color: #4e5969;
+  border-radius: 15px;
+  white-space: nowrap;
+}
+
+.mode-btn.is-active {
+  background: #ffffff;
+  color: #165dff;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+/* ---------- 顺序播放控制条 ---------- */
+.seq-ctrl {
+  padding: 4px 12px 2px;
+}
+
+.seq-row {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+}
+
+.seq-row + .seq-row {
+  margin-top: 6px;
+}
+
+.ctrl-btn {
+  min-width: 72px;
+  padding: 7px 0;
+  font-size: 13px;
+  color: #165dff;
+  text-align: center;
+  border-radius: 8px;
+  background: #eef3ff;
+  white-space: nowrap;
+}
+
+.ctrl-btn + .ctrl-btn {
+  margin-left: 10px;
+}
+
+.ctrl-play {
+  background: #165dff;
+  color: #ffffff;
+  min-width: 84px;
+}
+
+.ctrl-nav {
+  min-width: 88px;
+}
+
+.ctrl-nav.is-disabled {
+  color: #c9cdd4;
+  background: #f7f8fa;
+}
+
+.ctrl-repeat,
+.ctrl-speed,
+.ctrl-autonext {
+  min-width: 96px;
+}
+
+.ctrl-repeat.is-on,
+.ctrl-speed.is-on,
+.ctrl-autonext.is-on {
+  background: #165dff;
+  color: #ffffff;
+}
+
+.seq-info {
+  margin-left: 12px;
+  font-size: 13px;
+  color: #8a919f;
+  min-width: 60px;
+}
+
+/* ---------- 底栏 ---------- */
+.app-footer {
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 0 auto;
+  flex: 0 0 auto;
+  background: #ffffff;
+  border-top: 1px solid #e5e6eb;
+  padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+}
+
+.caption {
+  padding: 10px 16px 6px;
+  min-height: 20px;
+}
+
+.caption-text {
+  font-size: 15px;
+  line-height: 1.5;
+  color: #1f2329;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.caption-cn {
+  font-size: 13px;
+  line-height: 1.4;
+  color: #8a919f;
+  margin-top: 2px;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.pager {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  padding: 6px 12px 10px;
+}
+
+.pager-btn {
+  min-width: 44px;
+  padding: 8px 0;
+  font-size: 14px;
+  color: #165dff;
+  text-align: center;
+  border-radius: 8px;
+  background: #f2f3f5;
+}
+
+.pager-btn-short {
+  min-width: 48px;
+}
+
+.pager-btn:disabled {
+  color: #c9cdd4;
+  background: #f7f8fa;
+}
+
+.pager-info {
+  margin: 0 10px;
+  font-size: 13px;
+  color: #4e5969;
+  min-width: 76px;
+  text-align: center;
+}
+
+/* ---------- 增强层（能力检测后启用） ---------- */
+/* 安全区：基线已用 env() 兜底，容器注入变量优先 */
+@supports ((padding-bottom: var(--safe-area-inset-bottom)) or (padding-bottom: env(safe-area-inset-bottom))) {
+  .app-header { padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px)); }
+  .app-footer { padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)); }
+}
