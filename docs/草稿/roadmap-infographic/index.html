@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>教育交互式工具平台 · 三阶段产品路线图</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    background: #f0f4f8;
+    color: #1e293b;
+    line-height: 1.6;
+  }
+  .infographic {
+    width: 1200px;
+    margin: 0 auto;
+    background: #ffffff;
+    padding: 60px 70px;
+  }
+
+  /* ===== 顶部标题区 ===== */
+  .header {
+    text-align: center;
+    margin-bottom: 50px;
+    padding-bottom: 40px;
+    border-bottom: 3px solid #1e3a5f;
+    position: relative;
+  }
+  .header::after {
+    content: "";
+    position: absolute;
+    bottom: -3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 3px;
+    background: #f97316;
+  }
+  .header .tag {
+    display: inline-block;
+    background: #1e3a5f;
+    color: #fff;
+    font-size: 14px;
+    padding: 6px 20px;
+    border-radius: 20px;
+    margin-bottom: 20px;
+    letter-spacing: 2px;
+  }
+  .header h1 {
+    font-size: 42px;
+    font-weight: 900;
+    color: #1e3a5f;
+    margin-bottom: 16px;
+    letter-spacing: 2px;
+  }
+  .header .subtitle {
+    font-size: 18px;
+    color: #64748b;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  /* ===== 核心定位区 ===== */
+  .positioning {
+    display: grid;
+    grid-template-columns: 1fr 60px 1fr;
+    gap: 0;
+    margin-bottom: 60px;
+    align-items: stretch;
+  }
+  .pos-card {
+    padding: 30px;
+    border-radius: 12px;
+  }
+  .pos-card.not {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+  }
+  .pos-card.do {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+  }
+  .pos-card h3 {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .pos-card.not h3 { color: #dc2626; }
+  .pos-card.do h3 { color: #16a34a; }
+  .pos-card ul {
+    list-style: none;
+    padding: 0;
+  }
+  .pos-card li {
+    font-size: 14px;
+    padding: 6px 0;
+    color: #475569;
+    padding-left: 20px;
+    position: relative;
+  }
+  .pos-card.not li::before {
+    content: "✕";
+    position: absolute;
+    left: 0;
+    color: #dc2626;
+    font-weight: bold;
+  }
+  .pos-card.do li::before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: #16a34a;
+    font-weight: bold;
+  }
+  .pos-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    color: #f97316;
+    font-weight: bold;
+  }
+
+  /* ===== 阶段标题 ===== */
+  .section-title {
+    text-align: center;
+    font-size: 28px;
+    font-weight: 800;
+    color: #1e3a5f;
+    margin-bottom: 40px;
+    position: relative;
+  }
+  .section-title::before,
+  .section-title::after {
+    content: "";
+    display: inline-block;
+    width: 60px;
+    height: 2px;
+    background: #cbd5e1;
+    vertical-align: middle;
+    margin: 0 20px;
+  }
+
+  /* ===== 三阶段时间轴 ===== */
+  .phases {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 60px;
+  }
+  .phase-card {
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    display: flex;
+    flex-direction: column;
+  }
+  .phase-header {
+    padding: 24px 24px 20px;
+    color: #fff;
+  }
+  .phase-1 .phase-header { background: linear-gradient(135deg, #059669, #10b981); }
+  .phase-2 .phase-header { background: linear-gradient(135deg, #1e40af, #3b82f6); }
+  .phase-3 .phase-header { background: linear-gradient(135deg, #6b21a8, #a855f7); }
+
+  .phase-num {
+    font-size: 13px;
+    opacity: 0.9;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+  .phase-name {
+    font-size: 22px;
+    font-weight: 800;
+    margin-bottom: 6px;
+  }
+  .phase-time {
+    font-size: 13px;
+    opacity: 0.85;
+  }
+  .phase-body {
+    padding: 24px;
+    flex: 1;
+    background: #fff;
+  }
+  .phase-section {
+    margin-bottom: 18px;
+  }
+  .phase-section:last-child { margin-bottom: 0; }
+  .phase-section-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .phase-1 .phase-section-label::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #10b981; }
+  .phase-2 .phase-section-label::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #3b82f6; }
+  .phase-3 .phase-section-label::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #a855f7; }
+
+  .phase-section ul {
+    list-style: none;
+    padding: 0;
+  }
+  .phase-section li {
+    font-size: 13px;
+    color: #334155;
+    padding: 4px 0 4px 16px;
+    position: relative;
+    line-height: 1.5;
+  }
+  .phase-section li::before {
+    content: "·";
+    position: absolute;
+    left: 4px;
+    font-weight: bold;
+    font-size: 16px;
+  }
+  .phase-1 .phase-section li::before { color: #10b981; }
+  .phase-2 .phase-section li::before { color: #3b82f6; }
+  .phase-3 .phase-section li::before { color: #a855f7; }
+
+  .phase-metrics {
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-top: 8px;
+  }
+  .metric-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    padding: 3px 0;
+  }
+  .metric-item .label { color: #64748b; }
+  .metric-item .value { font-weight: 700; color: #1e293b; }
+
+  /* ===== 阶段连接线 ===== */
+  .phase-connector {
+    text-align: center;
+    margin: -30px 0 30px;
+    position: relative;
+    z-index: 1;
+  }
+  .phase-connector span {
+    display: inline-block;
+    background: #f97316;
+    color: #fff;
+    padding: 6px 24px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  /* ===== 增长飞轮 ===== */
+  .flywheel {
+    background: linear-gradient(135deg, #1e3a5f, #2d4f7c);
+    border-radius: 16px;
+    padding: 40px;
+    margin-bottom: 50px;
+    color: #fff;
+  }
+  .flywheel h3 {
+    font-size: 22px;
+    font-weight: 800;
+    margin-bottom: 30px;
+    text-align: center;
+  }
+  .flywheel-steps {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0;
+  }
+  .fly-step {
+    flex: 1;
+    text-align: center;
+    padding: 0 10px;
+  }
+  .fly-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px;
+    font-size: 28px;
+  }
+  .fly-step h4 {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .fly-step p {
+    font-size: 12px;
+    opacity: 0.8;
+    line-height: 1.5;
+  }
+  .fly-arrow {
+    flex-shrink: 0;
+    font-size: 24px;
+    color: #f97316;
+    padding: 0 8px;
+  }
+
+  /* ===== 核心壁垒 ===== */
+  .moat {
+    margin-bottom: 50px;
+  }
+  .moat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+  }
+  .moat-item {
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 24px 20px;
+    text-align: center;
+    border-top: 3px solid #f97316;
+  }
+  .moat-item .moat-icon {
+    font-size: 32px;
+    margin-bottom: 12px;
+  }
+  .moat-item h4 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1e3a5f;
+    margin-bottom: 8px;
+  }
+  .moat-item p {
+    font-size: 12px;
+    color: #64748b;
+    line-height: 1.5;
+  }
+
+  /* ===== 底部总结 ===== */
+  .footer {
+    text-align: center;
+    padding: 40px 20px;
+    background: linear-gradient(135deg, #1e3a5f, #2d4f7c);
+    border-radius: 16px;
+    color: #fff;
+  }
+  .footer .quote {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.8;
+    margin-bottom: 12px;
+  }
+  .footer .quote em {
+    color: #fbbf24;
+    font-style: normal;
+  }
+  .footer .sub {
+    font-size: 14px;
+    opacity: 0.8;
+  }
+</style>
+</head>
+<body>
+<div class="infographic">
+  <!-- 顶部标题 -->
+  <div class="header">
+    <div class="tag">产品战略路线图</div>
+    <h1>教育交互式工具平台</h1>
+    <div class="subtitle">不卷内容，卷工具体验与最佳实践<br>从工具验证到创作者市场的三阶段演进</div>
+  </div>
+
+  <!-- 核心定位 -->
+  <div class="positioning">
+    <div class="pos-card not">
+      <h3>我们不做</h3>
+      <ul>
+        <li>不做B2G/教育局采购大项目</li>
+        <li>不拼课件内容生产数量</li>
+        <li>不做云端学生账号系统</li>
+        <li>不做面向行政的功能清单堆砌</li>
+      </ul>
+    </div>
+    <div class="pos-arrow">→</div>
+    <div class="pos-card do">
+      <h3>我们做</h3>
+      <ul>
+        <li>打磨一线教师真实好用的交互工具</li>
+        <li>沉淀课前-课中-课后最佳实践</li>
+        <li>课堂大屏 + 家庭手机双端联动</li>
+        <li>面向教师个人/教研组的B2C2C模式</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 三阶段 -->
+  <div class="section-title">三阶段产品演进路径</div>
+
+  <div class="phases">
+    <!-- 阶段一 -->
+    <div class="phase-card phase-1">
+      <div class="phase-header">
+        <div class="phase-num">PHASE 01</div>
+        <div class="phase-name">工具验证期</div>
+        <div class="phase-time">0 — 6 个月</div>
+      </div>
+      <div class="phase-body">
+        <div class="phase-section">
+          <div class="phase-section-label">核心目标</div>
+          <ul>
+            <li>打磨交互式H5工具包体验</li>
+            <li>沉淀课堂+家庭最佳实践</li>
+            <li>积累种子教师用户</li>
+          </ul>
+        </div>
+        <div class="phase-section">
+          <div class="phase-section-label">核心交付物</div>
+          <ul>
+            <li>英语点读H5（教师大屏版）</li>
+            <li>小红书小工具（家庭端样例）</li>
+            <li>数学口算打卡工具</li>
+            <li>课堂使用最佳实践文档</li>
+          </ul>
+        </div>
+        <div class="phase-metrics">
+          <div class="metric-item">
+            <span class="label">种子教师</span>
+            <span class="value">50+ 位</span>
+          </div>
+          <div class="metric-item">
+            <span class="label">小红书粉丝</span>
+            <span class="value">1万+</span>
+          </div>
+          <div class="metric-item">
+            <span class="label">工具使用次数</span>
+            <span class="value">1万+</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 阶段二 -->
+    <div class="phase-card phase-2">
+      <div class="phase-header">
+        <div class="phase-num">PHASE 02</div>
+        <div class="phase-name">工具订阅期</div>
+        <div class="phase-time">6 — 18 个月</div>
+      </div>
+      <div class="phase-body">
+        <div class="phase-section">
+          <div class="phase-section-label">核心目标</div>
+          <ul>
+            <li>工具引擎订阅制变现</li>
+            <li>AI备课助手封装上线</li>
+            <li>跑通教师自主创作闭环</li>
+          </ul>
+        </div>
+        <div class="phase-section">
+          <div class="phase-section-label">核心交付物</div>
+          <ul>
+            <li>交互式工具引擎（模板化）</li>
+            <li>AI备课助手（RAG场景化）</li>
+            <li>教师素材导入+热区标注</li>
+            <li>家校联动一键生成功能</li>
+          </ul>
+        </div>
+        <div class="phase-metrics">
+          <div class="metric-item">
+            <span class="label">付费教师</span>
+            <span class="value">500+ 人</span>
+          </div>
+          <div class="metric-item">
+            <span class="label">月活教师</span>
+            <span class="value">2000+</span>
+          </div>
+          <div class="metric-item">
+            <span class="label">月营收</span>
+            <span class="value">10万+</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 阶段三 -->
+    <div class="phase-card phase-3">
+      <div class="phase-header">
+        <div class="phase-num">PHASE 03</div>
+        <div class="phase-name">创作者市场期</div>
+        <div class="phase-time">18 个月 +</div>
+      </div>
+      <div class="phase-body">
+        <div class="phase-section">
+          <div class="phase-section-label">核心目标</div>
+          <ul>
+            <li>开放TPT式创作者市场</li>
+            <li>用户生成内容生态建立</li>
+            <li>平台化交易分成模式</li>
+          </ul>
+        </div>
+        <div class="phase-section">
+          <div class="phase-section-label">核心交付物</div>
+          <ul>
+            <li>创作者市场平台</li>
+            <li>课件上架+购买+订阅体系</li>
+            <li>版权审核+交易保障</li>
+            <li>教师创作者成长体系</li>
+          </ul>
+        </div>
+        <div class="phase-metrics">
+          <div class="metric-item">
+            <span class="label">入驻创作者</span>
+            <span class="value">1000+</span>
+          </div>
+          <div class="metric-item">
+            <span class="label">上架课件</span>
+            <span class="value">1万+</span>
+          </div>
+          <div class="metric-item">
+            <span class="label">月GMV</span>
+            <span class="value">100万+</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 增长飞轮 -->
+  <div class="flywheel">
+    <h3>B2C2C 增长飞轮：一位老师，带动50+家庭</h3>
+    <div class="flywheel-steps">
+      <div class="fly-step">
+        <div class="fly-icon">👨‍🏫</div>
+        <h4>教师使用工具</h4>
+        <p>课堂大屏H5<br>交互式授课</p>
+      </div>
+      <div class="fly-arrow">→</div>
+      <div class="fly-step">
+        <div class="fly-icon">👨‍👩‍👧</div>
+        <h4>班级群推荐</h4>
+        <p>老师推荐家长<br>使用小红书小工具</p>
+      </div>
+      <div class="fly-arrow">→</div>
+      <div class="fly-step">
+        <div class="fly-icon">📱</div>
+        <h4>家长课后练习</h4>
+        <p>手机端碎片时间<br>点读/打卡/复习</p>
+      </div>
+      <div class="fly-arrow">→</div>
+      <div class="fly-step">
+        <div class="fly-icon">🔄</div>
+        <h4>口碑裂变</h4>
+        <p>家长推荐给其他<br>家长/其他老师</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 核心壁垒 -->
+  <div class="moat">
+    <div class="section-title">我们的护城河</div>
+    <div class="moat-grid">
+      <div class="moat-item">
+        <div class="moat-icon">⚙️</div>
+        <h4>交互工具引擎</h4>
+        <p>持续迭代的H5模板引擎，热区/音频/双端适配</p>
+      </div>
+      <div class="moat-item">
+        <div class="moat-icon">📋</div>
+        <h4>最佳实践体系</h4>
+        <p>课前-课中-课后完整教学流程，拿来即用</p>
+      </div>
+      <div class="moat-item">
+        <div class="moat-icon">🔗</div>
+        <h4>双端联动闭环</h4>
+        <p>课堂大屏+家庭手机，同一内容无缝衔接</p>
+      </div>
+      <div class="moat-item">
+        <div class="moat-icon">👥</div>
+        <h4>教师社群网络</h4>
+        <p>种子教师口碑+B2C2C裂变，自下而上渗透</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 底部总结 -->
+  <div class="footer">
+    <div class="quote">
+      不做卖给教育局的工具，做<em>老师真正想用</em>的工具<br>
+      不拼课件数量，拼<em>教学体验</em>和<em>落地效率</em>
+    </div>
+    <div class="sub">从工具验证到创作者市场 · 用产品力重塑教育交互体验</div>
+  </div>
+</div>
+</body>
+</html>

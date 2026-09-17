@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>小红书小工具产品矩阵规划</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  background: #f0f4f8;
+  color: #1e293b;
+  line-height: 1.5;
+}
+.infographic {
+  width: 1200px;
+  margin: 0 auto;
+  background: #ffffff;
+  padding: 50px 60px;
+}
+
+/* 顶部标题 */
+.header {
+  text-align: center;
+  margin-bottom: 40px;
+  padding-bottom: 30px;
+  border-bottom: 3px solid #1e3a5f;
+  position: relative;
+}
+.header::after {
+  content: "";
+  position: absolute;
+  bottom: -3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100px;
+  height: 3px;
+  background: #f97316;
+}
+.header .tag {
+  display: inline-block;
+  background: #1e3a5f;
+  color: #fff;
+  font-size: 13px;
+  padding: 5px 18px;
+  border-radius: 20px;
+  margin-bottom: 16px;
+  letter-spacing: 2px;
+}
+.header h1 {
+  font-size: 36px;
+  font-weight: 900;
+  color: #1e3a5f;
+  margin-bottom: 12px;
+  letter-spacing: 1px;
+}
+.header .subtitle {
+  font-size: 16px;
+  color: #64748b;
+}
+
+/* 总览统计 */
+.overview {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 40px;
+}
+.stat-card {
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 20px;
+  text-align: center;
+  border-top: 3px solid #f97316;
+}
+.stat-num {
+  font-size: 32px;
+  font-weight: 900;
+  color: #1e3a5f;
+  margin-bottom: 4px;
+}
+.stat-label {
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* 大类区块 */
+.section {
+  margin-bottom: 36px;
+}
+.section-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #1e3a5f;
+  margin-bottom: 20px;
+  padding-left: 14px;
+  border-left: 4px solid #f97316;
+}
+.section-desc {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 16px;
+  padding-left: 18px;
+}
+
+/* 产品网格 */
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.product-item {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 14px 16px;
+  border-left: 3px solid #cbd5e1;
+}
+.product-item.p0 { border-left-color: #ef4444; background: #fef2f2; }
+.product-item.p1 { border-left-color: #f97316; background: #fff7ed; }
+.product-item.p2 { border-left-color: #3b82f6; background: #eff6ff; }
+.product-item.p3 { border-left-color: #94a3b8; background: #f1f5f9; }
+.product-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 4px;
+}
+.product-priority {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.p0 .product-priority { background: #ef4444; color: #fff; }
+.p1 .product-priority { background: #f97316; color: #fff; }
+.p2 .product-priority { background: #3b82f6; color: #fff; }
+.p3 .product-priority { background: #94a3b8; color: #fff; }
+.product-desc {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+/* 益智类六大系列子标题 */
+.subseries-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #334155;
+  margin: 18px 0 10px;
+  padding-left: 10px;
+  border-left: 3px solid #10b981;
+}
+
+/* 图例 */
+.legend {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #64748b;
+}
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+.legend-dot.p0 { background: #ef4444; }
+.legend-dot.p1 { background: #f97316; }
+.legend-dot.p2 { background: #3b82f6; }
+.legend-dot.p3 { background: #94a3b8; }
+
+/* 路线图 */
+.roadmap {
+  background: #1e3a5f;
+  border-radius: 12px;
+  padding: 30px;
+  margin-bottom: 30px;
+  color: #fff;
+}
+.roadmap h3 {
+  font-size: 18px;
+  font-weight: 800;
+  margin-bottom: 20px;
+  text-align: center;
+}
+.roadmap-phases {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.roadmap-phase {
+  background: rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 16px;
+}
+.roadmap-phase h4 {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #fbbf24;
+}
+.roadmap-phase .time {
+  font-size: 12px;
+  opacity: 0.7;
+  margin-bottom: 10px;
+}
+.roadmap-phase ul {
+  list-style: none;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.roadmap-phase li::before {
+  content: "·";
+  margin-right: 6px;
+  color: #fbbf24;
+  font-weight: bold;
+}
+
+/* 底部 */
+.footer {
+  text-align: center;
+  padding: 24px;
+  background: linear-gradient(135deg, #1e3a5f, #2d4f7c);
+  border-radius: 12px;
+  color: #fff;
+  margin-top: 20px;
+}
+.footer p {
+  font-size: 15px;
+  line-height: 1.8;
+}
+.footer em {
+  color: #fbbf24;
+  font-style: normal;
+  font-weight: 700;
+}
+</style>
+</head>
+<body>
+<div class="infographic">
+  <!-- 顶部标题 -->
+  <div class="header">
+    <div class="tag">产品矩阵规划</div>
+    <h1>小红书小工具产品矩阵</h1>
+    <div class="subtitle">一线教师设计的学习能力训练工具 · 三阶段上线路线</div>
+  </div>
+
+  <!-- 总览统计 -->
+  <div class="overview">
+    <div class="stat-card">
+      <div class="stat-num">62</div>
+      <div class="stat-label">规划产品总数</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">8</div>
+      <div class="stat-label">首批上线</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">7</div>
+      <div class="stat-label">产品大类</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">10MB</div>
+      <div class="stat-label">单工具包体上限</div>
+    </div>
+  </div>
+
+  <!-- 图例 -->
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot p0"></div>P0 首批上线（1-2月）</div>
+    <div class="legend-item"><div class="legend-dot p1"></div>P1 第二批（3-6月）</div>
+    <div class="legend-item"><div class="legend-dot p2"></div>P2 第三批（6-12月）</div>
+    <div class="legend-item"><div class="legend-dot p3"></div>P3 补充款</div>
+  </div>
+
+  <!-- 学科类 -->
+  <div class="section">
+    <div class="section-title">学科类 · 核心变现</div>
+    <div class="section-desc">英语点读（核心素材优势）、数学口算、语文基础</div>
+    <div class="product-grid">
+      <div class="product-item p0">
+        <div class="product-name">教材单元点读<span class="product-priority">P0</span></div>
+        <div class="product-desc">重组图文+热区+真人音频，点击播放跟读</div>
+      </div>
+      <div class="product-item p0">
+        <div class="product-name">口算每日打卡<span class="product-priority">P0</span></div>
+        <div class="product-desc">随机出题，分层难度，本地记录打卡天数</div>
+      </div>
+      <div class="product-item p1">
+        <div class="product-name">单词闪卡记忆<span class="product-priority">P1</span></div>
+        <div class="product-desc">翻转卡片，本地记忆曲线复习</div>
+      </div>
+      <div class="product-item p1">
+        <div class="product-name">乘法口诀练习<span class="product-priority">P1</span></div>
+        <div class="product-desc">九九乘法表随机抽查，即时反馈</div>
+      </div>
+      <div class="product-item p2">
+        <div class="product-name">24点游戏<span class="product-priority">P2</span></div>
+        <div class="product-desc">四个数字四则运算算出24，计时挑战</div>
+      </div>
+      <div class="product-item p2">
+        <div class="product-name">成语配对<span class="product-priority">P2</span></div>
+        <div class="product-desc">成语找对应意思，连线配对</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 益智类 -->
+  <div class="section">
+    <div class="section-title">益智类 · 流量主力（对标小象脑力六大能力）</div>
+    <div class="section-desc">六大能力维度：专注力、观察力、记忆力、逻辑思维、空间感知、反应力</div>
+
+    <div class="subseries-title">专注力训练</div>
+    <div class="product-grid">
+      <div class="product-item p0">
+        <div class="product-name">舒尔特方格<span class="product-priority">P0</span></div>
+        <div class="product-desc">经典注意力训练法，家长认知度最高</div>
+      </div>
+      <div class="product-item p1">
+        <div class="product-name">找相同<span class="product-priority">P1</span></div>
+        <div class="product-desc">快速找出和目标相同的图案</div>
+      </div>
+      <div class="product-item p2">
+        <div class="product-name">划消训练<span class="product-priority">P2</span></div>
+        <div class="product-desc">抗干扰训练，划掉指定目标</div>
+      </div>
+      <div class="product-item p2">
+        <div class="product-name">视觉追踪<span class="product-priority">P2</span></div>
+        <div class="product-desc">眼球运动跟踪，持续注意力训练</div>
+      </div>
+    </div>
+
+    <div class="subseries-title">观察力训练</div>
+    <div class="product-grid">
+      <div class="product-item p0">
+        <div class="product-name">找不同<span class="product-priority">P0</span></div>
+        <div class="product-desc">两张图对比找不同，宝妈最爱转</div>
+      </div>
+      <div class="product-item p1">
+        <div class="product-name">影子配对<span class="product-priority">P1</span></div>
+        <div class="product-desc">实物找对应影子轮廓</div>
+      </div>
+      <div class="product-item p2">
+        <div class="product-name">细节搜索<span class="product-priority">P2</span></div>
+        <div class="product-desc">大图里找出指定小物体</div>
+      </div>
+      <div class="product-item p2">
+        <div class="product-name">错误在哪里<span class="product-priority">P2</span></div>
+        <div class="product-desc">场景图找不合逻辑的地方</div>
+      </div>
+    </div>
+
+    <div class="subseries-title">记忆力训练</div>
+    <div class="product-grid">
+      <div class="product-item p0">
+        <div class="product-name">翻牌记忆配对<span class="product-priority">P0</span></div>
+        <div class="product-desc">卡片翻牌找配对，可换成单词卡</div>
+      </div>
+      <div class="product-item p0">
+        <div class="product-name">数字记忆<span class="product-priority">P0</span></div>
+        <div class="product-desc">看几秒数字，凭记忆输入</div>
+      </div>
+      <div class="product-item p1">
+        <div class="product-name">图形序列复刻<span class="product-priority">P1</span></div>
+        <div class="product-desc">看一遍颜色序列，重复一遍</div>
+      </div>
+      <div class="product-item p1">
+        <div class="product-name">位置记忆<span class="product-priority">P1</span></div>
+        <div class="product-desc">记住图案位置，翻回来找</div>
+      </div>
+    </div>
+
+    <div class="subseries-title">逻辑思维训练</div>
+    <div class="product-grid">
+      <div class="product-item p1">
+        <div class="product-name">数独入门<span class="product-priority">P1</span></div>
+        <div class="product-desc">三档难度，自动生成题目</div>
+      </div>
+      <div class="product-item p1">
+        <div class="product-name">迷宫寻路<span class="product-priority">P1</span></div>
+        <div class="product-desc">路径规划，从起点到终点</div>
+      </div>
+      <div class="product-item p1">
+        <div class="product-name">分类整理<span class="product-priority">P1</span></div>
+        <div class="product-desc">物品按类别分到不同盒子</div>
+      </div>
+      <div class="product-item p2">
+        <div class="product-name">因果排序<span class="product-priority">P2</span></div>
+        <div class="product-desc">打乱图片按因果关系排好</div>
+      </div>
+      <div class="product-item p2">
+        <div class="product-name">推箱子<span class="product-priority">P2</span></div>
+        <div class="product-desc">经典益智，空间规划问题解决</div>
+      </div>
+    </div>
+
+    <div class="subseries-title">空间感知训练</div>
+    <div class="product-grid">
+      <div class="product-item p0">
+        <div class="product-name">简单拼图<span class="product-priority">P0</span></div>
+        <div class="product-desc">拖拽拼合，从少块到多块</div>
+      </div>
+      <div class="product-item p1">
+        <div class="product-name">七巧板<span class="product-priority">P1</span></div>
+        <div class="product-desc">传统益智，拼成指定图案</div>
+      </div>
+      <div class="product-item p2">
+        <div class="product-name">华容道<span class="product-priority">P2</span></div>
+        <div class="product-desc">滑块拼图，经典布局</div>
+      </div>
+      <div class="product-item p2">
+        <div class="product-name">旋转拼图<span class="product-priority">P2</span></div>
+        <div class="product-desc">先旋转方向，再拼合</div>
+      </div>
+    </div>
+
+    <div class="subseries-title">反应力训练</div>
+    <div class="product-grid">
+      <div class="product-item p0">
+        <div class="product-name">点击反应测试<span class="product-priority">P0</span></div>
+        <div class="product-desc">测反应毫秒数，自带晒分传播</div>
+      </div>
+      <div class="product-item p1">
+        <div class="product-name">手速挑战<span class="product-priority">P1</span></div>
+        <div class="product-desc">10秒内快速点击，计数</div>
+      </div>
+      <div class="product-item p2">
+        <div class="product-name">颜色反应<span class="product-priority">P2</span></div>
+        <div class="product-desc">字色不一致时快速反应</div>
+      </div>
+      <div class="product-item p2">
+        <div class="product-name">接物品游戏<span class="product-priority">P2</span></div>
+        <div class="product-desc">手指移动接物品，躲炸弹</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 经典游戏 -->
+  <div class="section">
+    <div class="section-title">经典游戏类 · 情怀引流</div>
+    <div class="section-desc">家长零认知成本，自带情怀流量，包装成"思维训练"</div>
+    <div class="product-grid">
+      <div class="product-item p1">
+        <div class="product-name">2048<span class="product-priority">P1</span></div>
+        <div class="product-desc">数字敏感度+策略规划训练</div>
+      </div>
+      <div class="product-item p2">
+        <div class="product-name">俄罗斯方块<span class="product-priority">P2</span></div>
+        <div class="product-desc">空间想象力+手眼协调</div>
+      </div>
+      <div class="product-item p2">
+        <div class="product-name">贪吃蛇<span class="product-priority">P2</span></div>
+        <div class="product-desc">专注力+反应力+空间感知</div>
+      </div>
+      <div class="product-item p2">
+        <div class="product-name">连连看<span class="product-priority">P2</span></div>
+        <div class="product-desc">观察力+反应力</div>
+      </div>
+      <div class="product-item p3">
+        <div class="product-name">扫雷<span class="product-priority">P3</span></div>
+        <div class="product-desc">逻辑推理+概率判断</div>
+      </div>
+      <div class="product-item p3">
+        <div class="product-name">打砖块<span class="product-priority">P3</span></div>
+        <div class="product-desc">反应力+手眼协调</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 其他扩展 -->
+  <div class="section">
+    <div class="section-title">扩展品类 · 补充矩阵</div>
+    <div class="product-grid">
+      <div class="product-item p2">
+        <div class="product-name">认识时间<span class="product-priority">P2</span></div>
+        <div class="product-desc">拨钟表，认识整点半点</div>
+      </div>
+      <div class="product-item p2">
+        <div class="product-name">认识钱币<span class="product-priority">P2</span></div>
+        <div class="product-desc">模拟购物找零，财商启蒙</div>
+      </div>
+      <div class="product-item p2">
+        <div class="product-name">安全常识问答<span class="product-priority">P2</span></div>
+        <div class="product-desc">情景选择题，安全教育</div>
+      </div>
+      <div class="product-item p2">
+        <div class="product-name">涂色游戏<span class="product-priority">P2</span></div>
+        <div class="product-desc">线稿图点击填色，美育</div>
+      </div>
+      <div class="product-item p2">
+        <div class="product-name">动物配对<span class="product-priority">P2</span></div>
+        <div class="product-desc">动物找对应栖息地</div>
+      </div>
+      <div class="product-item p3">
+        <div class="product-name">情绪识别<span class="product-priority">P3</span></div>
+        <div class="product-desc">看表情猜情绪，情商培养</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 上线路线图 -->
+  <div class="roadmap">
+    <h3>三阶段上线路线</h3>
+    <div class="roadmap-phases">
+      <div class="roadmap-phase">
+        <h4>第一波 · 跑通流程</h4>
+        <div class="time">1-2个月 · 8款</div>
+        <ul>
+          <li>口算每日打卡</li>
+          <li>英语教材点读（样例）</li>
+          <li>舒尔特方格</li>
+          <li>找不同</li>
+          <li>翻牌记忆配对</li>
+          <li>数字记忆</li>
+          <li>点击反应测试</li>
+          <li>简单拼图</li>
+        </ul>
+      </div>
+      <div class="roadmap-phase">
+        <h4>第二波 · 丰富矩阵</h4>
+        <div class="time">3-6个月 · 11款</div>
+        <ul>
+          <li>找相同/影子配对</li>
+          <li>图形序列/位置记忆</li>
+          <li>迷宫寻路/分类整理</li>
+          <li>手速挑战/七巧板</li>
+          <li>单词闪卡/乘法口诀</li>
+          <li>数独入门/2048</li>
+        </ul>
+      </div>
+      <div class="roadmap-phase">
+        <h4>第三波 · 精品补充</h4>
+        <div class="time">6-12个月 · 逐步补充</div>
+        <ul>
+          <li>划消训练/视觉追踪</li>
+          <li>细节搜索/错误在哪里</li>
+          <li>华容道/旋转拼图</li>
+          <li>24点/因果排序</li>
+          <li>经典游戏系列扩展</li>
+          <li>生活常识/艺术启蒙</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- 底部总结 -->
+  <div class="footer">
+    <p>
+      别人卖的是<em>小游戏</em>，我们卖的是<em>一线老师验证过的学习能力训练方案</em><br>
+      益智类引流 → 学科类转化 → 教师版变现
+    </p>
+  </div>
+</div>
+</body>
+</html>
