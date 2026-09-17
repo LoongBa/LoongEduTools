@@ -28,11 +28,12 @@ series/学科/
 ├── 设计文档.md           # 系列设计规范（点读方案/数据结构/构建约定）
 ├── 英语点读/             # 工具：英语点读
 │   ├── src/             #   index.html + assets/（main.js / style.css / icon_base.png）
+│   ├── docs/            #   工具文档：设计文档.md + 使用文档.md
 │   └── README.md        #   工具专属说明（可选）
 └── 数学口算/             # 工具：数学口算（v1.0 已构建）
     ├── src/             #   index.html + assets/（main.js / generators.js / style.css / icon_base.png）
-    ├── README.md        #   工具说明 + 进度
-    └── 设计方案.md       #   Oracle 审核通过的需求与设计方案
+    ├── docs/            #   工具文档：设计文档.md + 使用文档.md + 交接文档.md
+    └── README.md        #   工具说明 + 进度
 ```
 
 ## 构建命令

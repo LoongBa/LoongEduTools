@@ -30,6 +30,7 @@ RedTools/
 │       ├── 设计文档.md         #     系列设计规范（可复用核心 + 新工具接入步骤）
 │       └── <工具>/            #     工具目录
 │           ├── src/           #       index.html + assets/（main.js/style.css/icon_base.png）
+│           ├── docs/          #       工具文档：设计文档.md + 使用文档.md（+ 交接文档.md 等）
 │           └── README.md      #       工具说明 + 变更记录
 ├── dist/                      # 构建中间产物（不入库）
 │   └── <系列>/<工具>/...

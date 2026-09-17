@@ -13,6 +13,7 @@
 | 通用需求：打卡/分享/记录 | `RedTools/docs/通用需求-打卡分享记录.md` | **跨工具通用能力**：打卡记录/成绩记录/分享卡片+文案（含微信/抖音 H5 扩展预留） |
 | 系列（可扩展） | `RedTools/series/<系列>/` | 每系列独立 README + 设计文档（当前：学科/） |
 | 工具源码 | `RedTools/series/学科/英语点读/src/` | index.html + assets/（main.js/style.css/icon_base.png） |
+| 工具文档 | `RedTools/series/<系列>/<工具>/docs/` | 每工具独立文档：设计文档.md + 使用文档.md（+ 交接文档.md 等） |
 | 构建框架 | `RedTools/build_framework.py` | 公共构建逻辑（图片/音频 base64/图标角标/zip） |
 | 工具注册表 | `RedTools/tools.py` | 各系列工具配置（book/素材/版本/默认单元） |
 | 批量构建 | `RedTools/build_all.py` | 遍历工具批量产出 |
