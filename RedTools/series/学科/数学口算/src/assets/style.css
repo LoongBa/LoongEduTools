@@ -433,3 +433,201 @@ body {
   color: #8a919f;
   margin-top: 2px;
 }
+
+/* ============================================================
+   v1.1 进步曲线（成就页）
+   ============================================================ */
+.progress-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 16px;
+}
+
+.progress-card .page-title { text-align: center; }
+
+.line-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 8px;
+}
+
+.progress-hint {
+  text-align: center;
+  color: #8a919f;
+  font-size: 14px;
+  padding: 22px 0;
+}
+
+/* ============================================================
+   v1.1 打印题卡（结果页 → window.print()）
+   #print-sheet 为 body 子级打印容器：平时 display:none，仅 @media print 显示
+   约束：Chrome 61 兼容（flex 双前缀写法 / page-break-inside）独立于屏幕样式
+   ============================================================ */
+#print-sheet { display: none; }
+
+@media print {
+  html, body {
+    height: auto !important;
+    background: #ffffff;
+  }
+
+  .app-header,
+  .app-footer,
+  #view { display: none !important; }
+
+  #print-sheet {
+    display: block !important;
+    color: #000000;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  .print-head { margin-bottom: 14px; }
+
+  .print-title {
+    font-size: 20px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 10px;
+  }
+
+  .print-meta {
+    display: -webkit-box;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-box-pack: justify;
+    -webkit-justify-content: space-between;
+    justify-content: space-between;
+    font-size: 13px;
+  }
+
+  .print-score {
+    margin-top: 6px;
+    font-size: 13px;
+  }
+
+  .print-body { margin-top: 8px; }
+
+  .print-item {
+    display: -webkit-box;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-box-align: center;
+    -webkit-align-items: center;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px solid #d8d8d8;
+    page-break-inside: avoid;
+  }
+
+  .print-no {
+    width: 28px;
+    -webkit-box-flex: 0;
+    -webkit-flex: 0 0 auto;
+    flex: 0 0 auto;
+    color: #4e5969;
+  }
+
+  .print-q {
+    font-weight: 600;
+    -webkit-box-flex: 1;
+    -webkit-flex: 1 1 auto;
+    flex: 1 1 auto;
+  }
+
+  .print-ans {
+    display: inline-block;
+    width: 90px;
+    height: 15px;
+    border-bottom: 1px solid #000000;
+    -webkit-box-flex: 0;
+    -webkit-flex: 0 0 auto;
+    flex: 0 0 auto;
+  }
+}
+
+/* ============================================================
+   v1.1 分享打卡（结果页 → 全屏分享弹层）
+   覆盖 .timer-overlay 模式：全屏 fixed 遮罩 + flex 居中
+   ============================================================ */
+.share-overlay {
+  position: fixed;
+  top: 0; right: 0; bottom: 0; left: 0;
+  inset: 0; /* Chrome 61 回退用 top/right/bottom/left，新浏览器用 inset */
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1000;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+}
+
+.share-box {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px;
+  width: 88%;
+  max-width: 360px;
+  max-height: 90vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  text-align: center;
+}
+
+.share-card-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+}
+
+.share-hint {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #8a919f;
+}
+
+.share-text {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 60px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: left;
+  color: #1f2329;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+  background: #f7f8fa;
+  resize: none;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.share-feedback {
+  min-height: 20px;
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.share-feedback.ok { color: #00a854; }
+.share-feedback.bad { color: #f5222d; }
+
+.share-btns {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  margin-top: 10px;
+}
+
+.share-btns > * + * { margin-left: 10px; }

@@ -181,6 +181,52 @@
     renderFooterNav();
   }
 
+  /* ============================================================
+     v1.1 出题增强：薄弱优先 + 同次防重复
+     - 薄弱优先：错题本当前知识点错题（wrongCount 降序）置于练习
+       前段，占比 ≤ 50%；错题不足则全部随机
+     - 防重复：同一次练习内 text+type 相同视为重复，随机题
+       重新生成（最多重试 8 次，仍重复则接受防死循环）
+     ============================================================ */
+  function quizKey(q) {
+    return q.type + '|' + q.text;
+  }
+
+  function buildQuiz(pointId, count) {
+    var quiz = [];
+    var seen = {};
+    var maxWrong = Math.floor(count / 2); // 错题占比 ≤ 50%，防过度
+    var i;
+
+    /* ① 薄弱优先：当前知识点错题按 wrongCount 降序复现 */
+    var candidates = (store.wrongBook || []).filter(function (w) {
+      return w.type === pointId;
+    });
+    candidates.sort(function (a, b) { return b.wrongCount - a.wrongCount; });
+    for (i = 0; i < candidates.length && quiz.length < maxWrong; i++) {
+      var w = candidates[i];
+      if (seen[quizKey(w)]) { continue; } // 错题复现同样去重
+      /* 错题复用：重置为当前练习独立对象，答案取错题本已存正确答案 */
+      quiz.push({ type: w.type, text: w.text, answer: w.answer });
+      seen[quizKey(w)] = true;
+    }
+
+    /* ② 同次防重复：随机题与已入队题重复则重生成（≤8 次） */
+    var rest = count - quiz.length;
+    for (i = 0; i < rest; i++) {
+      var q = null;
+      for (var attempt = 0; attempt < 8; attempt++) {
+        var cand = GEN.gen(pointId);
+        if (cand && !seen[quizKey(cand)]) { q = cand; break; }
+      }
+      if (!q) { q = GEN.gen(pointId); } // 8 次重试仍重复则接受，防死循环
+      if (!q) { continue; }
+      quiz.push(q);
+      seen[quizKey(q)] = true;
+    }
+    return quiz;
+  }
+
   /* ---------- 视图：练习 ---------- */
   function startQuiz(pointId, timerSec) {
     if (!GEN || !GEN.gen) { return; }
@@ -188,12 +234,8 @@
     state.point = pointId;
     state.idx = 0; state.correct = 0; state.combo = 0; state.maxCombo = 0;
     state.answer = ''; state.answered = false; state.startMs = performance.now();
-    state.quiz = [];
     var count = timerSec ? 20 : 10;
-    for (var i = 0; i < count; i++) {
-      var q = GEN.gen(pointId);
-      if (q) { state.quiz.push(q); }
-    }
+    state.quiz = buildQuiz(pointId, count); // v1.1 薄弱优先 + 同次防重复
     if (!state.quiz.length) { return; }
     stopTimer();
     if (timerSec) { startTimer(timerSec); }
@@ -402,11 +444,291 @@
     var row = makeEl('div', 'btn-row');
     var again = makeEl('button', 'btn', '再来一组');
     again.addEventListener('click', function () { startQuiz(state.point); });
+    var printBtn = makeEl('button', 'btn', '打印题卡');
+    printBtn.addEventListener('click', printCurrentSheet);
+    var shareBtn = makeEl('button', 'btn', '分享打卡');
+    /* 闭包捕获本次成绩，避免依赖可变全局 */
+    shareBtn.addEventListener('click', (function (r, t, c, e, mc) {
+      return function () { openShareOverlay(r, t, c, e, mc); };
+    })(rate, total, state.correct, elapsed, state.maxCombo));
     var back = makeEl('button', 'btn btn-primary', '返回知识点');
     back.addEventListener('click', function () { viewPoint(state.grade); });
     row.appendChild(again);
+    row.appendChild(printBtn);
+    row.appendChild(shareBtn);
     row.appendChild(back);
     viewEl.appendChild(row);
+  }
+
+  /* ============================================================
+     v1.1 打印题卡：结果页「打印题卡」→ 填充 body 子级 #print-sheet
+     （平时 display:none，@media print 显示并隐藏其余）→ window.print()
+     纯 HTML/CSS，无 canvas/图片；Chrome 61 兼容（var/function/字符串拼接）
+     ============================================================ */
+  function ensurePrintSheet() {
+    var sheet = document.getElementById('print-sheet');
+    if (!sheet) {
+      sheet = document.createElement('div');
+      sheet.id = 'print-sheet';
+      document.body.appendChild(sheet);
+    }
+    return sheet;
+  }
+
+  function fillPrintSheet() {
+    var sheet = ensurePrintSheet();
+    clearNode(sheet);
+
+    /* 题目：普通 10 题打印前 10 题；计时 20 题打印前 10 题 */
+    var quiz = state.quiz || [];
+    var items = quiz.slice(0, 10);
+    var p = POINTS[state.point];
+    var gradeName = p ? ['一', '二', '三', '四', '五', '六'][(p.grade || 1) - 1] + '年级' : '';
+
+    /* 头部：标题（知识点名 + 年级）、姓名/日期行、得分区 */
+    var head = makeEl('div', 'print-head');
+    var title = makeEl('div', 'print-title');
+    title.textContent = (p ? p.name : '口算练习') + (gradeName ? ' · ' + gradeName : '');
+    head.appendChild(title);
+    var meta = makeEl('div', 'print-meta');
+    meta.appendChild(makeEl('span', '', '姓名：____________'));
+    meta.appendChild(makeEl('span', '', '日期：____________'));
+    head.appendChild(meta);
+    head.appendChild(makeEl('div', 'print-score', '得分：____________        共 ' + items.length + ' 题'));
+    sheet.appendChild(head);
+
+    /* 题目区：每行一题，序号 + 题目 + 空作答横线 */
+    var body = makeEl('div', 'print-body');
+    for (var i = 0; i < items.length; i++) {
+      var it = makeEl('div', 'print-item');
+      it.appendChild(makeEl('span', 'print-no', '' + (i + 1) + '.'));
+      it.appendChild(makeEl('span', 'print-q', items[i].text));
+      it.appendChild(makeEl('span', 'print-ans', ''));
+      body.appendChild(it);
+    }
+    sheet.appendChild(body);
+  }
+
+  function printCurrentSheet() {
+    fillPrintSheet();
+    /* 延迟触发，确保容器已布局后再进入打印 */
+    window.setTimeout(function () { window.print(); }, 30);
+  }
+
+  /* ============================================================
+     v1.1 分享打卡：结果页「分享打卡」→ 全屏弹层
+     - 离屏 canvas 1080×1920 绘制打卡卡片 → toDataURL 放入 <img>
+     - 复制文案：隐藏 textarea + document.execCommand('copy')
+       （Chrome 61 基线无 navigator.clipboard；保底展示全文手动选择复制）
+     - 仅 canvas 2D 标准 API，不用 ctx.roundRect（Chrome 99+）
+     ============================================================ */
+  function roundRectPath(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  function shareEncourage(rate) {
+    if (rate >= 100) { return '太棒了！全对！'; }
+    if (rate >= 80) { return '进步明显，继续加油！'; }
+    if (rate >= 60) { return '不错哦，再接再厉！'; }
+    return '每天练一练，越来越快！';
+  }
+
+  /* 分享文案纯函数（§5.2）：知识点 + 正确率 + 连续打卡天数 */
+  function buildShareText(rate) {
+    var point = POINTS[state.point];
+    var name = point ? point.name : '口算练习';
+    var streak = store.checkin && store.checkin.streak ? store.checkin.streak : 0;
+    return '今天孩子用数学口算完成「' + name + '」练习，正确率 ' + rate +
+           '%！连续打卡 ' + streak + ' 天 📅 口算越来越熟练，继续加油～';
+  }
+
+  /* 绘制 1080×1920 打卡卡片，返回 canvas（离屏，不挂 DOM） */
+  function drawShareCard(rate, total, correct, elapsed, maxCombo) {
+    var W = 1080, H = 1920;
+    var canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    var ctx = canvas.getContext('2d');
+    if (!ctx) { return canvas; }
+
+    /* 背景：暖色渐变 #fff7e6 → #ffd591 */
+    var bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#fff7e6');
+    bg.addColorStop(1, '#ffd591');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    /* 装饰圆点 */
+    ctx.fillStyle = 'rgba(255, 140, 0, 0.18)';
+    ctx.beginPath(); ctx.arc(150, 150, 26, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(930, 150, 26, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(150, 1770, 26, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(930, 1770, 26, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255, 140, 0, 0.25)';
+    ctx.beginPath(); ctx.arc(280, 300, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(800, 260, 12, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(240, 1620, 12, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(830, 1580, 10, 0, Math.PI * 2); ctx.fill();
+
+    /* 圆角白色内卡（margin 60，radius 48） */
+    roundRectPath(ctx, 60, 60, 960, 1800, 48);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    /* 顶部：工具名 + 连续打卡天数（橙色胶囊） */
+    ctx.fillStyle = '#1f2329';
+    ctx.font = 'bold 56px sans-serif';
+    ctx.fillText('数学口算', W / 2, 190);
+
+    var streak = store.checkin && store.checkin.streak ? store.checkin.streak : 0;
+    var streakText = '连续打卡 ' + streak + ' 天';
+    ctx.font = 'bold 38px sans-serif';
+    var tw = ctx.measureText(streakText).width;
+    var pillW = tw + 64, pillH = 76, pillX = (W - pillW) / 2, pillY = 276;
+    roundRectPath(ctx, pillX, pillY, pillW, pillH, 38);
+    ctx.fillStyle = '#ff8c00';
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(streakText, W / 2, pillY + pillH / 2 + 2);
+
+    /* 中部：今日正确率大字 */
+    ctx.fillStyle = '#8a919f';
+    ctx.font = '44px sans-serif';
+    ctx.fillText('今日正确率', W / 2, 620);
+
+    ctx.fillStyle = '#ff8c00';
+    ctx.font = 'bold 170px sans-serif';
+    ctx.fillText(rate + '%', W / 2, 800);
+
+    /* 中部：答对 / 用时 / 最大连击 三列 */
+    var stats = [
+      { label: '答对', value: correct + '/' + total },
+      { label: '用时', value: elapsed + 's' },
+      { label: '最大连击', value: '' + maxCombo }
+    ];
+    var cols = [W / 2 - 300, W / 2, W / 2 + 300];
+    for (var i = 0; i < 3; i++) {
+      ctx.fillStyle = '#1f2329';
+      ctx.font = 'bold 56px sans-serif';
+      ctx.fillText(stats[i].value, cols[i], 960);
+      ctx.fillStyle = '#8a919f';
+      ctx.font = '34px sans-serif';
+      ctx.fillText(stats[i].label, cols[i], 1045);
+    }
+
+    /* 分隔线 */
+    ctx.strokeStyle = '#f0e6d6';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(180, 1220);
+    ctx.lineTo(900, 1220);
+    ctx.stroke();
+
+    /* 底部：鼓励语（按正确率分级） */
+    ctx.fillStyle = '#e8590c';
+    ctx.font = 'bold 64px sans-serif';
+    ctx.fillText(shareEncourage(rate), W / 2, 1400);
+
+    /* 底部：日期 + 工具名 */
+    var d = new Date();
+    var dateText = d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日';
+    ctx.fillStyle = '#8a919f';
+    ctx.font = '36px sans-serif';
+    ctx.fillText(dateText, W / 2, 1600);
+    ctx.fillText('数学口算 · 每日一练', W / 2, 1670);
+
+    return canvas;
+  }
+
+  /* 复制文案：必须在用户手势内（点击回调）执行 execCommand('copy') */
+  function copyShareText(text, feedbackEl) {
+    var ok = false;
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    ta.style.top = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    /* setSelectionRange 提升 iOS 兼容（Chrome 61 亦支持） */
+    if (ta.setSelectionRange) { ta.setSelectionRange(0, text.length); }
+    try {
+      ok = document.execCommand('copy');
+    } catch (err) {
+      ok = false;
+    }
+    document.body.removeChild(ta);
+    if (ok) {
+      feedbackEl.textContent = '已复制，去小红书粘贴发布吧';
+      feedbackEl.className = 'share-feedback ok';
+    } else {
+      /* 保底：文案全文已展示在 .share-text，提示手动长按选择复制 */
+      feedbackEl.textContent = '复制失败，请长按选择复制';
+      feedbackEl.className = 'share-feedback bad';
+    }
+    /* 2 秒后清空反馈 */
+    window.setTimeout(function () {
+      feedbackEl.textContent = '';
+      feedbackEl.className = 'share-feedback';
+    }, 2000);
+  }
+
+  function closeShareOverlay(overlay) {
+    if (overlay && overlay.parentNode) { overlay.parentNode.removeChild(overlay); }
+  }
+
+  function openShareOverlay(rate, total, correct, elapsed, maxCombo) {
+    var overlay = makeEl('div', 'share-overlay');
+    var box = makeEl('div', 'share-box');
+    box.appendChild(makeEl('div', 'page-title', '分享打卡'));
+
+    /* 打卡卡片：离屏 canvas → dataURL → <img> */
+    var img = makeEl('img', 'share-card-img');
+    img.alt = '打卡卡片';
+    var canvas = drawShareCard(rate, total, correct, elapsed, maxCombo);
+    img.src = canvas.toDataURL('image/png');
+    box.appendChild(img);
+
+    box.appendChild(makeEl('div', 'share-hint', '长按图片保存，分享到小红书 / 朋友圈'));
+
+    /* 分享文案（只读文本区，保底路径可手动选择复制） */
+    var text = buildShareText(rate);
+    var textEl = makeEl('textarea', 'share-text');
+    textEl.readOnly = true;
+    textEl.value = text;
+    textEl.addEventListener('focus', function () { textEl.select(); });
+    box.appendChild(textEl);
+
+    /* 复制反馈 */
+    var feedbackEl = makeEl('div', 'share-feedback', '');
+    box.appendChild(feedbackEl);
+
+    /* 按钮：复制文案 + 关闭 */
+    var btns = makeEl('div', 'share-btns');
+    var copyBtn = makeEl('button', 'btn btn-primary', '复制文案');
+    copyBtn.addEventListener('click', function () { copyShareText(text, feedbackEl); });
+    var closeBtn = makeEl('button', 'btn', '关闭');
+    closeBtn.addEventListener('click', function () { closeShareOverlay(overlay); });
+    btns.appendChild(copyBtn);
+    btns.appendChild(closeBtn);
+    box.appendChild(btns);
+
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
   }
 
   function calcStreak(dates) {
@@ -612,7 +934,105 @@
       viewEl.appendChild(bestCard);
     }
 
+    /* v1.1 进步曲线：历史最佳之后追加 */
+    viewEl.appendChild(buildProgressCard(store.history || []));
+
     renderFooterNav();
+  }
+
+  /* ============================================================
+     v1.1 进步曲线：最近 ≤10 次正确率的 SVG 折线图
+     - X 轴：练习次数 1..N；Y 轴：正确率 0-100%
+     - 数据点圆点 + 上方百分比标注 + 网格线/坐标标签
+     - Chrome 61 兼容：仅用基础 SVG 元素（polyline/circle/text/line）
+     ============================================================ */
+  function buildProgressCard(history) {
+    var card = makeEl('div', 'progress-card');
+    card.appendChild(makeEl('div', 'page-title', '进步曲线'));
+    if (history.length < 2) {
+      card.appendChild(makeEl('div', 'progress-hint', '完成 2 次练习后展示进步曲线'));
+      return card;
+    }
+    var recent = history.slice(-10); // 最近 ≤10 次
+    card.appendChild(makeProgressChart(recent));
+    return card;
+  }
+
+  function makeProgressChart(records) {
+    var SVG_NS = 'http://www.w3.org/2000/svg';
+    var W = 320, H = 180;
+    var PL = 36, PR = 14, PT = 18, PB = 26; // 边距：左(Y标签)/右/上/下(X标签)
+    var PW = W - PL - PR, PH = H - PT - PB;
+    var n = records.length;
+
+    function svgEl(tag, attrs) {
+      var el = document.createElementNS(SVG_NS, tag);
+      for (var k in attrs) {
+        if (Object.prototype.hasOwnProperty.call(attrs, k)) { el.setAttribute(k, attrs[k]); }
+      }
+      return el;
+    }
+    function px(i) { return n === 1 ? PL + PW / 2 : PL + PW * i / (n - 1); }
+    function py(rate) { return PT + PH * (1 - rate / 100); }
+
+    var svg = svgEl('svg', {
+      class: 'line-chart',
+      viewBox: '0 0 ' + W + ' ' + H,
+      preserveAspectRatio: 'xMidYMid meet',
+      role: 'img',
+      'aria-label': '进步曲线'
+    });
+
+    /* 网格线 + Y 轴标签（0/25/50/75/100%） */
+    var ticks = [0, 25, 50, 75, 100];
+    for (var t = 0; t < ticks.length; t++) {
+      var gy = py(ticks[t]);
+      svg.appendChild(svgEl('line', {
+        x1: PL, y1: gy, x2: W - PR, y2: gy,
+        stroke: '#e5e6eb', 'stroke-width': 1
+      }));
+      var yl = svgEl('text', {
+        x: PL - 6, y: gy + 3, 'text-anchor': 'end',
+        'font-size': 10, fill: '#8a919f'
+      });
+      yl.textContent = ticks[t] + '%';
+      svg.appendChild(yl);
+    }
+
+    /* X 轴标签：次数 1..n */
+    for (var xi = 0; xi < n; xi++) {
+      var xl = svgEl('text', {
+        x: px(xi), y: H - PB + 14, 'text-anchor': 'middle',
+        'font-size': 10, fill: '#8a919f'
+      });
+      xl.textContent = '' + (xi + 1);
+      svg.appendChild(xl);
+    }
+
+    /* 折线 */
+    var pts = [];
+    for (var p = 0; p < n; p++) {
+      pts.push(px(p) + ',' + py(records[p].rate));
+    }
+    svg.appendChild(svgEl('polyline', {
+      points: pts.join(' '),
+      fill: 'none', stroke: '#165dff', 'stroke-width': 2,
+      'stroke-linejoin': 'round', 'stroke-linecap': 'round'
+    }));
+
+    /* 数据点圆点 + 上方百分比标注 */
+    for (var q = 0; q < n; q++) {
+      var cx = px(q), cy = py(records[q].rate);
+      svg.appendChild(svgEl('circle', { cx: cx, cy: cy, r: 3.5, fill: '#165dff' }));
+      var lb = svgEl('text', {
+        x: cx, y: cy - 7, 'text-anchor': 'middle',
+        'font-size': 10, fill: '#1f2329', 'font-weight': 600
+      });
+      lb.textContent = records[q].rate + '%';
+      svg.appendChild(lb);
+    }
+
+    return svg;
   }
 
   /* ---------- 家长面板 ---------- */
