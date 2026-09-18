@@ -34,7 +34,7 @@
 
 ## 序列库（causals.js）
 
-`src/assets/causals.js` 内 `window.CAUSALS`：8 条序列 / 33 张卡片，全部程序化 SVG 生成
+`src/assets/causals.js` 内 `window.CAUSALS`：8 条序列 / 32 张卡片，全部程序化 SVG 生成
 （viewBox `-65 -65 130 130` 居中，糖果色童趣扁平风），**零图片素材**。
 
 | id | 序列 | 步数 | 因果递进视觉 |
@@ -58,7 +58,7 @@
 ├── src/
 │   ├── index.html          # 入口（data.js → causals.js → main.js）
 │   └── assets/
-│       ├── causals.js      # 序列卡片库（window.CAUSALS，8 序列 33 卡，纯 SVG）
+│       ├── causals.js      # 序列卡片库（window.CAUSALS，8 序列 32 卡，纯 SVG）
 │       ├── main.js         # 游戏逻辑（交换排序/提示/成绩打卡，ES2017 经典脚本）
 │       ├── style.css       # 样式（Chrome 61 基线，天蓝系 + 绿色点缀）
 │       └── icon_base.png   # 图标母版（构建叠加角标）
@@ -79,4 +79,4 @@ python .skill/minitool-zip-builder/scripts/audit_artifact.py dist/益智/因果�
 
 | 版本 | 日期 | 说明 |
 |------|------|------|
-| v1.0 | 2026-09-19 | 首版：交换排序玩法（简单拼图交互模式）+ 程序化 SVG 序列卡（8 序列 33 卡零素材）+ 三档难度（3/4/5 步）+ 步数星级 + 提示（封顶2★）+ 计时 + 各难度最佳/打卡 |
+| v1.0 | 2026-09-19 | 首版：交换排序玩法（简单拼图交互模式）+ 程序化 SVG 序列卡（8 序列 32 卡零素材）+ 三档难度（3/4/5 步）+ 步数星级 + 提示（封顶2★）+ 计时 + 各难度最佳/打卡 |
