@@ -59,6 +59,15 @@ TOOLS: dict[str, ToolConfig] = {
         app_name="打字背单词",
         default_unit=0,
     ),
+    "单词闪卡": ToolConfig(
+        series="学科",
+        tool="单词闪卡",
+        version="1.0",
+        datasource="vocab",    # PEP 词汇表工具：与打字背单词同管线，词库 data.js（books）
+        vocab_dir=Path(r"F:\_教材素材\人教版（PEP）（主编：吴欣）"),
+        app_name="单词闪卡",
+        default_unit=0,
+    ),
     # ---------------- 学科系列 · 成语（共享词库 _shared/成语词库/） ----------------
     "看图猜成语": ToolConfig(
         series="学科",
@@ -208,6 +217,16 @@ TOOLS: dict[str, ToolConfig] = {
         app_name="颜色反应",
         default_unit=0,
     ),
+    # ---------------- 益智系列 · 语言子系列 ----------------
+    "看图说话排序": ToolConfig(
+        series="益智",
+        subgroup="语言",       # 子系列目录：series/益智/语言/看图说话排序/
+        tool="看图说话排序",
+        version="1.0",
+        datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
+        app_name="看图说话排序",
+        default_unit=0,
+    ),
     # ---------------- 经典游戏系列（情怀引流） ----------------
     "2048": ToolConfig(
         series="经典游戏",
@@ -256,6 +275,14 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.0",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="认识钱币",
+        default_unit=0,
+    ),
+    "涂色游戏": ToolConfig(
+        series="扩展",
+        tool="涂色游戏",
+        version="1.0",
+        datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
+        app_name="涂色游戏",
         default_unit=0,
     ),
     # TODO: 其他学科系列工具（单词闪卡等）待立项
