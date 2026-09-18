@@ -1,0 +1,567 @@
+/* ============================================================
+   颜色反应 — 样式（Chrome 61 基线）
+   ------------------------------------------------------------
+   主题：橙系（背景 #fff3e6 / 主色 #ff8c42）
+   4 色按钮：红 #e74c3c / 蓝 #3498db / 绿 #2ecc71 / 黄 #f1c40f
+   约束：无 flex gap / aspect-ratio / clamp / inset / 逻辑属性 / :has
+   @keyframes 全部 -webkit- 前缀双写；安全区 env(safe-area-inset-*)
+   ============================================================ */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
+  background: #fff3e6;
+  color: #5a3e1b;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+button {
+  font-family: inherit;
+  border: none;
+  background: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+button:focus { outline: none; }
+
+/* ---------- 布局骨架 ---------- */
+#app-header {
+  -webkit-box-flex: 0;
+  flex: 0 0 auto;
+  background: #ffffff;
+  border-bottom: 1px solid #f2e2d2;
+  padding: 8px 14px;
+  padding-top: calc(8px + env(safe-area-inset-top, 0px));
+}
+.header-brand {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  min-width: 0;
+}
+.header-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  margin-right: 10px;
+}
+.header-title {
+  font-size: 19px;
+  font-weight: 700;
+  color: #d95b1e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.header-ver {
+  font-size: 12px;
+  color: #c98d6b;
+  margin-left: 8px;
+  -webkit-box-flex: 1;
+  -webkit-flex: 1 1 auto;
+  flex: 1 1 auto;
+}
+
+#app-main {
+  -webkit-box-flex: 1;
+  -webkit-flex: 1 1 auto;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  min-height: 0;
+}
+.view {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 14px 16px 20px;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  -webkit-box-flex: 1;
+  -webkit-flex: 1 1 auto;
+  flex: 1 1 auto;
+}
+
+#app-footer {
+  -webkit-box-flex: 0;
+  flex: 0 0 auto;
+  background: #ffffff;
+  border-top: 1px solid #f2e2d2;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.footer-nav {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+}
+.footer-btn {
+  -webkit-box-flex: 1;
+  -webkit-flex: 1 1 0;
+  flex: 1 1 0;
+  min-width: 0;
+  text-align: center;
+  padding: 12px 0 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #b0886a;
+}
+.footer-btn:active { color: #ff8c42; }
+
+/* ---------- 首页 ---------- */
+.page-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #d95b1e;
+  margin-bottom: 12px;
+}
+.home-hint {
+  font-size: 14px;
+  color: #a8765c;
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+.home-list { margin-bottom: 6px; }
+.diff-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(255, 140, 66, 0.12);
+}
+.diff-btn {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  background: #ff8c42;
+  color: #ffffff;
+  font-size: 19px;
+  font-weight: 700;
+  border-radius: 12px;
+}
+.diff-btn:active { background: #f57a2a; }
+.diff-meta {
+  text-align: center;
+  font-size: 13px;
+  color: #c98d6b;
+  margin-top: 8px;
+}
+.howto-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #e07b35;
+  margin: 14px 0 8px;
+}
+.howto {
+  background: #fffaf3;
+  border-radius: 12px;
+  padding: 12px 14px;
+  border: 1px solid #ffe8d2;
+}
+.howto-line {
+  font-size: 14px;
+  color: #8a6a52;
+  line-height: 1.8;
+}
+
+/* ---------- 游戏页 ---------- */
+.game-top {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.game-back {
+  font-size: 16px;
+  color: #ff8c42;
+  font-weight: 600;
+  padding: 8px 10px 8px 0;
+  min-width: 56px;
+  text-align: left;
+}
+.game-name {
+  -webkit-box-flex: 1;
+  -webkit-flex: 1 1 auto;
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: #5a3e1b;
+}
+.game-timer {
+  min-width: 56px;
+  text-align: right;
+  font-size: 14px;
+  font-weight: 700;
+  color: #ff8c42;
+}
+
+.word-card {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 26px 16px;
+  margin-bottom: 12px;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  min-height: 180px;
+  box-shadow: 0 3px 12px rgba(255, 140, 66, 0.14);
+}
+.word-text {
+  font-size: 96px;
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.12);
+}
+
+.fb-area {
+  min-height: 34px;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 700;
+  color: #a8765c;
+  margin-bottom: 10px;
+  line-height: 34px;
+}
+.fb-ok { color: #27ae60; }
+.fb-no { color: #e74c3c; }
+
+.color-grid {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-flex-wrap: wrap;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.color-btn {
+  width: calc(50% - 6px);
+  min-height: 72px;
+  margin: 3px;
+  border-radius: 16px;
+  color: #ffffff;
+  font-size: 26px;
+  font-weight: 800;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.25);
+}
+.color-btn.yellow {
+  color: #6b5200;
+  text-shadow: none;
+}
+.color-btn:active { opacity: 0.82; }
+
+.btn-row {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  margin-top: 8px;
+}
+.btn {
+  -webkit-box-flex: 1;
+  -webkit-flex: 1 1 0;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 48px;
+  background: #ffffff;
+  color: #d95b1e;
+  border: 1px solid #ffd6b8;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+}
+.btn + .btn { margin-left: 10px; }
+.btn:active { background: #fff3e6; }
+.btn-primary {
+  background: #ff8c42;
+  color: #ffffff;
+  border: none;
+}
+.btn-primary:active { background: #f57a2a; }
+.btn-share {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  -webkit-box-flex: none;
+  -webkit-flex: none;
+  flex: none;
+}
+
+/* ---------- 结果/分享浮层 ---------- */
+.result-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(60, 30, 10, 0.55);
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  z-index: 999;
+  padding: 20px;
+}
+.result-box {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 26px 20px 22px;
+  width: 100%;
+  max-width: 340px;
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(120, 60, 20, 0.35);
+}
+.result-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #c98d6b;
+  margin-bottom: 12px;
+}
+.result-time {
+  font-size: 40px;
+  font-weight: 900;
+  color: #ff8c42;
+  line-height: 1.2;
+}
+.result-tag {
+  font-size: 17px;
+  font-weight: 700;
+  color: #e07b35;
+  margin-top: 4px;
+}
+.result-stats {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  margin: 16px 0 10px;
+}
+.result-stat {
+  -webkit-box-flex: 1;
+  -webkit-flex: 1 1 0;
+  flex: 1 1 0;
+  min-width: 0;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+  -webkit-flex-direction: column;
+  flex-direction: column;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+}
+.result-stat b {
+  font-size: 18px;
+  color: #5a3e1b;
+}
+.result-stat span {
+  font-size: 12px;
+  color: #c98d6b;
+  margin-top: 2px;
+}
+.result-stars {
+  font-size: 30px;
+  color: #f7b500;
+  letter-spacing: 4px;
+  margin: 6px 0 2px;
+}
+.result-record {
+  font-size: 15px;
+  font-weight: 700;
+  color: #27ae60;
+  margin: 6px 0 2px;
+}
+
+.overlay-card {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 22px 18px 18px;
+  width: 90%;
+  max-width: 380px;
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(120, 60, 20, 0.35);
+}
+.overlay-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #e07b35;
+  margin-bottom: 12px;
+}
+.share-card-wrap {
+  margin: 8px 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff7f0;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  max-height: 58vh;
+}
+.share-img {
+  display: block;
+  max-width: 100%;
+  max-height: 58vh;
+  width: auto;
+  height: auto;
+}
+.share-hint {
+  font-size: 13px;
+  color: #b0886a;
+  margin: 8px 0 10px;
+  line-height: 1.5;
+}
+.share-btns {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+}
+.share-btns .btn {
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 1 auto;
+  flex: 0 1 auto;
+  padding: 0 18px;
+  margin: 0 5px;
+}
+.share-overlay { z-index: 1000; }
+
+/* ---------- 成绩 / 打卡 ---------- */
+.point-list { margin-top: 4px; }
+.point-item {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 8px rgba(255, 140, 66, 0.1);
+}
+.point-item > div:first-child {
+  -webkit-box-flex: 1;
+  -webkit-flex: 1 1 auto;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.point-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #5a3e1b;
+}
+.point-meta {
+  font-size: 12px;
+  color: #c98d6b;
+  margin-top: 3px;
+}
+.point-right {
+  text-align: right;
+  margin-left: 10px;
+}
+.point-time {
+  font-size: 17px;
+  font-weight: 800;
+  color: #ff8c42;
+}
+.point-stars {
+  font-size: 14px;
+  color: #f7b500;
+  margin-top: 2px;
+}
+
+.calendar {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px 14px;
+  box-shadow: 0 2px 8px rgba(255, 140, 66, 0.1);
+}
+.calendar .page-title { margin-bottom: 10px; }
+.calendar-grid {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-flex-wrap: wrap;
+  flex-wrap: wrap;
+}
+.cal-day {
+  width: 14.28%;
+  text-align: center;
+  padding: 8px 0;
+  font-size: 13px;
+  color: #a8765c;
+  border-radius: 8px;
+}
+.cal-day.done {
+  background: #ff8c42;
+  color: #ffffff;
+  font-weight: 700;
+}
+.cal-day.today {
+  box-shadow: inset 0 0 0 2px #d95b1e;
+}
+.streak-info {
+  text-align: center;
+  font-size: 14px;
+  color: #8a6a52;
+  margin-top: 12px;
+}
+.streak-info b {
+  font-size: 18px;
+  color: #ff8c42;
+}
+
+/* ---------- toast ---------- */
+.toast {
+  position: fixed;
+  left: 50%;
+  -webkit-transform: translateX(-50%);
+  transform: translateX(-50%);
+  bottom: 90px;
+  max-width: 86%;
+  background: rgba(60, 30, 10, 0.9);
+  color: #ffffff;
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 10px 16px;
+  border-radius: 12px;
+  z-index: 1200;
+  text-align: center;
+  word-break: break-all;
+}

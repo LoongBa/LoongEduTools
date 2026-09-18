@@ -156,20 +156,43 @@ body {
 }
 
 /* 热区：归一化坐标 → 百分比定位（left/top/right/bottom 由 JS 计算）
-   点读模式下虚线框标出可点区域 */
+   点读模式下虚线框标出可点区域，带半透明背景 */
 .hotspot {
   position: absolute;
-  border-radius: 2px;
+  border-radius: 4px;
   cursor: pointer;
-  background: transparent;
-  border: 1px dashed rgba(22, 93, 255, 0.55);
+  background: rgba(255, 255, 255, 0.25);
+  border: 2px solid rgba(180, 180, 180, 0.6);
   -webkit-transition: background-color 0.15s ease, border-color 0.15s ease;
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .hotspot.is-playing {
-  background: rgba(22, 93, 255, 0.18);
-  border: 2px solid #165dff;
+  background: rgba(255, 200, 100, 0.35);
+  border: 3px solid #ff8c00;
+}
+
+/* 播放中喇叭图标（右上角） */
+.hotspot.is-playing::after {
+  content: '';
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  background-image: url('./icon-speaker.svg');
+  background-size: contain;
+  background-repeat: no-repeat;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@-webkit-keyframes pulse {
+  0%, 100% { opacity: 1; -webkit-transform: scale(1); }
+  50% { opacity: 0.7; -webkit-transform: scale(1.1); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.1); }
 }
 
 /* ---------- 模式切换条 ---------- */
@@ -289,8 +312,13 @@ body {
 }
 
 .caption {
-  padding: 10px 16px 6px;
+  position: relative;
+  padding: 10px 34px 6px 16px;
   min-height: 20px;
+}
+
+.caption.is-hidden {
+  display: none;
 }
 
 .caption-text {
@@ -299,15 +327,40 @@ body {
   color: #1f2329;
   -webkit-user-select: text;
   user-select: text;
+  max-height: 64px;              /* 单行/两行：正常高度 */
+  overflow: hidden;
 }
 
-.caption-cn {
-  font-size: 13px;
-  line-height: 1.4;
+/* 多行字幕（歌曲/歌谣）：放大自适应多行 + 内部滚动 */
+.caption-text.is-multiline {
+  font-size: 14px;
+  line-height: 1.7;
+  max-height: 150px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 4px;
+  background: #f7f8fa;
+  border-radius: 8px;
+}
+
+.caption-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 22px;
+  height: 22px;
+  line-height: 20px;
+  text-align: center;
+  font-size: 16px;
   color: #8a919f;
-  margin-top: 2px;
-  -webkit-user-select: text;
-  user-select: text;
+  border-radius: 50%;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.caption-close:hover {
+  background: #f0f1f5;
+  color: #1f2329;
 }
 
 .pager {

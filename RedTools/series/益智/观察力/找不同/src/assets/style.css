@@ -1,0 +1,524 @@
+/* ============================================================
+   找不同 — 样式（Chrome 61 基线层）
+   约束：无 flex gap / aspect-ratio / clamp / inset / 逻辑属性 / :has
+   主题：观察力 · 清新橙绿
+   ============================================================ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body { height: 100%; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+               "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: #f5f7fa;
+  color: #1f2329;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-flex-direction: column;
+  flex-direction: column;
+  height: 100vh;
+  height: calc(var(--app-height, 100vh));
+}
+
+/* ---------- 顶栏 ---------- */
+.app-header {
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 0 auto;
+  flex: 0 0 auto;
+  padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  background: #ffffff;
+  border-bottom: 1px solid #e5e6eb;
+}
+
+.header-brand {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  padding: 10px 16px;
+}
+
+.header-icon {
+  width: 32px;
+  height: 32px;
+  margin-right: 8px;
+  border-radius: 8px;
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 0 auto;
+  flex: 0 0 auto;
+}
+
+.header-title { font-size: 17px; font-weight: 600; }
+
+.header-ver {
+  margin-left: 6px;
+  font-size: 10px;
+  color: #c9cdd4;
+}
+
+/* ---------- 主体 ---------- */
+.app-main {
+  -webkit-box-flex: 1;
+  -webkit-flex: 1 1 auto;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+.view {
+  padding: 12px 16px;
+  max-width: 480px; /* PC 打开居中、双图不超宽 */
+  margin: 0 auto;
+  min-width: 0;
+}
+
+/* ---------- 通用按钮 ---------- */
+.btn {
+  min-height: 48px;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  color: #2f6feb;
+  background: #e8f0fe;
+  cursor: pointer;
+  -webkit-box-flex: 1;
+  -webkit-flex: 1 1 auto;
+  flex: 1 1 auto;
+}
+
+.btn:active { opacity: 0.75; }
+.btn-primary { background: #2f6feb; color: #ffffff; }
+
+/* ---------- 首页：选难度 ---------- */
+.page-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 8px 0 12px;
+  text-align: center;
+}
+
+.home-hint {
+  font-size: 12px;
+  color: #8a919f;
+  text-align: center;
+  margin: -4px 0 12px;
+}
+
+.home-list { margin-top: 4px; }
+
+.diff-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.diff-btn {
+  width: 100%;
+  min-height: 56px;
+  border: none;
+  border-radius: 10px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2329;
+  background: #f0f6ff;
+  cursor: pointer;
+}
+
+.diff-btn:active { opacity: 0.7; }
+
+.diff-meta {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #8a919f;
+  text-align: center;
+}
+
+/* ---------- 游戏页：顶部状态栏 ---------- */
+.game-top {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: justify;
+  -webkit-justify-content: space-between;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  min-height: 36px;
+}
+
+.game-back {
+  border: none;
+  background: none;
+  color: #2f6feb;
+  font-size: 14px;
+  min-height: 36px;
+  padding: 0 8px;
+  cursor: pointer;
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 0 auto;
+  flex: 0 0 auto;
+}
+
+.game-name {
+  -webkit-box-flex: 1;
+  -webkit-flex: 1 1 auto;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #4e5969;
+  text-align: center;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.game-timer {
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 0 auto;
+  flex: 0 0 auto;
+  font-size: 14px;
+  font-weight: 700;
+  color: #2f6feb;
+  min-width: 62px;
+  text-align: center;
+}
+
+/* ---------- 进度条 ---------- */
+.fd-progress {
+  height: 8px;
+  border-radius: 4px;
+  background: #e5e6eb;
+  margin: 0 0 10px;
+  overflow: hidden;
+}
+
+.fd-progress-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 4px;
+  background: #12b76a;
+  -webkit-transition: width 0.3s ease;
+  transition: width 0.3s ease;
+}
+
+/* ---------- 双图对比（手机竖屏：上下堆叠；宽屏：左右并排） ---------- */
+.scene-pair {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-flex-direction: column;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.scene-wrap {
+  min-width: 0;
+  margin-bottom: 12px;
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.scene-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #8a919f;
+  margin-bottom: 6px;
+  text-align: center;
+}
+
+.scene-box {
+  min-width: 0;
+}
+
+.scene-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  background: #ffffff;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 宽屏：左右并排（PC / 横屏） */
+@media (min-width: 560px) {
+  .scene-pair {
+    -webkit-box-orient: horizontal;
+    -webkit-flex-direction: row;
+    flex-direction: row;
+  }
+  .scene-wrap {
+    -webkit-box-flex: 1;
+    -webkit-flex: 1 1 0;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .scene-wrap + .scene-wrap { margin-left: 12px; }
+}
+
+/* ---------- 标记：正确对勾 / 错误红叉（SVG 内元素） ---------- */
+.fd-found { opacity: 0; -webkit-animation: foundIn 0.3s ease forwards; animation: foundIn 0.3s ease forwards; }
+.fd-miss { opacity: 0; -webkit-animation: missFade 0.4s ease forwards; animation: missFade 0.4s ease forwards; }
+
+@-webkit-keyframes foundIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes foundIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@-webkit-keyframes missFade {
+  0% { opacity: 0; }
+  20% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes missFade {
+  0% { opacity: 0; }
+  20% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ---------- 游戏页：状态 + 重新开始 ---------- */
+.game-status {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.game-found {
+  font-size: 13px;
+  font-weight: 700;
+  color: #12b76a;
+  margin-right: 24px;
+}
+
+.game-errors {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f04438;
+}
+
+.btn-row {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  margin-top: 14px;
+}
+
+.btn-row > * + * { margin-left: 10px; }
+
+/* ---------- 成绩列表 ---------- */
+.point-list { margin-top: 4px; }
+
+.point-item {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: justify;
+  -webkit-justify-content: space-between;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: #ffffff;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.point-name { font-size: 15px; font-weight: 600; }
+
+.point-meta { font-size: 12px; color: #8a919f; margin-top: 3px; }
+
+.point-right { text-align: right; }
+
+.point-time { font-size: 16px; font-weight: 700; color: #2f6feb; }
+
+.point-stars { font-size: 13px; color: #f5a623; margin-top: 3px; }
+
+/* ---------- 打卡日历 ---------- */
+.calendar {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.calendar-grid {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-flex-wrap: wrap;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.calendar-grid > * { width: 14.28%; padding: 4px; }
+
+.cal-day {
+  width: 100%;
+  padding: 8px 0;
+  text-align: center;
+  font-size: 13px;
+  border-radius: 6px;
+  color: #8a919f;
+  background: #f7f8fa;
+}
+
+.cal-day.done { background: #ff9c1a; color: #ffffff; font-weight: 700; }
+
+.cal-day.today { outline: 2px solid #2f6feb; }
+
+.streak-info { text-align: center; margin-top: 10px; font-size: 14px; color: #4e5969; }
+.streak-info b { color: #ff9c1a; }
+
+/* ---------- 结果浮层 ---------- */
+.result-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: rgba(15, 23, 42, 0.5);
+  z-index: 999;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.result-box {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 24px 20px;
+  width: 100%;
+  max-width: 340px;
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.result-title { font-size: 14px; color: #4e5969; }
+
+.result-time {
+  font-size: 44px;
+  font-weight: 800;
+  color: #2f6feb;
+  margin-top: 4px;
+}
+
+.result-stats {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  margin-top: 14px;
+}
+
+.result-stat {
+  margin: 0 14px;
+  font-size: 13px;
+  color: #4e5969;
+  text-align: center;
+}
+
+.result-stat b { display: block; font-size: 18px; color: #1f2329; }
+
+.result-stars {
+  font-size: 22px;
+  color: #f5a623;
+  margin-top: 10px;
+  letter-spacing: 4px;
+}
+
+.result-record {
+  margin-top: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #12b76a;
+}
+
+.result-box .btn {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+}
+
+/* ---------- 底栏 ---------- */
+.app-footer {
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 0 auto;
+  flex: 0 0 auto;
+  background: #ffffff;
+  border-top: 1px solid #e5e6eb;
+  padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+}
+
+.footer-nav {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  padding: 8px 12px 10px;
+}
+
+.footer-nav > * + * { margin-left: 10px; }
+
+.footer-btn {
+  min-width: 64px;
+  padding: 9px 0;
+  font-size: 13px;
+  color: #2f6feb;
+  text-align: center;
+  border-radius: 8px;
+  background: #f2f3f5;
+}
+
+/* ---------- 安全区增强 ---------- */
+@supports ((padding-bottom: var(--safe-area-inset-bottom)) or (padding-bottom: env(safe-area-inset-bottom))) {
+  .app-header { padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px)); }
+  .app-footer { padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)); }
+}

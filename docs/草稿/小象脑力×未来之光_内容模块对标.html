@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>脑力训练产品内容模块对标（小象脑力 × 未来之光 × 洪恩思维）+ 龙爸乐学规划草案</title>
+<style>
+  :root{
+    --xk:#2f9e7b; --wl:#2f6fb2; --he:#d98a2b; --ink:#1f2733; --sub:#5b6776; --line:#e3e8ef; --bg:#f6f8fb;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif;color:var(--ink);background:var(--bg);line-height:1.7;}
+  .wrap{max-width:1100px;margin:0 auto;padding:28px 20px 60px;}
+  header.hero{background:linear-gradient(135deg,#123b66 0%,#1d5a9e 55%,#2f9e7b 130%);color:#fff;border-radius:14px;padding:34px 34px 28px;margin-bottom:26px;}
+  header.hero h1{margin:0 0 6px;font-size:25px;letter-spacing:1px;}
+  header.hero .sub{opacity:.92;font-size:14px;}
+  .tagrow{margin-top:14px;display:flex;flex-wrap:wrap;gap:8px;}
+  .tag{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);padding:3px 12px;border-radius:20px;font-size:12.5px;}
+  h2{font-size:20px;margin:38px 0 4px;padding-left:12px;border-left:5px solid var(--wl);}
+  h2.xk{border-color:var(--xk);} h2.he{border-color:var(--he);}
+  h2 .en{font-weight:normal;font-size:12.5px;color:var(--sub);margin-left:8px;}
+  p.lead{color:var(--sub);font-size:13.5px;margin:6px 0 18px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin:16px 0;box-shadow:0 1px 3px rgba(20,40,80,.05);}
+  .cols{display:flex;gap:16px;flex-wrap:wrap;}
+  .col{flex:1 1 320px;min-width:0;}
+  table{border-collapse:collapse;width:100%;font-size:13px;margin-top:10px;}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top;}
+  th{background:#eef2f8;font-weight:600;white-space:nowrap;}
+  tr:nth-child(even) td{background:#fafbfd;}
+  td.xk{color:#14654b;font-weight:600;} td.wl{color:#1d4e86;font-weight:600;} td.he{color:#a3641a;font-weight:600;}
+  .dim{font-weight:700;}
+  .chartbox{border:1px solid var(--line);border-radius:10px;background:#fff;padding:14px;overflow-x:auto;}
+  .note{font-size:12px;color:#8a94a3;margin-top:8px;}
+  .warn{background:#fff8e6;border:1px solid #f0d78a;border-radius:8px;padding:8px 12px;font-size:12.5px;color:#7a6424;margin:10px 0;}
+  .kpi{display:flex;gap:14px;flex-wrap:wrap;margin:14px 0 4px;}
+  .kpi .box{flex:1 1 160px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;text-align:center;}
+  .kpi .box b{display:block;font-size:21px;color:var(--wl);}
+  .kpi .box.xkb b{color:var(--xk);} .kpi .box.hib b{color:var(--he);}
+  .kpi .box span{font-size:12px;color:var(--sub);}
+  .flow{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap;margin:12px 0 4px;}
+  .fstep{flex:1 1 140px;border-radius:9px;padding:10px 12px;font-size:13px;color:#fff;text-align:center;}
+  .fstep b{display:block;font-size:14px;margin-bottom:2px;}
+  .fstep.xk{background:linear-gradient(135deg,#2f9e7b,#3db98f);}
+  .fstep.wl{background:linear-gradient(135deg,#2f6fb2,#3d88cf);}
+  .fstep.he{background:linear-gradient(135deg,#d98a2b,#e8a44a);}
+  .farrow{align-self:center;font-size:18px;color:#9aa6b5;flex:0 0 auto;}
+  .pill{display:inline-block;background:#eef4ff;color:#1d4e86;border-radius:20px;padding:1px 10px;font-size:12px;margin:2px 3px 2px 0;white-space:nowrap;}
+  .pill.g{background:#e6f5ef;color:#14654b;} .pill.o{background:#fdf1e0;color:#a3641a;}
+  .conf{font-size:11px;color:#8a94a3;}
+  footer{margin-top:44px;color:#8a94a3;font-size:12px;border-top:1px solid var(--line);padding-top:14px;}
+  .plan{border-left:4px solid var(--he);padding:4px 0 4px 16px;margin:14px 0;}
+  .plan h4{margin:10px 0 4px;color:#a3641a;}
+  .plan ul{margin:4px 0;padding-left:20px;}
+  .plan li{margin:3px 0;font-size:13.5px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>脑力训练产品内容模块对标 + 龙爸乐学规划草案</h1>
+  <div class="sub">小象脑力（儿童脑力）× 未来之光（成人认知）× 洪恩思维（儿童数学思维）三款产品模块体系拆解、完整游戏清单核对与对标结论</div>
+  <div class="tagrow">
+    <span class="tag">小象脑力：3–10 岁儿童全脑训练</span>
+    <span class="tag">未来之光：全年龄认知训练</span>
+    <span class="tag">洪恩思维：2–7 岁儿童数学思维启蒙</span>
+    <span class="tag">口径：官方页面 / App Store / 应用商店 / App 实机界面（2026-09 核验）</span>
+  </div>
+</header>
+
+<div class="kpi">
+  <div class="box xkb"><b>3–10岁</b><span>小象脑力目标年龄</span></div>
+  <div class="box"><b>6+4</b><span>未来之光能力维度（6 基础 + 4 高级）</span></div>
+  <div class="box hib"><b>四大领域</b><span>洪恩思维内容模块</span></div>
+  <div class="box xkb"><b>30+ / 20+</b><span>小象脑力训练任务（公开可见 20+）</span></div>
+  <div class="box"><b>53+</b><span>未来之光任务（实机界面清点）</span></div>
+  <div class="box"><b>100 知识点</b><span>洪恩思维课程内容（L1–L4）</span></div>
+</div>
+
+<h2>一、产品定位与家族位置</h2>
+<p class="lead">小象脑力与未来之光同属北京大象智酷，是"同一套训练引擎、两种年龄封装"；洪恩思维属洪恩教育（iHuman）家庭学习生态，是"学科知识体系驱动的思维启蒙"——三款恰好代表三种模块组织范式。</p>
+<div class="card">
+  <div class="chartbox">
+    <svg width="100%" viewBox="0 0 1000 400" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, sans-serif">
+      <rect x="30" y="10" width="940" height="66" rx="10" fill="#eef2f8" stroke="#c9d4e2"/>
+      <text x="500" y="36" text-anchor="middle" font-size="16" font-weight="bold" fill="#1f2733">三款对标产品 · 三种模块组织范式</text>
+      <text x="500" y="60" text-anchor="middle" font-size="12" fill="#5b6776">认知能力维度驱动（大象智酷） vs 学科知识领域驱动（洪恩教育）</text>
+
+      <rect x="36" y="110" width="300" height="240" rx="12" fill="#e6f5ef" stroke="#2f9e7b"/>
+      <text x="186" y="138" text-anchor="middle" font-size="14.5" font-weight="bold" fill="#14654b">小象脑力 · 儿童脑力</text>
+      <text x="56" y="164" font-size="11.5" fill="#2f6b56">对象：3–10 岁儿童（家长决策）</text>
+      <text x="56" y="184" font-size="11.5" fill="#2f6b56">六维：记忆·思维·注意·语言·观察·反应</text>
+      <text x="56" y="204" font-size="11.5" fill="#2f6b56">科学分龄 3–5 / 6–8 / 9–10</text>
+      <text x="56" y="224" font-size="11.5" fill="#2f6b56">30+ 训练 · 练-复-拓-测 · 家长端报告</text>
+      <text x="56" y="250" font-size="11.5" fill="#14654b" font-weight="bold">范式：能力维度 × 游戏任务</text>
+      <text x="56" y="322" font-size="11" fill="#8a94a3">公司：北京大象智酷</text>
+
+      <rect x="350" y="110" width="300" height="240" rx="12" fill="#eef4ff" stroke="#2f6fb2"/>
+      <text x="500" y="138" text-anchor="middle" font-size="14.5" font-weight="bold" fill="#1d4e86">未来之光 · 认知训练</text>
+      <text x="370" y="164" font-size="11.5" fill="#2b5480">对象：全年龄（学生/职场/中老年）</text>
+      <text x="370" y="184" font-size="11.5" fill="#2b5480">六维：记忆·想象·逻辑·反应·专注·计算</text>
+      <text x="370" y="204" font-size="11.5" fill="#2b5480">高级：视觉·听觉·阅读·情绪</text>
+      <text x="370" y="224" font-size="11.5" fill="#2b5480">53+ 任务 · 6000+ 难度 · 自适应计划</text>
+      <text x="370" y="244" font-size="11.5" fill="#2b5480">脑力PK · 番茄钟 · 冥想 · 2700万用户</text>
+      <text x="370" y="270" font-size="11.5" fill="#1d4e86" font-weight="bold">范式：能力维度 × 任务 × 场景工具</text>
+      <text x="370" y="322" font-size="11" fill="#8a94a3">公司：北京大象智酷（同门旗舰）</text>
+
+      <rect x="664" y="110" width="300" height="240" rx="12" fill="#fdf1e0" stroke="#d98a2b"/>
+      <text x="814" y="138" text-anchor="middle" font-size="14.5" font-weight="bold" fill="#a3641a">洪恩思维 · 数学思维启蒙</text>
+      <text x="684" y="164" font-size="11.5" fill="#8a6a35">对象：2–7 岁启蒙 / 3–12 岁数学一站式</text>
+      <text x="684" y="184" font-size="11.5" fill="#8a6a35">四大领域：数与量·趣味计算·</text>
+      <text x="684" y="200" font-size="11.5" fill="#8a6a35">空间与图形·逻辑与推理</text>
+      <text x="684" y="220" font-size="11.5" fill="#8a6a35">100 个思维知识点 · L1–L4 阶梯</text>
+      <text x="684" y="240" font-size="11.5" fill="#8a6a35">动画演绎+互动练习 · 每日反馈</text>
+      <text x="684" y="266" font-size="11.5" fill="#a3641a" font-weight="bold">范式：知识领域 × 分级课程</text>
+      <text x="684" y="322" font-size="11" fill="#8a94a3">公司：洪恩教育 iHuman Inc.</text>
+
+      <line x1="336" y1="230" x2="350" y2="230" stroke="#9aa6b5" stroke-width="2" stroke-dasharray="5 4"/>
+      <line x1="650" y1="230" x2="664" y2="230" stroke="#9aa6b5" stroke-width="2" stroke-dasharray="5 4"/>
+      <text x="500" y="372" text-anchor="middle" font-size="11.5" fill="#8a94a3">同源：小象脑力 = 未来之光团队研发；洪恩思维独立于家庭学习生态（识字/拼音/英语等）</text>
+    </svg>
+  </div>
+  <p class="note">结构为本次对标整理（示意）；公司归属、年龄、任务数均取自官方或商店页面。</p>
+</div>
+
+<h2>二、三款产品能力/领域维度体系</h2>
+<p class="lead">小象与未来之光同为"能力维度×任务"范式且六维几乎一一对应；洪恩思维换为"学科知识领域×分级课程"范式，能力点散落在知识点中（数感、对比、分类、图形、空间、推理）。</p>
+<div class="card">
+  <div class="chartbox">
+    <table>
+      <tr><th style="width:150px;">体系</th><th class="xk">小象脑力（6 维）</th><th class="wl">未来之光（6 基础 + 4 高级）</th><th class="he">洪恩思维（4 大领域）</th></tr>
+      <tr><td class="dim">维度一</td><td class="xk">记忆</td><td class="wl">记忆</td><td class="he">数与量（数感、计数、比较）</td></tr>
+      <tr><td class="dim">维度二</td><td class="xk">思维</td><td class="wl">逻辑</td><td class="he">趣味计算（运算、速算）</td></tr>
+      <tr><td class="dim">维度三</td><td class="xk">注意</td><td class="wl">专注</td><td class="he">空间与图形（图形、空间）</td></tr>
+      <tr><td class="dim">维度四</td><td class="xk">语言</td><td class="wl">想象</td><td class="he">逻辑与推理（分类、推理）</td></tr>
+      <tr><td class="dim">维度五</td><td class="xk">观察</td><td class="wl">计算</td><td class="he">—（能力点散落在知识点内）</td></tr>
+      <tr><td class="dim">维度六</td><td class="xk">反应</td><td class="wl">反应</td><td class="he">—</td></tr>
+      <tr><td class="dim">高级层</td><td class="xk">—</td><td class="wl">视觉 / 听觉 / 阅读 / 情绪</td><td class="he">小学同步 / 应用题 / 专项提升（乘除法·数独·逻辑）</td></tr>
+      <tr><td class="dim">组织逻辑</td><td class="xk">认知能力 × 分龄</td><td class="wl">认知能力 × 人群计划</td><td class="he">学科知识 × 学段阶梯（L1–L4）</td></tr>
+    </table>
+  </div>
+</div>
+
+<h2>三、内容模块结构逐层拆解</h2>
+<div class="cols">
+  <div class="col">
+    <div class="card" style="border-top:4px solid var(--xk);">
+      <h3 style="margin-top:0;color:#14654b;">小象脑力</h3>
+      <table>
+        <tr><th>层级</th><th>内容</th></tr>
+        <tr><td class="xk">分龄</td><td>3–5 岁感官/基础认知 · 6–8 岁运算/推理 · 9–10 岁复杂问题解决（第三方整理）</td></tr>
+        <tr><td class="xk">训练导航</td><td>App 内"每日任务"页按能力列模块（应用宝实机截图：注意力 / 观察力 / 反应力 等入口，含天数打卡日历）</td></tr>
+        <tr><td class="xk">任务库</td><td>30+ 互动训练（动画/音乐/拼图），公开可见任务 20+（详见第六节清单）</td></tr>
+        <tr><td class="xk">闭环</td><td>练-复-拓-测"学习四部曲"</td></tr>
+        <tr><td class="xk">测评/报告</td><td>心理学 + 天赋评测（国际量表）；家长端成长报告、使用时长限制</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="col">
+    <div class="card" style="border-top:4px solid var(--wl);">
+      <h3 style="margin-top:0;color:#1d4e86;">未来之光</h3>
+      <table>
+        <tr><th>层级</th><th>内容</th></tr>
+        <tr><td class="wl">训练首页</td><td>今日训练日历 · 专项训练计划（大脑激活/高效工作/记忆强化）· 脑力值/连续天数</td></tr>
+        <tr><td class="wl">能力维度库</td><td>记忆/想象/逻辑/反应/专注/计算 6 组 × 每组 6–11 个任务（实机界面清点共 53 个）</td></tr>
+        <tr><td class="wl">高级认知</td><td>视觉（小鼠偷酪/消除病毒）· 情绪（冥想/夜光水母/睡眠故事）· 实验（健脑操等）</td></tr>
+        <tr><td class="wl">场景工具</td><td>番茄钟 · 冥想音频 · 知识课堂/每日一课 · 烧脑问答</td></tr>
+        <tr><td class="wl">测评</td><td>瑞文智商测验 · SAS/SDS/MBTI · 测评盲盒</td></tr>
+        <tr><td class="wl">社交竞技</td><td>脑力竞技场 · 极限挑战赛 · 好友 PK · 推荐有礼</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="col">
+    <div class="card" style="border-top:4px solid var(--he);">
+      <h3 style="margin-top:0;color:#a3641a;">洪恩思维</h3>
+      <table>
+        <tr><th>层级</th><th>内容</th></tr>
+        <tr><td class="he">四大领域</td><td>数与量 · 趣味计算 · 空间与图形 · 逻辑与推理（官方口径）</td></tr>
+        <tr><td class="he">课程体系</td><td>"孩子的前 100 个思维知识" · L1–L4 四级阶梯课程（实机截图）；启蒙体系另含 数与量/数字运算/几何与空间/综合思维 表述</td></tr>
+        <tr><td class="he">内容形态</td><td>动画演绎 + 快乐儿歌 + 语音交互 + 趣味互动 + 亲子视频；基于儿童注意力设计，单次几分钟</td></tr>
+        <tr><td class="he">能力点</td><td>数感、对比、分类、图形、空间、推理（散落在知识点内）</td></tr>
+        <tr><td class="he">延伸</td><td>小学同步课 · 1–6 年级应用题 · 专项提升（乘除法/数独/逻辑）· 线下"思维龙"操作板/思维导图绘本 · 八大思维图示</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<h2>四、训练闭环对比</h2>
+<div class="card">
+  <p style="font-weight:700;color:#14654b;margin:0 0 2px;">小象脑力：练 → 复 → 拓 → 测（单次会话节奏）</p>
+  <div class="flow">
+    <div class="fstep xk"><b>练</b>每日训练任务</div><div class="farrow">→</div>
+    <div class="fstep xk"><b>复</b>巩固复习</div><div class="farrow">→</div>
+    <div class="fstep xk"><b>拓</b>拓展新能力</div><div class="farrow">→</div>
+    <div class="fstep xk"><b>测</b>测评反馈</div>
+  </div>
+  <p style="font-weight:700;color:#1d4e86;margin:18px 0 2px;">未来之光：测评 → 定制 → 自适应训练 → 可视化复盘（长期计划）</p>
+  <div class="flow">
+    <div class="fstep wl"><b>测评</b>瑞文/专项测基线</div><div class="farrow">→</div>
+    <div class="fstep wl"><b>定制</b>个性化计划</div><div class="farrow">→</div>
+    <div class="fstep wl"><b>自适应</b>难度动态调整</div><div class="farrow">→</div>
+    <div class="fstep wl"><b>复盘</b>脑力值/人群对比</div>
+  </div>
+  <p style="font-weight:700;color:#a3641a;margin:18px 0 2px;">洪恩思维：学 → 练 → 反馈（知识演绎驱动的启蒙节奏）</p>
+  <div class="flow">
+    <div class="fstep he"><b>学</b>动画/儿歌知识演绎</div><div class="farrow">→</div>
+    <div class="fstep he"><b>练</b>情景化互动练习</div><div class="farrow">→</div>
+    <div class="fstep he"><b>反馈</b>每日进度推送/家长查看</div>
+  </div>
+  <p class="note">未来之光闭环最完整（测评—计划—自适应—对比报告）；洪恩思维弱在"测"，强在"学"（知识结构化）；小象脑力居中。</p>
+</div>
+
+<h2>五、全要素对标矩阵（三列）</h2>
+<div class="card">
+  <div class="chartbox">
+    <table>
+      <tr><th style="width:120px;">对标项</th><th class="xk">小象脑力</th><th class="wl">未来之光</th><th class="he">洪恩思维</th></tr>
+      <tr><td class="dim">公司</td><td class="xk">北京大象智酷</td><td class="wl">北京大象智酷（同门）</td><td class="he">洪恩教育 iHuman Inc.</td></tr>
+      <tr><td class="dim">年龄</td><td class="xk">3–10 岁</td><td class="wl">全年龄</td><td class="he">2–7 岁启蒙；3–12 岁数学</td></tr>
+      <tr><td class="dim">模块范式</td><td class="xk">能力维度 × 游戏任务</td><td class="wl">能力维度 × 任务 × 场景工具</td><td class="he">学科知识 × 分级课程</td></tr>
+      <tr><td class="dim">维度/领域数</td><td class="xk">6</td><td class="wl">6 基础 + 4 高级</td><td class="he">4 大领域</td></tr>
+      <tr><td class="dim">内容规模</td><td class="xk">30+（公开可见 20+）</td><td class="wl">53+ 任务 / 6000+ 难度</td><td class="he">100 个思维知识点 + 小学同步</td></tr>
+      <tr><td class="dim">分级方式</td><td class="xk">年龄分龄（3–5/6–8/9–10）</td><td class="wl">人群计划 + 难度自适应</td><td class="he">L1–L4 知识阶梯 + 学段</td></tr>
+      <tr><td class="dim">训练闭环</td><td class="xk">练-复-拓-测</td><td class="wl">测-划-练-报（自适应）</td><td class="he">学-练-反馈</td></tr>
+      <tr><td class="dim">测评深度</td><td class="xk">心理学 + 天赋评测</td><td class="wl">瑞文/MBTI/SAS/SDS</td><td class="he">弱（进度反馈为主）</td></tr>
+      <tr><td class="dim">报告受众</td><td class="xk">家长</td><td class="wl">本人</td><td class="he">家长</td></tr>
+      <tr><td class="dim">社交/竞技</td><td class="xk">弱</td><td class="wl">强（PK/竞技场/挑战赛）</td><td class="he">弱（亲子场景）</td></tr>
+      <tr><td class="dim">科学/理论背书</td><td class="xk">《护理学杂志》研究</td><td class="wl">Nature Human Behaviour / JAMA</td><td class="he">《幼儿园教育指导纲要》/八大思维图示</td></tr>
+      <tr><td class="dim">生态位</td><td class="xk">全脑认知训练</td><td class="wl">认知训练旗舰</td><td class="he">数学思维启蒙 + 家庭学习生态</td></tr>
+      <tr><td class="dim">App Store 评分</td><td class="xk">4.4（144 条）</td><td class="wl">4.2（4060 条）</td><td class="he">4.5（4 万+ 条）</td></tr>
+    </table>
+  </div>
+  <p class="note">评分/评分量来自 Apple App Store 当前页面（2026-09 核验）；内容规模为官方或实机界面口径。</p>
+</div>
+
+<h2>六、完整游戏/任务清单（逐个核对归属维度）</h2>
+
+<h3 style="color:#1d4e86;">6.1 未来之光（来源：App 实机"专项训练计划"选任务界面清点 + 商店/口碑补充）</h3>
+<div class="card">
+  <div class="chartbox">
+    <table>
+      <tr><th>归属维度</th><th>任务清单</th><th>数量</th><th>说明</th></tr>
+      <tr><td class="wl">记忆力</td><td>拆弹专家 · 思海拾遗 · 图形追忆 · 童年记忆 · 人脸识别 · 一票难求 · 过目不忘 · 幻彩绘影 · 转瞬即逝</td><td>9</td><td>拆弹专家官方示例：空间记忆+工作记忆+计划能力</td></tr>
+      <tr><td class="wl">想象力</td><td>点石成金 · 熊猫追逐 · 像素拼图 · 连线作战 · 思维投影 · 层叠消融 · 点线谜图</td><td>7</td><td>对战星球已移至脑力竞技场（版本更新说明）</td></tr>
+      <tr><td class="wl">逻辑力</td><td>数字谜图 · 运河穿梭 · 锯齿数独 · 魔法符石 · 回旋迷宫 · 点阵封锁 · 密码矩阵 · 数阵推理 · 邻接数组</td><td>9</td><td>运河穿梭为 v4.39 新增</td></tr>
+      <tr><td class="wl">反应力</td><td>双雄争霸 · 抓住水母 · 卡牌大师 · 眼疾手快 · 扶摇直上 · 保卫行星 · 蓝色 · 红色 · 一夫当关 · 星星点灯 · 火眼金睛</td><td>11</td><td>"蓝色/红色"为选色反应类任务</td></tr>
+      <tr><td class="wl">专注力</td><td>对色入库 · 矩阵序列 · 快问快答 · 星座占卜 · 静默鱼塘 · 独一无二 · 烹饪大师 · 甜点派对</td><td>8</td><td>矩阵序列为 v4.42 新增</td></tr>
+      <tr><td class="wl">计算力</td><td>步步为营 · 精打细算 · 纵横填数 · 数式接龙 · 积少成多 · 环形幻方</td><td>6</td><td>—</td></tr>
+      <tr><td class="wl">实验（视觉/综合）</td><td>消除病毒 · 小鼠偷酪 · 健脑操</td><td>3</td><td>小鼠偷酪/消除病毒为视觉识别与空间工作记忆研究项目（Nature Human Behaviour 引用）</td></tr>
+      <tr><td class="wl">高级/场景</td><td>冥想 · 番茄钟 · 知识 · 睡眠故事（孔乙己/独一无二）· 情绪调节（静心禅音/夜光水母/治愈烛光）</td><td>—</td><td>独立于能力维度库的"高级能力/工具"区</td></tr>
+      <tr><td class="wl">口碑补充</td><td>舒尔特方格 · 注意力追踪 · 速算达人 · 数字拆解 · 创意涂鸦 · 故事接龙</td><td>—</td><td>前二者见用户口碑；后四者见第三方商店描述，<span class="conf">待实机核实</span></td></tr>
+    </table>
+  </div>
+  <p class="note">实机清点合计 53 个任务（7 组）；游戏名与分组以用户实机录屏界面为准，个别任务归属可能随版本调整。</p>
+</div>
+
+<h3 style="color:#14654b;">6.2 小象脑力（来源：商店描述 + 官方演示 + 应用宝实机截图；公开资料有限，标注来源与置信度）</h3>
+<div class="card">
+  <div class="chartbox">
+    <table>
+      <tr><th>归属维度</th><th>任务/游戏</th><th>来源</th><th>置信度</th></tr>
+      <tr><td class="xk">记忆</td><td>记忆翻牌（递增卡牌练短期记忆） · 数字记忆游戏 · 记忆匹配</td><td>91手游网 / 3DM 攻略</td><td>中</td></tr>
+      <tr><td class="xk">注意/专注</td><td>限时拼图 · 小朋友在哪个窗口 · 视觉追踪（按提示快速点击目标）</td><td>91手游网 / 抖音演示 / 3DM</td><td>中</td></tr>
+      <tr><td class="xk">逻辑/思维</td><td>迷宫探险（空间推理） · 因果关系排序 · 数字迷宫 · 数字组合挑战 · 编程思维训练</td><td>91手游网 ×2 / 官方宣传视频</td><td>中</td></tr>
+      <tr><td class="xk">观察</td><td>颜色配对 · 形状拼图 · 连线作战（把相同颜色球连起来，实机显示"观察力-连线作战Lv.1"） · 交互任务 · 没有喂过哪个动物</td><td>91手游网 / 应用宝实机截图 / 官方演示</td><td>高（连线作战为实机证据）</td></tr>
+      <tr><td class="xk">语言</td><td>故事复述（语言表达）</td><td>91手游网</td><td>中</td></tr>
+      <tr><td class="xk">空间</td><td>积木搭建</td><td>91手游网</td><td>中</td></tr>
+      <tr><td class="xk">创造</td><td>自由绘画 · 一笔画出小怪兽</td><td>91手游网 / 抖音演示</td><td>中</td></tr>
+      <tr><td class="xk">反应</td><td>控制赛车躲避障碍 · 反应速度测试</td><td>抖音演示 / 3DM</td><td>中</td></tr>
+      <tr><td class="xk">综合/形式</td><td>科学实验模拟（9–10 岁） · 睡前故事 · 游戏动画绘本</td><td>91手游网 / 官网（游戏、绘画、睡前故事为活动形式）</td><td>中</td></tr>
+    </table>
+  </div>
+  <p class="note">小象脑力未公开完整任务名清单；上表为公开资料逐项汇总，实机可见约 20+ 项，官方口径 30+。连线作战与未来之光"想象力"组同名——同一引擎资产复用的直接证据。</p>
+</div>
+
+<h3 style="color:#a3641a;">6.3 洪恩思维（来源：豌豆荚官方简介 + 实机截图 + 官网）</h3>
+<div class="card">
+  <div class="chartbox">
+    <table>
+      <tr><th>归属领域</th><th>内容/能力点</th><th>说明</th></tr>
+      <tr><td class="he">数与量</td><td>数感、计数、数量比较、数字书写、认识基数/序数/相邻数/单双数</td><td>官网课程示例（麦斯的奇幻之旅系列）</td></tr>
+      <tr><td class="he">趣味计算</td><td>加减法运算、乘除法专项、口算天天练</td><td>App Store：乘除法 500+ 题、口算 4 本配套</td></tr>
+      <tr><td class="he">空间与图形</td><td>图形认知、画平面图形、空间位置、几何启蒙</td><td>启蒙四领域之一</td></tr>
+      <tr><td class="he">逻辑与推理</td><td>分类、对比、推理、数独专项（180+ 题库）、9 种思维方式</td><td>App Store：逻辑专项强化 9 种思维方式</td></tr>
+      <tr><td class="he">综合/延伸</td><td>小学同步课 · 1–6 年级应用题 · 八大思维图示 · 思维龙操作板/游戏卡/思维导图绘本</td><td>线下课程材料 + App 双轨</td></tr>
+    </table>
+  </div>
+</div>
+
+<h2 class="he">七、龙爸乐学 · 益智/学科双线规划草案</h2>
+<p class="lead">已确认方向：两条产品线、两套驱动范式，互不混用。线一「益智类」= 认知能力维度驱动；线二「学科类」= 单独做学科知识领域驱动的小应用（数与量 / 趣味计算 / 空间与图形 / 逻辑与推理）。假设面向 3–10 岁儿童、Web/H5/轻应用交付（符合 LoongEduTools 技术栈），细节可再调。</p>
+
+<div class="card">
+  <div class="chartbox">
+    <table>
+      <tr><th>产品线</th><th>定位</th><th>驱动范式</th><th>对标范式</th><th>模块组织</th></tr>
+      <tr><td class="he" style="font-weight:700;">线一 · 益智类</td><td>脑力 / 认知训练</td><td>认知能力维度驱动</td><td>小象脑力 / 未来之光</td><td>六维任务库 + 测-学-练-评闭环</td></tr>
+      <tr><td class="he" style="font-weight:700;">线二 · 学科类</td><td>思维学科小应用</td><td>学科知识领域驱动</td><td>洪恩思维</td><td>四大领域各自成应用</td></tr>
+    </table>
+  </div>
+
+  <div class="plan">
+    <h4>① 线一：益智类 · 认知能力维度驱动（测 → 学 → 练 → 评 四层闭环）</h4>
+    <ul>
+      <li><b>测评层：</b>轻量基线测评（5 分钟内、题目按年龄分档），输出六维雷达起点（参照小象脑力"心理学+天赋评测"）。</li>
+      <li><b>计划层：</b>每日任务 + 打卡日历（参照小象脑力实机"每日任务+第 N 天打卡"），每次 10–15 分钟、4 个任务以内。</li>
+      <li><b>训练层：</b>六维一级分类任务库（记忆/思维/注意/语言/观察/反应），每维 5–8 个任务（MVP 30–48 个）。<b>任务不挂学科标签，纯认知能力。</b></li>
+      <li><b>报告层：</b>家长端周报 + 能力曲线 + 人群对比。</li>
+    </ul>
+  </div>
+  <div class="plan">
+    <h4>② 线一任务库（纯能力维度）</h4>
+    <ul>
+      <li><b>记忆：</b>卡牌配对、图形追忆、听记指令、数字串回忆、物品藏匿。</li>
+      <li><b>思维/逻辑：</b>迷宫路径、因果排序、规律补全、数独启蒙 4×4、编码解码。</li>
+      <li><b>注意：</b>限时找不同、舒尔特方格（3×3/4×4）、目标追踪、抗干扰计数。</li>
+      <li><b>观察：</b>颜色/形状配对、连线作战、影子匹配、数量比较。</li>
+      <li><b>语言：</b>看图说话排序、故事复述、反义词配对、绕口令节奏。</li>
+      <li><b>反应：</b>红绿灯反应、捕鱼点击、方位指令快速响应。</li>
+      <li><b>分龄与自适应：</b>3–5 / 6–8 / 9–10 三档；连续 3 次未通过自动降档或给提示，表现优异解锁高阶。</li>
+    </ul>
+  </div>
+  <div class="plan">
+    <h4>③ 线二：学科类 · 学科知识领域驱动（四大领域 = 四个独立小应用）</h4>
+    <ul>
+      <li><b>数与量：</b>数感、计数、数量比较、数字书写。</li>
+      <li><b>趣味计算：</b>加减法、乘除法专项、口算。</li>
+      <li><b>空间与图形：</b>图形认知、空间位置、几何启蒙。</li>
+      <li><b>逻辑与推理：</b>分类、对比、推理、数独。</li>
+      <li><b>单应用内部结构（对标洪恩思维 学-练-反馈）：</b>学=知识演绎（动画/儿歌/语音交互）→ 练=情景化互动练习（每领域题库/关卡）→ 反馈=每日进度+家长端推送；内容按 L1–L4 阶梯、学段（幼小衔接/小学低年级）进阶。</li>
+    </ul>
+  </div>
+  <div class="plan">
+    <h4>④ 两线关系与边界</h4>
+    <ul>
+      <li>益智类任务不挂学科标签（纯认知能力）；学科类不混入能力维度（纯知识领域）——每线范式纯粹、测评与迭代独立。</li>
+      <li>数据可选打通（增强项，非 MVP）：益智类能力曲线 + 学科类学情报告，统一在家长端呈现。</li>
+      <li>参考先例：大象智酷内部（未来之光/小象脑力 = 能力线）、洪恩教育内部（思维/识字/拼音 = 学科线），均分线运营。</li>
+    </ul>
+  </div>
+  <div class="plan">
+    <h4>⑤ 留存与激励（两线通用）+ 避坑</h4>
+    <ul>
+      <li>打卡日历 + 连续天数成就；家长端"今日报告"推送；集章/贴纸/成长树（避免成人向 PK，符合儿童合规）。</li>
+      <li><b>不堆量：</b>益智类任务控制在 50 内；学科类以"领域纵深 + 学段衔接"取胜。</li>
+      <li><b>测评不作贩卖焦虑点</b>，只作起点与可视化；<b>儿童数据保护与防沉迷优先</b>（对照未成年人保护要求）。</li>
+    </ul>
+  </div>
+  <div class="warn">本草案为方向性建议，非实施文档；任务名与数量、年龄段、交付形态（Web/H5/小程序）待确认后展开为 PRD。</div>
+</div>
+
+<h2 class="he">八、产品规划矩阵（依据三款对标整理）</h2>
+<p class="lead">把双线草案落到可执行的规划：产品线总表、任务/小应用矩阵、横切能力、实施路线与风险对策。优先级：P0=MVP 必备，P1=二期，P2=增强/后置；阶段无具体日期，待排期。</p>
+
+<div class="card">
+  <h3 style="color:#a3641a;">8.0 学段覆盖与 L1–L4 分级（全规划前置口径）</h3>
+  <p><b>学段定义（K12 口径）</b></p>
+  <div class="chartbox">
+    <table>
+      <tr><th>学段</th><th>年龄</th><th>阶段定位</th><th>规划归属</th></tr>
+      <tr><td class="dim">preK</td><td>3–5 岁</td><td>启蒙期：感知、兴趣、语音引导、无计时压力</td><td>主营 · L1</td></tr>
+      <tr><td class="dim">K1-3</td><td>6–8 岁</td><td>奠基期（核心）：幼小衔接、规则理解、独立操作</td><td>主营 · L2</td></tr>
+      <tr><td class="dim">K4-6</td><td>9–11 岁</td><td>拓展期：策略运用、计时挑战、复合任务</td><td>后置 · L3（低段）/ L4（高段起）</td></tr>
+      <tr><td class="dim">K7-9</td><td>12–14 岁</td><td>远期暂缓：能力分化，另议</td><td>远期 · L4 延伸</td></tr>
+    </table>
+  </div>
+  <p><b>三款对标产品学段覆盖矩阵</b></p>
+  <div class="chartbox">
+    <table>
+      <tr><th>学段</th><th>洪恩思维</th><th>未来之光</th><th>小象脑力</th></tr>
+      <tr><td class="dim">preK（3–5）</td><td>✓ 核心（2–7 启蒙）</td><td>✓</td><td>✓</td></tr>
+      <tr><td class="dim">K1-3（6–8）</td><td>✓ 核心（幼小衔接）</td><td>✓</td><td>✓</td></tr>
+      <tr><td class="dim">K4-6（9–11）</td><td>△ 小学同步课（数学）</td><td>✓（9–10 岁段）</td><td>✓（9–10 岁档）</td></tr>
+      <tr><td class="dim">K7-9（12–14）</td><td>✕</td><td>△ 全年龄池（非儿童专项）</td><td>✕（上限 10 岁）</td></tr>
+    </table>
+  </div>
+  <p>结论：preK–K1-3 三家高度重叠（红海）；K4-6 仅未来之光 / 小象脑力部分覆盖；K7-9 无人做儿童专项。龙爸乐学主营 <b>preK–K1-3 核心 + K4-6 后置</b> 三阶段，K7-9 留远期——与「聚焦 3–8 岁幼小衔接段」策略一致。</p>
+  <p><b>L1–L4 分级体系（双线共用同一等级口径）</b></p>
+  <div class="chartbox">
+    <table>
+      <tr><th>等级</th><th>对应学段</th><th>益智类（能力任务难度特征）</th><th>学科类（知识阶梯）</th><th>分档参数示例</th></tr>
+      <tr><td class="dim">L1 启蒙</td><td>preK（3–5）</td><td>单要素、零干扰、语音引导、无计时</td><td>数感 / 计数 / 图形认知入门</td><td>卡牌 4 对、无干扰</td></tr>
+      <tr><td class="dim">L2 基础</td><td>K1-3（6–8）</td><td>双要素、低干扰、短计时（15–30s）</td><td>数字书写 / 加减法 / 空间位置</td><td>卡牌 6–8 对、轻度干扰</td></tr>
+      <tr><td class="dim">L3 进阶</td><td>K4-6 低段（9–10）</td><td>多要素、干扰项、计时挑战（30–60s）</td><td>进退位 / 乘除启蒙 / 图形变换</td><td>卡牌 10–12 对、干扰项</td></tr>
+      <tr><td class="dim">L4 挑战</td><td>K4-6 高段 ~ K7-9（11–14，远期）</td><td>复合任务、多策略、单人挑战赛</td><td>应用题 / 数独 / 推理综合</td><td>卡牌 16 对 + 记忆干扰</td></tr>
+    </table>
+  </div>
+  <p>说明：L1–L4 为任务难度 / 内容阶梯的统一定级口径，借鉴洪恩思维 L1–L4 知识阶梯，兼容未来之光「难度参数化」（一套任务模板 × 多档参数）。每个 L 级内再分 3 子档（-/+/++），供自适应降档与解锁使用。</p>
+
+  <h3 style="margin-top:0;color:#a3641a;">8.1 双线产品规划总表</h3>
+  <div class="chartbox">
+    <table>
+      <tr><th>产品线</th><th>子产品</th><th>驱动范式</th><th>对标</th><th>目标年龄</th><th>学段（L 级）</th><th>核心模块</th><th>MVP 范围</th><th>优先级</th><th>阶段</th></tr>
+      <tr><td class="he">线一 · 益智类</td><td>脑力训练主应用</td><td>认知能力维度</td><td>小象脑力 / 未来之光</td><td>3–10 岁</td><td>preK–K4-6（L1–L3，L4 远期）</td><td>测·学·练·评四层闭环 + 六维任务库</td><td>3 维 × 4–5 任务 + 轻量测评 + 打卡 + 简版报告</td><td>P0</td><td>阶段一</td></tr>
+      <tr><td class="he">线二 · 学科类</td><td>数与量</td><td>学科知识领域</td><td>洪恩思维</td><td>3–6 岁（幼小衔接）</td><td>preK–K1-3 低段（L1–L2）</td><td>学-练-反馈闭环</td><td>单应用 MVP</td><td>P0</td><td>阶段一</td></tr>
+      <tr><td class="he">线二 · 学科类</td><td>趣味计算</td><td>学科知识领域</td><td>洪恩思维</td><td>4–8 岁</td><td>K1-3（L2–L3）</td><td>学-练-反馈 + 口算题库</td><td>单应用 MVP</td><td>P1</td><td>阶段二</td></tr>
+      <tr><td class="he">线二 · 学科类</td><td>空间与图形</td><td>学科知识领域</td><td>洪恩思维</td><td>3–7 岁</td><td>preK–K1-3（L1–L2）</td><td>学-练-反馈</td><td>单应用 MVP</td><td>P1</td><td>阶段二</td></tr>
+      <tr><td class="he">线二 · 学科类</td><td>逻辑与推理</td><td>学科知识领域</td><td>洪恩思维</td><td>4–8 岁</td><td>K1-3–K4-6 低段（L2–L3）</td><td>学-练-反馈 + 数独题库</td><td>单应用 MVP</td><td>P2</td><td>阶段三</td></tr>
+    </table>
+  </div>
+
+  <h3 style="color:#a3641a;">8.2 益智类 · 任务模块矩阵（六维）</h3>
+  <div class="chartbox">
+    <table>
+      <tr><th>能力维度</th><th>MVP 任务（P0）</th><th>扩展任务（P1/P2）</th><th>对标范式</th><th>优先级</th></tr>
+      <tr><td class="dim">记忆</td><td>卡牌配对、图形追忆</td><td>听记指令、数字串回忆、物品藏匿</td><td>小象「记忆翻牌」/ 未来之光「拆弹专家」</td><td>P0</td></tr>
+      <tr><td class="dim">思维/逻辑</td><td>迷宫路径、因果排序</td><td>规律补全、数独启蒙 4×4、编码解码</td><td>未来之光「密码矩阵」降龄版</td><td>P0</td></tr>
+      <tr><td class="dim">注意</td><td>限时找不同、舒尔特 3×3</td><td>舒尔特 4×4、目标追踪、抗干扰计数</td><td>未来之光舒尔特 / 矩阵序列</td><td>P0</td></tr>
+      <tr><td class="dim">观察</td><td>颜色/形状配对、连线作战</td><td>影子匹配、数量比较</td><td>小象「连线作战」（实机同款）</td><td>P1</td></tr>
+      <tr><td class="dim">语言</td><td>看图说话排序</td><td>故事复述、反义词配对、绕口令</td><td>小象「故事复述」</td><td>P1</td></tr>
+      <tr><td class="dim">反应</td><td>红绿灯反应</td><td>捕鱼点击、方位指令快速响应</td><td>未来之光「双雄争霸」降龄版</td><td>P2</td></tr>
+    </table>
+  </div>
+  <p>分级口径：六维任务库每个任务按 <b>L1–L4 四级参数化</b>（数量 / 速度 / 干扰项三参数），同一任务模板四档难度——L1 单要素无计时 → L4 复合挑战（对标未来之光 6000+ 难度 = 参数化）。</p>
+
+  <h3 style="color:#a3641a;">8.3 学科类 · 小应用矩阵（四大领域）</h3>
+  <div class="chartbox">
+    <table>
+      <tr><th>小应用</th><th>领域内容点</th><th>内容分级（L 级 ↔ 学段）</th><th>对标</th><th>优先级</th><th>阶段</th></tr>
+      <tr><td class="dim">数与量</td><td>数感、计数、数量比较、数字书写、基/序数</td><td>L1–L3（preK–K4-6 低段）</td><td>洪恩思维「数与量」</td><td>P0</td><td>阶段一</td></tr>
+      <tr><td class="dim">趣味计算</td><td>加减法、口算、乘除专项</td><td>L1–L4（preK–K7-9 远期）</td><td>洪恩思维「趣味计算」</td><td>P1</td><td>阶段二</td></tr>
+      <tr><td class="dim">空间与图形</td><td>图形认知、空间位置、几何启蒙</td><td>L1–L3（preK–K4-6 低段）</td><td>洪恩思维「空间与图形」</td><td>P1</td><td>阶段二</td></tr>
+      <tr><td class="dim">逻辑与推理</td><td>分类、对比、推理、数独启蒙</td><td>L1–L4（preK–K7-9 远期）</td><td>洪恩思维「逻辑与推理」</td><td>P2</td><td>阶段三</td></tr>
+    </table>
+  </div>
+
+  <h3 style="color:#a3641a;">8.4 横切能力矩阵（测/学/练/评/留存/合规）</h3>
+  <div class="chartbox">
+    <table>
+      <tr><th>横切模块</th><th>功能</th><th>对标参考</th><th>MVP（阶段一）</th><th>优先级</th></tr>
+      <tr><td class="dim">测评层</td><td>轻量基线测评（5 分钟内、按学段 L1–L4 分档出题）→ 六维雷达起点</td><td>小象「心理学+天赋评测」</td><td>3 维起步（L1–L2）</td><td>P0</td></tr>
+      <tr><td class="dim">计划层</td><td>每日任务 + 打卡日历（10–15 分钟 / 4 任务）</td><td>小象实机「每日任务」</td><td>有</td><td>P0</td></tr>
+      <tr><td class="dim">自适应</td><td>连续 3 次失败降档/提示；优异解锁高阶</td><td>小象 AI 动态反馈 / 未来之光自适应</td><td>简版（失败降档）</td><td>P1</td></tr>
+      <tr><td class="dim">报告层</td><td>家长端今日反馈 + 周报</td><td>洪恩每日推送 / 小象家长端</td><td>今日反馈 + 简版周报</td><td>P0</td></tr>
+      <tr><td class="dim">留存激励</td><td>连续天数成就、集章/成长树</td><td>小象打卡 / 洪恩每日推送</td><td>打卡 + 连续天数</td><td>P0</td></tr>
+      <tr><td class="dim">学情融合</td><td>益智能力曲线 + 学科学情统一呈现</td><td>未来之光「成绩」页</td><td>后置</td><td>P2</td></tr>
+      <tr><td class="dim">合规</td><td>家长控制、无社交、数据最小化、防沉迷</td><td>小象「App 内控制」</td><td>必须</td><td>P0</td></tr>
+    </table>
+  </div>
+
+  <h3 style="color:#a3641a;">8.5 实施路线图（阶段无日期，待排期）</h3>
+  <div class="chartbox">
+    <table>
+      <tr><th>阶段</th><th>目标</th><th>交付物</th><th>验收口径</th></tr>
+      <tr><td class="dim">阶段一（MVP）</td><td>打通「测-学-练-评」最小闭环</td><td>益智类：3 维任务 + 轻量测评 + 打卡 + 家长端反馈；学科类：1 个（数与量）小应用</td><td>孩子可独立完成每日任务；家长可查每日反馈</td></tr>
+      <tr><td class="dim">阶段二</td><td>补全能力维度与学科应用</td><td>益智类六维全量 + 自适应；学科类再加 2 个应用（趣味计算、空间与图形）</td><td>六维雷达可生成；自适应降档生效</td></tr>
+      <tr><td class="dim">阶段三</td><td>双线融合与纵深</td><td>逻辑与推理应用；学情报告统一；L1–L4 全学段打通（preK → K1-3 → K4-6）；K7-9 远期预研</td><td>家长端一份报告看双线；数据可导出；跨学段升级平滑</td></tr>
+    </table>
+  </div>
+
+  <h3 style="color:#a3641a;">8.6 风险与对策矩阵</h3>
+  <div class="chartbox">
+    <table>
+      <tr><th>风险</th><th>影响</th><th>对策</th><th>对标印证</th></tr>
+      <tr><td>内容生产量不足导致「任务库浅」</td><td>留存低</td><td>任务模板化 + 参数化生成（一套规则多种难度）</td><td>未来之光 80+ / 6000+ 难度即参数化</td></tr>
+      <tr><td>测评科学性受质疑</td><td>信任风险</td><td>只作起点与可视化，不作诊断结论</td><td>洪恩弱测但靠知识体系取胜</td></tr>
+      <tr><td>儿童合规风险</td><td>产品下架/处罚</td><td>家长控制、无社交、数据最小化、防沉迷</td><td>小象「App 内控制」</td></tr>
+      <tr><td>与市面产品同质化</td><td>无差异化</td><td>双线架构 + 学情联动 + 聚焦幼小衔接细分</td><td>三家均未做「能力+学科」双线</td></tr>
+      <tr><td>年龄段过宽</td><td>内容难以兼顾</td><td>三阶段分层运营：preK 启蒙 → K1-3 核心 → K4-6 后置 → K7-9 远期；L1–L4 分档防「一刀切」</td><td>洪恩以 2–7 启蒙起家逐步上探</td></tr>
+    </table>
+  </div>
+</div>
+
+<footer>
+  数据来源：大象智酷官网、Apple App Store（小象脑力/未来之光/洪恩数学）、应用宝（小象脑力实机截图）、豌豆荚（洪恩思维/未来之光）、91手游网、3DM、抖音用户实机录屏、中华网测评、TapTap。第三方整理与"待核实"项均已标注。本报告为竞品内容模块研究用途整理。
+</footer>
+
+</div>
+</body>
+</html>

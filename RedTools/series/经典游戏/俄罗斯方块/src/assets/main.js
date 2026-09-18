@@ -27,6 +27,7 @@
   var levelNumEl = null;
   var linesNumEl = null;
   var pauseBtnEl = null;
+  var fastDropBtnEl = null;
   var overlayEl = null;
 
   /* ---------- 常量 ---------- */
@@ -115,7 +116,8 @@
       best: 0,
       games: 0,
       checkin: { dates: [], streak: 0 },
-      cur: null
+      cur: null,
+      fastDrop: false
     };
   }
   function saveStore() {
@@ -287,6 +289,21 @@
     lockPiece();
     return true;
   }
+  /* ---------- 快速下落选项（开启后 ↓/S 与 ▼ 直接落地） ---------- */
+  function onSoftOrDrop() {
+    if (store.fastDrop) { hardDrop(); } else { softStep(); }
+  }
+  function toggleFastDrop() {
+    store.fastDrop = !store.fastDrop;
+    saveStore();
+    updateFastDropBtn();
+  }
+  function updateFastDropBtn() {
+    if (fastDropBtnEl) {
+      fastDropBtnEl.textContent = '快速下落：' + (store.fastDrop ? '开' : '关');
+      fastDropBtnEl.className = 'side-btn' + (store.fastDrop ? ' on' : '');
+    }
+  }
 
   /* ---------- 锁定 / 消行 ---------- */
   function lockPiece() {
@@ -363,9 +380,9 @@
 
   /* ---------- 生成下一块 ---------- */
   function spawnNext() {
-    var t = popType();
+    var t = state.nextType;              // 用上次预取的下一块（保证与实际预览一致）
     state.piece = { type: t, rot: 0, x: 3, y: 0 };
-    state.nextType = popType();
+    state.nextType = popType();          // 预取再下一块
     state.lastTime = window.performance.now();
     drawNext();
     draw();
@@ -548,6 +565,10 @@
     pauseBtnEl.setAttribute('aria-label', '暂停或继续');
     pauseBtnEl.addEventListener('click', function () { togglePause(); });
     sideBtns.appendChild(pauseBtnEl);
+    fastDropBtnEl = makeEl('button', 'side-btn', '快速下落：关');
+    fastDropBtnEl.setAttribute('aria-label', '切换快速下落：下键直接落地');
+    fastDropBtnEl.addEventListener('click', function () { toggleFastDrop(); });
+    sideBtns.appendChild(fastDropBtnEl);
     var btnNew = makeEl('button', 'side-btn alt', '新游戏');
     btnNew.setAttribute('aria-label', '重新开始一局');
     btnNew.addEventListener('click', function () { newGame(); });
@@ -567,7 +588,7 @@
     addCtrl('←', '左移', null, moveLeft);
     addCtrl('↻', '旋转', 'wide', onRotate);
     addCtrl('→', '右移', null, moveRight);
-    addCtrl('▼', '下移一格', 'wide', softStep);
+    addCtrl('▼', '下移/快速落地', 'wide', onSoftOrDrop);
     addCtrl('⤓', '快速落地', 'accent', hardDrop);
     viewEl.appendChild(ctrlRow);
 
@@ -748,7 +769,7 @@
     var kc = e.keyCode || e.which;
     if (kc === 37 || kc === 65) { e.preventDefault(); moveLeft(); }       // ← / A
     else if (kc === 39 || kc === 68) { e.preventDefault(); moveRight(); } // → / D
-    else if (kc === 40 || kc === 83) { e.preventDefault(); softStep(); }  // ↓ / S（按住自动重复）
+    else if (kc === 40 || kc === 83) { e.preventDefault(); onSoftOrDrop(); } // ↓ / S（选项开=落地，关=软降）
     else if (kc === 38 || kc === 87 || kc === 88) { e.preventDefault(); onRotate(); } // ↑ / W / X
     else if (kc === 32) { e.preventDefault(); hardDrop(); }               // 空格硬降
     else if (kc === 80) { e.preventDefault(); togglePause(); }            // P 暂停
@@ -806,6 +827,7 @@
     renderFooter();
     updateScoreUI();
     updateInfoUI();
+    updateFastDropBtn();
     restoreGame();
     window.addEventListener('keydown', onKeyDown);
     boardEl.addEventListener('touchstart', onTouchStart, { passive: true });

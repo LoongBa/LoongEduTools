@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import base64
 import json
+import re as _re
 import shutil
 import subprocess
 import zipfile
@@ -40,13 +41,17 @@ AUDIO_RATE = 24000
 
 @dataclass
 class ToolConfig:
-    series: str                      # 系列名（中文目录，如 学科）
-    tool: str                        # 工具名（中文目录，如 英语点读）
+    series: str                      # 系列名（中文目录，如 学科 / 益智）
+    tool: str                        # 工具名（中文目录，如 英语点读 / 舒尔特方格）
+    subgroup: str | None = None      # 子系列目录（可选，如 益智 下的 专注力）
     version: str = "1.0"
-    datasource: str = "book"         # 'book'（教材数据）| 'static'（静态工具，无数据源）
+    datasource: str = "book"         # 'book'（教材数据）| 'static'（静态工具，无数据源）| 'chengyu'（成语词库工具）| 'vocab'（PEP 词汇表工具）
     book: Path | None = None         # book.json 路径
     img_dir: Path | None = None      # 页面图素材目录
+    redrawn_img_dir: Path | None = None  # 重绘图目录（优先使用，无则回退 img_dir）
     audio_dir: Path | None = None    # 单句音频素材目录
+    vocab_dir: Path | None = None    # PEP 词汇表素材根目录（datasource='vocab' 时：F:\_教材素材\人教版（PEP）（主编：吴欣））
+    chengyu_data: Path | None = None # 成语词库 json 路径（datasource='chengyu' 时默认 <系列>/_shared/成语词库/成语词库.json）
     app_name: str | None = None      # zip/图标文件名（默认 {tool}；app_name_template 为空时用）
     app_name_template: str | None = None  # 按单元动态命名，如 "新英语四上点读{unit_no}单元"
     default_unit: int = 0            # 默认构建单元下标（bookaudio_v3）
@@ -56,10 +61,15 @@ class ToolConfig:
     publish_root: Path | None = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
-        self.tool_dir = ROOT / "series" / self.series / self.tool
+        series_dir = ROOT / "series" / self.series
+        # 子系列：series/<系列>/<子系列>/<工具>/；无子系列时保持 series/<系列>/<工具>/
+        self.tool_dir = series_dir / self.subgroup / self.tool if self.subgroup else series_dir / self.tool
         self.src_dir = self.tool_dir / "src"
         self.dist_root = ROOT / "dist" / self.series
         self.publish_root = ROOT / "publish" / self.series
+        if self.chengyu_data is None and self.datasource == 'chengyu':
+            # 成语词库默认位置：系列内共享 <系列>/_shared/成语词库/成语词库.json
+            self.chengyu_data = series_dir / "_shared" / "成语词库" / "成语词库.json"
         if not self.app_name:
             self.app_name = self.tool
 
@@ -172,13 +182,19 @@ def build_unit_data(book: dict, unit_index: int, start: int, end: int) -> dict:
     }
 
 
-def convert_images(pages: list[dict], start: int, out_dir: Path, img_dir: Path) -> None:
+def convert_images(pages: list[dict], start: int, out_dir: Path, img_dir: Path, redrawn_img_dir: Path | None = None) -> None:
     from PIL import Image
 
     imgs_dir = out_dir / "images"
     imgs_dir.mkdir(parents=True, exist_ok=True)
     for page_no in range(start, start + len(pages)):
-        src = img_dir / f"Page_{page_no:03d}.png"
+        # 优先使用重绘图，没有则回退原图
+        if redrawn_img_dir:
+            src = redrawn_img_dir / f"Page_{page_no:03d}.png"
+        else:
+            src = None
+        if not src or not src.exists():
+            src = img_dir / f"Page_{page_no:03d}.png"
         dst = imgs_dir / f"page_{page_no:03d}.webp"
         if not src.exists():
             log(f"WARN 图片缺失: {src.name}，跳过")
@@ -275,6 +291,215 @@ def write_static_data_js(cfg: ToolConfig, out_dir: Path, unit_index: int, app_na
     js = "window.APP_DATA = " + json.dumps(app_data, ensure_ascii=False, indent=1) + ";\n"
     (out_dir / "data.js").write_text(js, encoding="utf-8")
     log(f"data.js 写入（静态工具，{len(js)} 字节）")
+
+
+def write_chengyu_data_js(cfg: ToolConfig, out_dir: Path, unit_index: int, app_name: str) -> None:
+    """成语词库工具（看图猜成语/成语接龙）：
+    - meta（同静态工具）+ 共享成语词库 window.CHENGYU_DATA
+    - 预建接龙索引 window.CHENGYU_CHAIN：{尾字: [以该字开头的成语...]}（课本+扩展全量）
+    词库来源：cfg.chengyu_data（默认 <系列>/_shared/成语词库/成语词库.json）。
+    """
+    import json as _json
+
+    app_data = {
+        "meta": {
+            "name": app_name,
+            "version": cfg.version,
+            "series": cfg.series,
+            "tool": cfg.tool,
+            "book": "",
+            "bookid": "",
+            "bookid_3rd": "",
+            "unit_index": unit_index,
+        },
+        "units": [],
+    }
+    if not cfg.chengyu_data or not cfg.chengyu_data.exists():
+        raise SystemExit(f"成语词库不存在: {cfg.chengyu_data}")
+    data = _json.loads(cfg.chengyu_data.read_text(encoding="utf-8"))
+    # 接龙索引：首字 → 以该字开头的成语（课本 + 接龙扩展全量，按拼音排序保证确定性）。
+    # 接龙规则：当前成语尾字 X → 候选 = chain.get(X)（以 X 开头的成语）；无候选 = 死路。
+    chain: dict[str, list[str]] = {}
+    for e in data.get("课本", []) + data.get("接龙扩展", []):
+        chain.setdefault(e["首字"], []).append(e["成语"])
+    for k in chain:
+        chain[k].sort()
+
+    js = (
+        "window.APP_DATA = " + _json.dumps(app_data, ensure_ascii=False, indent=1) + ";\n"
+        "window.CHENGYU_DATA = " + _json.dumps(data, ensure_ascii=False, indent=1) + ";\n"
+        "window.CHENGYU_CHAIN = " + _json.dumps(chain, ensure_ascii=False, indent=1) + ";\n"
+    )
+    (out_dir / "data.js").write_text(js, encoding="utf-8")
+    log(f"data.js 写入（成语词库工具，{len(js) / 1024:.0f} KB，课本 {len(data.get('课本', []))} 条 + 扩展 {len(data.get('接龙扩展', []))} 条，接龙索引首字 {len(chain)} 个）")
+
+
+# ---------------- PEP 词汇表（打字背单词） ----------------
+# 词汇表素材：F:\_教材素材\人教版（PEP）（主编：吴欣）\<年级>\<册次>\_音频素材\
+#   - 9 册：*Words_in_each_unit_en_cn.txt（独立词汇表，单词行 + 中文释义行 + 空行，Unit N 标题分隔）
+#   - 三下/五上：整册 <册名>_en_cn.txt 中 "Words in each unit" 区块（格式一致，至 "Useful expressions" 结束）
+# 统一解析规则：非空行两两配对（第1行=英文单词，第2行=中文释义），跳过标题行。
+
+# 11 册清单（年级, 册次, 词汇表文件 glob, 是否整册提取区块）
+# 注意：三下/五上/五下无独立"单元词汇表"文件（独立 Words 文件实际是字母序 Vocabulary 或缺失），
+#       单元词汇表在整册 <册名>_en_cn.txt 的 "Words in each unit" 区块中。
+VOCAB_BOOKS: list[tuple[str, str, str, bool]] = [
+    ("一年级", "上册", "*Words_in_each_unit_en_cn.txt", False),
+    ("一年级", "下册", "*Words_in_each_unit_en_cn.txt", False),
+    ("二年级", "上册", "*Words_in_each_unit_en_cn.txt", False),
+    ("二年级", "下册", "*Words_in_each_unit_en_cn.txt", False),
+    ("三年级", "上册", "*Words_in_each_unit_en_cn.txt", False),
+    ("三年级", "下册", "*三年级*下册*_en_cn.txt", True),     # 无独立词汇表，取整册区块
+    ("四年级", "上册", "*Words_in_each_unit_en_cn.txt", False),
+    ("四年级", "下册", "*Words_in_each_unit_en_cn.txt", False),
+    ("五年级", "上册", "*五年级*上册*_en_cn.txt", True),      # 无独立词汇表，取整册区块
+    ("五年级", "下册", "*五年级*下册*_en_cn.txt", True),      # 独立 Words 文件为字母序 Vocabulary，单元表在整册
+    ("六年级", "上册", "*Words_in_each_unit_en_cn.txt", False),
+]
+
+# 标题行（跳过）：Appendix / 附录 / Words in each unit / 单元词汇表 / Unit N / 第N单元
+_VOCAB_SKIP_RE = _re.compile(
+    r"^(Appendix\s*\d*|附录\s*\d*|Words in each unit|单元词汇表|"
+    r"Unit\s*\d+|第[一二三四五六七八九十\d]+单元)$",
+    _re.IGNORECASE,
+)
+# 区块结束标记：整册 txt 中词汇表区块后紧跟字母序 Vocabulary / 常用表达法 / 语音 等
+_VOCAB_END_RE = _re.compile(
+    r"^(Appendix\s*\d*|附录\s*\d*|Vocabulary|词汇表|"
+    r"Useful expressions|常用表达法|Pronunciation|语音|"
+    r"Irregular verbs|不规则动词|The alphabet|字母表)$",
+    _re.IGNORECASE,
+)
+
+
+def _clean_cn(cn: str) -> str:
+    """清理中文释义：剥离首尾空白、剥离去声调音标/复数注释前缀（如 （复数children） 儿童；小孩 → 儿童；小孩）。"""
+    cn = cn.strip()
+    # 剥离形如 （复数children） （复数leaves /liːvz/） 等括号前缀注释
+    m = _re.match(r"^（[^）]*[a-zA-Z][^）]*）\s*(.+)$", cn)
+    if m:
+        cn = m.group(1).strip()
+    return cn
+
+
+def _clean_word(word: str) -> str:
+    """清理英文单词：剥离星号标记（教材听力/重点词汇标记 *）、HTML 标签（<i>pl.</i> 等）、
+    尾部括号复数注释（tooth (pl. teeth) → tooth）。"""
+    w = word.strip()
+    w = _re.sub(r"<[^>]+>", "", w).strip()      # HTML 标签
+    w = w.lstrip("*").strip()                    # 星号标记
+    m = _re.match(r"^(.+?)\s*[（(][^）)]*[）)]\s*$", w)  # 尾部括号注释
+    if m:
+        w = m.group(1).strip()
+    return w
+
+
+def _parse_vocab_lines(lines: list[str]) -> list[dict]:
+    """解析词汇表行列表（已按区块裁剪），返回 [{unit, word, cn}]。
+
+    规则：非空行两两配对（第1行=英文单词，第2行=中文释义）；跳过标题行；
+    单元标题行（Unit N / 第N单元）作为单元分隔。释义清理括号注释前缀。
+    """
+    entries: list[dict] = []
+    unit = 0
+    pending_word: str | None = None
+    for raw in lines:
+        line = raw.strip()
+        if not line:
+            continue
+        if _VOCAB_SKIP_RE.match(line):
+            if _re.match(r"^Unit\s*\d+$", line, _re.IGNORECASE):
+                unit = int(_re.search(r"\d+", line).group(0))
+            continue
+        # 配对：英文单词行（含字母）或中文释义行
+        if pending_word is None:
+            # 首行应为英文单词（含英文字母）
+            if _re.search(r"[a-zA-Z]", line):
+                pending_word = _clean_word(line)
+        else:
+            entries.append({"unit": unit, "word": pending_word, "cn": _clean_cn(line)})
+            pending_word = None
+    # 末尾未配对行丢弃（解析容错）
+    return entries
+
+
+def _load_vocab_book(vocab_dir: Path, grade: str, term: str, pattern: str,
+                     from_full_book: bool) -> dict:
+    """加载一册词汇表，返回 {grade, term, book, units:[{unit, words:[{word, cn}]}]}。"""
+    book_dir = vocab_dir / grade / term / "_音频素材"
+    if not book_dir.exists():
+        raise SystemExit(f"词汇表目录不存在: {book_dir}")
+    matches = sorted(book_dir.glob(pattern))
+    if not matches:
+        raise SystemExit(f"词汇表文件缺失: {grade}/{term} pattern={pattern}")
+    src_path = matches[0]
+
+    if from_full_book:
+        # 整册 txt：定位 "Words in each unit" 区块，至 Useful expressions 结束
+        lines = src_path.read_text(encoding="utf-8", errors="replace").splitlines()
+        start = None
+        for i, ln in enumerate(lines):
+            if ln.strip() == "Words in each unit":
+                start = i + 1
+                break
+        if start is None:
+            raise SystemExit(f"{src_path.name} 中未找到 Words in each unit 区块")
+        end = len(lines)
+        for i in range(start, len(lines)):
+            if _VOCAB_END_RE.match(lines[i].strip()):
+                end = i
+                break
+        entries = _parse_vocab_lines(lines[start:end])
+    else:
+        text = src_path.read_text(encoding="utf-8", errors="replace")
+        entries = _parse_vocab_lines(text.splitlines())
+
+    if not entries:
+        raise SystemExit(f"{src_path.name} 词汇表解析为空")
+
+    # 按单元分组
+    units: list[dict] = []
+    cur: dict | None = None
+    for e in entries:
+        if cur is None or e["unit"] != cur["unit"]:
+            cur = {"unit": e["unit"], "words": []}
+            units.append(cur)
+        cur["words"].append({"word": e["word"], "cn": e["cn"]})
+    # 单元序号保序排序
+    units.sort(key=lambda u: u["unit"])
+    return {"grade": grade, "term": term, "book": f"英语（PEP）{grade}{term}", "units": units}
+
+
+def write_vocab_data_js(cfg: ToolConfig, out_dir: Path, unit_index: int,
+                        app_name: str) -> None:
+    """打字背单词：解析 PEP 11 册词汇表 → window.APP_DATA.books（数据驱动按册构建）。"""
+    if not cfg.vocab_dir or not cfg.vocab_dir.exists():
+        raise SystemExit(f"vocab_dir 不存在: {cfg.vocab_dir}")
+    books = []
+    total_words = 0
+    for grade, term, pattern, from_full in VOCAB_BOOKS:
+        book = _load_vocab_book(cfg.vocab_dir, grade, term, pattern, from_full)
+        n = sum(len(u["words"]) for u in book["units"])
+        total_words += n
+        books.append(book)
+        log(f"  词汇表 {grade}{term}: {len(book['units'])} 单元 / {n} 词")
+
+    app_data = {
+        "meta": {
+            "name": app_name,
+            "version": cfg.version,
+            "series": cfg.series,
+            "tool": cfg.tool,
+            "book": "人教版（PEP）小学英语 1-6 年级",
+            "bookid": "",
+            "bookid_3rd": "",
+            "unit_index": unit_index,
+        },
+        "books": books,
+    }
+    js = "window.APP_DATA = " + json.dumps(app_data, ensure_ascii=False, indent=1) + ";\n"
+    (out_dir / "data.js").write_text(js, encoding="utf-8")
+    log(f"data.js 写入（词汇表工具，{len(js) / 1024:.0f} KB，{len(books)} 册 / {total_words} 词）")
 
 
 def make_static_icon(cfg: ToolConfig, out_dir: Path, publish_dir: Path | None = None,
@@ -438,6 +663,7 @@ def build_tool(cfg: ToolConfig, unit_index: int, pages: str | None = None,
     cfg.datasource:
       - 'book': 教材数据源（英语点读等），需 book/img_dir/audio_dir
       - 'static': 静态工具（数学口算等），无数据源，仅复制 src/
+      - 'chengyu': 成语词库工具（看图猜成语/成语接龙），复制 src/ + 注入共享成语词库 data.js
     """
     dist_dir = (out_root or cfg.dist_root) / cfg.tool
     pub_dir = publish_root or cfg.publish_root   # publish/<系列>/ 系列内平铺，不按工具细分
@@ -446,10 +672,15 @@ def build_tool(cfg: ToolConfig, unit_index: int, pages: str | None = None,
     dist_dir.mkdir(parents=True)
     copy_static(cfg, dist_dir)
 
-    if cfg.datasource == 'static':
-        # 静态工具：无 book / 图片 / 音频，只生成 meta data.js
+    if cfg.datasource in ('static', 'chengyu', 'vocab'):
+        # 静态/成语词库/词汇表工具：无 book / 图片 / 音频
         app_name = resolve_app_name(cfg, None, unit_index)
-        write_static_data_js(cfg, dist_dir, unit_index, app_name)
+        if cfg.datasource == 'chengyu':
+            write_chengyu_data_js(cfg, dist_dir, unit_index, app_name)
+        elif cfg.datasource == 'vocab':
+            write_vocab_data_js(cfg, dist_dir, unit_index, app_name)
+        else:
+            write_static_data_js(cfg, dist_dir, unit_index, app_name)
         if publish:
             make_static_icon(cfg, dist_dir, pub_dir, app_name)
     else:
@@ -468,7 +699,7 @@ def build_tool(cfg: ToolConfig, unit_index: int, pages: str | None = None,
                     raise SystemExit(f"page {p['no']} 存在缺失 track_index 的 track: {t.get('text')}")
 
         app_name = resolve_app_name(cfg, book, unit_index)
-        convert_images(unit["pages"], start, dist_dir, cfg.img_dir)
+        convert_images(unit["pages"], start, dist_dir, cfg.img_dir, cfg.redrawn_img_dir)
         convert_audio(unit, dist_dir, cfg.audio_dir)
         if publish:
             make_icon(cfg, book, unit_index, dist_dir, pub_dir, app_name)
@@ -481,6 +712,14 @@ def build_tool(cfg: ToolConfig, unit_index: int, pages: str | None = None,
         dest = pub_dir / zip_path.name
         shutil.copy2(zip_path, dest)
         log(f"发布 zip 复制: {dest}")
+        # 解压测试版：每次构建后解压覆盖（双击 index.html 即测，与 zip 同目录平铺）
+        extract_dir = pub_dir / f"{app_name}_解压测试版"
+        if extract_dir.exists():
+            shutil.rmtree(extract_dir)
+        extract_dir.mkdir(parents=True)
+        with zipfile.ZipFile(zip_path) as zf:
+            zf.extractall(extract_dir)
+        log(f"解压测试版: {extract_dir}")
     log(f"zip 打包完成: {zip_path} ({zip_path.stat().st_size / 1024 / 1024:.2f} MiB)")
     return zip_path
 

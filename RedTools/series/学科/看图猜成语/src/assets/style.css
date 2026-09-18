@@ -1,0 +1,7 @@
+body { margin: 0; font-family: "Microsoft YaHei", sans-serif; background: #f5f7fa; color: #333; }
+.app-header { padding: 14px 16px; background: #ff7a59; color: #fff; font-size: 18px; font-weight: bold; }
+.app-main { padding: 20px 16px; }
+.box { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.08); font-size: 16px; line-height: 1.8; }
+.box b { color: #ff7a59; font-size: 20px; }
+.box .ok { color: #2ecc71; font-weight: bold; }
+.app-footer { padding: 12px; text-align: center; color: #999; font-size: 12px; }

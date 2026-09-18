@@ -40,12 +40,30 @@
   var currentSource = null;
   var bufferCache = {};   // audioKey -> AudioBuffer（解码一次，复用）
   var mode = 'tap';       // 'tap' | 'seq'
+  var captionVisible = true;  // 字幕区显示开关
   var seq = { running: false, index: 0, pageNo: -1, paused: false, offset: 0,
               playCount: 0, repeat: false, rate: 1, autoNext: true };
 
   /* ---------- 持久化 ---------- */
   var STORAGE_KEY = 'redtools.mode';
   var STORAGE_SEQ_KEY = 'redtools.seq';
+  var STORAGE_CAPTION_KEY = 'redtools.caption';
+  function loadCaptionVisible() {
+    try {
+      var v = window.localStorage.getItem(STORAGE_CAPTION_KEY);
+      if (v === '0') { captionVisible = false; }
+      else { captionVisible = true; }
+    } catch (err) {
+      captionVisible = true;
+    }
+  }
+  function saveCaptionVisible() {
+    try {
+      window.localStorage.setItem(STORAGE_CAPTION_KEY, captionVisible ? '1' : '0');
+    } catch (err) {
+      // ignore
+    }
+  }
   function loadMode() {
     try {
       var v = window.localStorage.getItem(STORAGE_KEY);
@@ -283,6 +301,17 @@
     switchBox.appendChild(tapBtn);
     switchBox.appendChild(seqBtn);
     bar.appendChild(switchBox);
+
+    // 字幕开关（仅中文；关闭后无任何文本反馈）
+    var capBtn = makeEl('div', 'mode-btn' + (captionVisible ? ' is-active' : ''), '字幕');
+    capBtn.title = captionVisible ? '点击隐藏字幕' : '点击显示字幕';
+    capBtn.addEventListener('click', function () {
+      captionVisible = !captionVisible;
+      saveCaptionVisible();
+      render();
+    });
+    bar.appendChild(capBtn);
+
     headerEl.appendChild(bar);
   }
 
@@ -381,11 +410,18 @@
     var page = currentPageObj();
     var tracks = currentTracks();
 
-    var caption = makeEl('div', 'caption');
+    // 字幕区：仅中文（用户确认：不做中英切换）；可关闭；多行自动放大滚动
+    var caption = makeEl('div', 'caption' + (captionVisible ? '' : ' is-hidden'));
     var textEl = makeEl('div', 'caption-text', '');
-    var cnEl = makeEl('div', 'caption-cn', '');
+    var closeBtn = makeEl('div', 'caption-close', '×');
+    closeBtn.title = '关闭字幕';
+    closeBtn.addEventListener('click', function () {
+      captionVisible = false;
+      saveCaptionVisible();
+      renderFooter();
+    });
     caption.appendChild(textEl);
-    caption.appendChild(cnEl);
+    caption.appendChild(closeBtn);
     footerEl.appendChild(caption);
 
     // 顺序模式控制条（两行）
@@ -494,7 +530,7 @@
     pager.appendChild(lastBtn);
     footerEl.appendChild(pager);
 
-    updateCaption(textEl, cnEl);
+    updateCaption(textEl);
     updateSeqInfo();
     updatePagerButtons(firstBtn, prevBtn, nextBtn, lastBtn);
   }
@@ -563,14 +599,37 @@
     return '1× 正常';
   }
 
-  function updateCaption(textEl, cnEl) {
+  /* 安全转义 + \n 转 <br>（歌曲/歌谣多行字幕） */
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  /* 是否多行字幕（歌词/歌谣：\n 分隔多行） */
+  function isMultilineText(track) {
+    var t = (track && track.cn) || (track && track.text) || '';
+    return t.indexOf('\n') >= 0;
+  }
+
+  function updateCaption(textEl) {
     var track = getCurrentTrack();
+    var cn = track && track.cn ? track.cn : '';
+    var en = track && track.text ? track.text : '';
+    // 中文优先；无中文时回退英文（个别 track 只有英文文本）
+    var display = cn || en;
     if (track) {
-      textEl.textContent = track.text || '';
-      cnEl.textContent = track.cn || '';
+      textEl.innerHTML = display
+        ? escapeHtml(display).replace(/\n/g, '<br>')
+        : '（无字幕）';
+      // 多行 → 放大滚动
+      textEl.className = 'caption-text' +
+        (isMultilineText(track) ? ' is-multiline' : '');
     } else {
-      textEl.textContent = '点击课文区域试听';
-      cnEl.textContent = '';
+      textEl.innerHTML = '点击课文区域试听';
+      textEl.className = 'caption-text';
     }
   }
 
@@ -589,9 +648,8 @@
       return;
     }
     var textEl = caption.querySelector('.caption-text');
-    var cnEl = caption.querySelector('.caption-cn');
-    if (textEl && cnEl) {
-      updateCaption(textEl, cnEl);
+    if (textEl) {
+      updateCaption(textEl);
     }
   }
 
@@ -602,12 +660,11 @@
       return;
     }
     var textEl = caption.querySelector('.caption-text');
-    var cnEl = caption.querySelector('.caption-cn');
-    if (!textEl || !cnEl) {
+    if (!textEl) {
       return;
     }
-    textEl.textContent = msg;
-    cnEl.textContent = '';
+    textEl.innerHTML = escapeHtml(msg);
+    textEl.className = 'caption-text';
     window.setTimeout(function () {
       refreshCaption();
     }, 2000);
@@ -870,6 +927,7 @@
 
   loadMode();
   loadSeqOptions();
+  loadCaptionVisible();
   syncAppHeight();
   render();
 })();

@@ -1,0 +1,455 @@
+/* ============================================================
+   2048 — 样式（Chrome 61 基线，经典米黄风格）
+   规范：
+   - 无 flex gap / aspect-ratio / clamp() / 逻辑属性 / :has / dvh
+   - 动画双写 @-webkit-keyframes + @keyframes；温和（<=400ms，无频闪）
+   - flex 三重前缀（-webkit-box / -webkit-flex / flex）
+   - 正方形用 height:0 + padding-bottom:100% + 绝对定位子项
+   ============================================================ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body { height: 100%; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+               "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: #faf8ef;
+  color: #776e65;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-flex-direction: column;
+  flex-direction: column;
+  height: 100vh;
+  height: calc(var(--app-height, 100vh));
+  overflow: hidden;
+}
+
+/* ---------- 三段式骨架 ---------- */
+
+.app-header {
+  padding-top: calc(6px + var(--safe-area-inset-top, 0px));
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 0 auto;
+  flex: 0 0 auto;
+}
+
+.ver-badge {
+  display: block;
+  padding-left: 16px;
+  font-size: 11px;
+  color: #c0b7a8;
+}
+
+.app-main {
+  -webkit-box-flex: 1;
+  -webkit-flex: 1 1 auto;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.app-footer {
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 0 auto;
+  flex: 0 0 auto;
+  padding: 6px 16px calc(8px + var(--safe-area-inset-bottom, 0px));
+  text-align: center;
+  font-size: 12px;
+  color: #c0b7a8;
+}
+
+.view {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 6px 16px 20px;
+  width: 100%;
+}
+
+/* ---------- 顶部：标题 + 得分面板 ---------- */
+
+.game-top {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-pack: justify;
+  -webkit-justify-content: space-between;
+  justify-content: space-between;
+  -webkit-box-align: start;
+  -webkit-align-items: flex-start;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.game-title h1 {
+  font-size: 42px;
+  font-weight: 800;
+  color: #776e65;
+  letter-spacing: 3px;
+  line-height: 1.05;
+}
+
+.game-title .sub {
+  font-size: 12px;
+  color: #b3aa9b;
+  margin-top: 3px;
+}
+
+.scores {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+}
+
+.score-box {
+  background: #bbada0;
+  border-radius: 8px;
+  padding: 5px 12px 6px;
+  margin-left: 8px;
+  text-align: center;
+  min-width: 74px;
+}
+
+.score-box .label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #eee4da;
+}
+
+.score-box .num {
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.3;
+  display: inline-block;
+}
+
+.score-box .num.pop {
+  -webkit-animation: scorePop 0.2s ease;
+  animation: scorePop 0.2s ease;
+}
+
+/* ---------- 棋盘 ---------- */
+
+.board {
+  position: relative;
+  width: 100%;
+  height: 0;
+  padding-bottom: 100%;
+  background: #bbada0;
+  border-radius: 12px;
+  touch-action: none;
+}
+
+.cell {
+  position: absolute;
+  border-radius: 8px;
+  background: #cdc1b4;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 36px;
+  color: #776e65;
+}
+
+/* 数字块色板（经典 2048 配色） */
+.cell.t2   { background: #eee4da; color: #776e65; }
+.cell.t4   { background: #ede0c8; color: #776e65; }
+.cell.t8   { background: #f2b179; color: #f9f6f2; }
+.cell.t16  { background: #f59563; color: #f9f6f2; }
+.cell.t32  { background: #f67c5f; color: #f9f6f2; }
+.cell.t64  { background: #f65e3b; color: #f9f6f2; }
+.cell.t128 { background: #edcf72; color: #f9f6f2; }
+.cell.t256 { background: #edcc61; color: #f9f6f2; }
+.cell.t512 { background: #edc850; color: #f9f6f2; }
+.cell.t1024{ background: #edc53f; color: #f9f6f2; }
+.cell.t2048{ background: #edc22e; color: #f9f6f2; }
+.cell.t4096{ background: #3c3a32; color: #f9f6f2; }
+.cell.t8192{ background: #2e2a24; color: #f9f6f2; }
+.cell.tbig { background: #201d18; color: #f9f6f2; }
+
+/* 字号随位数缩小（JS 按数字长度附加 s0~s4） */
+.cell.s0 { font-size: 36px; }
+.cell.s1 { font-size: 30px; }
+.cell.s2 { font-size: 25px; }
+.cell.s3 { font-size: 21px; }
+.cell.s4 { font-size: 17px; }
+
+/* ---------- 动画（温和，<=400ms） ---------- */
+
+.cell.pop {
+  -webkit-animation: tilePop 0.18s ease;
+  animation: tilePop 0.18s ease;
+}
+@-webkit-keyframes tilePop {
+  0% { -webkit-transform: scale(1); transform: scale(1); }
+  50% { -webkit-transform: scale(1.15); transform: scale(1.15); }
+  100% { -webkit-transform: scale(1); transform: scale(1); }
+}
+@keyframes tilePop {
+  0% { -webkit-transform: scale(1); transform: scale(1); }
+  50% { -webkit-transform: scale(1.15); transform: scale(1.15); }
+  100% { -webkit-transform: scale(1); transform: scale(1); }
+}
+
+.cell.appear {
+  -webkit-animation: tileAppear 0.15s ease;
+  animation: tileAppear 0.15s ease;
+}
+@-webkit-keyframes tileAppear {
+  0% { -webkit-transform: scale(0); transform: scale(0); opacity: 0; }
+  100% { -webkit-transform: scale(1); transform: scale(1); opacity: 1; }
+}
+@keyframes tileAppear {
+  0% { -webkit-transform: scale(0); transform: scale(0); opacity: 0; }
+  100% { -webkit-transform: scale(1); transform: scale(1); opacity: 1; }
+}
+
+@-webkit-keyframes scorePop {
+  0% { -webkit-transform: scale(1); transform: scale(1); }
+  40% { -webkit-transform: scale(1.3); transform: scale(1.3); color: #f65e3b; }
+  100% { -webkit-transform: scale(1); transform: scale(1); }
+}
+@keyframes scorePop {
+  0% { -webkit-transform: scale(1); transform: scale(1); }
+  40% { -webkit-transform: scale(1.3); transform: scale(1.3); color: #f65e3b; }
+  100% { -webkit-transform: scale(1); transform: scale(1); }
+}
+
+/* ---------- 控制区（方向按钮左右分组，双手持机按键：左 ↑← / 右 →↓） ---------- */
+
+.dpad {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-pack: justify;
+  -webkit-justify-content: space-between;
+  justify-content: space-between;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  margin-top: 18px;
+  padding: 0 10px;
+}
+
+.dpad-group {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-flex-direction: column;
+  flex-direction: column;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+}
+
+.dpad-group .dpad-btn {
+  margin: 4px 0;
+}
+
+.dpad-btn {
+  width: 58px;
+  height: 58px;
+  border: none;
+  border-radius: 10px;
+  background: #bbada0;
+  color: #ffffff;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.dpad-btn:active { background: #9d8f82; }
+
+.btn-row {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  margin-top: 14px;
+}
+
+.btn-main {
+  padding: 12px 30px;
+  min-height: 48px;
+  border: none;
+  border-radius: 10px;
+  background: #8f7a66;
+  color: #f9f6f2;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-main:active { background: #776550; }
+
+.btn-ghost {
+  padding: 10px 22px;
+  min-height: 48px;
+  border: none;
+  border-radius: 10px;
+  background: #eee4da;
+  color: #776e65;
+  font-size: 16px;
+  font-weight: 600;
+  margin-left: 12px;
+  cursor: pointer;
+}
+
+.btn-ghost:active { background: #e2d5c5; }
+
+.hint {
+  text-align: center;
+  margin-top: 14px;
+  font-size: 13px;
+  color: #b3aa9b;
+  line-height: 1.5;
+}
+
+.footer-checkin {
+  color: #8f7a66;
+  font-weight: 600;
+}
+
+/* ---------- 结算弹层 ---------- */
+
+.overlay {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.68);
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.overlay-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 26px 24px 24px;
+  text-align: center;
+  width: 84%;
+  max-width: 340px;
+  -webkit-animation: cardIn 0.25s ease;
+  animation: cardIn 0.25s ease;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.18);
+}
+
+@-webkit-keyframes cardIn {
+  0% { -webkit-transform: scale(0.92); transform: scale(0.92); opacity: 0; }
+  100% { -webkit-transform: scale(1); transform: scale(1); opacity: 1; }
+}
+@keyframes cardIn {
+  0% { -webkit-transform: scale(0.92); transform: scale(0.92); opacity: 0; }
+  100% { -webkit-transform: scale(1); transform: scale(1); opacity: 1; }
+}
+
+.overlay-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: #776e65;
+}
+
+.overlay-sub {
+  margin-top: 6px;
+  font-size: 14px;
+  color: #8f8a80;
+}
+
+.summary {
+  margin: 18px 0 20px;
+}
+
+.summary .score-label {
+  font-size: 13px;
+  color: #b3aa9b;
+}
+
+.summary .score-num {
+  font-size: 44px;
+  font-weight: 800;
+  color: #f65e3b;
+  line-height: 1.2;
+}
+
+.summary .best-line {
+  margin-top: 4px;
+  font-size: 14px;
+  color: #8f8a80;
+}
+
+.summary .best-line.new-rec {
+  color: #f2a33c;
+  font-weight: 700;
+  -webkit-animation: recFlash 0.6s ease 0.3s;
+  animation: recFlash 0.6s ease 0.3s;
+}
+
+@-webkit-keyframes recFlash {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes recFlash {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.summary .checkin-line {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #8f7a66;
+  font-weight: 600;
+}
+
+.overlay-btns {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+}
+
+.overlay-btns > *:first-child { margin-left: 0; }
+
+/* ---------- 响应式：大屏字号微调 ---------- */
+
+@media (min-width: 400px) {
+  .game-title h1 { font-size: 48px; }
+  .score-box { padding: 6px 15px 7px; min-width: 82px; }
+  .score-box .num { font-size: 22px; }
+}

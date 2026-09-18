@@ -1,0 +1,531 @@
+/* ============================================================
+   迷宫寻路 — 样式（Chrome 61 基线，明快儿童友好配色）
+   规范：
+   - 无 flex gap / aspect-ratio / clamp() / 逻辑属性 / :has / dvh
+   - 动画双写 @-webkit-keyframes + @keyframes；温和（<=400ms，无频闪）
+   - flex 三重前缀（-webkit-box / -webkit-flex / flex）
+   - 迷宫方形棋盘：padding-bottom: 100%（格子绝对定位百分比）
+   - 安全区 env(safe-area-inset-*) 组合
+   ============================================================ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body { height: 100%; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+               "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: #f7f3ea;
+  color: #4a453c;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-flex-direction: column;
+  flex-direction: column;
+  height: 100vh;
+  height: calc(var(--app-height, 100vh));
+  overflow: hidden;
+}
+
+/* ---------- 三段式骨架 ---------- */
+
+.app-header {
+  padding-top: calc(6px + var(--safe-area-inset-top, 0px));
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 0 auto;
+  flex: 0 0 auto;
+}
+
+.ver-badge {
+  display: block;
+  padding-left: 16px;
+  font-size: 11px;
+  color: #b5ab97;
+}
+
+.app-main {
+  -webkit-box-flex: 1;
+  -webkit-flex: 1 1 auto;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.app-footer {
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 0 auto;
+  flex: 0 0 auto;
+  padding: 6px 16px calc(8px + var(--safe-area-inset-bottom, 0px));
+  text-align: center;
+  font-size: 12px;
+  color: #b5ab97;
+}
+
+.view {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 6px 16px 20px;
+  width: 100%;
+}
+
+/* ---------- 顶栏 ---------- */
+
+.topbar {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  margin-bottom: 12px;
+  min-height: 40px;
+}
+
+.topbar .level-title {
+  -webkit-box-flex: 1;
+  -webkit-flex: 1 1 auto;
+  flex: 1 1 auto;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: #4a453c;
+}
+
+.top-timer {
+  font-size: 13px;
+  font-weight: 700;
+  color: #e76f51;
+  min-width: 58px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.top-steps {
+  font-size: 13px;
+  font-weight: 600;
+  color: #8f7a66;
+  margin-left: 10px;
+  min-width: 42px;
+  text-align: right;
+}
+
+.btn-ghost-sm {
+  padding: 8px 14px;
+  min-height: 36px;
+  border: none;
+  border-radius: 10px;
+  background: #efe7d3;
+  color: #6b6252;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-ghost-sm:active { background: #e2d5c5; }
+
+/* ---------- 棋盘 ---------- */
+
+.board {
+  position: relative;
+  width: 100%;
+  height: 0;
+  background: #efe7d3;
+  border-radius: 10px;
+  padding-bottom: 100%; /* 方形迷宫（w === h，JS 亦按此设置） */
+  touch-action: none;
+}
+
+.cell {
+  position: absolute;
+  border-radius: 3px;
+}
+
+/* 地板 */
+.cell {
+  background: #f7f2e4;
+}
+
+/* 墙（灰蓝 + 微立体） */
+.cell.wall {
+  background: #8d99a6;
+  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.22),
+              inset -2px -2px 0 rgba(0, 0, 0, 0.14);
+  border-radius: 4px;
+}
+
+/* 足迹（玩家经过的格子，浅黄） */
+.cell.visited {
+  background: #f3dfa8;
+}
+
+/* 起点（浅绿底 + 绿圆） */
+.cell.start {
+  background: #d8efdf;
+}
+
+.cell.start::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 46%;
+  height: 46%;
+  -webkit-transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: #2f9e5f;
+  box-shadow: inset 0 -2px 3px rgba(0, 0, 0, 0.18);
+}
+
+/* 出口（浅红底 + 红方旗标） */
+.cell.goal {
+  background: #fbd9ce;
+}
+
+.cell.goal::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 56%;
+  height: 56%;
+  -webkit-transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%);
+  border-radius: 14%;
+  background: #e76f51;
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.2),
+              inset 2px 0 0 rgba(255, 255, 255, 0.22);
+}
+
+/* 提示路径（亮黄底 + 黄圆点） */
+.cell.path {
+  background: #ffe9b3;
+}
+
+.cell.path::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 36%;
+  height: 36%;
+  -webkit-transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: #f9c74f;
+  box-shadow: inset 0 -1px 2px rgba(0, 0, 0, 0.16);
+}
+
+/* 玩家（蓝圆 + 双眼） */
+.cell.player {
+  background: #4a90d9;
+  border-radius: 50%;
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.2);
+}
+
+.cell.player::before,
+.cell.player::after {
+  content: '';
+  position: absolute;
+  top: 28%;
+  width: 12%;
+  height: 12%;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+.cell.player::before { left: 26%; }
+.cell.player::after { right: 26%; }
+
+/* 玩家到达出口（变绿庆祝） */
+.cell.player.ongoingal {
+  background: #57a773;
+}
+
+/* 通关动画（出口格温和脉冲，400ms） */
+.cell.cell-win {
+  -webkit-animation: winPulse 0.4s ease;
+  animation: winPulse 0.4s ease;
+}
+
+@-webkit-keyframes winPulse {
+  0% { -webkit-transform: scale(1); transform: scale(1); }
+  50% { -webkit-transform: scale(1.18); transform: scale(1.18); }
+  100% { -webkit-transform: scale(1); transform: scale(1); }
+}
+@keyframes winPulse {
+  0% { -webkit-transform: scale(1); transform: scale(1); }
+  50% { -webkit-transform: scale(1.18); transform: scale(1.18); }
+  100% { -webkit-transform: scale(1); transform: scale(1); }
+}
+
+/* ---------- 统计 ---------- */
+
+.stats {
+  text-align: center;
+  margin-top: 12px;
+  font-size: 14px;
+  color: #6b6252;
+}
+
+.stats .stat-num {
+  font-size: 16px;
+  font-weight: 800;
+  color: #e76f51;
+}
+
+.stats .best-num {
+  font-size: 14px;
+  font-weight: 700;
+  color: #8f7a66;
+}
+
+/* ---------- 十字 D-pad ---------- */
+
+.dpad {
+  position: relative;
+  width: 184px;
+  height: 184px;
+  margin: 12px auto 0;
+}
+
+.dpad-btn {
+  position: absolute;
+  width: 56px;
+  height: 56px;
+  border: none;
+  border-radius: 12px;
+  background: #bbada0;
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.dpad-btn:active { background: #9d8f82; }
+
+.dpad-up    { left: 64px; top: 0; }
+.dpad-left  { left: 0; top: 64px; }
+.dpad-down  { left: 64px; top: 128px; }
+.dpad-right { left: 128px; top: 64px; }
+
+/* ---------- 按钮行 ---------- */
+
+.btn-row {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  margin-top: 14px;
+}
+
+.btn-main {
+  padding: 12px 30px;
+  min-height: 48px;
+  border: none;
+  border-radius: 10px;
+  background: #8f7a66;
+  color: #f9f6f2;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-main:active { background: #776550; }
+
+.btn-ghost {
+  padding: 10px 22px;
+  min-height: 48px;
+  border: none;
+  border-radius: 10px;
+  background: #efe7d3;
+  color: #6b6252;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 6px;
+  cursor: pointer;
+}
+
+.btn-ghost:active { background: #e2d5c5; }
+
+.btn-ghost:disabled {
+  background: #e4ddcc;
+  color: #b0a892;
+  cursor: default;
+}
+
+.hint {
+  text-align: center;
+  margin-top: 14px;
+  font-size: 13px;
+  color: #b5ab97;
+  line-height: 1.5;
+}
+
+.footer-checkin {
+  color: #8f7a66;
+  font-weight: 600;
+}
+
+/* ---------- 难度选择页 ---------- */
+
+.diff-list {
+  margin-top: 6px;
+}
+
+.diff-btn {
+  display: block;
+  width: 100%;
+  min-height: 64px;
+  border: none;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 12px 18px;
+  margin-bottom: 12px;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.diff-btn:active { background: #f1ead9; }
+
+.diff-head {
+  display: block;
+  font-size: 17px;
+  font-weight: 800;
+  color: #4a453c;
+}
+
+.diff-sub {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  color: #8f7a66;
+  font-weight: 600;
+}
+
+/* ---------- 结算浮层 ---------- */
+
+.overlay {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.68);
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.overlay-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 26px 24px 24px;
+  text-align: center;
+  width: 84%;
+  max-width: 340px;
+  -webkit-animation: cardIn 0.25s ease;
+  animation: cardIn 0.25s ease;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.18);
+}
+
+@-webkit-keyframes cardIn {
+  0% { -webkit-transform: scale(0.92); transform: scale(0.92); opacity: 0; }
+  100% { -webkit-transform: scale(1); transform: scale(1); opacity: 1; }
+}
+@keyframes cardIn {
+  0% { -webkit-transform: scale(0.92); transform: scale(0.92); opacity: 0; }
+  100% { -webkit-transform: scale(1); transform: scale(1); opacity: 1; }
+}
+
+.overlay-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: #4a453c;
+}
+
+.overlay-sub {
+  margin-top: 6px;
+  font-size: 14px;
+  color: #8f8a80;
+}
+
+.summary {
+  margin: 16px 0 18px;
+}
+
+.summary .stars-line {
+  font-size: 34px;
+  letter-spacing: 6px;
+  color: #f2a33c;
+  margin-bottom: 8px;
+  -webkit-animation: starPop 0.35s ease;
+  animation: starPop 0.35s ease;
+}
+
+@-webkit-keyframes starPop {
+  0% { -webkit-transform: scale(0.4); transform: scale(0.4); opacity: 0; }
+  60% { -webkit-transform: scale(1.25); transform: scale(1.25); }
+  100% { -webkit-transform: scale(1); transform: scale(1); opacity: 1; }
+}
+@keyframes starPop {
+  0% { -webkit-transform: scale(0.4); transform: scale(0.4); opacity: 0; }
+  60% { -webkit-transform: scale(1.25); transform: scale(1.25); }
+  100% { -webkit-transform: scale(1); transform: scale(1); opacity: 1; }
+}
+
+.summary .checkin-line {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #8f7a66;
+  font-weight: 600;
+}
+
+.overlay-btns {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  -webkit-flex-wrap: wrap;
+  flex-wrap: wrap;
+}
+
+.overlay-btns > * {
+  margin: 4px 5px;
+}
+
+/* ---------- 响应式：大屏微调 ---------- */
+
+@media (min-width: 400px) {
+  .topbar .level-title { font-size: 18px; }
+  .dpad { width: 196px; height: 196px; }
+  .dpad-btn { width: 58px; height: 58px; }
+  .dpad-up    { left: 69px; top: 0; }
+  .dpad-left  { left: 0; top: 69px; }
+  .dpad-down  { left: 69px; top: 138px; }
+  .dpad-right { left: 138px; top: 69px; }
+}

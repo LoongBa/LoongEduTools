@@ -2,11 +2,11 @@
 
 > 本文件定义 RedTools（小红书小工具集）的目录结构、构建/发布流程、git 约定与进度维护规则。
 > 改代码 / 新增工具 / 提交前先读本文件 + `series/<系列>/设计文档.md`。
-> 更新：2026-09-17
+> 更新：2026-09-18
 
 ## 1. 定位
 
-RedTools = **小红书小工具开发集**，按「系列 → 工具」两级组织，数据驱动 + 批量自动化构建。
+RedTools = **小红书小工具开发集**，按「系列 →（子系列 →）工具」组织，数据驱动 + 批量自动化构建。
 所有工具须遵守 `RedTools/.skill/minitool-zip-builder/` 打包规范（离线 zip、容器 CSP、平台白名单）。
 产品规划唯一权威：`RedTools/docs/产品矩阵规划.md`（62 款产品 / 7 大类 / P0-P3 / 三阶段路线，
 本地维护为主，来源信息图 HTML 仅作历史参考）。
@@ -16,21 +16,28 @@ RedTools = **小红书小工具开发集**，按「系列 → 工具」两级组
 ```
 RedTools/
 ├── AGENTS.md                  # 本文件：目录规则
-├── README.md                  # 总览 + 全系列进度清单 + 开发经验
+├── README.md                  # 总览 + 全系列进度清单（开发/测试状态总表）+ 开发经验
 ├── .gitignore                 # 构建/发布产物不入库规则
 ├── .skill/minitool-zip-builder/   # 小工具打包规范（skill 包解压）
 ├── build_framework.py         # 公共构建框架（ToolConfig + build_tool + 各转换函数）
 ├── tools.py                   # 工具注册表（series/工具 → ToolConfig）
 ├── build_all.py               # 批量构建入口（--tool/--units/--pages/--list）
-├── docs/
-│   └── 产品矩阵规划.md         # ★ 规划唯一权威：62 款产品/7 大类/P0-P3/三阶段路线
-├── series/                    # ★ 系列目录（中文命名）
+├── docs/                      # ★ 目录级文档（唯一文档中心，不入代码目录）
+│   ├── 产品矩阵规划.md         #   ★ 规划唯一权威：62 款产品/7 大类/P0-P3/三阶段路线
+│   ├── 通用需求-打卡分享记录.md #   跨工具通用能力（打卡/成绩/分享）
+│   ├── 通用需求-防沉迷自控力.md #   跨工具通用能力（防沉迷/自控力/结算三选/自律锁）
+│   └── 工具文档/              #   ★ 每个小工具的设计/使用文档（统一收拢于此）
+│       └── <系列>/[<子系列>/]  #     按系列（子系列）分目录
+│           └── <工具>-<类型>.md #    命名如 英语点读-设计文档.md / 数学口算-使用文档.md
+├── series/                    # ★ 系列目录（中文命名，只含代码与系列 README）
 │   └── <系列>/                #   每个系列独立
 │       ├── README.md          #     系列说明 + 工具清单（独立维护）
 │       ├── 设计文档.md         #     系列设计规范（可复用核心 + 新工具接入步骤）
-│       └── <工具>/            #     工具目录
+│       ├── <子系列>/          #     可选：子系列分组（如 益智/专注力/）
+│       │   ├── README.md      #       子系列说明 + 工具清单
+│       │   └── <工具>/        #       工具目录（结构同下方工具目录）
+│       └── <工具>/            #     工具目录（无子系列时直接位于系列下）
 │           ├── src/           #       index.html + assets/（main.js/style.css/icon_base.png）
-│           ├── docs/          #       工具文档：设计文档.md + 使用文档.md（+ 交接文档.md 等）
 │           └── README.md      #       工具说明 + 变更记录
 ├── dist/                      # 构建中间产物（不入库）
 │   └── <系列>/<工具>/...
@@ -40,14 +47,18 @@ RedTools/
 │       ├── <工具名>-图标(1024).png
 │       ├── 发布文案.txt        # 人工维护，唯一入库项
 │       └── <工具名>_解压测试版/  # 双击 index.html 即测
-└── docs/                      # 目录级文档
 ```
 
 **规则**：
 - 系列/工具目录用**中文命名**（学科 / 英语点读 / 数学口算）。
+- **工具文档（设计/使用）统一放 `RedTools/docs/工具文档/`，不混入代码目录**：
+  每个小工具一份 `设计文档` + 一份 `使用文档`，命名 `<工具>-<类型>.md`，按系列（子系列）分目录；
+  系列/工具 README 只做入口链接，不承载完整文档正文。
 - publish 是**所有系列的公共发布目录**，按系列分目录、**系列内不再细分**（用文件名区分工具）。
 - 系列资源（README/设计文档）**各自独立维护**；系列间共享资源放 `RedTools/` 根下子目录
   （当前无共享资源；如出现，建 `RedTools/_shared/`）。
+- **系列内共享资源**：同一系列多个工具共用的数据/素材放 `series/<系列>/_shared/`（如
+  `series/学科/_shared/成语词库/`，看图猜成语与成语接龙共用）。
 
 ## 3. 构建与发布流程
 
@@ -68,7 +79,8 @@ python .skill/minitool-zip-builder/scripts/audit_artifact.py dist/学科/英语�
 python .skill/minitool-zip-builder/scripts/audit_artifact.py publish/学科/新英语四上点读1单元.zip
 ```
 
-发布产物自动落到 `publish/<系列>/`（zip + 1024 图标）。**发布文案.txt 人工维护**（标题/正文/标签）。
+发布产物自动落到 `publish/<系列>/`（zip + 1024 图标）。**每次构建都会自动解压一份
+`<工具名>_解压测试版/`（覆盖更新，双击 index.html 即测）**。发布文案.txt 人工维护（标题/正文/标签）。
 
 ## 4. Git 约定
 
@@ -81,9 +93,11 @@ python .skill/minitool-zip-builder/scripts/audit_artifact.py publish/学科/新�
 ## 5. 进度维护规则
 
 - `RedTools/README.md` 顶部「全系列开发与交付进度清单」为**唯一权威清单**：
-  每完成一次构建/发布，更新该表（系列 / 工具 / 版本 / 构建日期 / 是否发布到小红书 / 产物 / 备注）。
+  每完成一次构建/发布，更新该表（系列 / 工具 / 版本 / 构建日期 / 开发与测试状态 /
+  是否发布到小红书 / 产物 / 文档位置 / 备注）。
 - 系列内部变更详情（功能/踩坑）记入 `series/<系列>/README.md` 或 `设计文档.md`。
 - 新工具立项：先写 `series/<系列>/<工具>/README.md`（含需求草案），再进入开发。
+- 工具文档（设计/使用）统一在 `docs/工具文档/<系列>/` 维护，与代码目录分离。
 
 ## 6. 版本管理规则
 
@@ -103,7 +117,8 @@ python .skill/minitool-zip-builder/scripts/audit_artifact.py publish/学科/新�
 2. `tools.py` 登记 `ToolConfig`（series/tool/version/book/素材目录/app_name/default_unit）
 3. 构建管线差异 → 扩展 `build_framework.py`（保持向后兼容）
 4. `python build_all.py --tool <工具>` → 审计 → 合规自查 → 冒烟测试
-5. 更新进度清单 + 系列 README + 本文件（如结构变化）
+5. 在 `docs/工具文档/<系列>/` 撰写 `<工具>-设计文档.md` + `<工具>-使用文档.md`
+6. 更新进度清单（README 总表）+ 系列 README + 本文件（如结构变化）
 
 ## 8. 常用规范速查
 
@@ -112,4 +127,7 @@ python .skill/minitool-zip-builder/scripts/audit_artifact.py publish/学科/新�
 | zip 白名单 / CSP / 端能力 | `.skill/minitool-zip-builder/references/` |
 | 音频 base64 + Web Audio 方案 | `series/学科/设计文档.md` §2.3 |
 | Chrome 61 兼容（JS/CSS） | `.skill/.../references/js-compatibility.md`、`css-compatibility.md` |
+| 防沉迷 / 自控力（时长/局数/自律锁） | `docs/通用需求-防沉迷自控力.md` |
+| 结算三选 / 分享卡片 / 复制文案 | `docs/通用需求-打卡分享记录.md` §2.3/§5.2/§5.3 |
+| 视觉质检（多模态看板） | `look_at` 工具 / `task(subagent_type="multimodal-looker")` 可用：全局 opencode 已配置 `sensenova/sensenova-6.8-flash-lite`（视觉模型 + `modalities` 声明），离线截图/PDF 目检直接走此链路 |
 | 教师客户端（桌面壳） | `../docs/龙爸乐学-教师客户端需求分析与设计方案.md` |

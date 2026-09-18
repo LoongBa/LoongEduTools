@@ -1,0 +1,622 @@
+/* ============================================================
+   分类整理 — 样式（Chrome 61 基线，逻辑思维·天蓝系）
+   主题：逻辑思维子系列沿用天蓝系（#e8f4ff 背景 / #4aa8ff 主色）
+   规范：
+   - 无 flex gap / aspect-ratio / clamp() / inset / 逻辑属性 / :has / dvh
+   - 动画双写 @-webkit-keyframes + @keyframes；温和（<=400ms，无频闪）
+   - flex 三重前缀（-webkit-box / -webkit-flex / flex）；子项 min-width:0
+   - 正方形物品格：width 与 padding-bottom 同为 33.33%（无 gap，内层 inset）
+   - 安全区 env(safe-area-inset-*) 组合；按钮 hit area >= 48x48
+   ============================================================ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body { height: 100%; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+               "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: #e8f4ff;
+  color: #2a3a4a;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-flex-direction: column;
+  flex-direction: column;
+  height: 100vh;
+  height: calc(var(--app-height, 100vh));
+  overflow: hidden;
+}
+
+/* ---------- 三段式骨架 ---------- */
+
+.app-header {
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 0 auto;
+  flex: 0 0 auto;
+  padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  background: #ffffff;
+  border-bottom: 1px solid #d7e6f5;
+}
+
+.header-brand {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  padding: 8px 16px;
+}
+
+.header-icon {
+  width: 30px;
+  height: 30px;
+  margin-right: 8px;
+  border-radius: 7px;
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 0 auto;
+  flex: 0 0 auto;
+}
+
+.header-title { font-size: 17px; font-weight: 700; color: #2a3a4a; }
+
+.header-ver {
+  margin-left: 6px;
+  font-size: 10px;
+  color: #9db4c8;
+}
+
+.app-main {
+  -webkit-box-flex: 1;
+  -webkit-flex: 1 1 auto;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.app-footer {
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 0 auto;
+  flex: 0 0 auto;
+  padding: 6px 16px calc(8px + var(--safe-area-inset-bottom, 0px));
+  text-align: center;
+}
+
+.view {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 6px 16px 20px;
+  width: 100%;
+  min-width: 0;
+}
+
+/* ---------- 顶栏 ---------- */
+
+.topbar {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  margin-bottom: 12px;
+  min-height: 40px;
+}
+
+.topbar .level-title {
+  -webkit-box-flex: 1;
+  -webkit-flex: 1 1 auto;
+  flex: 1 1 auto;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: #2a3a4a;
+  min-width: 0;
+}
+
+.top-timer {
+  font-size: 13px;
+  font-weight: 700;
+  color: #e76f51;
+  min-width: 58px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.btn-ghost-sm {
+  padding: 8px 14px;
+  min-height: 36px;
+  border: none;
+  border-radius: 10px;
+  background: #dceefe;
+  color: #3a6a9a;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-ghost-sm:active { background: #c6e2fb; }
+
+/* ---------- 类别盒子行 ---------- */
+
+.cats-row {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  margin-bottom: 14px;
+}
+
+.cat-box {
+  -webkit-box-flex: 1;
+  -webkit-flex: 1 1 auto;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 72px;
+  border: none;
+  border-top: 4px solid transparent; /* 类别主题色由 JS 内联设置 */
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(74, 168, 255, 0.12);
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-flex-direction: column;
+  flex-direction: column;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.cat-box + .cat-box { margin-left: 8px; }
+
+.cat-chip svg {
+  display: block;
+  width: 38px;
+  height: 38px;
+}
+
+.cat-name {
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #2a3a4a;
+}
+
+.cat-count {
+  margin-top: 1px;
+  font-size: 11px;
+  color: #9db4c8;
+  font-weight: 600;
+}
+
+/* 正确：绿色确认（300ms 温和） */
+.cat-box.correct {
+  background: #e6f7ee;
+  -webkit-animation: correctFlash 0.3s ease;
+  animation: correctFlash 0.3s ease;
+}
+
+@-webkit-keyframes correctFlash {
+  0% { -webkit-transform: scale(1); transform: scale(1); }
+  50% { -webkit-transform: scale(1.08); transform: scale(1.08); }
+  100% { -webkit-transform: scale(1); transform: scale(1); }
+}
+@keyframes correctFlash {
+  0% { -webkit-transform: scale(1); transform: scale(1); }
+  50% { -webkit-transform: scale(1.08); transform: scale(1.08); }
+  100% { -webkit-transform: scale(1); transform: scale(1); }
+}
+
+/* 错误：红闪 400ms */
+.cat-box.wrong {
+  background: #ffe9e6;
+  -webkit-animation: wrongFlash 0.4s ease;
+  animation: wrongFlash 0.4s ease;
+}
+
+@-webkit-keyframes wrongFlash {
+  0% { background: #ffe9e6; }
+  50% { background: #ffc9c4; }
+  100% { background: #ffffff; }
+}
+@keyframes wrongFlash {
+  0% { background: #ffe9e6; }
+  50% { background: #ffc9c4; }
+  100% { background: #ffffff; }
+}
+
+/* 防卡高亮：错 >=3 次，正确盒子温和脉冲（呼吸式，无频闪） */
+.cat-box.antistuck {
+  -webkit-animation: stuckPulse 0.8s ease-in-out infinite;
+  animation: stuckPulse 0.8s ease-in-out infinite;
+}
+
+@-webkit-keyframes stuckPulse {
+  0% { background: #ffffff; }
+  50% { background: #ffe9d6; }
+  100% { background: #ffffff; }
+}
+@keyframes stuckPulse {
+  0% { background: #ffffff; }
+  50% { background: #ffe9d6; }
+  100% { background: #ffffff; }
+}
+
+/* ---------- 物品格（正方形 3 列，width + padding-bottom 33.33%） ---------- */
+
+.items-grid {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-flex-wrap: wrap;
+  flex-wrap: wrap;
+  width: 100%;
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(74, 168, 255, 0.12);
+  padding: 6px;
+}
+
+.item-cell {
+  position: relative;
+  width: 33.3333%;
+  padding-bottom: 33.3333%;
+  min-width: 0;
+  cursor: pointer;
+}
+
+/* 格内间距（不用 flex gap）：内层比格子小，形成间隔 */
+.item-inner {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  right: 4px;
+  bottom: 4px;
+  background: #f5faff;
+  border-radius: 12px;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+}
+
+.item-inner svg {
+  width: 72%;
+  height: 72%;
+}
+
+/* 选中：橙色描边高亮 */
+.item-cell.selected .item-inner {
+  outline: 3px solid #ff9f43;
+  background: #fff7ee;
+}
+
+/* 归位淡出（<=300ms 温和） */
+.item-cell.placing .item-inner {
+  -webkit-animation: placingOut 0.3s ease forwards;
+  animation: placingOut 0.3s ease forwards;
+}
+
+@-webkit-keyframes placingOut {
+  0% { -webkit-transform: scale(1); transform: scale(1); opacity: 1; }
+  100% { -webkit-transform: scale(0.55); transform: scale(0.55); opacity: 0; }
+}
+@keyframes placingOut {
+  0% { -webkit-transform: scale(1); transform: scale(1); opacity: 1; }
+  100% { -webkit-transform: scale(0.55); transform: scale(0.55); opacity: 0; }
+}
+
+/* ---------- 提示行 ---------- */
+
+.hint {
+  text-align: center;
+  margin-top: 14px;
+  font-size: 13px;
+  color: #7a8ea3;
+  line-height: 1.5;
+}
+
+.hint-active {
+  color: #e76f51;
+  font-weight: 700;
+}
+
+/* ---------- 游戏页底栏 ---------- */
+
+.game-footer {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+}
+
+.game-footer .btn-ghost-sm {
+  margin: 0 5px;
+  min-height: 40px;
+}
+
+.footer-errors {
+  margin-left: 10px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #ff6b6b;
+  min-width: 40px;
+  text-align: left;
+}
+
+/* ---------- 首页：选难度 ---------- */
+
+.page-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 8px 0 12px;
+  text-align: center;
+  color: #2a3a4a;
+}
+
+.home-hint {
+  font-size: 12px;
+  color: #7a8ea3;
+  text-align: center;
+  margin: -4px 0 14px;
+}
+
+.diff-list { margin-top: 4px; }
+
+.diff-btn {
+  display: block;
+  width: 100%;
+  min-height: 68px;
+  border: none;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 12px 18px;
+  margin-bottom: 12px;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(74, 168, 255, 0.12);
+}
+
+.diff-btn:active { background: #e6f3ff; }
+
+.diff-head {
+  display: block;
+  font-size: 17px;
+  font-weight: 800;
+  color: #2a3a4a;
+}
+
+.diff-sub {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  color: #7a8ea3;
+  font-weight: 600;
+}
+
+/* 底栏：打卡入口 / 返回 */
+
+.btn-checkin {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  border: none;
+  border-radius: 12px;
+  background: #4aa8ff;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-checkin:active { background: #2f94ee; }
+
+/* ---------- 结算浮层 ---------- */
+
+.overlay {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.5);
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 24px;
+}
+
+.overlay-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 26px 24px 24px;
+  text-align: center;
+  width: 100%;
+  max-width: 340px;
+  -webkit-animation: cardIn 0.25s ease;
+  animation: cardIn 0.25s ease;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+@-webkit-keyframes cardIn {
+  0% { -webkit-transform: scale(0.92); transform: scale(0.92); opacity: 0; }
+  100% { -webkit-transform: scale(1); transform: scale(1); opacity: 1; }
+}
+@keyframes cardIn {
+  0% { -webkit-transform: scale(0.92); transform: scale(0.92); opacity: 0; }
+  100% { -webkit-transform: scale(1); transform: scale(1); opacity: 1; }
+}
+
+.overlay-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: #2a3a4a;
+}
+
+.overlay-sub {
+  margin-top: 6px;
+  font-size: 14px;
+  color: #7a8ea3;
+}
+
+.summary {
+  margin: 16px 0 18px;
+}
+
+.summary .stars-line {
+  font-size: 34px;
+  letter-spacing: 6px;
+  color: #f5a623;
+  margin-bottom: 8px;
+  -webkit-animation: starPop 0.35s ease;
+  animation: starPop 0.35s ease;
+}
+
+@-webkit-keyframes starPop {
+  0% { -webkit-transform: scale(0.4); transform: scale(0.4); opacity: 0; }
+  60% { -webkit-transform: scale(1.25); transform: scale(1.25); }
+  100% { -webkit-transform: scale(1); transform: scale(1); opacity: 1; }
+}
+@keyframes starPop {
+  0% { -webkit-transform: scale(0.4); transform: scale(0.4); opacity: 0; }
+  60% { -webkit-transform: scale(1.25); transform: scale(1.25); }
+  100% { -webkit-transform: scale(1); transform: scale(1); opacity: 1; }
+}
+
+.summary .checkin-line {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #4a90d9;
+  font-weight: 600;
+}
+
+.summary .record-badge {
+  margin-top: 6px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #12b76a;
+}
+
+.overlay-btns {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  -webkit-flex-wrap: wrap;
+  flex-wrap: wrap;
+}
+
+.overlay-btns > * {
+  margin: 4px 5px;
+}
+
+.btn-main {
+  padding: 12px 30px;
+  min-height: 48px;
+  border: none;
+  border-radius: 12px;
+  background: #4aa8ff;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-main:active { background: #2f94ee; }
+
+.btn-ghost {
+  padding: 10px 22px;
+  min-height: 48px;
+  border: none;
+  border-radius: 12px;
+  background: #e6f3ff;
+  color: #3a6a9a;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-ghost:active { background: #cfe8fd; }
+
+/* ---------- 打卡日历 ---------- */
+
+.calendar {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(74, 168, 255, 0.12);
+}
+
+.calendar-grid {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-flex-wrap: wrap;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.calendar-grid > * { width: 14.28%; padding: 4px; }
+
+.cal-day {
+  width: 100%;
+  padding: 8px 0;
+  text-align: center;
+  font-size: 13px;
+  border-radius: 6px;
+  color: #7a8ea3;
+  background: #f2f7fc;
+}
+
+.cal-day.done { background: #ff9c1a; color: #ffffff; font-weight: 700; }
+
+.cal-day.today { outline: 2px solid #4aa8ff; }
+
+.streak-info { text-align: center; margin-top: 10px; font-size: 14px; color: #2a3a4a; }
+.streak-info b { color: #ff9c1a; }
+
+/* ---------- 响应式：大屏微调 ---------- */
+
+@media (min-width: 400px) {
+  .topbar .level-title { font-size: 18px; }
+  .cat-chip svg { width: 42px; height: 42px; }
+}
