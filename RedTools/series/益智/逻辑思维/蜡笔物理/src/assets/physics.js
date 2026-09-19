@@ -28,6 +28,7 @@
   var terrainBodies = [];  // 场景静态/动体（渲染用）
   var won = false;
   var onWinCallback = null;
+  var worldStarted = false; // 世界冻结，直到玩家画出第一笔（球等待搭建完成）
 
   /* ---------- 工具 ---------- */
   function rnd(a, b) { return a + Math.random() * (b - a); }
@@ -41,6 +42,7 @@
     drawnBodies = [];
     terrainBodies = [];
     won = false;
+    worldStarted = false;
 
     engine = M.Engine.create({ positionIterations: 10, velocityIterations: 8 });
     world = engine.world;
@@ -49,7 +51,7 @@
 
     // 地面（渲染见 render：蜡笔地面线 + 填充）
     var ground = M.Bodies.rectangle(WORLD_W / 2, 580, WORLD_W + 400, 40,
-      { isStatic: true, friction: 0.9, label: 'ground' });
+      { isStatic: true, friction: 0.6, label: 'ground' });
     ground.renderType = 'ground';
     addBody(ground);
     // 隐形侧墙
@@ -64,7 +66,7 @@
     for (var i = 0; i < L.statics.length; i++) {
       var s = L.statics[i];
       if (s.type === 'rect') {
-        var b = M.Bodies.rectangle(s.x, s.y, s.w, s.h, { isStatic: true, friction: 0.9, label: 'static' });
+        var b = M.Bodies.rectangle(s.x, s.y, s.w, s.h, { isStatic: true, friction: 0.3, label: 'static' });
         b.renderType = 'staticRect'; b.renderW = s.w; b.renderH = s.h;
         addBody(b); terrainBodies.push(b);
       } else if (s.type === 'tri') {
@@ -75,7 +77,7 @@
         ];
         var tc = polyCentroid(verts);
         var tb = M.Bodies.fromVertices(tc.x, tc.y, verts,
-          { isStatic: true, friction: 0.9, label: 'static' }, true, true, 6);
+          { isStatic: true, friction: 0.3, label: 'static' }, true, true, 6);
         tb.renderType = 'tri'; tb.renderW = s.w; tb.renderH = s.h;
         tb.renderX = s.x; tb.renderBaseY = s.baseY;
         addBody(tb); terrainBodies.push(tb);
@@ -99,7 +101,7 @@
       label: 'ball',
       density: L.ball.density || 0.003,
       friction: 0.02, frictionAir: 0.002,
-      restitution: 0.15, slop: 0.02
+      restitution: 0.03, slop: 0.02
     });
     addBody(ball);
 
@@ -240,20 +242,21 @@
     try {
       body = M.Bodies.fromVertices(c.x, c.y, poly, {
         label: 'drawn',
-        density: 0.0028,
-        friction: 0.5, frictionStatic: 0.4,
+        density: 0.008,
+        friction: 0.3, frictionStatic: 0.3,
         restitution: 0.05,
         slop: 0.03
       }, true, true, 12);
     } catch (err) { return null; }
     if (!body) return null;
 
-    // 重叠处理：不抬升（抬升会破坏「搭桥/斜板」类笔画的支点接触）。
-    // 依赖强重力 + 低摩擦窗口 + Matter 位置求解器把浅层重叠推出。
-    // 前 SPAWN_SOFT_MS 低摩擦（若仍与物体轻微接触可滑脱，防止挤压锁死）
-    body._spawnStamp = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    // 重叠处理：自绘刚体创建即【静态】（画完即固化）——
+    // 消除原型「梁体在支点滑动/被球撞飞」的不稳定；球与静态体正常碰撞/滚动。
+    // 静态物体不参与动力学，玩家撤销/擦除仍可移除。
+    M.Body.setStatic(body, true);
     body._frictionFinal = 0.5;
-    body.friction = 0.1;
+    // 世界冻结直到第一笔：玩家画完第一笔，物理世界启动，球开始滚动
+    if (!worldStarted) worldStarted = true;
 
     body.renderColor = window.CRAYONS[colorIdx].c;
     body.renderPoly = poly.slice();
@@ -299,15 +302,10 @@
 
   /* ---------- 每帧更新 ---------- */
   function update(now) {
-    // 新刚体低摩擦到期恢复
+    // 清理掉出世界的自绘刚体（静态体也在 world 里，防止被画到界外）
     for (var i = drawnBodies.length - 1; i >= 0; i--) {
       var b = drawnBodies[i];
       if (b && b.parent === b) {
-        if (b._spawnStamp && now - b._spawnStamp > SPAWN_SOFT_MS) {
-          b.friction = b._frictionFinal;
-          b._spawnStamp = 0;
-        }
-        // 清理掉出世界的自绘刚体
         if (b.position.y > WORLD_H + 320 || b.position.x < -260 || b.position.x > WORLD_W + 260) {
           M.Composite.remove(world, b);
           drawnBodies.splice(i, 1);
@@ -334,6 +332,7 @@
     get drawnBodies() { return drawnBodies; },
     get terrainBodies() { return terrainBodies; },
     get won() { return won; },
+    get worldStarted() { return worldStarted; },
     setOnWin: function (fn) { onWinCallback = fn; },
     buildLevel: buildLevel,
     strokeToBody: strokeToBody,
@@ -344,3 +343,6 @@
     polyCentroid: polyCentroid
   };
 })();
+
+
+

@@ -355,7 +355,11 @@
   }
 
   window.Render = {
-    init: function (cv) { ctx = cv.getContext('2d'); },
+    init: function (cv) {
+      ctx = cv.getContext('2d');
+      bakeBall();
+      bakeStar();
+    },
     bakeStaticLayer: bakeStaticLayer,
     bakeDrawnSprite: bakeDrawnSprite,
     burst: burst,

@@ -407,7 +407,8 @@
 
   /* ---------- 主循环 ---------- */
   var acc = 0, lastT = 0;
-  var STEP = 1000 / 60;
+  var STEP = 1000 / 120;   // 120Hz 子步进：高速小球不穿透 12px 薄板（60Hz 时 800px/s≈13px/帧 > 板厚）
+  var worldWasStarted = false;
 
   function loop(t) {
     requestAnimationFrame(loop);
@@ -415,11 +416,16 @@
     var dt = Math.min(t - lastT, 50);
     lastT = t;
     acc += dt;
-    if (P.engine) {
+    // 世界冻结直到玩家画出第一笔（球等待搭建），之后正常 120Hz 步进
+    if (P.engine && P.worldStarted) {
+      if (!worldWasStarted) acc = 0;   // 世界刚启动：清空冻结期累积时间，防止一帧补跑（球瞬移+碰撞能量全丢）
+      worldWasStarted = true;
       while (acc >= STEP) {
         window.Matter.Engine.update(P.engine, STEP);
         acc -= STEP;
       }
+    } else {
+      worldWasStarted = false;
     }
 
     var res = P.update(performance.now());
