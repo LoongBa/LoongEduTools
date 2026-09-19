@@ -1,0 +1,276 @@
+/* ============================================================
+ * 蜡笔物理 — 样式（Chrome 61 基线：无 flex gap / aspect-ratio /
+ * clamp / 逻辑属性 / :has / dvh；间距用 margin/padding）
+ * ============================================================ */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  font-family: 'Segoe Print', 'Comic Sans MS', 'KaiTi', '楷体', system-ui, sans-serif;
+  background: #efe9da;
+  color: #2e2c27;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#app-header { flex: none; }
+#app-main { flex: 1; min-height: 0; display: flex; }
+#view {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  position: relative;
+}
+#app-footer {
+  flex: none;
+  text-align: center;
+  font-size: 11px;
+  color: #9a937f;
+  padding: 5px;
+  background: #f2ecdc;
+  border-top: 2px solid #e0d8c2;
+}
+
+/* ============ 首页（选关） ============ */
+.home-wrap {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 14px 24px;
+  max-width: 520px;
+  width: 100%;
+  margin: 0 auto;
+}
+.home-title {
+  font-size: 30px;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 1px;
+}
+.home-sub {
+  text-align: center;
+  color: #8a8372;
+  font-size: 14px;
+  margin-top: 4px;
+  margin-bottom: 18px;
+}
+.level-grid {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0 -5px;
+}
+.level-card {
+  width: calc(50% - 10px);
+  margin: 5px;
+  display: flex;
+  align-items: center;
+  padding: 12px 10px;
+  background: #fdf8e9;
+  border: 2.5px solid #3a3a38;
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  box-shadow: 3px 3px 0 rgba(0,0,0,.08);
+}
+.level-card:hover { background: #f4ead2; }
+.lc-no {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #d9503f;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+}
+.lc-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-right: 6px;
+}
+.lc-stars { flex: none; font-size: 14px; color: #d9a413; letter-spacing: 1px; }
+.home-checkin {
+  margin-top: 18px;
+  text-align: center;
+  font-size: 13px;
+  color: #8a8372;
+}
+.ci-streak { display: block; font-size: 15px; color: #d9773f; font-weight: 700; }
+.ci-tip { display: block; margin-top: 4px; }
+
+/* ============ 关卡页 ============ */
+.game-toolbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  background: #fbf7ec;
+  border-bottom: 3px solid #3a3a38;
+}
+.tb-btn {
+  font-family: inherit;
+  font-size: 16px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 4px 10px;
+  background: #fff;
+  border: 2px solid #3a3a38;
+  border-radius: 9px;
+  cursor: pointer;
+  margin-right: 6px;
+}
+.tb-btn:hover { background: #f4ead2; }
+.tb-btn.on { background: #d9503f; color: #fff; }
+.tb-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.tb-title span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+#lvlName { font-size: 15px; font-weight: 700; }
+.tb-time { font-size: 12px; color: #8a8372; margin-top: 1px; }
+.tb-tools { display: flex; }
+
+.game-stage {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+#game {
+  display: block;
+  touch-action: none;
+  cursor: crosshair;
+  box-shadow: 0 0 0 2px #3a3a38;
+  background: #f7f2e5;
+}
+.hint {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  max-width: 70%;
+  font-size: 13px;
+  background: rgba(251,247,236,.92);
+  border: 2px dashed #b9ae8f;
+  border-radius: 10px;
+  padding: 7px 12px;
+  pointer-events: none;
+  color: #5a5344;
+}
+.toast {
+  position: absolute;
+  left: 50%;
+  top: 14px;
+  transform: translateX(-50%);
+  background: rgba(58,58,56,.85);
+  color: #fff;
+  font-size: 14px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  opacity: 0;
+  transition: opacity .25s;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.toast.show { opacity: 1; }
+
+.palette-pop {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  width: 148px;
+  background: #fbf7ec;
+  border: 2.5px solid #3a3a38;
+  border-radius: 12px;
+  padding: 8px;
+  z-index: 5;
+}
+.palette-pop[hidden] { display: none; }
+.sw {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2.5px solid transparent;
+  cursor: pointer;
+  margin: 4px;
+  box-shadow: inset 0 -3px 0 rgba(0,0,0,.15);
+}
+.sw:hover { border-color: #3a3a38; }
+
+/* 过关浮层 */
+.win-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(60,55,40,.25);
+  z-index: 10;
+}
+.win-overlay.hidden { display: none; }
+.win-card {
+  background: #fdf8e9;
+  border: 3px solid #3a3a38;
+  border-radius: 16px;
+  padding: 24px 34px;
+  text-align: center;
+  box-shadow: 6px 6px 0 rgba(0,0,0,.12);
+  max-width: 86%;
+}
+.win-stars {
+  font-size: 34px;
+  color: #d9a413;
+  letter-spacing: 4px;
+  animation: starPop .35s ease-out;
+}
+@keyframes starPop {
+  0% { transform: scale(0.3); opacity: 0; }
+  70% { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.win-card h2 { font-size: 26px; margin-top: 4px; margin-bottom: 6px; }
+.win-card p { color: #8a8372; font-size: 14px; margin-bottom: 6px; }
+.win-card .win-checkin { color: #2f9e5f; font-weight: 700; }
+.win-btns { display: flex; justify-content: center; margin-top: 14px; }
+.win-btns button {
+  font-family: inherit;
+  font-size: 14px;
+  padding: 9px 16px;
+  background: #3a3a38;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  margin: 0 5px;
+}
+.win-btns button.ghost { background: #fff; color: #3a3a38; border: 2px solid #3a3a38; }
+
+/* ============ 小屏适配 ============ */
+@media (max-width: 480px) {
+  .tb-btn { font-size: 15px; min-width: 38px; min-height: 40px; padding: 4px 8px; margin-right: 4px; }
+  .tb-title { align-items: flex-start; padding-left: 2px; }
+  #lvlName { font-size: 14px; }
+  .hint { max-width: 84%; font-size: 12px; }
+  .home-title { font-size: 26px; }
+}

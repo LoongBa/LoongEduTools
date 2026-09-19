@@ -104,6 +104,24 @@ TOOLS: dict[str, ToolConfig] = {
     app_name="找相同",
     default_unit=0,
 ),
+"划消训练": ToolConfig(
+    series="益智",
+    subgroup="专注力",     # 子系列目录：series/益智/专注力/划消训练/
+    tool="划消训练",
+    version="1.0",
+    datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
+    app_name="划消训练",
+    default_unit=0,
+),
+"视觉追踪": ToolConfig(
+    series="益智",
+    subgroup="专注力",     # 子系列目录：series/益智/专注力/视觉追踪/
+    tool="视觉追踪",
+    version="1.0",
+    datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
+    app_name="视觉追踪",
+    default_unit=0,
+),
     # ---------------- 益智系列 · 观察力子系列 ----------------
     "找不同": ToolConfig(
         series="益智",
@@ -112,6 +130,24 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.0",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="找不同",
+        default_unit=0,
+    ),
+    "影子配对": ToolConfig(
+        series="益智",
+        subgroup="观察力",     # 子系列目录：series/益智/观察力/影子配对/
+        tool="影子配对",
+        version="1.0",
+        datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
+        app_name="影子配对",
+        default_unit=0,
+    ),
+    "细节搜索": ToolConfig(
+        series="益智",
+        subgroup="观察力",     # 子系列目录：series/益智/观察力/细节搜索/
+        tool="细节搜索",
+        version="1.0",
+        datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
+        app_name="细节搜索",
         default_unit=0,
     ),
     # ---------------- 益智系列 · 记忆力子系列 ----------------
@@ -124,15 +160,33 @@ TOOLS: dict[str, ToolConfig] = {
         app_name="翻牌记忆配对",
         default_unit=0,
     ),
-    "数字记忆": ToolConfig(
-        series="益智",
-        subgroup="记忆力",    # 子系列目录：series/益智/记忆力/数字记忆/
-        tool="数字记忆",
-        version="1.0",
-        datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
-        app_name="数字记忆",
-        default_unit=0,
-    ),
+"数字记忆": ToolConfig(
+    series="益智",
+    subgroup="记忆力",    # 子系列目录：series/益智/记忆力/数字记忆/
+    tool="数字记忆",
+    version="1.0",
+    datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
+    app_name="数字记忆",
+    default_unit=0,
+),
+"图形序列复刻": ToolConfig(
+    series="益智",
+    subgroup="记忆力",    # 子系列目录：series/益智/记忆力/图形序列复刻/
+    tool="图形序列复刻",
+    version="1.0",
+    datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
+    app_name="图形序列复刻",
+    default_unit=0,
+),
+"位置记忆": ToolConfig(
+    series="益智",
+    subgroup="记忆力",    # 子系列目录：series/益智/记忆力/位置记忆/
+    tool="位置记忆",
+    version="1.0",
+    datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
+    app_name="位置记忆",
+    default_unit=0,
+),
     # ---------------- 益智系列 · 逻辑思维子系列 ----------------
     "推箱子": ToolConfig(
         series="益智",
@@ -179,6 +233,15 @@ TOOLS: dict[str, ToolConfig] = {
         app_name="因果排序",
         default_unit=0,
     ),
+    "蜡笔物理": ToolConfig(
+        series="益智",
+        subgroup="逻辑思维",   # 子系列目录：series/益智/逻辑思维/蜡笔物理/
+        tool="蜡笔物理",
+        version="1.0",
+        datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
+        app_name="蜡笔物理",
+        default_unit=0,
+    ),
     # ---------------- 益智系列 · 空间感知子系列 ----------------
     "简单拼图": ToolConfig(
         series="益智",
@@ -187,6 +250,24 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.0",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="简单拼图",
+        default_unit=0,
+    ),
+    "七巧板": ToolConfig(
+        series="益智",
+        subgroup="空间感知",   # 子系列目录：series/益智/空间感知/七巧板/
+        tool="七巧板",
+        version="1.0",
+        datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
+        app_name="七巧板",
+        default_unit=0,
+    ),
+    "华容道": ToolConfig(
+        series="益智",
+        subgroup="空间感知",   # 子系列目录：series/益智/空间感知/华容道/
+        tool="华容道",
+        version="1.0",
+        datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
+        app_name="华容道",
         default_unit=0,
     ),
     # ---------------- 益智系列 · 反应力子系列 ----------------
@@ -218,13 +299,31 @@ TOOLS: dict[str, ToolConfig] = {
         default_unit=0,
     ),
     # ---------------- 益智系列 · 语言子系列 ----------------
-    "看图说话排序": ToolConfig(
+"看图说话排序": ToolConfig(
+    series="益智",
+    subgroup="语言",       # 子系列目录：series/益智/语言/看图说话排序/
+    tool="看图说话排序",
+    version="1.0",
+    datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
+    app_name="看图说话排序",
+    default_unit=0,
+),
+"反义词配对": ToolConfig(
         series="益智",
-        subgroup="语言",       # 子系列目录：series/益智/语言/看图说话排序/
-        tool="看图说话排序",
+        subgroup="语言",       # 子系列目录：series/益智/语言/反义词配对/
+        tool="反义词配对",
         version="1.0",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
-        app_name="看图说话排序",
+        app_name="反义词配对",
+        default_unit=0,
+    ),
+    "绕口令节奏": ToolConfig(
+        series="益智",
+        subgroup="语言",       # 子系列目录：series/益智/语言/绕口令节奏/
+        tool="绕口令节奏",
+        version="1.0",
+        datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
+        app_name="绕口令节奏",
         default_unit=0,
     ),
     # ---------------- 经典游戏系列（情怀引流） ----------------

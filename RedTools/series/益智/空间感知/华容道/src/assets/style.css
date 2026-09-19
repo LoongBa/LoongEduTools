@@ -1,0 +1,266 @@
+/* 华容道 v1.0 — 天蓝主题（与简单拼图/七巧板一致），木色滑块 + 卡通角色 */
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  height: 100%;
+  background: #e8f4ff;
+  font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+  color: #2b3a4a;
+  -webkit-user-select: none;
+  user-select: none;
+}
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+.app-header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px 6px;
+  position: relative;
+}
+.app-title { font-size: 20px; font-weight: 800; color: #2b6cb0; letter-spacing: 1px; }
+.app-ver { position: absolute; right: 12px; top: 12px; font-size: 10px; color: #9bb8d8; }
+.app-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+.view {
+  width: 100%;
+  max-width: 480px;
+  padding: 6px 14px calc(16px + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.app-footer {
+  flex: none;
+  height: env(safe-area-inset-bottom, 0px);
+}
+
+/* ============ 首页 ============ */
+.home-wrap { padding-top: 6px; }
+.home-title { text-align: center; font-size: 30px; font-weight: 800; color: #2b6cb0; }
+.home-sub { text-align: center; font-size: 13px; color: #7a93ad; margin: 4px 0 16px; }
+.level-list { display: flex; flex-direction: column; }
+.level-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 14px;
+  margin-bottom: 10px;
+  padding: 12px 14px;
+  box-shadow: 0 2px 8px rgba(43, 108, 176, 0.12);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.level-card:active { transform: scale(0.98); }
+.level-card.locked { opacity: 0.55; cursor: default; }
+.level-card.done { border: 2px solid #8fdc9a; }
+.lv-num {
+  flex: none;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: #4aa8ff;
+  color: #fff;
+  font-size: 17px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+  margin-right: 12px;
+}
+.level-card.locked .lv-num { background: #b9c6d4; }
+.lv-name { flex: 1; font-size: 17px; font-weight: 700; color: #2b3a4a; }
+.lv-stars { flex: none; font-size: 15px; margin-right: 8px; letter-spacing: 1px; }
+.lv-info {
+  flex: none;
+  max-width: 130px;
+  font-size: 11px;
+  color: #8ba1b6;
+  text-align: right;
+  line-height: 1.35;
+}
+.home-foot { text-align: center; font-size: 13px; color: #d98a2b; padding: 10px 0 4px; }
+
+/* ============ 游戏页 ============ */
+.game-wrap { padding-top: 4px; }
+.game-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.g-btn {
+  flex: none;
+  background: #fff;
+  border: 1px solid #cfe2f5;
+  color: #2b6cb0;
+  font-size: 14px;
+  padding: 7px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+}
+.g-title { flex: 1; text-align: center; font-size: 18px; font-weight: 800; color: #2b6cb0; }
+.g-stats { flex: none; font-size: 13px; color: #5a7290; font-weight: 600; }
+
+.board {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+  padding-bottom: 125%; /* 4×5 盘面 = 4:5 */
+  background: linear-gradient(180deg, #f9f3e6, #f2e7d0);
+  border-radius: 16px;
+  box-shadow: inset 0 0 0 3px #d8c9a8, 0 4px 14px rgba(120, 90, 40, 0.15);
+}
+/* 出口标记（底部中央 2×2） */
+.exit-mark {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 214, 102, 0.28);
+  border: 2px dashed #e0a92e;
+  border-radius: 10px;
+  z-index: 1;
+}
+.exit-mark span {
+  font-size: 13px;
+  font-weight: 800;
+  color: #b8860b;
+  background: rgba(255, 255, 255, 0.65);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+/* 棋子 */
+.tile {
+  position: absolute;
+  z-index: 2;
+  padding: 2.5%;
+  transition: left 0.16s ease, top 0.16s ease;
+}
+.tile-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(180deg, #fffdf5, #f5ead2);
+  border: 2px solid #c9b488;
+  border-radius: 12px;
+  box-shadow: 0 2px 5px rgba(120, 90, 40, 0.25);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.tile.sel .tile-inner {
+  border: 3px solid #7c5cff;
+  box-shadow: 0 0 0 3px rgba(124, 92, 255, 0.35), 0 2px 5px rgba(120, 90, 40, 0.25);
+}
+.tile-avatar {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6% 8% 18%;
+}
+.tile-avatar svg { width: 100%; height: 100%; }
+.tile-name {
+  position: absolute;
+  bottom: 3%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 800;
+  color: #6b4a2a;
+  letter-spacing: 1px;
+  text-shadow: 0 1px 0 #fff;
+}
+/* 小兵：更小文字 + 紧凑 */
+.tile-soldier .tile-avatar { padding: 8% 6% 22%; }
+.tile-soldier .tile-name { font-size: 10px; }
+/* 曹操：更大文字 */
+.tile-cao .tile-name { font-size: 16px; }
+.tile-guan .tile-name { font-size: 14px; }
+
+/* 方向箭头 */
+.dir-btn {
+  position: absolute;
+  z-index: 5;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #7c5cff;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(124, 92, 255, 0.5);
+  cursor: pointer;
+  text-align: center;
+  line-height: 1;
+}
+.dir-btn:active { transform: scale(0.9); }
+
+/* 无法移动的棋子点击抖动反馈（≤400ms 光敏安全） */
+.tile.shake .tile-inner {
+  animation: hrdShake 0.35s ease;
+}
+@keyframes hrdShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  50% { transform: translateX(4px); }
+  75% { transform: translateX(-2px); }
+}
+
+.game-hint {
+  text-align: center;
+  font-size: 13px;
+  color: #8ba1b6;
+  margin-top: 12px;
+  min-height: 20px;
+}
+
+/* ============ 结算页 ============ */
+.result-wrap {
+  padding: 26px 10px;
+  text-align: center;
+}
+.res-badge { font-size: 56px; }
+.res-title { font-size: 26px; font-weight: 800; color: #2b6cb0; margin: 8px 0 2px; }
+.res-level { font-size: 14px; color: #7a93ad; margin-bottom: 10px; }
+.res-stars { font-size: 34px; letter-spacing: 4px; margin: 8px 0 12px; }
+.res-stats { font-size: 16px; color: #2b3a4a; margin-bottom: 4px; }
+.res-stats b { color: #2b6cb0; }
+.res-ref { font-size: 12px; color: #9bb8d8; margin-bottom: 4px; }
+.res-best { font-size: 13px; color: #d98a2b; margin-bottom: 22px; }
+.res-btns { display: flex; justify-content: center; }
+.r-btn {
+  flex: 1;
+  max-width: 150px;
+  margin: 0 6px;
+  padding: 12px 0;
+  border-radius: 24px;
+  border: 1px solid #cfe2f5;
+  background: #fff;
+  color: #2b6cb0;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.r-btn.primary {
+  background: linear-gradient(180deg, #5db6ff, #3d9bf0);
+  border: none;
+  color: #fff;
+  box-shadow: 0 3px 8px rgba(61, 155, 240, 0.4);
+}
+.err { text-align: center; padding: 40px 0; color: #c0392b; }

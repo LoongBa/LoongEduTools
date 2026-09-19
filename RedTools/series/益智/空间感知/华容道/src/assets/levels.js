@@ -1,0 +1,2 @@
+/* 华容道关卡数据（构建期生成，勿手改）：4 关经典布局 + BFS 最少步数星级基准 */
+window.HRD = {"levels": [{"id": "jinzai", "name": "近在咫尺", "board": [".cc.", "mcch", "mggh", "zbby", "zbby"], "min": 114, "star3": 171, "star2": 285}, {"id": "bingfen", "name": "兵分三路", "board": ["mcch", "mcch", "zbby", "zggy", "b..b"], "min": 99, "star3": 148, "star2": 247}, {"id": "cengceng", "name": "层层设防", "board": ["ccmh", "ccmh", "zbby", "zggy", "b..b"], "min": 100, "star3": 150, "star2": 250}, {"id": "hengdao", "name": "横刀立马", "board": ["zccy", "zccy", "mggh", "mbbh", "b..b"], "min": 116, "star3": 174, "star2": 290}]};
