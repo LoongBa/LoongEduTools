@@ -52,6 +52,25 @@
   var listVisible = true;
 
   /* ---------- 本地存储 key ---------- */
+  /* ---------- 全局模式与册映射 ---------- */
+  var LOAD_MODE = (location.protocol === 'http:' || location.protocol === 'https:') ? 'http' : 'file';
+  var BOOK_PATH = {
+    '一年级_上册': { g: '一年级', v: '上册' }, '一年级_下册': { g: '一年级', v: '下册' },
+    '二年级_上册': { g: '二年级', v: '上册' }, '二年级_下册': { g: '二年级', v: '下册' },
+    '三年级_上册': { g: '三年级', v: '上册' }, '三年级_下册': { g: '三年级', v: '下册' },
+    '四年级_上册': { g: '四年级', v: '上册' }, '四年级_下册': { g: '四年级', v: '下册' },
+    '五年级_上册': { g: '五年级', v: '上册' }, '五年级_下册': { g: '五年级', v: '下册' },
+    '六年级_上册': { g: '六年级', v: '上册' },
+  };
+  var currentBookKey = null;   // http 模式当前册 key（file 模式为 null）
+  function qs(name) {
+    var m = new RegExp('[?&]' + name + '=([^&]*)').exec(location.search);
+    return m ? decodeURIComponent(m[1]) : null;
+  }
+  function currentBookPath() {
+    return BOOK_PATH[currentBookKey] || { g: '', v: '' };
+  }
+
   var LS_CORR_PREFIX = 'hotzone.corr.';
   var LS_LAST_KEY = 'hotzone.last.book';
 
@@ -317,15 +336,42 @@
     flashSaveStatus('已导出 ' + a.download);
   });
 
+  /* 已删除的热区：{ page: [track_index,...] }（删除信息不再丢失） */
+  function buildDeleted() {
+    var del = {};
+    unitPages.forEach(function (p) {
+      var list = (p.tracks || []).filter(function (t) { return t.deleted; });
+      if (list.length) { del[String(p.no)] = list.map(function (t) { return t.idx; }); }
+    });
+    return del;
+  }
+
+  /* AI 处理指引：修正哪里 → 如何重新编译打包 → 升版 → 更新时间 */
+  function buildAiInstructions(now) {
+    var bp = currentBookPath();
+    var fileName = exportFileName();
+    return {
+      task: '应用以下热区校正数据，重新构建对应点读单元',
+      data_file: fileName,
+      copy_to: 'F:\\_教材素材\\人教版（PEP）（主编：吴欣）\\' + (bp.g || '') + '\\' + (bp.v || '') + '\\' + fileName,
+      rebuild_cmd: 'python build_all.py --tool 英语点读 --units ' + currentUnit,
+      version_bump: 'patch（0.0.x → 0.0.x+1，热区微调类变更）',
+      updated_at: now,
+    };
+  }
+
   function buildExport() {
+    var now = new Date().toISOString();
     return {
       tool: 'hotzone-corrector',
       book: bookFileName,
       bookname: book.bookinfo ? book.bookinfo.bookname : '',
       unit_index: currentUnit,
       unit_title: units[currentUnit].title,
-      exported_at: new Date().toISOString(),
+      exported_at: now,
       pages: corr,
+      deleted: buildDeleted(),
+      ai_instructions: buildAiInstructions(now),
     };
   }
 
@@ -379,7 +425,12 @@
   /* ---------- 页面图 ---------- */
   function pageImageURL(pageObj) {
     var name = 'Page_' + pad3(pageObj.no) + '.png';
-    // 重绘优先，回退原图
+    // http 自动加载模式：直接引用素材库 URL（重绘优先，渲染层 error 时回退原图）
+    if (LOAD_MODE === 'http') {
+      var bp = currentBookPath();
+      return '/' + bp.g + '/' + bp.v + '/_重绘图片素材/' + name;
+    }
+    // file 模式：重绘优先，回退原图
     if (imgRedrawn[name]) { return URL.createObjectURL(imgRedrawn[name]); }
     if (imgOrig[name]) { return URL.createObjectURL(imgOrig[name]); }
     return null;
@@ -387,6 +438,10 @@
 
   function origImageURL(pageObj) {
     var name = 'Page_' + pad3(pageObj.no) + '.png';
+    if (LOAD_MODE === 'http') {
+      var bp = currentBookPath();
+      return '/' + bp.g + '/' + bp.v + '/_图片素材/' + name;
+    }
     if (imgOrig[name]) { return URL.createObjectURL(imgOrig[name]); }
     return null;
   }
@@ -413,7 +468,9 @@
       origImg.src = origUrl;
       origImg.alt = '原图 Page ' + pageObj.no;
       origImg.addEventListener('load', function () {
-        fitCanvasToViewport(origImg, canvasOrigEl, canvasOrigEl.parentElement);
+        fitCanvasToViewport(origImg, canvasOrigEl, canvasOrigEl.closest('.page-canvas-wrap'));
+        // 大图/布局延迟：容器高度可能首帧未就绪，稍后重试适配
+        setTimeout(function () { fitCanvasToViewport(origImg, canvasOrigEl, canvasOrigEl.closest('.page-canvas-wrap')); }, 200);
       });
       canvasOrigEl.appendChild(origImg);
     }
@@ -433,10 +490,20 @@
     img.src = url;
     img.alt = '重绘 Page ' + pageObj.no;
     img.addEventListener('load', function () {
-      fitCanvasToViewport(img, canvasEl, canvasEl.parentElement);
+      fitCanvasToViewport(img, canvasEl, canvasEl.closest('.page-canvas-wrap'));
       renderHotzones();
+      // 大图/布局延迟：容器高度可能首帧未就绪，稍后重试适配（否则热区定位会超视口）
+      setTimeout(function () {
+        fitCanvasToViewport(img, canvasEl, canvasEl.closest('.page-canvas-wrap'));
+        if (!canvasEl.querySelector('.hotzone')) { renderHotzones(); }
+      }, 200);
     });
     img.addEventListener('error', function () {
+      // http 模式：重绘缺失时回退原图
+      if (LOAD_MODE === 'http') {
+        var fb = origImageURL(pageObj);
+        if (fb && img.src !== fb) { img.src = fb; return; }
+      }
       canvasEl.textContent = '⚠ 图片加载失败';
       canvasEl.style.padding = '40px';
       canvasEl.style.color = '#888';
@@ -515,10 +582,12 @@
       h.addEventListener('pointerdown', function (e) {
         e.stopPropagation();
         e.preventDefault();
-        spot.setPointerCapture(e.pointerId);
+        try { spot.setPointerCapture(e.pointerId); } catch (err) { /* 合成事件可能无有效 pointerId */ }
         var dir = /handle-(\w+)/.exec(h.className)[1];
         var startX = e.clientX, startY = e.clientY;
-        var r = { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom };
+        // 实时读取当前校正坐标（避免闭包快照陈旧导致二次操作还原）
+        var cur = getTrackRect(pageObj, track);
+        var r = { left: cur.left, top: cur.top, right: cur.right, bottom: cur.bottom };
         var imgRect = canvasEl.querySelector('img').getBoundingClientRect();
         dragState = {
           type: 'resize', dir: dir, r: r,
@@ -532,10 +601,12 @@
     spot.addEventListener('pointerdown', function (e) {
       if (e.target.classList.contains('handle')) { return; }
       e.preventDefault();
-      spot.setPointerCapture(e.pointerId);
+      try { spot.setPointerCapture(e.pointerId); } catch (err) { /* 合成事件可能无有效 pointerId */ }
       var startX = e.clientX, startY = e.clientY;
       var moved = false;
-      var r = { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom };
+      // 实时读取当前校正坐标（避免闭包快照陈旧导致二次操作还原）
+      var cur = getTrackRect(pageObj, track);
+      var r = { left: cur.left, top: cur.top, right: cur.right, bottom: cur.bottom };
       var imgRect = canvasEl.querySelector('img').getBoundingClientRect();
 
       dragState = {
@@ -739,7 +810,7 @@
 
     stopPlayback();
     var audio = ensureAudio();
-    audio.src = URL.createObjectURL(file);
+    audio.src = LOAD_MODE === 'http' ? file : URL.createObjectURL(file);
     playingIdx = index;
     renderHotzones();
     renderTrackList();
@@ -873,13 +944,86 @@
     var img = canvasEl.querySelector('img');
     var origImg = canvasOrigEl.querySelector('img');
     if (img) {
-      fitCanvasToViewport(img, canvasEl, canvasEl.parentElement);
+      fitCanvasToViewport(img, canvasEl, canvasEl.closest('.page-canvas-wrap'));
       renderHotzones();
     }
     if (origImg) {
-      fitCanvasToViewport(origImg, canvasOrigEl, canvasOrigEl.parentElement);
+      fitCanvasToViewport(origImg, canvasOrigEl, canvasOrigEl.closest('.page-canvas-wrap'));
     }
   });
+
+  /* ---------- http 自动加载（仅 LOAD_MODE === 'http'） ---------- */
+  function fillBookSelect() {
+    var sel = $('sel-book');
+    if (!sel) { return; }
+    Object.keys(BOOK_PATH).forEach(function (k) {
+      var o = document.createElement('option');
+      o.value = k;
+      o.textContent = k.replace('_', ' ');
+      sel.appendChild(o);
+    });
+    if (currentBookKey) { sel.value = currentBookKey; }
+  }
+
+  function autoLoadHttp() {
+    var bk = qs('book') || '四年级_上册';
+    var unit = parseInt(qs('unit') || '0', 10) || 0;
+    var bp = BOOK_PATH[bk];
+    if (!bp) { homeStatus('✗ 未知册次: ' + bk); return; }
+    currentBookKey = bk;
+    fillBookSelect();
+
+    function loadAudioManifest() {
+      return fetch('/' + bp.g + '/' + bp.v + '/_hotzone_manifest.json')
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .catch(function () { return null; });
+    }
+
+    fetch('/' + bp.g + '/' + bp.v + '/book.json')
+      .then(function (r) {
+        if (!r.ok) { throw new Error('HTTP ' + r.status); }
+        return r.text();
+      })
+      .then(function (txt) {
+        book = JSON.parse(txt);
+        bookFileName = bk + '_book.json';
+        parseUnits();
+        $('book-info').textContent = '✓ 已自动加载 ' + bk + '（素材目录副本，与原数据断开）';
+        $('book-info').style.color = '#67c23a';
+        return loadAudioManifest();
+      })
+      .then(function (manifest) {
+        audioByPageIdx = {};
+        if (manifest && manifest.audio) {
+          Object.keys(manifest.audio).forEach(function (pno) {
+            Object.keys(manifest.audio[pno]).forEach(function (idx) {
+              audioByPageIdx[pno + '|' + idx] =
+                '/' + bp.g + '/' + bp.v + '/_音频素材/单句音频/' + manifest.audio[pno][idx];
+            });
+          });
+        }
+        var u = (unit >= 0 && unit < units.length) ? unit : 0;
+        $('sel-unit').value = String(u);
+        currentUnit = u;
+        expandUnitPages();
+        loadCorrFromLS();
+        currentPage = 0;
+        dirty = false;
+        showEditor();
+      })
+      .catch(function (err) {
+        homeStatus('✗ 自动加载失败: ' + err.message + '（请用 hotzone_serve.py 启动服务）');
+      });
+  }
+
+  // 册下拉切换（http 模式）：换册 = 重新加载对应副本
+  var bookSel = $('sel-book');
+  if (bookSel) {
+    bookSel.addEventListener('change', function () {
+      currentBookKey = bookSel.value;
+      location.href = location.pathname + '?book=' + encodeURIComponent(currentBookKey) + '&unit=0';
+    });
+  }
 
   /* ---------- 启动 ---------- */
   // 恢复上次进度提示
@@ -913,5 +1057,10 @@
   function homeStatus(msg) {
     var el = $('home-status');
     el.textContent = msg;
+  }
+
+  // 启动：http 模式自动加载（只需选年级/册/单元，无需手动选目录）；file 模式保留原手动流程
+  if (LOAD_MODE === 'http') {
+    autoLoadHttp();
   }
 })();

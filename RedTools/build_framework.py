@@ -49,6 +49,7 @@ class ToolConfig:
     book: Path | None = None         # book.json 路径
     img_dir: Path | None = None      # 页面图素材目录
     redrawn_img_dir: Path | None = None  # 重绘图目录（优先使用，无则回退 img_dir）
+    hotzone_dir: Path | None = None  # 热区校正文件目录（可选；构建时查找 热区校正_<单元标题>.json 覆盖 book.json 热区坐标）
     audio_dir: Path | None = None    # 单句音频素材目录
     vocab_dir: Path | None = None    # PEP 词汇表素材根目录（datasource='vocab' 时：F:\_教材素材\人教版（PEP）（主编：吴欣））
     chengyu_data: Path | None = None # 成语词库 json 路径（datasource='chengyu' 时默认 <系列>/_shared/成语词库/成语词库.json）
@@ -138,30 +139,93 @@ def load_book(path: Path) -> dict:
         return json.load(f)
 
 
-def build_unit_data(book: dict, unit_index: int, start: int, end: int) -> dict:
+def load_hotzone_corrections(cfg: ToolConfig, book: dict, unit_index: int) -> dict | None:
+    """按单元标题查找热区校正文件（hotzone_editor 导出）。
+
+    文件名约定：`热区校正_<bookaudio_v3[unit_index].title>.json`，如
+    `热区校正_Unit 1 Helping at home.json`（导出时可能把空格替换为下划线）。
+    返回原始内容（含 pages: {page: {track_index: {left,top,right,bottom}}}），
+    找不到或无配置时返回 None。
+    """
+    if not cfg.hotzone_dir:
+        return None
+    chapters = book.get("bookaudio_v3", [])
+    if unit_index >= len(chapters):
+        return None
+    title = chapters[unit_index].get("title", "")
+    if not title:
+        return None
+
+    def try_load(path: Path):
+        if not path.exists():
+            return None
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            n_pages = len(data.get("pages", {}))
+            n_tracks = sum(len(v) for v in data.get("pages", {}).values())
+            log(f"热区校正: {path.name}（{n_pages} 页 {n_tracks} 条）")
+            return data
+        except Exception as e:
+            log(f"WARN 热区校正文件解析失败: {path.name}: {e}")
+            return None
+
+    # 1) 精确候选：标题原样 / 空格→下划线 / 去空格
+    for variant in {title, title.strip(), title.replace(" ", "_"), title.replace(" ", "")}:
+        data = try_load(cfg.hotzone_dir / f"热区校正_{variant}.json")
+        if data is not None:
+            return data
+    # 2) 宽松扫描：归一化（去空格/下划线）后与标题一致
+    if cfg.hotzone_dir.exists():
+        norm = title.replace(" ", "").replace("_", "")
+        for f in cfg.hotzone_dir.glob("热区校正_*.json"):
+            stem = f.stem[len("热区校正_"):]
+            if stem.replace(" ", "").replace("_", "") == norm:
+                return try_load(f)
+    return None
+
+
+def build_unit_data(book: dict, unit_index: int, start: int, end: int,
+                    hotzone: dict | None = None) -> dict:
     chapters = book.get("bookaudio_v3", [])
     chapter = chapters[unit_index] if unit_index < len(chapters) else {}
     title = chapter.get("title", f"Unit {unit_index + 1}")
     subtitle = ""
     page_by_no = {p["page_no"]: p for p in book["bookpage"]}
+    hotzone_pages = (hotzone or {}).get("pages", {})
+    hotzone_deleted = (hotzone or {}).get("deleted", {})  # {page_no: [track_index,...]} 已删除热区
     pages = []
     for page_no in range(start, end):
         page = page_by_no.get(page_no)
         if not page:
             continue
         track_list = page.get("track_info") or []
+        deleted_idx = set(hotzone_deleted.get(str(page_no), []))
         page_tracks = []
         for t in track_list:
             ti = int(t.get("track_index", 0))
+            if ti in deleted_idx:
+                continue  # 热区校正中标记删除的条目，跳过
             audio_key = f"p{page_no:03d}_{ti:02d}"
+            # 热区校正覆盖（按 page + track_index 精确匹配，只覆盖校正过的条目）
+            corr = hotzone_pages.get(str(page_no), {}).get(str(ti))
+            if corr:
+                left = round(float(corr.get("left", t.get("track_left", 0))), 4)
+                top = round(float(corr.get("top", t.get("track_top", 0))), 4)
+                right = round(float(corr.get("right", t.get("track_right", 1))), 4)
+                bottom = round(float(corr.get("bottom", t.get("track_bottom", 1))), 4)
+            else:
+                left = round(float(t.get("track_left", 0)), 4)
+                top = round(float(t.get("track_top", 0)), 4)
+                right = round(float(t.get("track_right", 1)), 4)
+                bottom = round(float(t.get("track_bottom", 1)), 4)
             item = {
                 "text": t.get("track_text", ""),
                 "cn": t.get("track_genre", ""),
                 "audio": audio_key,
-                "left": round(float(t.get("track_left", 0)), 4),
-                "top": round(float(t.get("track_top", 0)), 4),
-                "right": round(float(t.get("track_right", 1)), 4),
-                "bottom": round(float(t.get("track_bottom", 1)), 4),
+                "left": left,
+                "top": top,
+                "right": right,
+                "bottom": bottom,
                 "duration": t.get("track_duration"),
                 "track_index": ti,
             }
@@ -690,7 +754,8 @@ def build_tool(cfg: ToolConfig, unit_index: int, pages: str | None = None,
         start, end = resolve_unit_pages(book, unit_index, pages)
         log(f"[{cfg.series}/{cfg.tool}] 单元 {unit_index} 页码范围: {start}..{end - 1}")
 
-        unit = build_unit_data(book, unit_index, start, end)
+        hotzone = load_hotzone_corrections(cfg, book, unit_index)
+        unit = build_unit_data(book, unit_index, start, end, hotzone)
         if not unit["pages"]:
             raise SystemExit("未提取到任何页面数据")
         for p in unit["pages"]:

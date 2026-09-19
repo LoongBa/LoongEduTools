@@ -18,8 +18,24 @@ minitool-zip-builder-1.6.0.skill
 __pycache__/
 *.py[cod]
 
+# 批量生图工具：API Key 配置与运行状态（含密钥，绝不入库）
+批量生图工具/keys.json
+批量生图工具/key_state.json
+批量生图工具/tasks/*/done.json
+
+# 重绘工具：生成物 / 素材 / 密钥不入库（源码与脚本入库）
+重绘工具/tasks/                     # 重绘任务输入输出（图片素材，体积大）
+重绘工具/key_state.json             # API Key 额度状态（含密钥线索）
+重绘工具/qa_reports/*.html          # 质检报告生成物（gen_qa_reports.py 重新生成）
+重绘工具/quality_data.json          # 自动质检生成物
+重绘工具/quality_report.html        # 自动质检报告生成物
+重绘工具/_shot_*.png                # 工具截图
+重绘工具/hotzone_editor/_shot_*.png
+
 # 临时 / 系统
 *.tmp
 *.bak
 Thumbs.db
 .DS_Store
+/dbg_*.png
+/shot-*.png

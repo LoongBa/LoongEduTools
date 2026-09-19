@@ -35,6 +35,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .btn-pass:hover{background:#4CAF50;color:#fff}
 .btn-pass.active{background:#4CAF50;color:#fff}
 .sbar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:2px solid #e0e0e0;padding:10px 20px;display:flex;align-items:center;gap:14px;z-index:200;box-shadow:0 -2px 8px rgba(0,0,0,.1)}
+.filter-bar{display:flex;align-items:center;gap:8px;background:#fff;border-bottom:1px solid #e0e0e0;padding:8px 16px;flex-wrap:wrap}
+.filter-bar .f-title{font-size:12px;color:#888}
+.filter-bar .fbtn.active{background:#1976D2;color:#fff;border-color:#1976D2}
+.panel-head{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.panel-head .ph-hint{font-size:11px;color:#999}
 .sbar .st{font-size:13px;color:#555}.sbar .st b{color:#1976D2}
 .sbar .acts{margin-left:auto;display:flex;gap:8px}
 .btn{padding:7px 14px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;transition:.2s}
@@ -62,14 +67,37 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .region-mark .rm-del{position:absolute;top:-18px;right:-8px;background:#999;color:#fff;width:16px;height:16px;border-radius:50%;font-size:10px;line-height:16px;text-align:center;cursor:pointer;display:none}
 .region-mark:hover .rm-del{display:block}
 .draw-hint{position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,.6);color:#fff;font-size:10px;padding:2px 6px;border-radius:3px;pointer-events:none}
+/* 全屏双图审核模式 */
+#reviewFull{position:fixed;inset:0;background:#1a1a1a;z-index:500;display:none;flex-direction:column;color:#eee}
+#reviewFull.show{display:flex}
+.rf-top{display:flex;align-items:center;gap:12px;padding:8px 16px;background:#2a2a2a;color:#fff;flex-wrap:wrap}
+.rf-top .rf-title{font-weight:600;font-size:14px}
+.rf-main{flex:1;display:flex;min-height:0;padding:10px}
+.rf-img-wrap{flex:1;position:relative;display:flex;align-items:center;justify-content:center;border:1px solid #444;margin:0 5px;background:#000;border-radius:6px;overflow:hidden}
+.rf-img-wrap img{max-width:100%;max-height:100%;object-fit:contain}
+.rf-label{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.65);color:#fff;font-size:12px;padding:2px 8px;border-radius:3px;z-index:2}
+.rf-side{width:320px;background:#2a2a2a;padding:14px;display:flex;flex-direction:column;gap:10px;overflow:auto;border-left:1px solid #444}
+.rf-side .ck-list label{color:#ddd}
+.rf-reason{width:100%;padding:6px 8px;border:1px solid #555;border-radius:4px;background:#333;color:#eee;font-size:12px;resize:vertical;min-height:70px}
+.rf-actions{display:flex;gap:8px}
+.rf-nav{display:flex;align-items:center;gap:10px;padding:8px 16px;background:#2a2a2a;justify-content:center;border-top:1px solid #444}
+.rf-nav .rf-idx{font-size:12px;color:#bbb}
+.rf-meta{font-size:11px;color:#999}
 </style>
 </head>
 <body>
 <div class="header">
   <h1>📚 重绘质检 — TITLE_PLACEHOLDER</h1>
-  <p>左=原图 | 右=重绘 → 勾选问题 → ✅通过 / ❌需重绘 → 📋导出</p>
+  <p>左=原图 | 右=重绘 → 勾选问题 → ✅同意过审 / ❌需重绘 → 📋导出</p>
 </div>
 <div class="unit-bar" id="unitBar"></div>
+<div class="filter-bar" id="filterBar">
+  <span class="f-title">筛选:</span>
+  <button class="btn btn-o fbtn active" data-f="all">全部</button>
+  <button class="btn btn-o fbtn" data-f="pending">⬜ 待审</button>
+  <button class="btn btn-o fbtn" data-f="fail">❌ 需重绘</button>
+  <button class="btn btn-o fbtn" data-f="pass">✅ 已过审</button>
+</div>
 <div id="panels"></div>
 <div class="sbar"><div class="st" id="sbarStats"></div>
   <div class="acts">
@@ -88,6 +116,34 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <button class="btn btn-p" onclick="copyExport()">📋 复制</button>
   </div>
 </div>
+<!-- 全屏双图审核模式 -->
+<div id="reviewFull">
+  <div class="rf-top">
+    <button class="btn btn-o" onclick="closeReview()">← 返回列表</button>
+    <span class="rf-title" id="rfTitle">Page_000</span>
+    <span id="rfBadge"></span>
+    <span class="rf-meta" id="rfMeta"></span>
+  </div>
+  <div class="rf-main">
+    <div class="rf-img-wrap"><span class="rf-label">📄 原图</span><img id="rfOrig" alt="原图"></div>
+    <div class="rf-img-wrap"><span class="rf-label">🎨 重绘</span><img id="rfRedr" alt="重绘"></div>
+  </div>
+  <div class="rf-side">
+    <div id="rfStatus"></div>
+    <div class="ck-list" id="rfIssues"></div>
+    <textarea class="rf-reason" id="rfReason" placeholder="补充说明（需重绘原因）…"></textarea>
+    <div class="rf-actions">
+      <button class="btn btn-g" onclick="rfPass()">✅ 同意过审</button>
+      <button class="btn btn-w" onclick="rfFail()">❌ 需重绘</button>
+    </div>
+    <div style="font-size:11px;color:#888">提示：←/→ 键盘翻页</div>
+  </div>
+  <div class="rf-nav">
+    <button class="btn btn-o" onclick="rfPrev()">◀ 上一页</button>
+    <span class="rf-idx" id="rfIdx">1/1</span>
+    <button class="btn btn-o" onclick="rfNext()">下一页 ▶</button>
+  </div>
+</div>
 <script>
 const DATA=PLACEHOLDER_DATA;
 const GRADE_VOL=Object.keys(DATA)[0];
@@ -102,7 +158,15 @@ function loadState(){try{return JSON.parse(localStorage.getItem(LS_KEY))||{}}cat
 function saveState(s){localStorage.setItem(LS_KEY,JSON.stringify(s))}
 let S=loadState();
 let drawMode=null; // null | {pageKey, imgEl}
+let filterState='all'; // all | pending | fail | pass
+let currentUnit=0;    // 当前激活单元（render 后保持，不跳回第一个）
+let reviewList=[];    // 全屏审核顺序（有重绘的页）
+let reviewIdx=-1;     // 当前全屏审核页索引
 function pk(p){return GRADE_VOL+"_p"+p}
+function unitLabel(page){
+  for(const u of BOOK.units){if(page>=u.start&&page<u.end)return u.label;}
+  return "";
+}
 
 // ===== RENDER =====
 function render(){
@@ -114,7 +178,7 @@ function render(){
     const fail=ups.filter(p=>S[pk(p.page)]?.pass===false).length;
     const pending=ups.length-done;
     const tab=document.createElement("div");
-    tab.className="unit-tab"+(i===0?" active":"");
+    tab.className="unit-tab"+(i===currentUnit?" active":"");
     // Color indicators: green for passed, red for failed, gray for pending
     let colorBadge="";
     if(fail>0){
@@ -127,31 +191,46 @@ function render(){
     tab.innerHTML=`${u.label} (${done}/${ups.length})${colorBadge}`;
     tab.onclick=()=>showUnit(i);ub.appendChild(tab);
     const panel=document.createElement("div");
-    panel.className="panel"+(i===0?" active":"");panel.id="p"+i;
+    panel.className="panel"+(i===currentUnit?" active":"");panel.id="p"+i;
     if(!ups.length)panel.innerHTML=`<div style="color:#999;text-align:center;padding:20px">无重绘页面</div>`;
-    else ups.forEach(pg=>panel.appendChild(makeCard(pg,u.label)));
+    else{
+      panel.appendChild(makeBatchBar(i,ups.length));
+      ups.forEach(pg=>panel.appendChild(makeCard(pg,u.label)));
+    }
     pn.appendChild(panel);
-  });refreshStats();
+  });refreshStats();applyFilter();
+}
+
+function makeBatchBar(i,n){
+  const d=document.createElement("div");
+  d.className="panel-head";
+  d.innerHTML=`<button class="btn btn-g" onclick="batchPass(${i})">✅ 本单元全部过审</button>
+  <button class="btn btn-w" onclick="batchFail(${i})">❌ 本单元全部需重绘</button>
+  <span class="ph-hint">共 ${n} 页 · 批量操作有确认弹窗</span>`;
+  return d;
 }
 
 function makeCard(pg,ul){
   const k=pk(pg.page),st=S[k]||{},row=document.createElement("div");
   row.className="page-row";row.id="row_"+k;
+  row.dataset.state=st.pass===true?'pass':st.pass===false?'fail':'pending';
   // Images with region marks container
   let imgs=`<div class="page-imgs" id="imgs_${k}">`;
   if(pg.has_redr){
-    imgs+=`<img src="file:///${pg.orig}" onclick="zoomPair('${k}')" title="原图" data-role="orig">`;
-    imgs+=`<img src="file:///${pg.redr}" onclick="zoomPair('${k}')" title="重绘" data-role="redr">`;
+    imgs+=`<img src="file:///${pg.orig}" onclick="openReviewByPage(${pg.page})" title="点击进入全屏审核" data-role="orig">`;
+    imgs+=`<img src="file:///${pg.redr}" onclick="openReviewByPage(${pg.page})" title="点击进入全屏审核" data-role="redr">`;
     imgs+=`<div class="draw-hint" id="drawhint_${k}">双击原图开始画框</div>`;
   } else {
-    imgs+=`<img src="file:///${pg.orig}" onclick="zoomPair('${k}')" title="原图">`;
+    imgs+=`<img src="file:///${pg.orig}" onclick="openReviewByPage(${pg.page})" title="原图">`;
     imgs+=`<div style="width:240px;height:240px;display:flex;align-items:center;justify-content:center;color:#ccc;border:1px dashed #ddd;border-radius:4px">无重绘</div>`;
   }
   imgs+=`</div>`;
-  // Badge
-  let badge=st.pass===true?`<span class="badge badge-pass">✅ 通过</span>`:st.pass===false?`<span class="badge badge-fail">❌ 需重绘</span>`:`<span class="badge badge-none">⬜ 待审</span>`;
-  // Pass button
-  let passBtn=`<button class="btn-pass${st.pass===true?' active':''}" onclick="markPass('${k}')">✅ 通过</button>`;
+  // Badge = 当前状态（只读指示）
+  let badge=st.pass===true?`<span class="badge badge-pass">✅ 已过审</span>`:st.pass===false?`<span class="badge badge-fail">❌ 需重绘</span>`:`<span class="badge badge-none">⬜ 待审</span>`;
+  // Pass button = 操作（同意过审）；已过审则禁用防重复
+  let passBtn=st.pass===true
+    ?`<button class="btn-pass active" disabled title="该页已过审">✅ 已过审</button>`
+    :`<button class="btn-pass" onclick="markPass('${k}')">✅ 同意过审</button>`;
   // Checkboxes
   let cks=ISSUES.map(it=>`<label><input type="checkbox" data-k="${k}" data-i="${it.k}" ${(st.issues||[]).includes(it.k)?"checked":""}>${it.l}</label>`).join("");
   // Region marks display
@@ -164,7 +243,7 @@ function makeCard(pg,ul){
   }
   row.innerHTML=`${imgs}<div class="page-info">
     <div class="page-title">Page_${String(pg.page).padStart(3,'0')} · ${ul}</div>
-    <div class="page-meta">原 ${pg.orig_kb}KB → 重绘 ${pg.redr_kb}KB (${pg.ratio}x)</div>
+    <div class="page-meta">${metaText(pg)}</div>
     ${badge}${passBtn}
     <div class="ck-list">${cks}</div>
     <textarea class="ck-reason" data-k="${k}" placeholder="补充说明…">${st.reason||""}</textarea>
@@ -214,8 +293,7 @@ function makeCard(pg,ul){
     // Checkboxes
     row.querySelectorAll("input[type=checkbox]").forEach(cb=>{cb.addEventListener("change",()=>{const key=cb.dataset.k,iss=cb.dataset.i;if(!S[key])S[key]={issues:[],reason:"",pass:undefined,marks:[]};if(!S[key].issues)S[key].issues=[];if(cb.checked){if(!S[key].issues.includes(iss))S[key].issues.push(iss)}else{S[key].issues=S[key].issues.filter(x=>x!==iss)}// Record history if pass status was true (was passing, now has issues)
     if(S[key].pass===true){
-      if(!S[key].history)S[key].history=[];
-      S[key].history.push({pass:true,issues:S[key].issues,reason:S[key].reason||"",marks:S[key].marks||[],timestamp:new Date().toISOString()});
+      pushHistory(key,{pass:true,issues:S[key].issues,reason:S[key].reason||"",marks:S[key].marks||[],timestamp:new Date().toISOString()});
     }
     autoVerdict(key);saveState(S);render()})});
     // Textarea
@@ -269,12 +347,29 @@ function makeCard(pg,ul){
 }
 
 // ===== PASS BUTTON =====
+// 历史记录去重：与最后一条内容相同则覆盖时间戳，不追加（可覆盖，不能重复）
+function pushHistory(k,entry){
+  if(!S[k])return;
+  if(!S[k].history)S[k].history=[];
+  const last=S[k].history[S[k].history.length-1];
+  const same=last
+    &&last.pass===entry.pass
+    &&JSON.stringify(last.issues||[])===JSON.stringify(entry.issues||[])
+    &&(last.reason||"")===(entry.reason||"")
+    &&JSON.stringify(last.marks||[])===JSON.stringify(entry.marks||[]);
+  if(same){last.timestamp=entry.timestamp;return;}
+  S[k].history.push(entry);
+}
 function markPass(k){
   if(!S[k])S[k]={issues:[],reason:"",pass:undefined,marks:[]};
-  // Record history before changing
-  if(S[k].pass!==undefined){
-    if(!S[k].history)S[k].history=[];
-    S[k].history.push({
+  if(S[k].pass===true){
+    alert("该页已是过审状态，无需重复操作。");
+    return;
+  }
+  if(!confirm("确认同意该页过审？勾选的问题与说明将被清空。"))return;
+  // 仅状态变化时记录变更历史（记录变化前状态）
+  if(S[k].pass!==undefined&&S[k].pass!==true){
+    pushHistory(k,{
       pass:S[k].pass,
       issues:S[k].issues||[],
       reason:S[k].reason||"",
@@ -327,6 +422,7 @@ function zoomPair(pageKey){
 }
 
 function showUnit(i){
+  currentUnit=i;
   document.querySelectorAll(".unit-tab").forEach((t,j)=>t.classList.toggle("active",j===i));
   document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
   const e=document.getElementById("p"+i);if(e)e.classList.add("active");
@@ -336,6 +432,30 @@ function refreshStats(){
   BOOK.pages.forEach(p=>{const st=S[pk(p.page)];if(!st||st.pass===undefined)pending++;else if(st.pass)pass++;else fail++});
   document.getElementById("sbarStats").innerHTML=`<b>${BOOK.grade}${BOOK.vol}</b> — ✅${pass}通过 ❌${fail}需重绘 ⬜${pending}待审 共${t}页`;
 }
+function metaText(pg){
+  let s=`原 ${pg.orig_kb}KB → 重绘 ${pg.redr_kb}KB (${pg.ratio}x)`;
+  if(pg.ssim!==null&&pg.ssim!==undefined)s+=` · 相似度 ${(pg.ssim*100).toFixed(0)}%${pg.ssim>0.85?' ⚠️疑似未重绘':''}`;
+  return s;
+}
+function applyFilter(){
+  document.querySelectorAll(".page-row").forEach(row=>{
+    row.style.display=(filterState==='all'||row.dataset.state===filterState)?'':'none';
+  });
+}
+function batchPass(i){
+  const u=BOOK.units[i];
+  const ups=BOOK.pages.filter(p=>p.page>=u.start&&p.page<u.end);
+  if(!confirm(`确认将「${u.label}」全部 ${ups.length} 页标记为过审？`))return;
+  ups.forEach(pg=>{const k=pk(pg.page);if(!S[k])S[k]={issues:[],reason:"",pass:undefined,marks:[]};S[k].pass=true;S[k].issues=[];S[k].reviewed_at=new Date().toISOString();});
+  saveState(S);render();
+}
+function batchFail(i){
+  const u=BOOK.units[i];
+  const ups=BOOK.pages.filter(p=>p.page>=u.start&&p.page<u.end);
+  if(!confirm(`确认将「${u.label}」全部 ${ups.length} 页标记为需重绘？`))return;
+  ups.forEach(pg=>{const k=pk(pg.page);if(!S[k])S[k]={issues:[],reason:"",pass:undefined,marks:[]};if(S[k].pass===true)pushHistory(k,{pass:true,issues:S[k].issues||[],reason:S[k].reason||"",marks:S[k].marks||[],timestamp:new Date().toISOString()});S[k].pass=false;S[k].reviewed_at=new Date().toISOString();});
+  saveState(S);render();
+}
 function showExport(){
   const rev={};
   BOOK.pages.forEach(p=>{
@@ -344,15 +464,17 @@ function showExport(){
     const hasIssues=st.issues&&st.issues.length>0;
     const hasMarks=st.marks&&st.marks.length>0;
     if(st.pass===false||hasIssues||hasMarks||st.pass===true){
-      rev[String(p.page)]={
+      // 已通过页导出干净最终态：不携带历史审批不通过信息（无需再清理 json）
+      const item={
         pass:st.pass,
         issues:st.issues||[],
-        reason:st.reason||"",
+        reason:st.pass===true?"":(st.reason||""),
         marks:st.marks||[],
         labels:(st.issues||[]).map(ik=>ISSUES.find(x=>x.k===ik)?.l||ik),
         reviewed_at:st.reviewed_at||new Date().toISOString(),
-        history:st.history||[]
+        history:st.pass===true?[]:dedupeHistory(st.history||[])
       };
+      rev[String(p.page)]=item;
     }
   });
   const obj={book:GRADE_VOL,timestamp:new Date().toISOString(),total:BOOK.pages.length,flagged:Object.keys(rev).length,reviews:rev};
@@ -361,9 +483,99 @@ function showExport(){
 }
 function closeExport(){document.getElementById("modalBg").style.display="none";document.getElementById("modal").style.display="none"}
 function copyExport(){const ta=document.getElementById("exportText");ta.select();ta.setSelectionRange(0,99999);document.execCommand("copy");if(navigator.clipboard)navigator.clipboard.writeText(ta.value).catch(()=>{});alert("✅ 已复制！")}
+// 历史记录最终去重（导出兜底：无论 localStorage 怎么脏，导出必干净）
+function dedupeHistory(hist){
+  const out=[];
+  (hist||[]).forEach(e=>{
+    const last=out[out.length-1];
+    if(last&&last.pass===e.pass&&JSON.stringify(last.issues||[])===JSON.stringify(e.issues||[])
+       &&(last.reason||"")===(e.reason||"")&&JSON.stringify(last.marks||[])===JSON.stringify(e.marks||[])){
+      last.timestamp=e.timestamp||last.timestamp;
+    }else{out.push(e);}
+  });
+  return out;
+}
 function resetAll(){if(!confirm("重置当前册所有审核记录？"))return;BOOK.pages.forEach(p=>{delete S[pk(p.page)]});saveState(S);render()}
+
+// ===== 全屏双图审核模式 =====
+function reviewOrder(){reviewList=BOOK.pages.filter(p=>p.has_redr)}
+function openReview(idx){
+  if(!reviewList.length)return;
+  reviewIdx=(idx+reviewList.length)%reviewList.length;
+  renderReview();
+  document.getElementById("reviewFull").classList.add("show");
+  document.body.style.overflow="hidden";
+}
+function closeReview(){
+  document.getElementById("reviewFull").classList.remove("show");
+  document.body.style.overflow="";
+  render();
+}
+function openReviewByPage(page){
+  const i=reviewList.findIndex(p=>p.page===page);
+  if(i>=0)openReview(i);
+}
+function renderReview(){
+  const pg=reviewList[reviewIdx],k=pk(pg.page),st=S[k]||{};
+  document.getElementById("rfTitle").textContent=`Page_${String(pg.page).padStart(3,'0')} · ${unitLabel(pg.page)}`;
+  document.getElementById("rfOrig").src="file:///"+pg.orig;
+  document.getElementById("rfRedr").src="file:///"+pg.redr;
+  document.getElementById("rfIdx").textContent=`${reviewIdx+1}/${reviewList.length}`;
+  document.getElementById("rfMeta").textContent=metaText(pg);
+  const b=st.pass===true?'<span class="badge badge-pass">✅ 已过审</span>':st.pass===false?'<span class="badge badge-fail">❌ 需重绘</span>':'<span class="badge badge-none">⬜ 待审</span>';
+  document.getElementById("rfBadge").innerHTML=b;
+  const curK=k;
+  document.getElementById("rfIssues").innerHTML=ISSUES.map(it=>`<label><input type="checkbox" data-i="${it.k}" ${(st.issues||[]).includes(it.k)?"checked":""}>${it.l}</label>`).join("");
+  document.getElementById("rfIssues").querySelectorAll("input").forEach(cb=>cb.addEventListener("change",()=>{
+    const key=curK,iss=cb.dataset.i;
+    if(!S[key])S[key]={issues:[],reason:"",pass:undefined,marks:[]};
+    if(!S[key].issues)S[key].issues=[];
+    if(cb.checked){if(!S[key].issues.includes(iss))S[key].issues.push(iss)}
+    else{S[key].issues=S[key].issues.filter(x=>x!==iss)}
+    if(S[key].pass===true)pushHistory(key,{pass:true,issues:S[key].issues,reason:S[key].reason||"",marks:S[key].marks||[],timestamp:new Date().toISOString()});
+    autoVerdict(key);saveState(S);renderReview();
+  }));
+  const ta=document.getElementById("rfReason");
+  ta.value=st.reason||"";
+  ta.oninput=()=>{
+    const key=curK;
+    if(!S[key])S[key]={issues:[],reason:"",pass:undefined,marks:[]};
+    S[key].reason=ta.value;saveState(S);
+  };
+}
+function rfPass(){
+  const pg=reviewList[reviewIdx],k=pk(pg.page);
+  if(!S[k])S[k]={issues:[],reason:"",pass:undefined,marks:[]};
+  if(S[k].pass===true){alert("该页已是过审状态，无需重复操作。");return;}
+  if(!confirm("确认同意该页过审？勾选的问题与说明将被清空。"))return;
+  if(S[k].pass!==undefined&&S[k].pass!==true)pushHistory(k,{pass:S[k].pass,issues:S[k].issues||[],reason:S[k].reason||"",marks:S[k].marks||[],timestamp:new Date().toISOString()});
+  S[k].pass=true;S[k].issues=[];S[k].reviewed_at=new Date().toISOString();
+  saveState(S);renderReview();
+}
+function rfFail(){
+  const pg=reviewList[reviewIdx],k=pk(pg.page);
+  if(!S[k])S[k]={issues:[],reason:"",pass:undefined,marks:[]};
+  if(S[k].pass===true)pushHistory(k,{pass:true,issues:S[k].issues||[],reason:S[k].reason||"",marks:S[k].marks||[],timestamp:new Date().toISOString()});
+  S[k].pass=false;S[k].reviewed_at=new Date().toISOString();
+  saveState(S);renderReview();
+}
+function rfPrev(){openReview(reviewIdx-1)}
+function rfNext(){openReview(reviewIdx+1)}
+// 全屏时 ←/→ 翻页
+document.addEventListener("keydown",e=>{
+  const rf=document.getElementById("reviewFull");
+  if(!rf.classList.contains("show"))return;
+  if(e.key==="ArrowLeft")rfPrev();
+  else if(e.key==="ArrowRight")rfNext();
+});
 const IR=PLACEHOLDER_REVIEWS;
 if(IR&&Object.keys(IR).length>0){Object.entries(IR).forEach(([ps,rv])=>{const k=pk(parseInt(ps));if(!S[k]||S[k].pass===undefined)S[k]={issues:rv.issues||[],reason:rv.reason||"",pass:rv.pass!==undefined?rv.pass:false,marks:rv.marks||[],history:rv.history||[]}});saveState(S)}
+// 状态筛选栏
+document.getElementById("filterBar").addEventListener("click",e=>{
+  const b=e.target.closest(".fbtn");if(!b)return;
+  document.querySelectorAll(".fbtn").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active");filterState=b.dataset.f;applyFilter();
+});
 function autoVerdict(k){
   if(!S[k])return;
   const hasIssues=S[k].issues&&S[k].issues.length>0;
@@ -373,8 +585,7 @@ function autoVerdict(k){
     if(S[k].pass!==false){
       // Record history if changing from pass to fail
       if(S[k].pass===true){
-        if(!S[k].history)S[k].history=[];
-        S[k].history.push({pass:true,issues:S[k].issues||[],reason:S[k].reason||"",marks:S[k].marks||[],timestamp:new Date().toISOString()});
+        pushHistory(k,{pass:true,issues:S[k].issues||[],reason:S[k].reason||"",marks:S[k].marks||[],timestamp:new Date().toISOString()});
       }
       S[k].pass=false;
     }
@@ -382,6 +593,9 @@ function autoVerdict(k){
   S[k].reviewed_at=new Date().toISOString();
 }
 render();
+// 默认进入全屏双图审核模式
+reviewOrder();
+if(reviewList.length)openReview(0);
 </script>
 </body>
 </html>

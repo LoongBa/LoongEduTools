@@ -1,12 +1,227 @@
 {
   "四年级_上册": {
-    "9": {
-      "pass": false,
-      "issues": ["blurry"],
-      "reason": "顶部的字糊了：\"Read and tick\"；原图下划线的地方是填空，重绘的时候应该保持空白，不该填空。先备份一份，重绘效果实在不行用人工抠图兜底。右上角 Xiao Lin 的签名糊了。",
+    "2": {
+      "pass": true,
+      "issues": [],
+      "reason": "",
       "marks": [],
-      "labels": ["文字模糊不清"],
-      "reviewed_at": "2026-09-19T00:00:00.000Z",
+      "labels": [],
+      "reviewed_at": "2026-09-19T21:58:39.673Z",
+      "history": []
+    },
+    "3": {
+      "pass": true,
+      "issues": [],
+      "reason": "",
+      "marks": [],
+      "labels": [],
+      "reviewed_at": "2026-09-19T21:58:40.526Z",
+      "history": []
+    },
+    "4": {
+      "pass": true,
+      "issues": [],
+      "reason": "",
+      "marks": [],
+      "labels": [],
+      "reviewed_at": "2026-09-19T21:58:41.354Z",
+      "history": []
+    },
+    "5": {
+      "pass": true,
+      "issues": [],
+      "reason": "",
+      "marks": [],
+      "labels": [],
+      "reviewed_at": "2026-09-19T21:58:43.015Z",
+      "history": []
+    },
+    "6": {
+      "pass": true,
+      "issues": [],
+      "reason": "",
+      "marks": [],
+      "labels": [],
+      "reviewed_at": "2026-09-19T21:58:43.883Z",
+      "history": []
+    },
+    "7": {
+      "pass": true,
+      "issues": [],
+      "reason": "",
+      "marks": [],
+      "labels": [],
+      "reviewed_at": "2026-09-19T21:58:44.831Z",
+      "history": []
+    },
+    "8": {
+      "pass": true,
+      "issues": [],
+      "reason": "",
+      "marks": [],
+      "labels": [],
+      "reviewed_at": "2026-09-19T21:58:46.441Z",
+      "history": []
+    },
+    "9": {
+      "pass": true,
+      "issues": [],
+      "reason": "",
+      "marks": [],
+      "labels": [],
+      "reviewed_at": "2026-09-19T22:40:00.000Z",
+      "history": []
+    },
+    "10": {
+      "pass": true,
+      "issues": [],
+      "reason": "",
+      "marks": [],
+      "labels": [],
+      "reviewed_at": "2026-09-19T21:58:22.567Z",
+      "history": []
+    },
+    "11": {
+      "pass": true,
+      "issues": [],
+      "reason": "",
+      "marks": [],
+      "labels": [],
+      "reviewed_at": "2026-09-19T21:58:23.574Z",
+      "history": []
+    },
+    "12": {
+      "pass": true,
+      "issues": [],
+      "reason": "",
+      "marks": [],
+      "labels": [],
+      "reviewed_at": "2026-09-19T21:58:34.606Z",
+      "history": []
+    },
+    "13": {
+      "pass": true,
+      "issues": [],
+      "reason": "",
+      "marks": [],
+      "labels": [],
+      "reviewed_at": "2026-09-19T21:58:33.492Z",
+      "history": []
+    },
+    "14": {
+      "pass": true,
+      "issues": [],
+      "reason": "",
+      "marks": [],
+      "labels": [],
+      "reviewed_at": "2026-09-19T22:29:31.759Z",
+      "history": []
+    },
+    "15": {
+      "pass": true,
+      "issues": [],
+      "reason": "",
+      "marks": [],
+      "labels": [],
+      "reviewed_at": "2026-09-19T22:29:44.511Z",
+      "history": []
+    },
+    "16": {
+      "pass": true,
+      "issues": [],
+      "reason": "",
+      "marks": [],
+      "labels": [],
+      "reviewed_at": "2026-09-19T22:30:32.477Z",
+      "history": []
+    },
+    "17": {
+      "pass": true,
+      "issues": [],
+      "reason": "",
+      "marks": [],
+      "labels": [],
+      "reviewed_at": "2026-09-19T22:30:46.601Z",
+      "history": []
+    },
+    "18": {
+      "pass": true,
+      "issues": [],
+      "reason": "",
+      "marks": [],
+      "labels": [],
+      "reviewed_at": "2026-09-19T22:31:24.053Z",
+      "history": []
+    },
+    "19": {
+      "pass": true,
+      "issues": [],
+      "reason": "",
+      "marks": [],
+      "labels": [],
+      "reviewed_at": "2026-09-19T22:31:44.838Z",
+      "history": []
+    },
+    "20": {
+      "pass": true,
+      "issues": [],
+      "reason": "",
+      "marks": [],
+      "labels": [],
+      "reviewed_at": "2026-09-19T22:32:05.540Z",
+      "history": []
+    },
+    "21": {
+      "pass": false,
+      "issues": [
+        "blurry"
+      ],
+      "reason": "",
+      "marks": [],
+      "labels": [
+        "文字模糊不清"
+      ],
+      "reviewed_at": "2026-09-19T22:32:24.893Z",
+      "history": []
+    },
+    "22": {
+      "pass": true,
+      "issues": [],
+      "reason": "",
+      "marks": [],
+      "labels": [],
+      "reviewed_at": "2026-09-19T22:32:53.935Z",
+      "history": []
+    },
+    "23": {
+      "pass": false,
+      "issues": [
+        "blurry"
+      ],
+      "reason": "",
+      "marks": [],
+      "labels": [
+        "文字模糊不清"
+      ],
+      "reviewed_at": "2026-09-19T22:33:19.712Z",
+      "history": []
+    },
+    "24": {
+      "pass": true,
+      "issues": [],
+      "reason": "",
+      "marks": [],
+      "labels": [],
+      "reviewed_at": "2026-09-19T22:33:40.282Z",
+      "history": []
+    },
+    "25": {
+      "pass": true,
+      "issues": [],
+      "reason": "",
+      "marks": [],
+      "labels": [],
+      "reviewed_at": "2026-09-19T22:34:02.353Z",
       "history": []
     }
   }

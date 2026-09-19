@@ -33,6 +33,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .unit-links a{padding:3px 8px;border-radius:4px;text-decoration:none;font-size:11px;font-weight:500;transition:.2s}
 .link-qa{background:#E3F2FD;color:#1565C0}.link-qa:hover{background:#BBDEFB}
 .link-hz{background:#FFF3E0;color:#E65100}.link-hz:hover{background:#FFE0B2}
+.link-test{background:#E8F5E9;color:#2E7D32}.link-test:hover{background:#C8E6C9}
 .unit-status{font-size:11px;padding:2px 6px;border-radius:3px}
 .status-ok{background:#E8F5E9;color:#2E7D32}
 .status-fail{background:#FFEBEE;color:#C62828}
@@ -73,6 +74,7 @@ function getReview(key){
 }
 
 function getUnitStatus(reviews,unitStart,unitEnd){
+  // 用页号范围内的审核状态估算单元状态（真实页范围以各册 bookaudio_v3 为准）
   let pass=0,fail=0,pending=0;
   for(let p=unitStart;p<unitEnd;p++){
     const k="p"+p;
@@ -87,6 +89,18 @@ function getUnitStatus(reviews,unitStart,unitEnd){
 let totalPass=0,totalFail=0,totalPending=0,totalPages=0;
 const summaryEl=document.getElementById("summary");
 const gridEl=document.getElementById("bookGrid");
+
+/* 单元标题 → 点读 zip 序号：Unit 1→1、Revision→复习、Appendix 2→附录2 */
+function testLink(unitTitle){
+  const low=(unitTitle||"").toLowerCase();
+  if(low.startsWith("revision")){return "../../publish/学科/新英语四上点读复习单元_解压测试版/index.html";}
+  if(low.startsWith("appendix")){
+    const m=/appendix\s*(\d+)/i.exec(unitTitle);
+    return `../../publish/学科/新英语四上点读附录${m?m[1]:""}单元_解压测试版/index.html`;
+  }
+  const m=/unit\s*(\d+)/i.exec(unitTitle);
+  return `../../publish/学科/新英语四上点读${m?m[1]:"1"}单元_解压测试版/index.html`;
+}
 
 BOOKS.forEach(b=>{
   const st=getReview(b.key);
@@ -137,6 +151,7 @@ BOOKS.forEach(b=>{
       <div class="unit-links">
         <a class="link-qa" href="${b.file}" target="_blank">📋 质检</a>
         <a class="link-hz" href="../hotzone_editor/index.html?book=${b.key}&unit=${i}" target="_blank">🔧 热区</a>
+        <a class="link-test" href="${testLink(u)}" target="_blank">🧪 测试</a>
       </div>
     </li>`;
   });

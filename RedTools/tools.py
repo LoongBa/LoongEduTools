@@ -17,10 +17,11 @@ TOOLS: dict[str, ToolConfig] = {
     "英语点读": ToolConfig(
         series="学科",
         tool="英语点读",
-        version="1.1",
+        version="1.2.0",
         book=ROOT.parent / "Downloader" / "Diandu" / "data" / "1212001401255_英语（PEP）_四年级_上册.json",
         img_dir=Path(r"F:\_教材素材\人教版（PEP）（主编：吴欣）\四年级\上册\_图片素材"),
         redrawn_img_dir=Path(r"F:\_教材素材\人教版（PEP）（主编：吴欣）\四年级\上册\_重绘图片素材"),
+        hotzone_dir=Path(r"F:\_教材素材\人教版（PEP）（主编：吴欣）\四年级\上册"),
         audio_dir=Path(r"F:\_教材素材\人教版（PEP）（主编：吴欣）\四年级\上册\_音频素材\单句音频"),
         app_name="新英语四上点读1单元",
         app_name_template="新英语四上点读{unit_no}单元",
@@ -80,7 +81,7 @@ TOOLS: dict[str, ToolConfig] = {
     "成语接龙": ToolConfig(
         series="学科",
         tool="成语接龙",
-        version="1.0",
+        version="1.1",
         datasource="chengyu",  # 成语词库工具：复制 src/ + 注入共享词库 data.js
         app_name="成语接龙",
         default_unit=0,
@@ -384,5 +385,7 @@ TOOLS: dict[str, ToolConfig] = {
         app_name="涂色游戏",
         default_unit=0,
     ),
-    # TODO: 其他学科系列工具（单词闪卡等）待立项
+    # 已登记工具清单（2026-09-20）：学科 英语点读/数学口算/24点/打字背单词/单词闪卡/乘法口诀练习/看图猜成语(在建)/成语接龙(在建)；
+    # 益智 26 款；经典游戏 2048/俄罗斯方块/扫雷/贪吃蛇；扩展 认识时间/认识钱币/涂色游戏。
+    # 新工具立项：建 series/<系列>/<工具>/src/ 后在此登记 ToolConfig（series/tool/version/book/素材目录/app_name）。
 }
