@@ -169,18 +169,22 @@ def load_hotzone_corrections(cfg: ToolConfig, book: dict, unit_index: int) -> di
             log(f"WARN 热区校正文件解析失败: {path.name}: {e}")
             return None
 
-    # 1) 精确候选：标题原样 / 空格→下划线 / 去空格
-    for variant in {title, title.strip(), title.replace(" ", "_"), title.replace(" ", "")}:
-        data = try_load(cfg.hotzone_dir / f"热区校正_{variant}.json")
-        if data is not None:
-            return data
-    # 2) 宽松扫描：归一化（去空格/下划线）后与标题一致
-    if cfg.hotzone_dir.exists():
-        norm = title.replace(" ", "").replace("_", "")
-        for f in cfg.hotzone_dir.glob("热区校正_*.json"):
-            stem = f.stem[len("热区校正_"):]
-            if stem.replace(" ", "").replace("_", "") == norm:
-                return try_load(f)
+    # 1) 精确候选：标题原样 / 空格→下划线 / 去空格（扫两处：hotzone_dir + hotzone_dir/_重绘图片素材）
+    search_dirs = [cfg.hotzone_dir]
+    if cfg.hotzone_dir and (cfg.hotzone_dir / "_重绘图片素材").exists():
+        search_dirs.append(cfg.hotzone_dir / "_重绘图片素材")
+    for base in search_dirs:
+        for variant in {title, title.strip(), title.replace(" ", "_"), title.replace(" ", "")}:
+            data = try_load(base / f"热区校正_{variant}.json")
+            if data is not None:
+                return data
+        # 2) 宽松扫描：归一化（去空格/下划线）后与标题一致
+        if base.exists():
+            norm = title.replace(" ", "").replace("_", "")
+            for f in base.glob("热区校正_*.json"):
+                stem = f.stem[len("热区校正_"):]
+                if stem.replace(" ", "").replace("_", "") == norm:
+                    return try_load(f)
     return None
 
 

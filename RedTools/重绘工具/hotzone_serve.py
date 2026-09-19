@@ -55,7 +55,8 @@ BOOK_MAP = {k: (bid, g, v, tool) for k, (bid, g, v, tool) in [(b[0], (b[1], b[2]
 
 
 def prepare_book_copy(key: str, force: bool = False) -> Path | None:
-    """把 book.json 复制到素材目录（副本），返回副本路径；无数据时返回 None"""
+    """把 book.json 复制到素材目录的重绘目录（_重绘图片素材/book.json），
+    与重绘图对齐存放、与原数据断开；编辑器只读写这份副本。"""
     if key not in BOOK_MAP:
         sys.exit(f"❌ 未知册次: {key}，可用: {list(BOOK_MAP)}")
     bid, grade, vol, _tool = BOOK_MAP[key]
@@ -63,7 +64,7 @@ def prepare_book_copy(key: str, force: bool = False) -> Path | None:
     if not src.exists():
         print(f"⚠️  原始 book.json 不存在（跳过副本复制）: {src.name}")
         return None
-    dst = MAT_ROOT / grade / vol / "book.json"
+    dst = MAT_ROOT / grade / vol / "_重绘图片素材" / "book.json"
     if dst.exists() and not force:
         # 比较内容：相同则跳过，不同则提示
         if dst.read_bytes() == src.read_bytes():
@@ -74,12 +75,12 @@ def prepare_book_copy(key: str, force: bool = False) -> Path | None:
         return dst
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src, dst)
-    print(f"✅ book.json 副本已就绪: {dst}（{src.stat().st_size // 1024} KB，与原始数据断开）")
+    print(f"✅ book.json 副本已就绪: {dst}（{src.stat().st_size // 1024} KB，与重绘对齐存放、与原数据断开）")
     return dst
 
 
 def build_manifest(grade: str, vol: str) -> Path:
-    """扫描单句音频目录，生成 <素材目录>/_hotzone_manifest.json 供编辑器自动加载"""
+    """扫描单句音频目录，生成重绘目录下 _hotzone_manifest.json 供编辑器自动加载"""
     audio_dir = MAT_ROOT / grade / vol / "_音频素材" / "单句音频"
     audio: dict[str, dict[str, str]] = {}
     if audio_dir.exists():
@@ -88,9 +89,9 @@ def build_manifest(grade: str, vol: str) -> Path:
             if m:
                 audio.setdefault(str(int(m.group(1))), {})[str(int(m.group(2)))] = f.name
     manifest = {"grade": grade, "vol": vol, "audio": audio}
-    out = MAT_ROOT / grade / vol / "_hotzone_manifest.json"
+    out = MAT_ROOT / grade / vol / "_重绘图片素材" / "_hotzone_manifest.json"
     out.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
-    print(f"✅ 音频清单已生成: {out.name}（{len(audio)} 页）")
+    print(f"✅ 音频清单已生成: {out}（{len(audio)} 页）")
     return out
 
 

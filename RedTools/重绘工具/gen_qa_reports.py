@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""生成每册独立质检 HTML，嵌入 qa_reviews.json 中的已有审核记录"""
+"""生成每册独立质检 HTML，嵌入 qa_reviews.json 中的已有审核记录
+
+用法:
+  python gen_qa_reports.py                  # 全部 11 册
+  python gen_qa_reports.py --book 四年级_上册   # 仅指定册（SSIM 计算较快）
+"""
+import argparse
 import json
 from pathlib import Path
 
@@ -86,6 +92,15 @@ if REVIEWS.exists():
 else:
     all_reviews = {}
     REVIEWS.write_text("{}", encoding="utf-8")
+
+ap = argparse.ArgumentParser()
+ap.add_argument("--book", help="仅生成指定册（如 四年级_上册），默认全部")
+args = ap.parse_args()
+book_filter = args.book
+books = [b for b in BOOKS if (not book_filter or f"{b[1]}_{b[2]}" == book_filter)]
+if not books:
+    sys.exit(f"❌ 未知册: {book_filter}，可用: {[f'{b[1]}_{b[2]}' for b in BOOKS]}")
+BOOKS = books
 
 for bookid, grade, vol in BOOKS:
     units = load_units(grade, vol)

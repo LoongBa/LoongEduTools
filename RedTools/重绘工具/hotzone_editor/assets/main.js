@@ -974,12 +974,12 @@
     fillBookSelect();
 
     function loadAudioManifest() {
-      return fetch('/' + bp.g + '/' + bp.v + '/_hotzone_manifest.json')
+      return fetch('/' + bp.g + '/' + bp.v + '/_重绘图片素材/_hotzone_manifest.json')
         .then(function (r) { return r.ok ? r.json() : null; })
         .catch(function () { return null; });
     }
 
-    fetch('/' + bp.g + '/' + bp.v + '/book.json')
+    fetch('/' + bp.g + '/' + bp.v + '/_重绘图片素材/book.json')
       .then(function (r) {
         if (!r.ok) { throw new Error('HTTP ' + r.status); }
         return r.text();
