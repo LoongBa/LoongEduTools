@@ -29,7 +29,7 @@ TOOLS: dict[str, ToolConfig] = {
     "数学口算": ToolConfig(
         series="学科",
         tool="数学口算",
-        version="1.0",
+        version="1.1",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="数学口算",
         default_unit=0,
@@ -265,7 +265,7 @@ TOOLS: dict[str, ToolConfig] = {
         series="益智",
         subgroup="空间感知",   # 子系列目录：series/益智/空间感知/华容道/
         tool="华容道",
-        version="1.0",
+        version="1.1",        # v1.1：角色头像升级为 AI 生成（SenseNova U1.5 + 抠图透明 WebP）
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="华容道",
         default_unit=0,
