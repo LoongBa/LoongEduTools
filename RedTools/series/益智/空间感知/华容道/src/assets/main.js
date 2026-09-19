@@ -311,7 +311,18 @@
       tile.style.width = (w * 25) + '%';
       tile.style.height = (h * 20) + '%';
       tile.dataset.id = id;
-      var avatar = CHARACTERS[meta.key] ? CHARACTERS[meta.key]() : '';
+      // 头像：优先 AI 绘制 WebP（透明底），加载失败自动降级 SVG（无内联事件，符合 CSP）
+      var img = el('img', 'tile-img');
+      img.src = './assets/faces/' + meta.key + '.webp';
+      img.alt = meta.name;
+      img.addEventListener('error', function () {
+        var svg = (CHARACTERS[meta.key]) ? CHARACTERS[meta.key]() : '';
+        this.style.display = 'none';
+        var holder = el('div', 'tile-svg-fallback');
+        holder.innerHTML = svg;
+        this.parentNode.appendChild(holder);
+      });
+      var avatar = img.outerHTML;
       tile.innerHTML = '<div class="tile-inner"><div class="tile-avatar">' + avatar + '</div>' +
         '<div class="tile-name">' + meta.name + '</div></div>';
       boardEl.appendChild(tile);
