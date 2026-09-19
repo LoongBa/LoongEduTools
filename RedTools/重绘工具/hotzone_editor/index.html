@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>热区校正工具</title>
+  <link rel="stylesheet" href="./assets/style.css" />
+</head>
+<body>
+  <!-- ================= 首页：加载数据 ================= -->
+  <section id="home" class="screen home-screen">
+    <div class="home-card">
+      <h1 class="home-title">📐 热区校正工具</h1>
+      <p class="home-sub">加载 book.json + 素材目录 → 拖动/缩放热区 → 保存校正</p>
+
+      <div class="home-form">
+        <div class="form-row">
+          <label class="form-label">① book.json</label>
+          <input id="file-book" type="file" accept=".json" class="form-file" />
+          <div id="book-info" class="file-info"></div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">② 重绘图目录</label>
+          <input id="dir-redrawn" type="file" webkitdirectory class="form-file" />
+          <div class="file-info">选 <code>_重绘图片素材/</code>（优先用；可留空回退原图）</div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">③ 原图目录</label>
+          <input id="dir-orig" type="file" webkitdirectory class="form-file" />
+          <div class="file-info">选 <code>_图片素材/</code>（book.json 无图时回退；②③至少一个）</div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">④ 音频目录</label>
+          <input id="dir-audio" type="file" webkitdirectory class="form-file" />
+          <div class="file-info">选 <code>_音频素材/单句音频/</code>（可选；缺则只显示不发声）</div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">单元</label>
+          <select id="sel-unit" class="form-select" disabled>
+            <option>（请先加载 book.json）</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="home-actions">
+        <button id="btn-enter" class="btn btn-primary" disabled>进入校正 →</button>
+        <button id="btn-resume" class="btn btn-ghost" hidden>继续上次进度</button>
+      </div>
+      <div id="home-status" class="home-status"></div>
+    </div>
+  </section>
+
+  <!-- ================= 内容页：点读 + 热区编辑 ================= -->
+  <section id="editor" class="screen editor-screen" hidden>
+    <header class="editor-header">
+      <button id="btn-back" class="btn btn-ghost btn-sm">‹ 返回</button>
+      <div class="editor-title" id="editor-title">—</div>
+      <div class="editor-header-right">
+        <span id="save-status" class="save-status"></span>
+        <button id="btn-export" class="btn btn-ghost btn-sm">导出校正</button>
+        <button id="btn-save" class="btn btn-primary btn-sm">💾 保存</button>
+      </div>
+    </header>
+
+    <div class="editor-body">
+      <!-- 左侧：页面 + 热区 -->
+      <div class="editor-left">
+        <div class="page-toolbar">
+          <button id="p-first" class="pager-btn" title="封面">⏮</button>
+          <button id="p-prev" class="pager-btn" title="上一页">‹</button>
+          <span id="p-info" class="pager-info">—</span>
+          <button id="p-next" class="pager-btn" title="下一页">›</button>
+          <button id="p-last" class="pager-btn" title="末页">⏭</button>
+          <span class="toolbar-sep"></span>
+          <button id="mode-tap" class="mode-btn is-active">点读</button>
+          <button id="mode-seq" class="mode-btn">顺序</button>
+          <button id="btn-list-toggle" class="mode-btn" title="显示/隐藏句子列表">📋 列表</button>
+        </div>
+
+        <div class="page-canvas-wrap">
+          <div class="compare-container">
+            <div class="compare-panel">
+              <div class="compare-label">📄 原图</div>
+              <div id="page-canvas-orig" class="page-canvas canvas-orig">
+                <!-- 原图由 JS 注入 -->
+              </div>
+            </div>
+            <div class="compare-panel">
+              <div class="compare-label">🎨 重绘（编辑热区）</div>
+              <div id="page-canvas" class="page-canvas">
+                <!-- 重绘图 + 热区由 JS 注入 -->
+              </div>
+            </div>
+          </div>
+          <div class="canvas-hint" id="canvas-hint">
+            拖热区移动 · 拖 8 个手柄缩放 · 点列表/热区选中并播放
+          </div>
+        </div>
+      </div>
+
+      <!-- 右侧：句子列表 -->
+      <div class="editor-right" id="editor-right">
+        <div class="list-header">
+          <span>本页句子</span>
+          <span id="list-count" class="list-count">0 条</span>
+        </div>
+        <div id="track-list" class="track-list"></div>
+        <div class="coords-panel" id="coords-panel" hidden>
+          <div class="coords-title">选中热区坐标（归一化 0-1）</div>
+          <div class="coords-grid">
+            <label>左 <input id="c-left" type="number" step="0.001" min="0" max="1" /></label>
+            <label>上 <input id="c-top" type="number" step="0.001" min="0" max="1" /></label>
+            <label>右 <input id="c-right" type="number" step="0.001" min="0" max="1" /></label>
+            <label>下 <input id="c-bottom" type="number" step="0.001" min="0" max="1" /></label>
+          </div>
+          <div class="coords-actions">
+            <button id="c-reset" class="btn btn-ghost btn-xs">还原</button>
+            <button id="c-del" class="btn btn-danger btn-xs">删除</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script src="./assets/main.js"></script>
+</body>
+</html>

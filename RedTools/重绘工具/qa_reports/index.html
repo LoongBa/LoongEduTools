@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>重绘质检汇总</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f5f5f5;color:#333}
+.header{background:linear-gradient(135deg,#1976D2,#42A5F5);color:#fff;padding:30px 20px;text-align:center}
+.header h1{font-size:24px;margin-bottom:8px}
+.header p{font-size:13px;opacity:.85}
+.container{max-width:1200px;margin:0 auto;padding:20px}
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.stat{background:#fff;border-radius:8px;padding:20px;text-align:center;box-shadow:0 2px 4px rgba(0,0,0,.08)}
+.stat .num{font-size:32px;font-weight:700;color:#1976D2}
+.stat .label{font-size:12px;color:#888;margin-top:4px}
+.book-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.book-card{background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 4px rgba(0,0,0,.08);transition:.2s}
+.book-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.15);transform:translateY(-2px)}
+.book-header{padding:16px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center}
+.book-title{font-weight:600;font-size:16px}
+.book-badge{padding:4px 10px;border-radius:12px;font-size:12px;font-weight:500}
+.badge-done{background:#E8F5E9;color:#2E7D32}
+.badge-partial{background:#FFF3E0;color:#E65100}
+.badge-todo{background:#F5F5F5;color:#999}
+.book-body{padding:16px}
+.unit-list{list-style:none}
+.unit-list li{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f5f5f5;font-size:13px}
+.unit-list li:last-child{border-bottom:none}
+.unit-name{flex:1}
+.unit-links{display:flex;gap:6px}
+.unit-links a{padding:3px 8px;border-radius:4px;text-decoration:none;font-size:11px;font-weight:500;transition:.2s}
+.link-qa{background:#E3F2FD;color:#1565C0}.link-qa:hover{background:#BBDEFB}
+.link-hz{background:#FFF3E0;color:#E65100}.link-hz:hover{background:#FFE0B2}
+.unit-status{font-size:11px;padding:2px 6px;border-radius:3px}
+.status-ok{background:#E8F5E9;color:#2E7D32}
+.status-fail{background:#FFEBEE;color:#C62828}
+.status-pending{background:#F5F5F5;color:#999}
+.footer{text-align:center;padding:20px;color:#999;font-size:12px}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>📚 重绘质检汇总</h1>
+  <p>828 张重绘图 | 11 册 | 点击进入各册质检 / 热区校正</p>
+</div>
+<div class="container">
+  <div class="summary" id="summary"></div>
+  <div class="book-grid" id="bookGrid"></div>
+</div>
+<div class="footer">
+  <p>质检报告数据保存在浏览器 localStorage | 导出 JSON 发给 AI 处理</p>
+</div>
+
+<script>
+const BOOKS=[
+  {key:"一年级_上册",file:"一年级_上册.html",grade:"一年级",vol:"上册",hz:"1s",pages:52,units:["Unit 1 Hello!","Unit 2 My first class","Unit 3 Look, listen and learn","Unit 4 Ready for school","Unit 5 People around me","Revision A robot show","Appendix 1 Songs","Appendix 2 Listening","Appendix 3 Words","Appendix 4 Expressions"]},
+  {key:"一年级_下册",file:"一年级_下册.html",grade:"一年级",vol:"下册",hz:"1x",pages:51,units:["Unit 1 Nice boys and girls","Unit 2 Wash, brush, clean!","Unit 3 Eat well","Unit 4 My pet","Unit 5 We are special!","Revision We are great!","Appendix 1 Songs","Appendix 2 Listening","Appendix 3 Words","Appendix 4 Expressions"]},
+  {key:"二年级_上册",file:"二年级_上册.html",grade:"二年级",vol:"上册",hz:"2s",pages:51,units:["Unit 1 I can help!","Unit 2 Good morning","Unit 3 My day","Unit 4 My home","Unit 5 My friends","Revision Let's make a card","Appendix 1 Songs","Appendix 2 Listening","Appendix 3 Words","Appendix 4 Expressions"]},
+  {key:"二年级_下册",file:"二年级_下册.html",grade:"二年级",vol:"下册",hz:"2x",pages:52,units:["Unit 1 Put on my coat!","Unit 2 Play safely","Unit 3 I can do it!","Unit 4 Let's design a park!","Unit 5 Let's play together!","Revision Summer camp","Appendix 1 Songs","Appendix 2 Listening","Appendix 3 Words","Appendix 4 Expressions"]},
+  {key:"三年级_上册",file:"三年级_上册.html",grade:"三年级",vol:"上册",hz:"3s",pages:90,units:["Unit 1 Hello!","Unit 2 Colours","Unit 3 Look at me","Unit 4 We love animals","Unit 5 Let's eat","Unit 6 Happy birthday","Revision","Appendix 1 Songs","Appendix 2 Listening","Appendix 3 Words","Appendix 4 Expressions","Appendix 5 Pronunciation","Appendix 6 TPR"]},
+  {key:"三年级_下册",file:"三年级_下册.html",grade:"三年级",vol:"下册",hz:"3x",pages:89,units:["Unit 1 Meeting new people","Unit 2 My words and actions","Unit 3 Tools and senses","Unit 4 Healthy food","Unit 5 Old things","Unit 6 Numbers in life","Revision Going to a school fair","Appendix 1 Songs","Appendix 2 Words","Appendix 3 Vocabulary","Appendix 4 Expressions","Appendix 5 Pronunciation"]},
+  {key:"四年级_上册",file:"四年级_上册.html",grade:"四年级",vol:"上册",hz:"4s",pages:86,units:["Unit 1 Helping at home","Unit 2 My friends","Unit 3 Places we live in","Unit 4 Helping in the community","Unit 5 The weather and us","Unit 6 Changes in seasons","Revision","Appendix 1 Songs","Appendix 2 Listening","Appendix 3 Words","Appendix 4 Expressions"]},
+  {key:"四年级_下册",file:"四年级_下册.html",grade:"四年级",vol:"下册",hz:"4x",pages:88,units:["Unit 1 My school","Unit 2 What time is it?","Unit 3 Weather","Unit 4 At the farm","Unit 5 My clothes","Unit 6 Shopping","Revision","Appendix 1 Songs","Appendix 2 Listening","Appendix 3 Words","Appendix 4 Expressions","Appendix 5 Pronunciation"]},
+  {key:"五年级_上册",file:"五年级_上册.html",grade:"五年级",vol:"上册",hz:"5s",pages:87,units:["Unit 1 What's he like?","Unit 2 My week","Unit 3 What would you like?","Unit 4 What can you do?","Unit 5 There is a big bed","Unit 6 In a nature park","Revision","Appendix 1 Songs","Appendix 2 Listening","Appendix 3 Words","Appendix 4 Expressions"]},
+  {key:"五年级_下册",file:"五年级_下册.html",grade:"五年级",vol:"下册",hz:"5x",pages:91,units:["Unit 1 Following the rules","Unit 2 Our community","Unit 3 Life in different seasons","Unit 4 My hometown","Unit 5 Travelling around","Unit 6 Making a travel plan","Revision Travelling in China","Appendix 1 Songs","Appendix 2 Words","Appendix 3 Vocabulary","Appendix 4 Expressions","Appendix 5 Pronunciation"]},
+  {key:"六年级_上册",file:"六年级_上册.html",grade:"六年级",vol:"上册",hz:"6s",pages:91,units:["Unit 1 How can I get there?","Unit 2 Ways to go to school","Unit 3 My weekend plan","Unit 4 I have a pen pal","Unit 5 What does he do?","Unit 6 How do you feel?","Revision","Appendix 1 Songs","Appendix 2 Listening","Appendix 3 Words","Appendix 4 Expressions","Appendix 5 Pronunciation"]},
+];
+
+function getReview(key){
+  try{return JSON.parse(localStorage.getItem("redtools_qa_"+key))||{}}catch(e){return{}}
+}
+
+function getUnitStatus(reviews,unitStart,unitEnd){
+  let pass=0,fail=0,pending=0;
+  for(let p=unitStart;p<unitEnd;p++){
+    const k="p"+p;
+    const st=reviews[k];
+    if(!st||st.pass===undefined)pending++;
+    else if(st.pass)pass++;
+    else fail++;
+  }
+  return{pass,fail,pending,total:unitEnd-unitStart};
+}
+
+let totalPass=0,totalFail=0,totalPending=0,totalPages=0;
+const summaryEl=document.getElementById("summary");
+const gridEl=document.getElementById("bookGrid");
+
+BOOKS.forEach(b=>{
+  const st=getReview(b.key);
+  let pass=0,fail=0,pending=0;
+  // Estimate pages from units (rough)
+  const p=b.pages;
+  Object.values(st).forEach(v=>{
+    if(v.pass===true)pass++;
+    else if(v.pass===false)fail++;
+    else pending++;
+  });
+  // If no reviews, all pending
+  if(pass+fail+pending===0){pending=p}
+  totalPass+=pass;totalFail+=fail;totalPending+=pending;totalPages+=p;
+
+  const card=document.createElement("div");
+  card.className="book-card";
+  const allDone=pending===0&&pass+fail>0;
+  const hasIssues=fail>0;
+  const badgeClass=allDone?(hasIssues?"badge-partial":"badge-done"):"badge-todo";
+  const badgeText=allDone?(hasIssues?`${fail} 需重绘`:"✅ 全部通过"):`${pass}/${p} 已审`;
+
+  let unitHtml="";
+  b.units.forEach((u,i)=>{
+    // Check unit status from reviews
+    let unitPass=0,unitFail=0,unitPending=0;
+    // Simple estimation: divide pages evenly among units
+    const pagesPerUnit=Math.ceil(b.pages/b.units.length);
+    const unitStart=i*pagesPerUnit;
+    const unitEnd=Math.min((i+1)*pagesPerUnit,b.pages);
+    const unitSt=getUnitStatus(st,unitStart,unitEnd);
+    unitPass=unitSt.pass;unitFail=unitSt.fail;unitPending=unitSt.pending;
+    
+    // Unit status badge
+    let unitBadge="";
+    if(unitFail>0){
+      unitBadge=`<span class="unit-status status-fail">${unitFail}❌</span>`;
+    }else if(unitPending>0&&unitPass>0){
+      unitBadge=`<span class="unit-status status-pending">${unitPending}待审</span>`;
+    }else if(unitPending>0&&unitPass===0){
+      unitBadge=`<span class="unit-status status-pending">待审</span>`;
+    }else if(unitPass>0&&unitFail===0&&unitPending===0){
+      unitBadge=`<span class="unit-status status-ok">✓</span>`;
+    }
+    
+    unitHtml+=`<li>
+      <span class="unit-name">${u} ${unitBadge}</span>
+      <div class="unit-links">
+        <a class="link-qa" href="${b.file}" target="_blank">📋 质检</a>
+        <a class="link-hz" href="../hotzone_editor/index.html?book=${b.key}&unit=${i}" target="_blank">🔧 热区</a>
+      </div>
+    </li>`;
+  });
+
+  card.innerHTML=`
+    <div class="book-header">
+      <span class="book-title">${b.grade}${b.vol}</span>
+      <span class="book-badge ${badgeClass}">${badgeText}</span>
+    </div>
+    <div class="book-body">
+      <ul class="unit-list">${unitHtml}</ul>
+    </div>`;
+  gridEl.appendChild(card);
+});
+
+summaryEl.innerHTML=`
+  <div class="stat"><div class="num">${BOOKS.length}</div><div class="label">教材册数</div></div>
+  <div class="stat"><div class="num">${totalPages}</div><div class="label">总页数</div></div>
+  <div class="stat"><div class="num" style="color:#4CAF50">${totalPass}</div><div class="label">✅ 通过</div></div>
+  <div class="stat"><div class="num" style="color:#F44336">${totalFail}</div><div class="label">❌ 需重绘</div></div>`;
+</script>
+</body>
+</html>

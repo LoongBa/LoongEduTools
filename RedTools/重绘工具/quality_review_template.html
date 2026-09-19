@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>重绘质检 — TITLE_PLACEHOLDER</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f5f5f5;color:#333;padding-bottom:60px}
+.header{background:linear-gradient(135deg,#1976D2,#42A5F5);color:#fff;padding:20px;text-align:center}
+.header h1{font-size:20px}.header p{font-size:12px;opacity:.85;margin-top:4px}
+.unit-bar{display:flex;flex-wrap:wrap;background:#fff;border-bottom:2px solid #e0e0e0;padding:0 12px;position:sticky;top:0;z-index:100}
+.unit-tab{padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:2px solid transparent;transition:.2s;white-space:nowrap}
+.unit-tab:hover{background:#f0f0f0}
+.unit-tab.active{border-bottom-color:#FF9800;color:#E65100;font-weight:600}
+.unit-tab .cnt{font-size:11px;padding:1px 5px;border-radius:8px;margin-left:4px}
+.cnt-ok{background:#E8F5E9;color:#2E7D32}.cnt-bad{background:#FFEBEE;color:#C62828}
+.panel{display:none;padding:16px;max-width:1400px;margin:0 auto}.panel.active{display:block}
+.page-row{display:flex;gap:10px;margin-bottom:14px;background:#fff;border-radius:8px;padding:12px;box-shadow:0 1px 3px rgba(0,0,0,.08);align-items:flex-start}
+.page-imgs{display:flex;gap:4px;flex-shrink:0;position:relative}
+.page-imgs img{height:240px;object-fit:contain;border:1px solid #e0e0e0;border-radius:4px;background:#fafafa;cursor:pointer;transition:.15s}
+.page-imgs img:hover{box-shadow:0 0 0 2px #1976D2}
+.page-info{flex:1;min-width:180px}
+.page-title{font-weight:600;font-size:14px;margin-bottom:4px}
+.page-meta{font-size:11px;color:#888;margin-bottom:6px}
+.badge{display:inline-block;padding:3px 8px;border-radius:4px;font-size:12px;font-weight:500;margin-bottom:6px}
+.badge-pass{background:#E8F5E9;color:#2E7D32}
+.badge-fail{background:#FFEBEE;color:#C62828}
+.badge-none{background:#F5F5F5;color:#999}
+.ck-list{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:6px}
+.ck-list label{display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer}
+.ck-list input[type=checkbox]{width:14px;height:14px;accent-color:#1976D2}
+.ck-reason{width:100%;margin-top:6px;padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:12px;resize:vertical;min-height:30px}
+.btn-pass{padding:8px 18px;border:2px solid #4CAF50;background:#fff;color:#4CAF50;border-radius:6px;cursor:pointer;font-size:14px;font-weight:600;transition:.2s;margin-top:8px}
+.btn-pass:hover{background:#4CAF50;color:#fff}
+.btn-pass.active{background:#4CAF50;color:#fff}
+.sbar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:2px solid #e0e0e0;padding:10px 20px;display:flex;align-items:center;gap:14px;z-index:200;box-shadow:0 -2px 8px rgba(0,0,0,.1)}
+.sbar .st{font-size:13px;color:#555}.sbar .st b{color:#1976D2}
+.sbar .acts{margin-left:auto;display:flex;gap:8px}
+.btn{padding:7px 14px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;transition:.2s}
+.btn-p{background:#1976D2;color:#fff}.btn-p:hover{background:#1565C0}
+.btn-w{background:#FF9800;color:#fff}.btn-w:hover{background:#F57C00}
+.btn-o{background:#fff;border:1px solid #ddd;color:#333}.btn-o:hover{background:#f5f5f5}
+.btn-g{background:#4CAF50;color:#fff}.btn-g:hover{background:#388E3C}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:250;display:none}
+.modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:700px;max-height:85vh;background:#fff;border:2px solid #1976D2;border-radius:12px;padding:20px;z-index:300;display:none;overflow:auto}
+.modal h3{margin-bottom:8px;font-size:16px}.modal p{font-size:12px;color:#888;margin-bottom:10px}
+.modal textarea{width:100%;height:350px;font-family:monospace;font-size:11px;padding:10px;border:1px solid #ddd;border-radius:6px}
+.modal .foot{margin-top:10px;display:flex;justify-content:flex-end;gap:8px}
+/* Zoom overlay */
+.zoom-overlay{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:999;display:flex;align-items:center;justify-content:center;gap:20px;cursor:pointer}
+.zoom-overlay img{max-height:90vh;max-width:45vw;object-fit:contain;border:2px solid #fff;border-radius:4px}
+.zoom-overlay .z-label{position:absolute;top:16px;color:#fff;font-size:16px;font-weight:600;text-shadow:0 2px 4px rgba(0,0,0,.5)}
+.zoom-overlay .z-left{left:calc(25vw - 60px)}
+.zoom-overlay .z-right{right:calc(25vw - 60px)}
+.zoom-overlay .z-close{position:absolute;top:16px;right:20px;color:#fff;font-size:28px;cursor:pointer}
+/* Region marks */
+.region-marks{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
+.region-mark{position:absolute;border:2px solid #F44336;background:rgba(244,67,54,.15);pointer-events:auto;cursor:pointer}
+.region-mark .rm-label{position:absolute;top:-18px;left:0;background:#F44336;color:#fff;font-size:10px;padding:1px 5px;border-radius:3px;white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis}
+.region-mark .rm-note{position:absolute;top:2px;left:2px;right:2px;background:rgba(244,67,54,.85);color:#fff;font-size:9px;padding:1px 3px;border-radius:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+.region-mark .rm-del{position:absolute;top:-18px;right:-8px;background:#999;color:#fff;width:16px;height:16px;border-radius:50%;font-size:10px;line-height:16px;text-align:center;cursor:pointer;display:none}
+.region-mark:hover .rm-del{display:block}
+.draw-hint{position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,.6);color:#fff;font-size:10px;padding:2px 6px;border-radius:3px;pointer-events:none}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>📚 重绘质检 — TITLE_PLACEHOLDER</h1>
+  <p>左=原图 | 右=重绘 → 勾选问题 → ✅通过 / ❌需重绘 → 📋导出</p>
+</div>
+<div class="unit-bar" id="unitBar"></div>
+<div id="panels"></div>
+<div class="sbar"><div class="st" id="sbarStats"></div>
+  <div class="acts">
+    <button class="btn btn-o" onclick="resetAll()">🗑 重置</button>
+    <button class="btn btn-w" onclick="showExport()">📋 导出结论</button>
+  </div>
+</div>
+<div class="modal-bg" id="modalBg" onclick="closeExport()"></div>
+<div class="modal" id="modal">
+  <span style="position:absolute;top:10px;right:14px;font-size:18px;cursor:pointer;color:#999" onclick="closeExport()">✕</span>
+  <h3>📋 质检结论</h3>
+  <p>复制此 JSON 发送给 AI，AI 会据此更新 qa_reviews.json 并重新生成报告。</p>
+  <textarea id="exportText" readonly></textarea>
+  <div class="foot">
+    <button class="btn btn-o" onclick="closeExport()">取消</button>
+    <button class="btn btn-p" onclick="copyExport()">📋 复制</button>
+  </div>
+</div>
+<script>
+const DATA=PLACEHOLDER_DATA;
+const GRADE_VOL=Object.keys(DATA)[0];
+const BOOK=DATA[GRADE_VOL];
+const LS_KEY="redtools_qa_"+GRADE_VOL;
+const ISSUES=[
+  {k:"similar",l:"整图过于相似（未重绘）"},{k:"partial",l:"部分相似（局部未重绘）"},
+  {k:"no_text",l:"对话框/文字框少字缺字"},{k:"blurry",l:"文字模糊不清"},
+  {k:"artifact",l:"伪影/变形/畸变"},{k:"other",l:"其他问题"},
+];
+function loadState(){try{return JSON.parse(localStorage.getItem(LS_KEY))||{}}catch(e){return{}}}
+function saveState(s){localStorage.setItem(LS_KEY,JSON.stringify(s))}
+let S=loadState();
+let drawMode=null; // null | {pageKey, imgEl}
+function pk(p){return GRADE_VOL+"_p"+p}
+
+// ===== RENDER =====
+function render(){
+  const ub=document.getElementById("unitBar"),pn=document.getElementById("panels");
+  ub.innerHTML="";pn.innerHTML="";
+  BOOK.units.forEach((u,i)=>{
+    const ups=BOOK.pages.filter(p=>p.page>=u.start&&p.page<u.end);
+    const done=ups.filter(p=>S[pk(p.page)]?.pass!==undefined).length;
+    const fail=ups.filter(p=>S[pk(p.page)]?.pass===false).length;
+    const pending=ups.length-done;
+    const tab=document.createElement("div");
+    tab.className="unit-tab"+(i===0?" active":"");
+    // Color indicators: green for passed, red for failed, gray for pending
+    let colorBadge="";
+    if(fail>0){
+      colorBadge=`<span class="cnt cnt-bad">${fail}❌</span>`;
+    }else if(done===ups.length&&ups.length>0){
+      colorBadge=`<span class="cnt cnt-ok">✓</span>`;
+    }else if(pending>0){
+      colorBadge=`<span class="cnt" style="background:#FFF3E0;color:#E65100">${pending}待审</span>`;
+    }
+    tab.innerHTML=`${u.label} (${done}/${ups.length})${colorBadge}`;
+    tab.onclick=()=>showUnit(i);ub.appendChild(tab);
+    const panel=document.createElement("div");
+    panel.className="panel"+(i===0?" active":"");panel.id="p"+i;
+    if(!ups.length)panel.innerHTML=`<div style="color:#999;text-align:center;padding:20px">无重绘页面</div>`;
+    else ups.forEach(pg=>panel.appendChild(makeCard(pg,u.label)));
+    pn.appendChild(panel);
+  });refreshStats();
+}
+
+function makeCard(pg,ul){
+  const k=pk(pg.page),st=S[k]||{},row=document.createElement("div");
+  row.className="page-row";row.id="row_"+k;
+  // Images with region marks container
+  let imgs=`<div class="page-imgs" id="imgs_${k}">`;
+  if(pg.has_redr){
+    imgs+=`<img src="file:///${pg.orig}" onclick="zoomPair('${k}')" title="原图" data-role="orig">`;
+    imgs+=`<img src="file:///${pg.redr}" onclick="zoomPair('${k}')" title="重绘" data-role="redr">`;
+    imgs+=`<div class="draw-hint" id="drawhint_${k}">双击原图开始画框</div>`;
+  } else {
+    imgs+=`<img src="file:///${pg.orig}" onclick="zoomPair('${k}')" title="原图">`;
+    imgs+=`<div style="width:240px;height:240px;display:flex;align-items:center;justify-content:center;color:#ccc;border:1px dashed #ddd;border-radius:4px">无重绘</div>`;
+  }
+  imgs+=`</div>`;
+  // Badge
+  let badge=st.pass===true?`<span class="badge badge-pass">✅ 通过</span>`:st.pass===false?`<span class="badge badge-fail">❌ 需重绘</span>`:`<span class="badge badge-none">⬜ 待审</span>`;
+  // Pass button
+  let passBtn=`<button class="btn-pass${st.pass===true?' active':''}" onclick="markPass('${k}')">✅ 通过</button>`;
+  // Checkboxes
+  let cks=ISSUES.map(it=>`<label><input type="checkbox" data-k="${k}" data-i="${it.k}" ${(st.issues||[]).includes(it.k)?"checked":""}>${it.l}</label>`).join("");
+  // Region marks display
+  let marksHtml="";
+  const marks=st.marks||[];
+  if(marks.length>0){
+    marksHtml=`<div style="margin-top:6px;font-size:11px;color:#C62828">📍 ${marks.length} 个标记区域：<ul style="margin:2px 0 0 16px">`;
+    marks.forEach((m,i)=>{marksHtml+=`<li>${m.note||'区域'+(i+1)} <span style="color:#999">[${Math.round(m.x)},${Math.round(m.y)} ${Math.round(m.w)}×${Math.round(m.h)}]</span></li>`});
+    marksHtml+=`</ul></div>`;
+  }
+  row.innerHTML=`${imgs}<div class="page-info">
+    <div class="page-title">Page_${String(pg.page).padStart(3,'0')} · ${ul}</div>
+    <div class="page-meta">原 ${pg.orig_kb}KB → 重绘 ${pg.redr_kb}KB (${pg.ratio}x)</div>
+    ${badge}${passBtn}
+    <div class="ck-list">${cks}</div>
+    <textarea class="ck-reason" data-k="${k}" placeholder="补充说明…">${st.reason||""}</textarea>
+    ${marksHtml}
+  </div>`;
+  // Render region marks on images
+  setTimeout(()=>{
+    const imgsDiv=document.getElementById("imgs_"+k);
+    if(imgsDiv&&marks.length>0){
+      // Remove old marks
+      imgsDiv.querySelectorAll(".region-mark").forEach(el=>el.remove());
+      const origImg=imgsDiv.querySelector('[data-role="orig"]');
+      if(origImg&&origImg.naturalWidth){
+        marks.forEach((m,i)=>{
+          const div=document.createElement("div");
+          div.className="region-mark";
+          const sx=origImg.clientWidth/origImg.naturalWidth;
+          const sy=origImg.clientHeight/origImg.naturalHeight;
+          div.style.left=(m.x*sx)+"px";div.style.top=(m.y*sy)+"px";
+          div.style.width=(m.w*sx)+"px";div.style.height=(m.h*sy)+"px";
+          // Label
+          const lb=document.createElement("span");
+          lb.className="rm-label";
+          lb.textContent="区域"+(i+1);
+          div.appendChild(lb);
+          // Note
+          if(m.note){
+            const nt=document.createElement("span");
+            nt.className="rm-note";
+            nt.textContent=m.note;
+            nt.title=m.note;
+            div.appendChild(nt);
+          }
+          // Delete button
+          const del=document.createElement("span");
+          del.className="rm-del";
+          del.textContent="✕";
+          del.onclick=(e)=>{e.stopPropagation();if(!S[k])return;S[k].marks=S[k].marks.filter((_,j)=>j!==i);saveState(S);render()};
+          div.appendChild(del);
+          imgsDiv.appendChild(div);
+        });
+      }
+    }
+  },0);
+  // Bind events
+  setTimeout(()=>{
+    // Checkboxes
+    row.querySelectorAll("input[type=checkbox]").forEach(cb=>{cb.addEventListener("change",()=>{const key=cb.dataset.k,iss=cb.dataset.i;if(!S[key])S[key]={issues:[],reason:"",pass:undefined,marks:[]};if(!S[key].issues)S[key].issues=[];if(cb.checked){if(!S[key].issues.includes(iss))S[key].issues.push(iss)}else{S[key].issues=S[key].issues.filter(x=>x!==iss)}// Record history if pass status was true (was passing, now has issues)
+    if(S[key].pass===true){
+      if(!S[key].history)S[key].history=[];
+      S[key].history.push({pass:true,issues:S[key].issues,reason:S[key].reason||"",marks:S[key].marks||[],timestamp:new Date().toISOString()});
+    }
+    autoVerdict(key);saveState(S);render()})});
+    // Textarea
+    const ta=row.querySelector("textarea");if(ta)ta.addEventListener("input",()=>{const key=ta.dataset.k;if(!S[key])S[key]={issues:[],reason:"",pass:undefined,marks:[]};S[key].reason=ta.value;saveState(S)});
+    // Double-click on orig image to start drawing
+    const imgsDiv=document.getElementById("imgs_"+k);
+    if(imgsDiv){
+      const origImg=imgsDiv.querySelector('[data-role="orig"]');
+      if(origImg){
+        origImg.addEventListener("dblclick",(e)=>{
+          e.stopPropagation();
+          if(drawMode&&drawMode.pageKey===k){drawMode=null;const h=document.getElementById("drawhint_"+k);if(h)h.textContent="双击原图开始画框";return}
+          drawMode={pageKey:k,imgEl:origImg};
+          const h=document.getElementById("drawhint_"+k);if(h)h.textContent="拖动画框，松开填写说明";
+        });
+      }
+      // Mouse events for drawing
+      let startX=0,startY=0,rect=null,preview=null;
+      imgsDiv.addEventListener("mousedown",(e)=>{
+        if(!drawMode||drawMode.pageKey!==k)return;
+        e.preventDefault();
+        rect=imgsDiv.getBoundingClientRect();
+        startX=e.clientX-rect.left;startY=e.clientY-rect.top;
+        preview=document.createElement("div");
+        preview.style.cssText="position:absolute;border:2px dashed #F44336;background:rgba(244,67,54,.1);pointer-events:none;z-index:10";
+        imgsDiv.appendChild(preview);
+      });
+      imgsDiv.addEventListener("mousemove",(e)=>{
+        if(!preview||!rect)return;
+        const cx=e.clientX-rect.left,cy=e.clientY-rect.top;
+        const x=Math.min(startX,cx),y=Math.min(startY,cy);
+        const w=Math.abs(cx-startX),h=Math.abs(cy-startY);
+        preview.style.left=x+"px";preview.style.top=y+"px";
+        preview.style.width=w+"px";preview.style.height=h+"px";
+      });
+      imgsDiv.addEventListener("mouseup",(e)=>{
+        if(!preview||!rect)return;
+        const cx=e.clientX-rect.left,cy=e.clientY-rect.top;
+        const x=Math.min(startX,cx),y=Math.min(startY,cy);
+        const w=Math.abs(cx-startX),h=Math.abs(cy-startY);
+        preview.remove();preview=null;rect=null;
+        if(w<10||h<10)return; // too small
+        const note=prompt("标记说明（为什么需要重绘）：","")||"";
+        if(!S[k])S[k]={issues:[],reason:"",pass:undefined,marks:[]};
+        if(!S[k].marks)S[k].marks=[];
+        S[k].marks.push({x,y,w,h,note});
+        autoVerdict(k);saveState(S);render();
+      });
+    }
+  },0);return row;
+}
+
+// ===== PASS BUTTON =====
+function markPass(k){
+  if(!S[k])S[k]={issues:[],reason:"",pass:undefined,marks:[]};
+  // Record history before changing
+  if(S[k].pass!==undefined){
+    if(!S[k].history)S[k].history=[];
+    S[k].history.push({
+      pass:S[k].pass,
+      issues:S[k].issues||[],
+      reason:S[k].reason||"",
+      marks:S[k].marks||[],
+      timestamp:new Date().toISOString()
+    });
+  }
+  S[k].pass=true;S[k].issues=[]; // clear issues when passing
+  S[k].reviewed_at=new Date().toISOString();
+  saveState(S);render();
+}
+
+// ===== ZOOM (side-by-side) =====
+function zoomPair(pageKey){
+  const imgsDiv=document.getElementById("imgs_"+pageKey);
+  if(!imgsDiv)return;
+  const origImg=imgsDiv.querySelector('[data-role="orig"]');
+  const redrImg=imgsDiv.querySelector('[data-role="redr"]');
+  if(!origImg)return;
+  const overlay=document.createElement("div");
+  overlay.className="zoom-overlay";
+  overlay.onclick=()=>overlay.remove();
+  let html=`<span class="z-label z-left">📄 原图</span><img src="${origImg.src}">`;
+  if(redrImg)html+=`<img src="${redrImg.src}"><span class="z-label z-right">🎨 重绘</span>`;
+  html+=`<span class="z-close">✕</span>`;
+  // Show region marks on zoom
+  const st=S[pageKey]||{};
+  const marks=st.marks||[];
+  overlay.innerHTML=html;
+  // Draw marks on redr image if exists
+  if(redrImg&&marks.length>0){
+    const zImg=overlay.querySelectorAll("img")[1];
+    if(zImg){
+      zImg.onload=()=>{
+        const r=zImg.getBoundingClientRect();
+        marks.forEach(m=>{
+          const div=document.createElement("div");
+          div.style.cssText=`position:absolute;border:2px solid #F44336;background:rgba(244,67,54,.2);pointer-events:none`;
+          const sx=r.width/origImg.naturalWidth,sy=r.height/origImg.naturalHeight;
+          div.style.left=(r.left+m.x*sx)+"px";div.style.top=(r.top+m.y*sy)+"px";
+          div.style.width=(m.w*sx)+"px";div.style.height=(m.h*sy)+"px";
+          if(m.note){const lb=document.createElement("span");lb.textContent=m.note;lb.style.cssText="position:absolute;top:-18px;left:0;background:#F44336;color:#fff;font-size:11px;padding:1px 5px;border-radius:3px";div.appendChild(lb)}
+          overlay.appendChild(div);
+        });
+      };
+    }
+  }
+  document.body.appendChild(overlay);
+  document.addEventListener("keydown",function esc(e){if(e.key==="Escape"){overlay.remove();document.removeEventListener("keydown",esc)}});
+}
+
+function showUnit(i){
+  document.querySelectorAll(".unit-tab").forEach((t,j)=>t.classList.toggle("active",j===i));
+  document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
+  const e=document.getElementById("p"+i);if(e)e.classList.add("active");
+}
+function refreshStats(){
+  const t=BOOK.pages.length;let pass=0,fail=0,pending=0;
+  BOOK.pages.forEach(p=>{const st=S[pk(p.page)];if(!st||st.pass===undefined)pending++;else if(st.pass)pass++;else fail++});
+  document.getElementById("sbarStats").innerHTML=`<b>${BOOK.grade}${BOOK.vol}</b> — ✅${pass}通过 ❌${fail}需重绘 ⬜${pending}待审 共${t}页`;
+}
+function showExport(){
+  const rev={};
+  BOOK.pages.forEach(p=>{
+    const k=pk(p.page),st=S[k];
+    if(!st)return;
+    const hasIssues=st.issues&&st.issues.length>0;
+    const hasMarks=st.marks&&st.marks.length>0;
+    if(st.pass===false||hasIssues||hasMarks||st.pass===true){
+      rev[String(p.page)]={
+        pass:st.pass,
+        issues:st.issues||[],
+        reason:st.reason||"",
+        marks:st.marks||[],
+        labels:(st.issues||[]).map(ik=>ISSUES.find(x=>x.k===ik)?.l||ik),
+        reviewed_at:st.reviewed_at||new Date().toISOString(),
+        history:st.history||[]
+      };
+    }
+  });
+  const obj={book:GRADE_VOL,timestamp:new Date().toISOString(),total:BOOK.pages.length,flagged:Object.keys(rev).length,reviews:rev};
+  document.getElementById("exportText").value=JSON.stringify(obj,null,2);
+  document.getElementById("modalBg").style.display="block";document.getElementById("modal").style.display="block";
+}
+function closeExport(){document.getElementById("modalBg").style.display="none";document.getElementById("modal").style.display="none"}
+function copyExport(){const ta=document.getElementById("exportText");ta.select();ta.setSelectionRange(0,99999);document.execCommand("copy");if(navigator.clipboard)navigator.clipboard.writeText(ta.value).catch(()=>{});alert("✅ 已复制！")}
+function resetAll(){if(!confirm("重置当前册所有审核记录？"))return;BOOK.pages.forEach(p=>{delete S[pk(p.page)]});saveState(S);render()}
+const IR=PLACEHOLDER_REVIEWS;
+if(IR&&Object.keys(IR).length>0){Object.entries(IR).forEach(([ps,rv])=>{const k=pk(parseInt(ps));if(!S[k]||S[k].pass===undefined)S[k]={issues:rv.issues||[],reason:rv.reason||"",pass:rv.pass!==undefined?rv.pass:false,marks:rv.marks||[],history:rv.history||[]}});saveState(S)}
+function autoVerdict(k){
+  if(!S[k])return;
+  const hasIssues=S[k].issues&&S[k].issues.length>0;
+  const hasMarks=S[k].marks&&S[k].marks.length>0;
+  // Auto-fail if issues or marks exist
+  if(hasIssues||hasMarks){
+    if(S[k].pass!==false){
+      // Record history if changing from pass to fail
+      if(S[k].pass===true){
+        if(!S[k].history)S[k].history=[];
+        S[k].history.push({pass:true,issues:S[k].issues||[],reason:S[k].reason||"",marks:S[k].marks||[],timestamp:new Date().toISOString()});
+      }
+      S[k].pass=false;
+    }
+  }
+  S[k].reviewed_at=new Date().toISOString();
+}
+render();
+</script>
+</body>
+</html>
