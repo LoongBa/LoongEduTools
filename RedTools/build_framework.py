@@ -327,9 +327,11 @@ def fmt_local(ts: float | None) -> str:
     return datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M")
 
 
-def data_source_times(cfg: ToolConfig) -> tuple[float | None, float | None]:
+def data_source_times(cfg: ToolConfig, unit_title: str | None = None) -> tuple[float | None, float | None]:
     """图片数据最新 mtime + 热区校正文件最新 mtime。
 
+    unit_title 传入时，热区时间只匹配该单元的校正文件（按标题归一化）；
+    否则取 hotzone_dir 下全部校正文件 max（兼容无单元上下文的调用）。
     用于发布状态检查与点读工具独立时间标记（与版本号分离）。
     """
     img_mt: float | None = None
@@ -340,19 +342,32 @@ def data_source_times(cfg: ToolConfig) -> tuple[float | None, float | None]:
                 m = max(f.stat().st_mtime for f in fs)
                 img_mt = m if img_mt is None else max(img_mt, m)
     hz_mt: float | None = None
+    bases = []
     if cfg.hotzone_dir:
-        for base in (cfg.hotzone_dir, cfg.hotzone_dir / "_重绘图片素材"):
-            if base.exists():
-                for f in base.glob("热区校正_*.json"):
+        bases = [cfg.hotzone_dir]
+        if (cfg.hotzone_dir / "_重绘图片素材").exists():
+            bases.append(cfg.hotzone_dir / "_重绘图片素材")
+    for base in bases:
+        if not base.exists():
+            continue
+        if unit_title:
+            norm = unit_title.replace(" ", "").replace("_", "")
+            for f in base.glob("热区校正_*.json"):
+                stem = f.stem[len("热区校正_"):]
+                if stem.replace(" ", "").replace("_", "") == norm:
                     m = f.stat().st_mtime
                     hz_mt = m if hz_mt is None else max(hz_mt, m)
+        else:
+            for f in base.glob("热区校正_*.json"):
+                m = f.stat().st_mtime
+                hz_mt = m if hz_mt is None else max(hz_mt, m)
     return img_mt, hz_mt
 
 
 def write_data_js(unit: dict, cfg: ToolConfig, book: dict, out_dir: Path, unit_index: int,
                   app_name: str | None = None) -> None:
     bookinfo = book.get("bookinfo", {})
-    img_mt, hz_mt = data_source_times(cfg)
+    img_mt, hz_mt = data_source_times(cfg, unit_title=unit.get("title"))
     app_data = {
         "meta": {
             "name": app_name or cfg.app_name,
@@ -828,7 +843,7 @@ def build_tool(cfg: ToolConfig, unit_index: int, pages: str | None = None,
     # 发布状态检查：版本 / 图片是否最新 / 热区是否最新
     if publish:
         zip_mt = zip_path.stat().st_mtime
-        img_mt, hz_mt = data_source_times(cfg)
+        img_mt, hz_mt = data_source_times(cfg, unit_title=unit.get("title"))
         img_s, hz_s = fmt_local(img_mt), fmt_local(hz_mt)
         status = (f"发布状态: 版本 {cfg.version} | 图片 {img_s or '无'} "
                   f"| 热区 {hz_s or '无'} | 构建 {fmt_local(zip_mt)}")

@@ -54,6 +54,71 @@ BOOKS = [
 ]
 BOOK_MAP = {k: (bid, g, v, tool) for k, (bid, g, v, tool) in [(b[0], (b[1], b[2], b[3], b[4])) for b in BOOKS]}
 
+# ---- 重绘任务队列（内存 + 后台 worker 线程） ----
+TASK_QUEUE: list[dict] = []
+TASK_LOCK = threading.Lock()
+TASK_WORKER_STARTED = False
+REDRAW_PROMPT = "prompts/cartoon_redraw_clear_text.txt"  # 强化提示词（文字清晰）
+REDRAW_OUTDIR = "output_v2fix"
+
+
+def task_name_for(book_key: str, unit_index: int, title: str) -> str:
+    """单元 → 重绘任务名：四年级_上册 U02 → pep4s_u02；Revision → pep4s_rev；Appendix 1 → pep4s_app1"""
+    bid, grade, vol, _tool = BOOK_MAP[book_key]
+    grade_no = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6}[grade[0]]
+    vol_code = {"上册": "s", "下册": "x"}[vol]
+    prefix = f"pep{grade_no}{vol_code}"
+    low = (title or "").lower()
+    if low.startswith("revision"):
+        return f"{prefix}_rev"
+    if low.startswith("appendix"):
+        m = re.search(r"appendix\s*(\d+)", title, re.I)
+        return f"{prefix}_app{m.group(1)}" if m else f"{prefix}_app"
+    m = re.search(r"unit\s*(\d+)", title, re.I)
+    return f"{prefix}_u{int(m.group(1)):02d}" if m else f"{prefix}_u{unit_index + 1:02d}"
+
+
+def _now_iso() -> str:
+    import datetime
+    return datetime.datetime.now().isoformat(timespec="seconds")
+
+
+def redraw_worker() -> None:
+    """顺序执行队列中的重绘任务（subprocess 调 redraw.py，强化提示词 → output_v2fix）"""
+    while True:
+        with TASK_LOCK:
+            task = next((t for t in TASK_QUEUE if t["status"] == "queued"), None)
+        if not task:
+            time.sleep(1)
+            continue
+        with TASK_LOCK:
+            task["status"] = "running"
+            task["started_at"] = _now_iso()
+        cmd = [sys.executable, str(REDTOOLS / "重绘工具" / "redraw.py"),
+               "--task", task["task"], "--page", str(task["page"]),
+               "--out-dir", REDRAW_OUTDIR, "--prompt-file", REDRAW_PROMPT,
+               "--force"]  # 强制覆盖输出（任务语义=重新重绘该页）
+        err = ""
+        try:
+            p = subprocess.run(cmd, capture_output=True, text=True, timeout=600, encoding="utf-8")
+            ok = p.returncode == 0
+            if not ok:
+                err = (p.stderr or p.stdout or "")[-300:]
+        except Exception as e:
+            ok = False
+            err = str(e)
+        with TASK_LOCK:
+            task["status"] = "done" if ok else "failed"
+            task["done_at"] = _now_iso()
+            task["error"] = err
+
+
+def ensure_worker() -> None:
+    global TASK_WORKER_STARTED
+    if not TASK_WORKER_STARTED:
+        TASK_WORKER_STARTED = True
+        threading.Thread(target=redraw_worker, daemon=True).start()
+
 
 def fmt_local(ts: float | None) -> str:
     """时间戳 → 本地 'yyyy-MM-dd HH:mm'"""
@@ -107,10 +172,14 @@ def build_manifest(grade: str, vol: str) -> Path:
 class Handler(SimpleHTTPRequestHandler):
     """双根服务：/redtools/* → RedTools；其余 → 素材库根；API：status / save_hotzone"""
 
-    # ---- GET /api/status?book=四年级_上册：单元状态汇总（供工作台） ----
+    # ---- GET 路由：/api/status / api/tasks ----
     def do_GET(self) -> None:
-        if self.path.split("?", 1)[0] == "/api/status":
+        path = self.path.split("?", 1)[0]
+        if path == "/api/status":
             self._handle_status()
+            return
+        if path == "/api/tasks":
+            self._api_tasks()
             return
         super().do_GET()
 
@@ -195,6 +264,12 @@ class Handler(SimpleHTTPRequestHandler):
             self._api_promote()
         elif path == "/api/rebuild":
             self._api_rebuild()
+        elif path == "/api/redraw":
+            self._api_redraw()
+        elif path == "/api/tasks":
+            self._api_tasks()
+        elif path == "/api/tasks/clear":
+            self._api_tasks_clear()
         else:
             self.send_error(404, "unknown api")
 
@@ -339,6 +414,63 @@ class Handler(SimpleHTTPRequestHandler):
         status_line = next((l.strip() for l in out.splitlines() if "发布状态" in l), "")
         self._send_json({"ok": proc.returncode == 0, "rc": proc.returncode,
                          "status": status_line, "tail": out[-1200:]})
+
+    # ---- 发送重绘任务：POST /api/redraw {book, unit, page} → 入队后台执行 ----
+    def _api_redraw(self) -> None:
+        try:
+            data = self._read_json()
+        except Exception:
+            self._send_json({"error": "bad json"}, 400)
+            return
+        book = data.get("book", "四年级_上册")
+        unit = int(data.get("unit", 0))
+        page = int(data.get("page", 0))
+        if book not in BOOK_MAP or page <= 0:
+            self._send_json({"error": "book/page 无效"}, 400)
+            return
+        # 从重绘目录副本读单元标题 → 任务名
+        _bid, grade, vol, _tool = BOOK_MAP[book]
+        title = ""
+        bpath = MAT_ROOT / grade / vol / "_重绘图片素材" / "book.json"
+        if bpath.exists():
+            bd = json.loads(bpath.read_text(encoding="utf-8-sig"))
+            ch = bd.get("bookaudio_v3", [])
+            if unit < len(ch):
+                title = ch[unit].get("title", "")
+        tname = task_name_for(book, unit, title)
+        tasks_dir = REDTOOLS / "重绘工具" / "tasks"
+        if not (tasks_dir / tname).exists():
+            self._send_json({"error": f"任务目录不存在: {tname}"}, 400)
+            return
+        with TASK_LOCK:
+            if any(t["task"] == tname and t["page"] == page and t["status"] in ("queued", "running")
+                   for t in TASK_QUEUE):
+                self._send_json({"ok": True, "message": "已在队列中", "task": tname, "page": page})
+                return
+            TASK_QUEUE.append({"task": tname, "page": page, "unit": unit, "book": book,
+                               "status": "queued", "created_at": _now_iso(),
+                               "started_at": None, "done_at": None, "error": ""})
+        ensure_worker()
+        q = sum(1 for t in TASK_QUEUE if t["status"] in ("queued", "running"))
+        d = sum(1 for t in TASK_QUEUE if t["status"] in ("done", "failed"))
+        self._send_json({"ok": True, "message": f"已入队 {tname} P{page}（队列 {q} / 完成 {d}）",
+                         "task": tname, "page": page, "queue": q, "done": d})
+
+    # ---- 任务列表：GET /api/tasks ----
+    def _api_tasks(self) -> None:
+        with TASK_LOCK:
+            items = [dict(t) for t in reversed(TASK_QUEUE)]
+        self._send_json({"tasks": items,
+                         "queue": sum(1 for t in items if t["status"] in ("queued", "running")),
+                         "done": sum(1 for t in items if t["status"] in ("done", "failed"))})
+
+    # ---- 清空已完成：POST /api/tasks/clear ----
+    def _api_tasks_clear(self) -> None:
+        with TASK_LOCK:
+            kept = [t for t in TASK_QUEUE if t["status"] not in ("done", "failed")]
+            removed = len(TASK_QUEUE) - len(kept)
+            TASK_QUEUE[:] = kept
+        self._send_json({"ok": True, "removed": removed})
 
     def translate_path(self, path: str) -> str:
         # 去掉查询串 + 中文路径 percent-encode 解码
