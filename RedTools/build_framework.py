@@ -276,23 +276,41 @@ def convert_images(pages: list[dict], start: int, out_dir: Path, img_dir: Path, 
         log(f"图片 {src.name} -> {dst.name} ({dst.stat().st_size // 1024} KB)")
 
 
-def find_source_audio(audio_dir: Path, page_no: int, track: dict) -> Path | None:
+def find_source_audio(audio_dir: Path, page_no: int, track: dict,
+                      fallback_dir: Path | None = None) -> Path | None:
+    """查找单句音频：主 audio_dir 优先，缺失回退 fallback_dir。
+
+    fallback_dir 用于「TTS 重读音频（_重读音频素材）优先，原版音频兜底」模式：
+    已合成的单元用 TTS 版，未合成的自动用原录音，逐单元渐进替换零风险。
+    """
     idx = track.get("track_index")
     pattern = f"P{page_no:03d}_{idx:02d}_*.mp3" if idx else f"P{page_no:03d}_*.mp3"
-    matches = sorted(audio_dir.glob(pattern))
-    return matches[0] if matches else None
+    for d in (audio_dir, fallback_dir):
+        if not d or not d.exists():
+            continue
+        matches = sorted(d.glob(pattern))
+        if matches:
+            return matches[0]
+    return None
 
 
 def convert_audio(unit: dict, out_dir: Path, audio_dir: Path) -> None:
     audio_out = out_dir / "audio"
     audio_out.mkdir(parents=True, exist_ok=True)
+    # 回退目录：主目录为 <册>/_重读音频素材/单句音频 时，同级 <册>/_音频素材/单句音频 兜底
+    fallback_dir: Path | None = None
+    if audio_dir.name == "单句音频" and audio_dir.parent.name == "_重读音频素材":
+        book_root = audio_dir.parent.parent  # <册>/
+        sibling = book_root / "_音频素材" / "单句音频"
+        if sibling != audio_dir and sibling.exists():
+            fallback_dir = sibling
     for page in unit["pages"]:
         for t in page["tracks"]:
             key = t["audio"]
             dst = audio_out / f"{key}.js"
             if dst.exists():
                 continue
-            src = find_source_audio(audio_dir, page["no"], t)
+            src = find_source_audio(audio_dir, page["no"], t, fallback_dir)
             if not src:
                 log(f"WARN 音频缺失: {key}（page {page['no']}），生成空 js")
                 payload = ""
