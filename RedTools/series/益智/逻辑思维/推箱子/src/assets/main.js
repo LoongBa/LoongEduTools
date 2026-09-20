@@ -485,7 +485,7 @@
     clearNode(viewEl);
     var topbar = makeEl('div', 'topbar');
     var btnBack = makeEl('button', 'btn-ghost-sm', '← 返回');
-    btnBack.setAttribute('aria-label', '返回游戏');
+    btnBack.setAttribute('aria-label', '返回练习');
     btnBack.addEventListener('click', function () { renderGameView(); });
     topbar.appendChild(btnBack);
     topbar.appendChild(makeEl('span', 'level-title', '选择关卡'));

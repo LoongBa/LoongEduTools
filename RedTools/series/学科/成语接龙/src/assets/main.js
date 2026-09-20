@@ -559,7 +559,7 @@
     viewEl.appendChild(status);
 
     var set = makeEl('div', 'card home-settings');
-    set.appendChild(makeEl('div', 'page-title', '游戏设置'));
+    set.appendChild(makeEl('div', 'page-title', '练习设置'));
     set.appendChild(buildSwitchRow('同音容忍', '可接同音字开头的成语，如 石 shí → 时 shí', 'homophone'));
     var segBox = makeEl('div', 'seg-wrap');
     segBox.appendChild(makeEl('div', 'seg-title', '每步限时'));

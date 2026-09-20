@@ -243,7 +243,7 @@
   function renderHome() {
     var wrap = el('div', 'home-wrap');
     var title = el('div', 'home-title', '🏰 华容道');
-    var sub = el('div', 'home-sub', '救出曹操 · 经典滑块游戏');
+    var sub = el('div', 'home-sub', '救出曹操 · 经典滑块练习');
     wrap.appendChild(title); wrap.appendChild(sub);
     var list = el('div', 'level-list');
     var streak = store.checkin.streak || 0;

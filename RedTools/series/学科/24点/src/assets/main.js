@@ -277,7 +277,7 @@
     });
     viewEl.appendChild(list);
 
-    viewEl.appendChild(makeEl('div', 'mode-title', '游戏模式'));
+    viewEl.appendChild(makeEl('div', 'mode-title', '练习模式'));
     var modeRow = makeEl('div', 'mode-row');
     modeRow.id = 'mode-row';
     renderModeRow(modeRow);
