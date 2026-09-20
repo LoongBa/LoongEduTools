@@ -25,6 +25,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 import threading
 import webbrowser
@@ -185,12 +186,25 @@ class Handler(SimpleHTTPRequestHandler):
 
     # ---- 热区校正保存：POST /api/save_hotzone {dir, filename, content} → _重绘图片素材/<filename>（覆盖同名=更新） ----
     def do_POST(self) -> None:
-        if self.path.split("?", 1)[0] != "/api/save_hotzone":
+        path = self.path.split("?", 1)[0]
+        if path == "/api/save_hotzone":
+            self._api_save_hotzone()
+        elif path == "/api/save_review":
+            self._api_save_review()
+        elif path == "/api/promote":
+            self._api_promote()
+        elif path == "/api/rebuild":
+            self._api_rebuild()
+        else:
             self.send_error(404, "unknown api")
-            return
+
+    def _read_json(self) -> dict:
         length = int(self.headers.get("Content-Length", 0) or 0)
+        return json.loads(self.rfile.read(length).decode("utf-8"))
+
+    def _api_save_hotzone(self) -> None:
         try:
-            data = json.loads(self.rfile.read(length).decode("utf-8"))
+            data = self._read_json()
         except Exception:
             self.send_error(400, "bad json")
             return
@@ -215,6 +229,116 @@ class Handler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
         print(f"[save] {dst}")
+
+    # ---- 审核保存：POST /api/save_review {book, reviews} → 合并 qa_reviews.json + 重生成报告 ----
+    def _api_save_review(self) -> None:
+        try:
+            data = self._read_json()
+        except Exception:
+            self._send_json({"error": "bad json"}, 400)
+            return
+        book = data.get("book", "")
+        reviews = data.get("reviews")
+        if not book or not isinstance(reviews, dict):
+            self._send_json({"error": "需 book + reviews"}, 400)
+            return
+        try:
+            from apply_qa_review import merge_history
+        except ImportError:
+            def merge_history(old, new):
+                hist = list(old or [])
+                for e in new or []:
+                    hist.append(e)
+                return hist
+        qf = REDTOOLS / "重绘工具" / "qa_reviews.json"
+        allr = json.loads(qf.read_text(encoding="utf-8")) if qf.exists() else {}
+        bref = allr.setdefault(book, {})
+        changed = 0
+        for page, rv in reviews.items():
+            page = str(page)
+            if rv.get("pass") is True:
+                clean = {"pass": True, "issues": [], "reason": "", "marks": [], "labels": [],
+                         "reviewed_at": rv.get("reviewed_at"), "history": []}
+                if bref.get(page) != clean:
+                    changed += 1
+                bref[page] = clean
+            else:
+                old = bref.get(page) or {}
+                entry = {"pass": rv.get("pass", False), "issues": rv.get("issues", []),
+                         "reason": rv.get("reason", ""), "marks": rv.get("marks", []),
+                         "labels": rv.get("labels", []), "reviewed_at": rv.get("reviewed_at"),
+                         "history": merge_history(old.get("history"), rv.get("history", []))}
+                if bref.get(page) != entry:
+                    changed += 1
+                bref[page] = entry
+        qf.write_text(json.dumps(allr, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        # 重生成报告（限本册，避免全量 SSIM 拖慢）
+        subprocess.run([sys.executable, str(REDTOOLS / "重绘工具" / "gen_qa_reports.py"),
+                        "--book", book], capture_output=True, timeout=600)
+        self._send_json({"ok": True, "book": book, "pages": len(reviews), "changed": changed})
+
+    # ---- 提材：POST /api/promote {book, pages?} → 审核通过页从任务 output 复制到重绘目录 ----
+    def _api_promote(self) -> None:
+        try:
+            data = self._read_json()
+        except Exception:
+            self._send_json({"error": "bad json"}, 400)
+            return
+        book = data.get("book", "四年级_上册")
+        try:
+            import promote_redraws as PR
+            prefix = PR.book_to_prefix(book)
+            matdir = PR.book_to_mat_dir(book)
+            target = matdir / "_重绘图片素材"
+            backup_dir = matdir / "_重绘图片素材_backup"
+            qf = REDTOOLS / "重绘工具" / "qa_reviews.json"
+            bref = {}
+            if qf.exists():
+                allr = json.loads(qf.read_text(encoding="utf-8"))
+                bref = allr.get(book, {})
+            if data.get("pages"):
+                wanted = {str(x) for x in data["pages"]}
+            else:
+                wanted = {p for p, rv in bref.items() if rv.get("pass") is True}
+            promoted = []
+            missing = []
+            for page in sorted(int(p) for p in wanted):
+                src = PR.find_latest_redrawn(page, prefix)
+                if not src:
+                    missing.append(page)
+                    continue
+                dst = target / f"Page_{page:03d}.png"
+                if dst.exists():
+                    backup_dir.mkdir(exist_ok=True)
+                    shutil.copy2(dst, backup_dir / f"Page_{page:03d}_v_prev.png")
+                shutil.copy2(src, dst)
+                promoted.append(page)
+            self._send_json({"ok": True, "book": book, "promoted": promoted,
+                             "missing": missing, "target": str(target)})
+        except Exception as e:
+            self._send_json({"error": str(e)}, 500)
+
+    # ---- 重建：POST /api/rebuild {tool, units} → build_all.py，返回发布状态 ----
+    def _api_rebuild(self) -> None:
+        try:
+            data = self._read_json()
+        except Exception:
+            self._send_json({"error": "bad json"}, 400)
+            return
+        tool = data.get("tool", "英语点读")
+        units = data.get("units", [0])
+        cmd = [sys.executable, str(REDTOOLS / "build_all.py"), "--tool", tool]
+        if units:
+            cmd += ["--units", ",".join(str(u) for u in units)]
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", timeout=900)
+        except subprocess.TimeoutExpired:
+            self._send_json({"error": "rebuild 超时"}, 500)
+            return
+        out = (proc.stdout or "") + (proc.stderr or "")
+        status_line = next((l.strip() for l in out.splitlines() if "发布状态" in l), "")
+        self._send_json({"ok": proc.returncode == 0, "rc": proc.returncode,
+                         "status": status_line, "tail": out[-1200:]})
 
     def translate_path(self, path: str) -> str:
         # 去掉查询串 + 中文路径 percent-encode 解码
