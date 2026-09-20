@@ -31,7 +31,7 @@ import webbrowser
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import unquote
+from urllib.parse import parse_qs, unquote, urlparse
 
 REDTOOLS = Path(r"F:\LoongBa_Git\LoongEduTools\RedTools")
 DATA_DIR = Path(r"F:\LoongBa_Git\LoongEduTools\Downloader\Diandu\data")
@@ -52,6 +52,14 @@ BOOKS = [
     ("六年级_上册",   "1212001601265", "六年级", "上册", "英语点读"),
 ]
 BOOK_MAP = {k: (bid, g, v, tool) for k, (bid, g, v, tool) in [(b[0], (b[1], b[2], b[3], b[4])) for b in BOOKS]}
+
+
+def fmt_local(ts: float | None) -> str:
+    """时间戳 → 本地 'yyyy-MM-dd HH:mm'"""
+    if not ts:
+        return ""
+    import datetime
+    return datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M")
 
 
 def prepare_book_copy(key: str, force: bool = False) -> Path | None:
@@ -96,7 +104,117 @@ def build_manifest(grade: str, vol: str) -> Path:
 
 
 class Handler(SimpleHTTPRequestHandler):
-    """双根服务：/redtools/* → RedTools；其余 → 素材库根"""
+    """双根服务：/redtools/* → RedTools；其余 → 素材库根；API：status / save_hotzone"""
+
+    # ---- GET /api/status?book=四年级_上册：单元状态汇总（供工作台） ----
+    def do_GET(self) -> None:
+        if self.path.split("?", 1)[0] == "/api/status":
+            self._handle_status()
+            return
+        super().do_GET()
+
+    def _send_json(self, obj: dict, code: int = 200) -> None:
+        body = json.dumps(obj, ensure_ascii=False).encode("utf-8")
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _handle_status(self) -> None:
+        qs = parse_qs(urlparse(self.path).query)
+        book = qs.get("book", ["四年级_上册"])[0]
+        if book not in BOOK_MAP:
+            self._send_json({"error": f"未知册次: {book}"}, 400)
+            return
+        bid, grade, vol, _tool = BOOK_MAP[book]
+        redr = MAT_ROOT / grade / vol / "_重绘图片素材"
+        # 图片最新时间（重绘目录）
+        img_mt = None
+        if redr.exists():
+            fs = [f for f in redr.glob("*.png") if f.is_file()]
+            if fs:
+                img_mt = max(f.stat().st_mtime for f in fs)
+        # 审核统计（qa_reviews.json 全局文件，未来迁移为册级 review.json）
+        reviews: dict = {}
+        qf = REDTOOLS / "重绘工具" / "qa_reviews.json"
+        if qf.exists():
+            allr = json.loads(qf.read_text(encoding="utf-8"))
+            reviews = allr.get(book, {})
+        # 单元列表 + 各单元校正文件
+        units: list[dict] = []
+        bpath = redr / "book.json"
+        if bpath.exists():
+            bookdata = json.loads(bpath.read_text(encoding="utf-8-sig"))
+            ch = bookdata.get("bookaudio_v3", [])
+            pages_max = max((p.get("page_no", 0) for p in bookdata.get("bookpage", [])), default=0)
+            for i, c in enumerate(ch):
+                start = int(c.get("page_no", 0))
+                end = pages_max + 1
+                if i + 1 < len(ch) and ch[i + 1].get("page_no"):
+                    end = int(ch[i + 1].get("page_no"))
+                title = c.get("title", f"Unit {i + 1}")
+                # 匹配本单元校正文件（重绘目录；标题归一化）
+                hz = None
+                if redr.exists():
+                    norm = title.replace(" ", "").replace("_", "")
+                    for f in redr.glob("热区校正_*.json"):
+                        stem = f.stem[len("热区校正_"):]
+                        if stem.replace(" ", "").replace("_", "") == norm:
+                            hz = {"file": f.name,
+                                  "updated_at": fmt_local(f.stat().st_mtime)}
+                            break
+                # 审核统计（该单元页码范围）
+                done = passed = failed = 0
+                for pno in range(start, end):
+                    rv = reviews.get(str(pno))
+                    if not rv or rv.get("pass") is None:
+                        continue
+                    done += 1
+                    if rv.get("pass") is True:
+                        passed += 1
+                    else:
+                        failed += 1
+                units.append({"index": i, "title": title, "start": start, "end": end,
+                              "pages": max(0, end - start),
+                              "hotzone": hz,
+                              "review": {"done": done, "pass": passed, "fail": failed}})
+        self._send_json({"book": book, "grade": grade, "vol": vol,
+                         "img_updated_at": fmt_local(img_mt), "units": units})
+
+    # ---- 热区校正保存：POST /api/save_hotzone {dir, filename, content} → _重绘图片素材/<filename>（覆盖同名=更新） ----
+    def do_POST(self) -> None:
+        if self.path.split("?", 1)[0] != "/api/save_hotzone":
+            self.send_error(404, "unknown api")
+            return
+        length = int(self.headers.get("Content-Length", 0) or 0)
+        try:
+            data = json.loads(self.rfile.read(length).decode("utf-8"))
+        except Exception:
+            self.send_error(400, "bad json")
+            return
+        dirname = data.get("dir", "")          # 四年级/上册
+        filename = data.get("filename", "")    # 热区校正_*.json
+        content = data.get("content")
+        grade, _, vol = dirname.partition("/")
+        key = f"{grade}_{vol}"
+        safe = (Path(filename).name == filename
+                and filename.startswith("热区校正_") and filename.endswith(".json"))
+        if (not isinstance(content, dict)) or key not in BOOK_MAP or not safe:
+            self.send_error(400, "invalid dir/filename/content")
+            return
+        dst = MAT_ROOT / grade / vol / "_重绘图片素材" / filename
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_text(json.dumps(content, ensure_ascii=False, indent=2), encoding="utf-8")
+        msg = f"已保存: {dst}（覆盖同名=更新）"
+        body = msg.encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+        print(f"[save] {dst}")
 
     def translate_path(self, path: str) -> str:
         # 去掉查询串 + 中文路径 percent-encode 解码

@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>重绘质检 — TITLE_PLACEHOLDER</title>
+<link rel="icon" href="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f5f5f5;color:#333;padding-bottom:60px}
@@ -176,6 +177,15 @@ function unitLabel(page){
   for(const u of BOOK.units){if(page>=u.start&&page<u.end)return u.label;}
   return "";
 }
+/* 素材图片 URL：file:// 直开用绝对路径；http 服务下转素材库根路径（iframe 嵌入工作台必需） */
+function matURL(path){
+  if(!path) return "";
+  if(location.protocol !== "file:"){
+    var m = String(path).replace(/\\/g, "/").match(/([^/]+)\/([^/]+)\/(_重绘图片素材|_图片素材)\/([^/]+)$/);
+    if(m){ return "/" + m[1] + "/" + m[2] + "/" + m[3] + "/" + m[4]; }
+  }
+  return "file:///" + String(path).replace(/\\/g, "/");
+}
 
 // ===== RENDER =====
 function render(){
@@ -226,11 +236,11 @@ function makeCard(pg,ul){
   // Images with region marks container
   let imgs=`<div class="page-imgs" id="imgs_${k}">`;
   if(pg.has_redr){
-    imgs+=`<img src="file:///${pg.orig}" onclick="openReviewByPage(${pg.page})" title="点击进入全屏审核" data-role="orig">`;
-    imgs+=`<img src="file:///${pg.redr}" onclick="openReviewByPage(${pg.page})" title="点击进入全屏审核" data-role="redr">`;
+    imgs+=`<img src="${matURL(pg.orig)}" onclick="openReviewByPage(${pg.page})" title="点击进入全屏审核" data-role="orig">`;
+    imgs+=`<img src="${matURL(pg.redr)}" onclick="openReviewByPage(${pg.page})" title="点击进入全屏审核" data-role="redr">`;
     imgs+=`<div class="draw-hint" id="drawhint_${k}">双击原图开始画框</div>`;
   } else {
-    imgs+=`<img src="file:///${pg.orig}" onclick="openReviewByPage(${pg.page})" title="原图">`;
+    imgs+=`<img src="${matURL(pg.orig)}" onclick="openReviewByPage(${pg.page})" title="原图">`;
     imgs+=`<div style="width:240px;height:240px;display:flex;align-items:center;justify-content:center;color:#ccc;border:1px dashed #ddd;border-radius:4px">无重绘</div>`;
   }
   imgs+=`</div>`;
@@ -527,8 +537,8 @@ function openReviewByPage(page){
 function renderReview(){
   const pg=reviewList[reviewIdx],k=pk(pg.page),st=S[k]||{};
   document.getElementById("rfTitle").textContent=`Page_${String(pg.page).padStart(3,'0')} · ${unitLabel(pg.page)}`;
-  document.getElementById("rfOrig").src="file:///"+pg.orig;
-  document.getElementById("rfRedr").src="file:///"+pg.redr;
+  document.getElementById("rfOrig").src=matURL(pg.orig);
+  document.getElementById("rfRedr").src=matURL(pg.redr);
   // 进度：页序 + 单元位置
   const ui=BOOK.units.findIndex(u=>pg.page>=u.start&&pg.page<u.end);
   const unitTxt=ui>=0?` · 单元 ${ui+1}/${BOOK.units.length}`:"";
