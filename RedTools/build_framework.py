@@ -75,6 +75,34 @@ class ToolConfig:
             self.app_name = self.tool
 
 
+def resolve_unit_no(book: dict | None, unit_index: int) -> str | int:
+    """解析单元序号/章节类型标识（供 app_name 模板 {unit_no} 替换）：
+    - book 为 None（静态工具）→ unit_index + 1
+    - "Unit 3 ..." → 3
+    - "Revision ..." → "复习"
+    - "Appendix N ..." → "附录N"（无编号 → "附录"）
+    - 其他 → unit_index + 1
+    与 build_framework 产物命名同源；工作台服务端 app_name 计算复用此函数。
+    """
+    if book is None:
+        return unit_index + 1
+    chapters = book.get("bookaudio_v3", [])
+    title = chapters[unit_index].get("title", "") if unit_index < len(chapters) else ""
+    import re as _re
+    # "Unit 3 ..." → 3
+    m = _re.search(r"Unit\s*(\d+)", title, _re.IGNORECASE)
+    if m:
+        return int(m.group(1))
+    # 复习/附录：Revision → "复习"；Appendix N → "附录N"
+    low = title.lower()
+    if low.startswith("revision"):
+        return "复习"
+    if low.startswith("appendix"):
+        am = _re.search(r"Appendix\s*(\d+)", title, _re.IGNORECASE)
+        return f"附录{am.group(1)}" if am else "附录"
+    return unit_index + 1
+
+
 def resolve_app_name(cfg: ToolConfig, book: dict | None, unit_index: int) -> str:
     """生成工具实际 app_name：
     - 配置了 app_name_template → 用单元序号/章节类型替换 {unit_no}
@@ -86,23 +114,7 @@ def resolve_app_name(cfg: ToolConfig, book: dict | None, unit_index: int) -> str
         if book is None:
             # 静态工具（无 book）：直接用 unit_index
             return cfg.app_name_template.format(unit_no=unit_index + 1)
-        chapters = book.get("bookaudio_v3", [])
-        title = chapters[unit_index].get("title", "") if unit_index < len(chapters) else ""
-        import re as _re
-        # "Unit 3 ..." → 3
-        m = _re.search(r"Unit\s*(\d+)", title, _re.IGNORECASE)
-        if m:
-            unit_no = int(m.group(1))
-        else:
-            # 复习/附录：Revision → "复习"；Appendix N → "附录N"
-            low = title.lower()
-            if low.startswith("revision"):
-                unit_no = "复习"
-            elif low.startswith("appendix"):
-                am = _re.search(r"Appendix\s*(\d+)", title, _re.IGNORECASE)
-                unit_no = f"附录{am.group(1)}" if am else "附录"
-            else:
-                unit_no = unit_index + 1
+        unit_no = resolve_unit_no(book, unit_index)
         return cfg.app_name_template.format(unit_no=unit_no)
     except (KeyError, ValueError):
         return cfg.app_name

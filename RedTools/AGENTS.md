@@ -8,7 +8,7 @@
 
 RedTools = **小红书小工具开发集**，按「系列 →（子系列 →）工具」组织，数据驱动 + 批量自动化构建。
 所有工具须遵守 `RedTools/.skill/minitool-zip-builder/` 打包规范（离线 zip、容器 CSP、平台白名单）。
-产品规划唯一权威：`RedTools/docs/产品矩阵规划.md`（62 款产品 / 7 大类 / P0-P3 / 三阶段路线，
+产品规划唯一权威：`docs/教育工具/教育工具产品矩阵规划.md`（62 款产品 / 7 大类 / P0-P3 / 三阶段路线，
 本地维护为主，来源信息图 HTML 仅作历史参考）。
 
 ## 2. 目录结构（约定，勿随意改动）
@@ -23,7 +23,6 @@ RedTools/
 ├── tools.py                   # 工具注册表（series/工具 → ToolConfig）
 ├── build_all.py               # 批量构建入口（--tool/--units/--pages/--list）
 ├── docs/                      # ★ 目录级文档（唯一文档中心，不入代码目录）
-│   ├── 产品矩阵规划.md         #   ★ 规划唯一权威：62 款产品/7 大类/P0-P3/三阶段路线
 │   ├── 通用需求-打卡分享记录.md #   跨工具通用能力（打卡/成绩/分享）
 │   ├── 通用需求-防沉迷自控力.md #   跨工具通用能力（防沉迷/自控力/结算三选/自律锁）
 │   └── 工具文档/              #   ★ 每个小工具的设计/使用文档（统一收拢于此）
@@ -130,4 +129,4 @@ python .skill/minitool-zip-builder/scripts/audit_artifact.py publish/学科/新�
 | 防沉迷 / 自控力（时长/局数/自律锁） | `docs/通用需求-防沉迷自控力.md` |
 | 结算三选 / 分享卡片 / 复制文案 | `docs/通用需求-打卡分享记录.md` §2.3/§5.2/§5.3 |
 | 视觉质检（多模态看板） | `look_at` 工具 / `task(subagent_type="multimodal-looker")` 可用：全局 opencode 已配置 `sensenova/sensenova-6.8-flash-lite`（视觉模型 + `modalities` 声明），离线截图/PDF 目检直接走此链路 |
-| 教师客户端（桌面壳） | `../docs/龙爸乐学-教师客户端需求分析与设计方案.md` |
+| 教师客户端（桌面壳） | `../docs/教育工具/教育工具-教师客户端需求分析与设计方案.md` |
