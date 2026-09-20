@@ -110,6 +110,25 @@ python .skill/minitool-zip-builder/scripts/audit_artifact.py publish/学科/新�
 
 **流程**：每次正式发布时，列出本次变更摘要，询问用户"是否升版？升哪位？"，用户确认后修改 `tools.py` 中对应 ToolConfig 的 `version` 字段。
 
+## 6A. 迭代开发流程（每轮必修，2026-09-21 确立）
+
+> 适用于任何工具/开发支撑子系统的**功能迭代**（非 trivial 修复）。一轮 = 一个 V 版本。
+
+**标准流程（每轮迭代按序执行）**：
+1. **开发方案**：写 `docs/<工具>/V<版本>-开发方案.md`
+   - 内容：背景与现状问题（表格：编号/优先级/问题/代码位置）→ 目标与原则 → 变更设计（逐项：现状/方案/涉及文件）→ 验证计划 → 里程碑与验收 → 版本与发布 → 风险表
+   - **跨文件接口变更 / 架构决策 → 必须请 oracle 审核方案**（后台 `subagent_type="oracle"`），按审核意见修订后（版本 bump v0.x）再实施
+2. **实施**：按方案逐项落地，最小化修复，不借机重构
+3. **验证**：API 断言 / Playwright 冒烟（含 file:// 与 http:// 双协议回归）/ 端到端，全部通过才算完成
+4. **实施后审核**：请 oracle 复核实施结果（代码级），通过后编写 `docs/<工具>/V<版本>-审核报告.md`（审核范围/验证证据/变更摘要/版本建议/遗留）
+5. **提交与发布**：
+   - 提交前**精确限定文件**（`git add` 仅本轮文件，勿混入其他会话/无关改动；暂存后 `git diff --cached --name-only` 复核）
+   - **提交 → 征求用户同意后 push + 打 tag**（tag 名 = V 版本）；不 push/不打 tag 视为未发布
+   - 并行会话活跃时：只提交不 push，等稳定后统一推送
+6. **规则沉淀**：流程性变更同步更新本文件（AGENTS.md）
+
+**方案/审核报告文档位置**：`docs/<工具>/`（工具级迭代文档，与 `docs/工具文档/` 的使用/设计文档区分）。
+
 ## 7. 新增工具 checklist
 
 1. `series/<系列>/<工具>/src/`：index.html + assets/（可复制同系列已有工具 src 改造）
@@ -130,3 +149,4 @@ python .skill/minitool-zip-builder/scripts/audit_artifact.py publish/学科/新�
 | 结算三选 / 分享卡片 / 复制文案 | `docs/通用需求-打卡分享记录.md` §2.3/§5.2/§5.3 |
 | 视觉质检（多模态看板） | `look_at` 工具 / `task(subagent_type="multimodal-looker")` 可用：全局 opencode 已配置 `sensenova/sensenova-6.8-flash-lite`（视觉模型 + `modalities` 声明），离线截图/PDF 目检直接走此链路 |
 | 教师客户端（桌面壳） | `../docs/教育工具/教育工具-教师客户端需求分析与设计方案.md` |
+| 批量生图/批量重绘 | `../LoongMediaTools/批量生图工具/`（README：`LoongMediaTools/批量生图工具/README.md`） | **通用批量 AI 生图引擎**（**已迁移至 LoongMediaTools 仓库**）：多 Key 均衡/并发/断点续跑/Provider 插件，公共 `keys.json` 配置（含密钥不入 git）。其它工具/Agent 程序化调用：`sys.path.insert(0, r"F:\LoongBa_Git\LoongMediaTools")` + `from 批量生图工具 import execute_task, get_manager, get_provider, ...`；或命令行 `python LoongMediaTools/批量生图工具/batch_cli.py run/list/status/create`。前置：Python 3.9+、`pip install requests`。教材重绘（`重绘工具/`）key 已接入其公共配置 |
