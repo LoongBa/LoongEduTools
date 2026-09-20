@@ -784,6 +784,7 @@ def build_tool(cfg: ToolConfig, unit_index: int, pages: str | None = None,
     """
     dist_dir = (out_root or cfg.dist_root) / cfg.tool
     pub_dir = publish_root or cfg.publish_root   # publish/<系列>/ 系列内平铺，不按工具细分
+    unit = None   # 仅 datasource='book' 时赋值（静态/成语/词汇表工具无单元数据）
     if dist_dir.exists():
         shutil.rmtree(dist_dir)
     dist_dir.mkdir(parents=True)
@@ -843,7 +844,8 @@ def build_tool(cfg: ToolConfig, unit_index: int, pages: str | None = None,
     # 发布状态检查：版本 / 图片是否最新 / 热区是否最新
     if publish:
         zip_mt = zip_path.stat().st_mtime
-        img_mt, hz_mt = data_source_times(cfg, unit_title=unit.get("title"))
+        unit_title = unit.get("title") if unit else None
+        img_mt, hz_mt = data_source_times(cfg, unit_title=unit_title)
         img_s, hz_s = fmt_local(img_mt), fmt_local(hz_mt)
         status = (f"发布状态: 版本 {cfg.version} | 图片 {img_s or '无'} "
                   f"| 热区 {hz_s or '无'} | 构建 {fmt_local(zip_mt)}")

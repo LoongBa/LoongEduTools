@@ -86,6 +86,14 @@ TOOLS: dict[str, ToolConfig] = {
         app_name="成语接龙",
         default_unit=0,
     ),
+    "成语配对": ToolConfig(
+        series="学科",
+        tool="成语配对",
+        version="1.0",
+        datasource="chengyu",  # 成语词库工具：复制 src/ + 注入共享词库 data.js
+        app_name="成语配对",
+        default_unit=0,
+    ),
     # ---------------- 益智系列 · 专注力子系列 ----------------
 "舒尔特方格": ToolConfig(
     series="益智",
