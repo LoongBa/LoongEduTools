@@ -56,6 +56,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .wa-pub{display:flex;align-items:center;gap:8px;margin-left:8px;flex-wrap:wrap}
 .wa-pub .btn{padding:6px 12px;font-size:12px}
 .pub-status{font-size:11px;color:#9be29b;max-width:480px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pub-log{font-size:11px;background:#1a1a1a;color:#ccc;border-radius:6px;padding:8px 12px;margin-top:6px;max-height:300px;overflow:auto;white-space:pre-wrap;word-break:break-all;width:100%}
+.pub-log[hidden]{display:none}
 #waFrame{flex:1;border:none;min-height:0}
 .wa-note{font-size:11px;color:#888;margin-left:6px}
 </style>
@@ -91,7 +93,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <div class="wa-pub">
       <button class="btn btn-w" onclick="doPromote()" title="把审核通过的页面从任务输出复制到重绘目录">⬆️ 提材通过页</button>
       <button class="btn btn-p" onclick="doRebuild()" title="重建当前单元点读 zip">🔨 重建单元</button>
-      <span class="pub-status" id="pubStatus"></span>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+        <span class="pub-status" id="pubStatus"></span>
+        <pre class="pub-log" id="pubLog" hidden></pre>
+      </div>
     </div>
     <div class="wa-views">
       <button class="wa-view-btn active" id="vwReview" onclick="switchView('review')">📋 审核</button>
@@ -144,6 +149,11 @@ function renderUnits(){
   const grid = document.getElementById("unitGrid");
   const sum = document.getElementById("summary");
   if (!STATUS || !STATUS.units) { grid.innerHTML = '<div style="color:#999">（无单元数据）</div>'; return; }
+  if (!STATUS.units.length) {
+    grid.innerHTML = '<div style="color:#999;padding:20px">该册尚无重绘数据（未复制 书数据.json 副本 / 未开始重绘）。<br>请先在素材目录建 <code>_重绘图片素材/书数据.json</code> 或运行重绘流程。</div>';
+    sum.innerHTML = `<span>图片数据：${fmtTime(STATUS.img_updated_at)}</span>`;
+    return;
+  }
   let tDone = 0, tPass = 0, tFail = 0, tHz = 0;
   grid.innerHTML = "";
   STATUS.units.forEach(u => {
@@ -211,20 +221,41 @@ function switchView(view){
   document.getElementById("vwHotzone").classList.toggle("active", view === "hotzone");
   const u = STATUS.units[curUnit];
   const bookKey = curBook;
-  const no = unitNoOf(u);
   const frame = document.getElementById("waFrame");
+  document.getElementById("pubLog").hidden = true;
   if (view === "review") {
-    frame.src = `../qa_reports/${bookKey}.html`;
+    frame.src = `../qa_reports/${bookKey}.html?unit=${curUnit}`;
     document.getElementById("waNote").textContent = "审核：左右图对比 · 中间操作 · 自动下一张 · 可标矩形";
   } else if (view === "hotzone") {
     frame.src = `../hotzone_editor/index.html?book=${encodeURIComponent(bookKey)}&unit=${curUnit}`;
     document.getElementById("waNote").textContent = "热区：拖动/缩放热区 · 播放验证 · 保存到重绘目录";
   } else {
-    window.open(`../../publish/学科/新英语四上点读${no}单元_解压测试版/index.html`, "_blank");
+    openTest(u);
   }
 }
-function openTest(){
-  switchView("test");
+function openTest(u){
+  // 测试链接：app_name 由服务端权威下发（前缀 BOOK_MAP 派生 + 单元序号），前端不再自行拼装
+  u = u || STATUS.units[curUnit];
+  const appName = u && u.app_name;
+  if (!appName) { showPub("❌ 无 app_name（服务端未下发）"); return; }
+  const url = `../../publish/学科/${appName}_解压测试版/index.html`;
+  fetch(url, { method: "HEAD", cache: "no-store" })
+    .then(r => {
+      if (r.ok) { window.open(url, "_blank"); }
+      else {
+        showPub(`⚠️ 未找到解压测试版（${appName}）。请先「🔨 重建单元」生成产物后再测。`);
+        document.getElementById("waNote").textContent = "测试：产物未构建";
+      }
+    })
+    .catch(() => {
+      showPub(`⚠️ 探测失败（${appName}）。可尝试手动打开: ${url}`);
+      document.getElementById("waNote").textContent = "测试：探测失败";
+    });
+}
+function showPub(msg){
+  const st = document.getElementById("pubStatus");
+  st.textContent = msg;
+  st.style.whiteSpace = "normal";
 }
 
 /* ---- 发布操作（M4：提材 / 重建，闭环） ---- */
@@ -245,14 +276,28 @@ async function doPromote(){
 }
 async function doRebuild(){
   const st = document.getElementById("pubStatus");
-  st.textContent = "🔨 重建中…";
+  const log = document.getElementById("pubLog");
+  st.textContent = "🔨 重建中…（约 1-2 分钟）";
+  st.style.whiteSpace = "nowrap";
+  log.hidden = true;
   try {
     const res = await fetch("/api/rebuild", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tool: "英语点读", units: [curUnit] }),
     });
     const j = await res.json();
-    st.textContent = j.ok ? "✅ " + (j.status || "构建完成") : "❌ " + (j.error || j.tail || "构建失败");
+    if (j.ok) {
+      st.textContent = "✅ " + (j.status || "构建完成");
+      st.style.whiteSpace = "nowrap";
+    } else {
+      const tail = j.tail || j.error || "构建失败";
+      st.textContent = "❌ " + (j.error || "构建失败") + " · 📋 查看日志";
+      st.style.whiteSpace = "nowrap";
+      st.style.cursor = "pointer";
+      log.textContent = tail;
+      log.hidden = false;
+      st.onclick = () => { log.hidden = !log.hidden; };
+    }
   } catch (e) { st.textContent = "❌ " + e.message; }
 }
 

@@ -768,9 +768,19 @@ function autoVerdict(k){
   S[k].reviewed_at=new Date().toISOString();
 }
 render();
-// 默认进入全屏双图审核模式
+// 默认进入全屏双图审核模式；?unit=N 时定位到该单元首张重绘页（工作台审核视图传入）
+const _qsUnit=(()=>{const m=/[?&]unit=(\d+)/.exec(location.search);return m?parseInt(m[1]):null;})();
 reviewOrder();
-if(reviewList.length)openReview(0);
+if(reviewList.length){
+  if(_qsUnit!==null&&_qsUnit>=0&&_qsUnit<BOOK.units.length){
+    const u=BOOK.units[_qsUnit];
+    const idx=reviewList.findIndex(p=>p.page>=u.start&&p.page<u.end);
+    if(idx>=0){currentUnit=_qsUnit;showUnit(_qsUnit);openReview(idx);}
+    else{currentUnit=_qsUnit;showUnit(_qsUnit);openReview(0);}
+  }else{
+    openReview(0);
+  }
+}
 </script>
 </body>
 </html>

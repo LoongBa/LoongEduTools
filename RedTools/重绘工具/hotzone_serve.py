@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import os
 import re
@@ -28,6 +29,7 @@ import shutil
 import subprocess
 import sys
 import threading
+import time
 import webbrowser
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -35,6 +37,8 @@ from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
 REDTOOLS = Path(r"F:\LoongBa_Git\LoongEduTools\RedTools")
+if str(REDTOOLS) not in sys.path:
+    sys.path.insert(0, str(REDTOOLS))  # 允许 from build_framework import resolve_unit_no 等复用
 DATA_DIR = Path(r"F:\LoongBa_Git\LoongEduTools\Downloader\Diandu\data")
 MAT_ROOT = Path(r"F:\_教材素材\人教版（PEP）（主编：吴欣）")
 
@@ -219,7 +223,9 @@ class Handler(SimpleHTTPRequestHandler):
         if bpath.exists():
             bookdata = json.loads(bpath.read_text(encoding="utf-8-sig"))
             ch = bookdata.get("bookaudio_v3", [])
-            pages_max = max((p.get("page_no", 0) for p in bookdata.get("bookpage", [])), default=0)
+            pages_max = max((int(p.get("page_no") or 0) for p in bookdata.get("bookpage", [])), default=0)
+            # 产物名前缀：新英语{grade首字}{vol首字}点读（BOOK_MAP 派生，非硬编码）
+            app_prefix = f"新英语{grade[0]}{vol[0]}点读"
             for i, c in enumerate(ch):
                 start = int(c.get("page_no", 0))
                 end = pages_max + 1
@@ -247,9 +253,19 @@ class Handler(SimpleHTTPRequestHandler):
                         passed += 1
                     else:
                         failed += 1
+                # 页数：按实际 bookpage 计数（缺页/末单元边界自动正确）
+                actual_pages = sum(1 for p in bookdata.get("bookpage", [])
+                                   if start <= int(p.get("page_no") or 0) < end)
+                try:
+                    from build_framework import resolve_unit_no
+                    unit_no = resolve_unit_no(bookdata, i)
+                except ImportError:
+                    unit_no = title
+                app_name = f"{app_prefix}{unit_no}单元"
                 units.append({"index": i, "title": title, "start": start, "end": end,
-                              "pages": max(0, end - start),
+                              "pages": actual_pages,
                               "hotzone": hz,
+                              "app_name": app_name,
                               "review": {"done": done, "pass": passed, "fail": failed}})
         self._send_json({"book": book, "grade": grade, "vol": vol,
                          "img_updated_at": fmt_local(img_mt), "units": units})
@@ -389,7 +405,8 @@ class Handler(SimpleHTTPRequestHandler):
                 dst = target / f"Page_{page:03d}.png"
                 if dst.exists():
                     backup_dir.mkdir(exist_ok=True)
-                    shutil.copy2(dst, backup_dir / f"Page_{page:03d}_v_prev.png")
+                    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                    shutil.copy2(dst, backup_dir / f"Page_{page:03d}_v_{ts}.png")
                 shutil.copy2(src, dst)
                 promoted.append(page)
             self._send_json({"ok": True, "book": book, "promoted": promoted,
