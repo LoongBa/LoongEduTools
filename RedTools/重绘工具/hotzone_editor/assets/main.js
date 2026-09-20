@@ -430,7 +430,11 @@
       var bp = currentBookPath();
       return '/' + bp.g + '/' + bp.v + '/_重绘图片素材/' + name;
     }
-    // file 模式：重绘优先，回退原图
+    // file:// 本地数据包（免服务器）：data/<册>/img/Page_NNN_redr.jpg
+    if (currentBookKey) {
+      return 'data/' + currentBookKey + '/img/Page_' + pad3(pageObj.no) + '_redr.jpg';
+    }
+    // file 模式（手动）：重绘优先，回退原图
     if (imgRedrawn[name]) { return URL.createObjectURL(imgRedrawn[name]); }
     if (imgOrig[name]) { return URL.createObjectURL(imgOrig[name]); }
     return null;
@@ -441,6 +445,9 @@
     if (LOAD_MODE === 'http') {
       var bp = currentBookPath();
       return '/' + bp.g + '/' + bp.v + '/_图片素材/' + name;
+    }
+    if (currentBookKey) {
+      return 'data/' + currentBookKey + '/img/Page_' + pad3(pageObj.no) + '_orig.jpg';
     }
     if (imgOrig[name]) { return URL.createObjectURL(imgOrig[name]); }
     return null;
@@ -1025,6 +1032,58 @@
     });
   }
 
+  /* ---------- file:// 本地数据包自动加载（免服务器） ---------- */
+  function enterWithUnit(u) {
+    u = (u >= 0 && u < units.length) ? u : 0;
+    $('sel-unit').value = String(u);
+    currentUnit = u;
+    expandUnitPages();
+    loadCorrFromLS();
+    currentPage = 0;
+    dirty = false;
+    showEditor();
+  }
+
+  function autoLoadLocal() {
+    var bk = qs('book') || '四年级_上册';
+    var bp = BOOK_PATH[bk];
+    if (!bp) { return; }
+    currentBookKey = bk;
+    fillBookSelect();
+    var base = 'data/' + bk;
+    var s = document.createElement('script');
+    s.src = base + '/book.js';
+    s.onload = function () {
+      if (!window.HZ_BOOK) {
+        homeStatus('✗ 数据包缺少 HZ_BOOK: ' + base + '/book.js（请先运行 hotzone_prepare.py）');
+        return;
+      }
+      book = window.HZ_BOOK;
+      bookFileName = bk + '_book.json';
+      parseUnits();
+      $('book-info').textContent = '✓ 已自动加载本地数据包 ' + bk + '（免服务器，数据取自重绘目录副本）';
+      $('book-info').style.color = '#67c23a';
+      var m = document.createElement('script');
+      m.src = base + '/manifest.js';
+      m.onload = function () {
+        audioByPageIdx = {};
+        var am = (window.HZ_MANIFEST || {}).audio || {};
+        Object.keys(am).forEach(function (pno) {
+          Object.keys(am[pno]).forEach(function (idx) {
+            audioByPageIdx[pno + '|' + idx] = base + '/audio/' + am[pno][idx];
+          });
+        });
+        enterWithUnit(parseInt(qs('unit') || '0', 10) || 0);
+      };
+      m.onerror = function () { enterWithUnit(parseInt(qs('unit') || '0', 10) || 0); };
+      document.head.appendChild(m);
+    };
+    s.onerror = function () {
+      homeStatus('未找到本地数据包 ' + base + ' —— 运行 hotzone_prepare.py 生成，或双击 启动热区校正.bat 用服务器模式');
+    };
+    document.head.appendChild(s);
+  }
+
   /* ---------- 启动 ---------- */
   // 恢复上次进度提示
   try {
@@ -1059,8 +1118,10 @@
     el.textContent = msg;
   }
 
-  // 启动：http 模式自动加载（只需选年级/册/单元，无需手动选目录）；file 模式保留原手动流程
+  // 启动：http 模式自动加载（服务器）；file:// 模式自动加载本地数据包（data/ 目录，免服务器）
   if (LOAD_MODE === 'http') {
     autoLoadHttp();
+  } else {
+    autoLoadLocal();
   }
 })();

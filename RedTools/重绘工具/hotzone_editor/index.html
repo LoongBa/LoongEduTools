@@ -15,11 +15,11 @@
 
       <div class="home-form">
         <div class="form-row" id="row-book">
-          <label class="form-label">册次（http 模式自动加载）</label>
+          <label class="form-label">册次（自动加载）</label>
           <select id="sel-book" class="form-select">
             <option value="">（默认：四年级 上册）</option>
           </select>
-          <div class="file-info">自动加载：双击 <code>重绘工具/启动热区校正.bat</code>（book 副本与重绘对齐存放，不碰原始数据）；file:// 双击本页则需手动选择</div>
+          <div class="file-info">免服务器：双击本页（需先运行 hotzone_prepare.py 生成 data/ 本地数据包）；服务器实时：双击 启动热区校正.bat。数据均取自重绘目录副本，不碰原始数据</div>
         </div>
         <div class="form-row">
           <label class="form-label">① book.json</label>
