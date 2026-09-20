@@ -17,7 +17,7 @@ TOOLS: dict[str, ToolConfig] = {
     "英语点读": ToolConfig(
         series="学科",
         tool="英语点读",
-        version="1.2.0",
+        version="1.3.0",
         book=ROOT.parent / "Downloader" / "Diandu" / "data" / "1212001401255_英语（PEP）_四年级_上册.json",
         img_dir=Path(r"F:\_教材素材\人教版（PEP）（主编：吴欣）\四年级\上册\_图片素材"),
         redrawn_img_dir=Path(r"F:\_教材素材\人教版（PEP）（主编：吴欣）\四年级\上册\_重绘图片素材"),
