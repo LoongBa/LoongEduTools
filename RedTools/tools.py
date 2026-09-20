@@ -393,6 +393,14 @@ TOOLS: dict[str, ToolConfig] = {
         app_name="涂色游戏",
         default_unit=0,
     ),
+    "动物配对": ToolConfig(
+        series="扩展",
+        tool="动物配对",
+        version="1.0",
+        datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/（含 elements.js 元素库）
+        app_name="动物配对",
+        default_unit=0,
+    ),
     # 已登记工具清单（2026-09-21）：学科 9 款——英语点读/数学口算/24点/打字背单词/单词闪卡/乘法口诀练习/看图猜成语/成语接龙/成语配对（成语三件套全交付）；
     # 益智 26 款；经典游戏 2048/俄罗斯方块/扫雷/贪吃蛇；扩展 认识时间/认识钱币/涂色游戏。
     # 新工具立项：建 series/<系列>/<工具>/src/ 后在此登记 ToolConfig（series/tool/version/book/素材目录/app_name）。

@@ -1,0 +1,555 @@
+/* ============================================================
+   动物配对 — 样式（Chrome 61 基线，扩展·认知系暖色，与扩展系列一致）
+   约束：无 flex gap / aspect-ratio / clamp() / inset / 逻辑属性 / :has / dvh
+   布局：左右双列（左=动物卡 右=栖息地卡），float 列式
+   ============================================================ */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: #f2f9f0;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  color: #2a3a4a;
+  height: var(--app-height, 100vh);
+  overflow: hidden;
+}
+
+#app-main {
+  height: calc(100% - 118px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.view {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 12px 16px 24px;
+  min-height: 100%;
+}
+
+/* ---------- 头部 ---------- */
+.app-header {
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(122, 160, 90, 0.14);
+  position: relative;
+  z-index: 5;
+}
+
+.header-brand {
+  display: -webkit-flex;
+  display: flex;
+  -webkit-align-items: center;
+  align-items: center;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 10px 16px;
+}
+
+.header-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  margin-right: 10px;
+}
+
+.header-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #2a3a4a;
+}
+
+.header-ver {
+  margin-left: 8px;
+  font-size: 12px;
+  color: #7a8ea3;
+  background: #e7f4ec;
+  padding: 2px 6px;
+  border-radius: 8px;
+}
+
+/* ---------- 通用按钮 ---------- */
+button {
+  font-family: inherit;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  min-height: 48px;
+  min-width: 48px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-checkin {
+  display: block;
+  width: 100%;
+  max-width: 480px;
+  margin: 14px auto 0;
+  padding: 12px 16px;
+  background: #2fbe9e;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(47, 190, 158, 0.28);
+}
+
+.btn-checkin:active {
+  background: #29a98c;
+  -webkit-transform: scale(0.98);
+  transform: scale(0.98);
+}
+
+.btn-ghost-sm {
+  padding: 8px 14px;
+  font-size: 13px;
+  color: #2fbe9e;
+  background: #e7f4ec;
+  border-radius: 10px;
+}
+
+.btn-ghost-sm:active {
+  background: #d7efe0;
+}
+
+/* ---------- 难度选择页 ---------- */
+.page-title {
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+  margin: 22px 0 8px;
+}
+
+.home-hint {
+  text-align: center;
+  color: #7a8ea3;
+  font-size: 14px;
+  margin-bottom: 18px;
+}
+
+.diff-list {
+  display: -webkit-flex;
+  display: flex;
+  -webkit-flex-direction: column;
+  flex-direction: column;
+}
+
+.diff-btn {
+  background: #fff;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-justify-content: space-between;
+  justify-content: space-between;
+  -webkit-align-items: center;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(47, 190, 158, 0.1);
+  text-align: left;
+}
+
+.diff-btn:active {
+  background: #f4fbf7;
+  -webkit-transform: scale(0.99);
+  transform: scale(0.99);
+}
+
+.diff-head {
+  font-size: 16px;
+  font-weight: 700;
+  color: #2a3a4a;
+}
+
+.diff-badge {
+  display: inline-block;
+  background: #2fbe9e;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  vertical-align: 2px;
+}
+
+.diff-sub {
+  font-size: 12px;
+  color: #7a8ea3;
+  margin-top: 4px;
+  display: block;
+}
+
+/* ---------- 游戏页 ---------- */
+.topbar {
+  display: -webkit-flex;
+  display: flex;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-justify-content: space-between;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.level-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #2a3a4a;
+}
+
+.top-timer {
+  font-size: 14px;
+  color: #e76f51;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.pc-round {
+  text-align: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: #2fbe9e;
+  margin: 4px 0 8px;
+}
+
+.game-status {
+  text-align: center;
+  font-size: 13px;
+  color: #7a8ea3;
+  min-height: 20px;
+  margin-bottom: 12px;
+}
+
+/* 左右双列（左=动物 右=栖息地） */
+.pair-area {
+  width: 100%;
+}
+
+.pair-col {
+  float: left;
+  width: 50%;
+}
+
+.col-head {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #2fbe9e;
+  margin-bottom: 6px;
+}
+
+.pair-card {
+  padding: 5px;
+}
+
+.pair-card-inner {
+  background: #fff;
+  border-radius: 14px;
+  padding: 12px;
+  border: 3px solid transparent;
+  box-shadow: 0 2px 6px rgba(47, 190, 158, 0.1);
+  text-align: center;
+  position: relative;   /* ✓ 角标 absolute 定位基准 */
+  min-height: 96px;
+}
+
+.card-emoji {
+  display: block;
+  font-size: 40px;
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.card-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: #2a3a4a;
+}
+
+/* 选中（第一张） */
+.pair-card.selected .pair-card-inner {
+  border-color: #2fbe9e;
+  background: #eefbf5;
+  -webkit-transform: scale(1.02);
+  transform: scale(1.02);
+}
+
+/* 配对成功：绿底 + ✓ 角标 + 淡化 */
+.pair-card.matched .pair-card-inner {
+  border-color: #1f9d80;
+  background: #e6f7ee;
+  opacity: 0.65;
+}
+
+.pair-card.matched .pair-card-inner:after {
+  content: '✓';
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  background: #1f9d80;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 14px;
+  line-height: 24px;
+  text-align: center;
+}
+
+/* 错配红闪（400ms） */
+.pair-card.wrong .pair-card-inner {
+  border-color: #ff6b6b;
+  background: #ffe9e6;
+  -webkit-animation: wrongFlash 0.4s ease-out;
+  animation: wrongFlash 0.4s ease-out;
+}
+
+@-webkit-keyframes wrongFlash {
+  0% { background: #ffe9e6; }
+  60% { background: #ffc9c4; }
+  100% { background: #ffffff; }
+}
+
+@keyframes wrongFlash {
+  0% { background: #ffe9e6; }
+  60% { background: #ffc9c4; }
+  100% { background: #ffffff; }
+}
+
+.pair-area:after {
+  content: '';
+  display: block;
+  clear: both;
+}
+
+/* ---------- 页脚 ---------- */
+.app-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #ffffff;
+  box-shadow: 0 -2px 8px rgba(47, 190, 158, 0.1);
+  padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
+}
+
+.game-footer {
+  display: -webkit-flex;
+  display: flex;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.game-footer .btn-ghost-sm {
+  margin: 0 6px;
+}
+
+.footer-errors {
+  margin-left: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ff6b6b;
+  min-width: 52px;
+  text-align: center;
+}
+
+/* ---------- 结算浮层 ---------- */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(18, 60, 50, 0.55);
+  display: -webkit-flex;
+  display: flex;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 24px;
+}
+
+.overlay-card {
+  background: #fff;
+  border-radius: 18px;
+  padding: 24px 22px 20px;
+  width: 100%;
+  max-width: 340px;
+  text-align: center;
+  box-shadow: 0 8px 30px rgba(18, 60, 50, 0.25);
+  -webkit-animation: popCard 0.3s ease-out;
+  animation: popCard 0.3s ease-out;
+}
+
+@-webkit-keyframes popCard {
+  0% { -webkit-transform: scale(0.85); transform: scale(0.85); opacity: 0; }
+  100% { -webkit-transform: scale(1); transform: scale(1); opacity: 1; }
+}
+
+@keyframes popCard {
+  0% { -webkit-transform: scale(0.85); transform: scale(0.85); opacity: 0; }
+  100% { -webkit-transform: scale(1); transform: scale(1); opacity: 1; }
+}
+
+.overlay-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #2a3a4a;
+  margin-bottom: 6px;
+}
+
+.overlay-sub {
+  font-size: 14px;
+  color: #7a8ea3;
+  margin-bottom: 10px;
+}
+
+.summary {
+  margin-bottom: 14px;
+}
+
+.stars-line {
+  font-size: 36px;
+  line-height: 1.2;
+  color: #f5a623;
+  letter-spacing: 4px;
+}
+
+.record-badge {
+  display: inline-block;
+  margin-top: 8px;
+  background: #e8faf0;
+  color: #1f9d80;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+
+.checkin-line {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #1f9d80;
+  font-weight: 600;
+}
+
+.overlay-btns {
+  display: -webkit-flex;
+  display: flex;
+  -webkit-flex-wrap: wrap;
+  flex-wrap: wrap;
+  -webkit-justify-content: center;
+  justify-content: center;
+}
+
+.overlay-btns .btn-main {
+  background: #2fbe9e;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 12px 28px;
+  border-radius: 12px;
+  margin: 6px 5px;
+  box-shadow: 0 4px 12px rgba(47, 190, 158, 0.3);
+}
+
+.overlay-btns .btn-ghost {
+  background: #e7f4ec;
+  color: #2fbe9e;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 12px 22px;
+  border-radius: 12px;
+  margin: 6px 5px;
+}
+
+/* ---------- 打卡日历 ---------- */
+.calendar {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(47, 190, 158, 0.12);
+}
+
+.calendar-grid {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-flex-wrap: wrap;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.calendar-grid > * {
+  width: 14.28%;
+  padding: 4px;
+}
+
+.cal-day {
+  width: 100%;
+  padding: 8px 0;
+  text-align: center;
+  font-size: 13px;
+  border-radius: 6px;
+  color: #7a8ea3;
+  background: #f2f9f0;
+}
+
+.cal-day.done {
+  background: #ff9c1a;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.cal-day.today {
+  outline: 2px solid #2fbe9e;
+}
+
+.streak-info {
+  text-align: center;
+  margin-top: 10px;
+  font-size: 14px;
+  color: #2a3a4a;
+}
+
+.streak-info b {
+  color: #ff9c1a;
+}
+
+/* ---------- 说明 ---------- */
+.tip-list {
+  background: #fff;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-top: 8px;
+  box-shadow: 0 2px 8px rgba(47, 190, 158, 0.08);
+}
+
+.tip-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #2a3a4a;
+  margin-bottom: 6px;
+}
+
+.tip-line {
+  font-size: 12px;
+  color: #7a8ea3;
+  line-height: 1.7;
+}
