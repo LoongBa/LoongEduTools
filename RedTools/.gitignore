@@ -28,6 +28,7 @@ __pycache__/
 重绘工具/key_state.json             # API Key 额度状态（含密钥线索）
 重绘工具/qa_reports/*.html          # 质检报告生成物（gen_qa_reports.py 重新生成）
 重绘工具/hotzone_editor/data/       # 热区校正本地数据包生成物（hotzone_prepare.py 生成）
+重绘工具/_backup/                   # 数据备份目录（人工触发，不入库）
 重绘工具/quality_data.json          # 自动质检生成物
 重绘工具/quality_report.html        # 自动质检报告生成物
 重绘工具/_shot_*.png                # 工具截图
