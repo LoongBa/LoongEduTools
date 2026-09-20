@@ -321,9 +321,7 @@
     flashSaveStatus('已保存到浏览器');
   });
 
-  $('btn-export').addEventListener('click', function () {
-    saveCorrToLS();
-    var payload = buildExport();
+  function downloadExport(payload) {
     var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
@@ -333,7 +331,38 @@
     a.click();
     document.body.removeChild(a);
     setTimeout(function () { URL.revokeObjectURL(url); }, 3000);
-    flashSaveStatus('已导出 ' + a.download);
+    return a.download;
+  }
+
+  $('btn-export').addEventListener('click', function () {
+    saveCorrToLS();
+    var payload = buildExport();
+    if (LOAD_MODE === 'http') {
+      // 服务器模式：直接保存到素材重绘目录（覆盖同名=更新），build 立即可用
+      var grade = currentBookPath().g, vol = currentBookPath().v;
+      if (!grade || !vol) { flashSaveStatus('未知册次，无法保存'); return; }
+      if (!confirm('保存校正数据到素材目录（覆盖同名文件=更新）？\n\n_重绘图片素材/' + exportFileName())) { return; }
+      fetch('/api/save_hotzone', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dir: grade + '/' + vol, filename: exportFileName(), content: payload }),
+      }).then(function (r) {
+        if (!r.ok) { throw new Error('HTTP ' + r.status); }
+        return r.text();
+      }).then(function (msg) {
+        flashSaveStatus('✅ ' + msg);
+      }).catch(function (err) {
+        flashSaveStatus('❌ 保存失败: ' + err.message + '（已改为下载留档）');
+        var fname = downloadExport(payload);
+        setTimeout(function () {
+          alert('已下载 ' + fname + '\n请手动放到 素材目录/_重绘图片素材/ 覆盖同名');
+        }, 500);
+      });
+      return;
+    }
+    // file:// 本地数据包模式：无法写素材目录 → 下载，提示放置位置
+    var fn = downloadExport(payload);
+    flashSaveStatus('已下载 ' + fn + '（请放到 素材目录/_重绘图片素材/ 覆盖同名）');
   });
 
   /* 已删除的热区：{ page: [track_index,...] }（删除信息不再丢失） */
@@ -986,11 +1015,17 @@
         .catch(function () { return null; });
     }
 
-    fetch('/' + bp.g + '/' + bp.v + '/_重绘图片素材/book.json')
-      .then(function (r) {
-        if (!r.ok) { throw new Error('HTTP ' + r.status); }
-        return r.text();
-      })
+    // 书数据副本（书数据.json，旧名 book.json 兼容回退）
+    function loadBookData() {
+      return fetch('/' + bp.g + '/' + bp.v + '/_重绘图片素材/书数据.json')
+        .then(function (r) { if (r.ok) { return r; } return fetch('/' + bp.g + '/' + bp.v + '/_重绘图片素材/book.json'); })
+        .then(function (r) {
+          if (!r.ok) { throw new Error('HTTP ' + r.status); }
+          return r.text();
+        });
+    }
+
+    loadBookData()
       .then(function (txt) {
         book = JSON.parse(txt);
         bookFileName = bk + '_book.json';

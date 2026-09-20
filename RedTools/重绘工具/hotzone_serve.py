@@ -9,7 +9,7 @@
   python hotzone_serve.py --force                # 强制覆盖 book.json 副本（默认已存在则跳过）
 
 功能:
-  1. 【副本数据】把 book.json 复制到素材目录（如 四年级/上册/book.json），
+  1. 【副本数据】把 book.json 复制到素材目录的重绘目录（如 四年级/上册/_重绘图片素材/书数据.json），
      编辑器加载并修改的是这份副本，与 Downloader/Diandu/data 原始数据断开；
      已存在且未变化则跳过（--force 覆盖，谨慎：会覆盖人工改动）。
   2. 【本地服务】自写 HTTP 服务：
@@ -129,7 +129,7 @@ def fmt_local(ts: float | None) -> str:
 
 
 def prepare_book_copy(key: str, force: bool = False) -> Path | None:
-    """把 book.json 复制到素材目录的重绘目录（_重绘图片素材/book.json），
+    """把 book.json 复制到素材目录的重绘目录（_重绘图片素材/书数据.json），
     与重绘图对齐存放、与原数据断开；编辑器只读写这份副本。"""
     if key not in BOOK_MAP:
         sys.exit(f"❌ 未知册次: {key}，可用: {list(BOOK_MAP)}")
@@ -138,7 +138,7 @@ def prepare_book_copy(key: str, force: bool = False) -> Path | None:
     if not src.exists():
         print(f"⚠️  原始 book.json 不存在（跳过副本复制）: {src.name}")
         return None
-    dst = MAT_ROOT / grade / vol / "_重绘图片素材" / "book.json"
+    dst = MAT_ROOT / grade / vol / "_重绘图片素材" / "书数据.json"
     if dst.exists() and not force:
         # 比较内容：相同则跳过，不同则提示
         if dst.read_bytes() == src.read_bytes():
@@ -149,7 +149,7 @@ def prepare_book_copy(key: str, force: bool = False) -> Path | None:
         return dst
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src, dst)
-    print(f"✅ book.json 副本已就绪: {dst}（{src.stat().st_size // 1024} KB，与重绘对齐存放、与原数据断开）")
+    print(f"✅ 书数据副本已就绪: {dst}（{src.stat().st_size // 1024} KB，与重绘对齐存放、与原数据断开）")
     return dst
 
 
@@ -206,15 +206,16 @@ class Handler(SimpleHTTPRequestHandler):
             fs = [f for f in redr.glob("*.png") if f.is_file()]
             if fs:
                 img_mt = max(f.stat().st_mtime for f in fs)
-        # 审核统计（qa_reviews.json 全局文件，未来迁移为册级 review.json）
+        # 审核统计（每册独立审核记录：_重绘图片素材/审核记录.json）
         reviews: dict = {}
-        qf = REDTOOLS / "重绘工具" / "qa_reviews.json"
+        qf = MAT_ROOT / grade / vol / "_重绘图片素材" / "审核记录.json"
         if qf.exists():
-            allr = json.loads(qf.read_text(encoding="utf-8"))
-            reviews = allr.get(book, {})
+            reviews = json.loads(qf.read_text(encoding="utf-8"))
         # 单元列表 + 各单元校正文件
         units: list[dict] = []
-        bpath = redr / "book.json"
+        bpath = redr / "书数据.json"
+        if not bpath.exists():
+            bpath = redr / "book.json"  # 旧名兼容
         if bpath.exists():
             bookdata = json.loads(bpath.read_text(encoding="utf-8-sig"))
             ch = bookdata.get("bookaudio_v3", [])
@@ -305,7 +306,7 @@ class Handler(SimpleHTTPRequestHandler):
         self.wfile.write(body)
         print(f"[save] {dst}")
 
-    # ---- 审核保存：POST /api/save_review {book, reviews} → 合并 qa_reviews.json + 重生成报告 ----
+    # ---- 审核保存：POST /api/save_review {book, reviews} → 合并 册级审核记录.json + 重生成报告 ----
     def _api_save_review(self) -> None:
         try:
             data = self._read_json()
@@ -317,6 +318,10 @@ class Handler(SimpleHTTPRequestHandler):
         if not book or not isinstance(reviews, dict):
             self._send_json({"error": "需 book + reviews"}, 400)
             return
+        if book not in BOOK_MAP:
+            self._send_json({"error": f"未知册次: {book}"}, 400)
+            return
+        _bid, grade, vol, _tool = BOOK_MAP[book]
         try:
             from apply_qa_review import merge_history
         except ImportError:
@@ -325,9 +330,8 @@ class Handler(SimpleHTTPRequestHandler):
                 for e in new or []:
                     hist.append(e)
                 return hist
-        qf = REDTOOLS / "重绘工具" / "qa_reviews.json"
-        allr = json.loads(qf.read_text(encoding="utf-8")) if qf.exists() else {}
-        bref = allr.setdefault(book, {})
+        qf = MAT_ROOT / grade / vol / "_重绘图片素材" / "审核记录.json"
+        bref = json.loads(qf.read_text(encoding="utf-8")) if qf.exists() else {}
         changed = 0
         for page, rv in reviews.items():
             page = str(page)
@@ -346,7 +350,7 @@ class Handler(SimpleHTTPRequestHandler):
                 if bref.get(page) != entry:
                     changed += 1
                 bref[page] = entry
-        qf.write_text(json.dumps(allr, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        qf.write_text(json.dumps(bref, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         # 重生成报告（限本册，避免全量 SSIM 拖慢）
         subprocess.run([sys.executable, str(REDTOOLS / "重绘工具" / "gen_qa_reports.py"),
                         "--book", book], capture_output=True, timeout=600)
@@ -360,17 +364,17 @@ class Handler(SimpleHTTPRequestHandler):
             self._send_json({"error": "bad json"}, 400)
             return
         book = data.get("book", "四年级_上册")
+        if book not in BOOK_MAP:
+            self._send_json({"error": f"未知册次: {book}"}, 400)
+            return
         try:
             import promote_redraws as PR
             prefix = PR.book_to_prefix(book)
             matdir = PR.book_to_mat_dir(book)
             target = matdir / "_重绘图片素材"
             backup_dir = matdir / "_重绘图片素材_backup"
-            qf = REDTOOLS / "重绘工具" / "qa_reviews.json"
-            bref = {}
-            if qf.exists():
-                allr = json.loads(qf.read_text(encoding="utf-8"))
-                bref = allr.get(book, {})
+            qf = matdir / "_重绘图片素材" / "审核记录.json"
+            bref = json.loads(qf.read_text(encoding="utf-8")) if qf.exists() else {}
             if data.get("pages"):
                 wanted = {str(x) for x in data["pages"]}
             else:
@@ -431,7 +435,9 @@ class Handler(SimpleHTTPRequestHandler):
         # 从重绘目录副本读单元标题 → 任务名
         _bid, grade, vol, _tool = BOOK_MAP[book]
         title = ""
-        bpath = MAT_ROOT / grade / vol / "_重绘图片素材" / "book.json"
+        bpath = MAT_ROOT / grade / vol / "_重绘图片素材" / "书数据.json"
+        if not bpath.exists():
+            bpath = MAT_ROOT / grade / vol / "_重绘图片素材" / "book.json"  # 旧名兼容
         if bpath.exists():
             bd = json.loads(bpath.read_text(encoding="utf-8-sig"))
             ch = bd.get("bookaudio_v3", [])

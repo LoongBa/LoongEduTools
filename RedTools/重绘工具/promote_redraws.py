@@ -9,7 +9,8 @@
   python promote_redraws.py --book 四年级_上册 --build --units 0   # 重建指定单元
 
 逻辑:
-  1. 读 qa_reviews.json 中指定册（book 字段）pass:true 的页
+  1. 读指定册 _重绘图片素材/审核记录.json 中 pass:true 的页
+     （兼容回退：旧全局 qa_reviews.json 嵌套结构）
   2. 仅在对应册前缀的任务目录（tasks/pep<年级><册>_*/output*，如 四年级_上册 → pep4s_*）
      下找 Page_NNN_redrawn.png（同名多版本取最新 mtime）
   3. 复制到素材目录 _重绘图片素材/Page_NNN.png（原素材先备份到 _重绘图片素材_backup/）
@@ -26,8 +27,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 MAT = Path(r"F:\_教材素材\人教版（PEP）（主编：吴欣）")
-REVIEWS = ROOT / "qa_reviews.json"
 BUILD_ALL = ROOT.parent / "build_all.py"
+REVIEWS_GLOBAL = ROOT / "qa_reviews.json"
 
 # 册次 → 任务前缀：四年级_上册 → pep4s（年级数字 + s/x）
 GRADE_NO = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6}
@@ -57,11 +58,22 @@ def find_latest_redrawn(page: int, prefix: str) -> Path | None:
 
 
 def book_to_mat_dir(book: str) -> Path:
-    """'四年级_上册' → F:\_教材素材\...\四年级\上册（素材目录）"""
+    """'四年级_上册' → F:/_教材素材/.../四年级/上册（素材目录）"""
     grade, _, vol = book.partition("_")
     if not vol:
         sys.exit(f"❌ book 格式应为 年级_册次（如 四年级_上册），收到: {book}")
     return MAT / grade / vol
+
+
+def load_book_reviews(book: str) -> dict:
+    """读取指定册审核记录：册级 审核记录.json 优先，旧全局 qa_reviews.json 回退"""
+    per_book = book_to_mat_dir(book) / "_重绘图片素材" / "审核记录.json"
+    if per_book.exists():
+        return json.loads(per_book.read_text(encoding="utf-8"))
+    if REVIEWS_GLOBAL.exists():
+        allr = json.loads(REVIEWS_GLOBAL.read_text(encoding="utf-8"))
+        return allr.get(book, {})
+    return {}
 
 
 def main() -> None:
@@ -74,12 +86,9 @@ def main() -> None:
     ap.add_argument("--units", help="重建时指定单元（如 0 或 0,1），默认全部")
     args = ap.parse_args()
 
-    if not REVIEWS.exists():
-        sys.exit("❌ qa_reviews.json 不存在")
-    all_reviews = json.loads(REVIEWS.read_text(encoding="utf-8"))
-    book_rev = all_reviews.get(args.book, {})
+    book_rev = load_book_reviews(args.book)
     if not book_rev:
-        sys.exit(f"❌ qa_reviews.json 中无 {args.book} 的审核记录")
+        sys.exit(f"❌ {args.book} 无审核记录（_重绘图片素材/审核记录.json 或 全局 qa_reviews.json）")
 
     if args.pages:
         wanted = {str(int(x.strip())) for x in args.pages.split(",") if x.strip()}

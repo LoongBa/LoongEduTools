@@ -12,7 +12,7 @@
   python hotzone_prepare.py --all                            # 全部 11 册
 
 数据包结构（hotzone_editor/data/<key>/）:
-  book.js        window.HZ_BOOK = {...}   （从 _重绘图片素材/book.json 副本读取）
+  book.js        window.HZ_BOOK = {...}   （从 _重绘图片素材/书数据.json 副本读取）
   manifest.js    window.HZ_MANIFEST = {audio:{...}}
   img/Page_NNN_orig.jpg   原图缩略（宽 800）
   img/Page_NNN_redr.jpg   重绘缩略（宽 800）
@@ -48,13 +48,14 @@ JPEG_Q = 82
 
 
 def load_book_for(key: str) -> dict:
-    """优先读重绘目录副本（与数据原则一致），否则回退原始数据"""
+    """优先读重绘目录副本（书数据.json，与数据原则一致），否则回退原始数据"""
     bid, grade, vol = BOOK_MAP[key]
-    for cand in (MAT / grade / vol / "_重绘图片素材" / "book.json",
+    for cand in (MAT / grade / vol / "_重绘图片素材" / "书数据.json",
+                 MAT / grade / vol / "_重绘图片素材" / "book.json",   # 旧名兼容
                  DATA_DIR / f"{bid}_英语（PEP）_{grade}_{vol}.json"):
         if cand.exists():
             return json.loads(cand.read_text(encoding="utf-8-sig"))
-    sys.exit(f"❌ {key}: 未找到 book.json（副本或原始）")
+    sys.exit(f"❌ {key}: 未找到 书数据.json（副本或原始）")
 
 
 def make_thumb(src: Path, dst: Path) -> bool:
@@ -153,3 +154,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

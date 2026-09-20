@@ -22,7 +22,21 @@ MAT = Path(r"F:\_教材素材\人教版（PEP）（主编：吴欣）")
 DATA_DIR = Path(r"F:\LoongBa_Git\LoongEduTools\Downloader\Diandu\data")
 OUT_DIR = Path(r"F:\LoongBa_Git\LoongEduTools\RedTools\重绘工具\qa_reports")
 TEMPLATE = Path(r"F:\LoongBa_Git\LoongEduTools\RedTools\重绘工具\quality_review_template.html")
-REVIEWS = Path(r"F:\LoongBa_Git\LoongEduTools\RedTools\重绘工具\qa_reviews.json")
+MAT = Path(r"F:\_教材素材\人教版（PEP）（主编：吴欣）")
+# 审核记录已迁移为每册独立文件：_重绘图片素材/审核记录.json（平面 page→entry，无 book 嵌套）
+# 兼容回退：旧全局 qa_reviews.json（嵌套 {book: {page: entry}}）
+REVIEWS_GLOBAL = Path(r"F:\LoongBa_Git\LoongEduTools\RedTools\重绘工具\qa_reviews.json")
+
+
+def load_reviews_for_book(grade: str, vol: str) -> dict:
+    """读取指定册的审核记录（册级 审核记录.json 优先，全局 qa_reviews.json 回退）"""
+    per_book = MAT / grade / vol / "_重绘图片素材" / "审核记录.json"
+    if per_book.exists():
+        return json.loads(per_book.read_text(encoding="utf-8"))
+    if REVIEWS_GLOBAL.exists():
+        allr = json.loads(REVIEWS_GLOBAL.read_text(encoding="utf-8"))
+        return allr.get(f"{grade}_{vol}", {})
+    return {}
 
 BOOKS = [
     ("1212001101247","一年级","上册"), ("1212001102247","一年级","下册"),
@@ -87,12 +101,6 @@ def check_page(grade, vol, page):
 OUT_DIR.mkdir(exist_ok=True)
 template = TEMPLATE.read_text(encoding="utf-8")
 
-if REVIEWS.exists():
-    all_reviews = json.loads(REVIEWS.read_text(encoding="utf-8"))
-else:
-    all_reviews = {}
-    REVIEWS.write_text("{}", encoding="utf-8")
-
 ap = argparse.ArgumentParser()
 ap.add_argument("--book", help="仅生成指定册（如 四年级_上册），默认全部")
 args = ap.parse_args()
@@ -112,7 +120,7 @@ for bookid, grade, vol in BOOKS:
             pages.append(check_page(grade, vol, p))
     book_data = {f"{grade}_{vol}": {"grade": grade, "vol": vol, "units": units, "pages": pages}}
     key = f"{grade}_{vol}"
-    reviews = all_reviews.get(key, {})
+    reviews = load_reviews_for_book(grade, vol)
     html = template
     html = html.replace("PLACEHOLDER_DATA", json.dumps(book_data, ensure_ascii=False))
     html = html.replace("PLACEHOLDER_REVIEWS", json.dumps(reviews, ensure_ascii=False))
