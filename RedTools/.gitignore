@@ -34,8 +34,9 @@ __pycache__/
 重绘工具/quality_report.html
 重绘工具/_shot_*.png
 重绘工具/hotzone_editor/_shot_*.png
-重绘工具/tts_trial/                # TTS 音色试听生成物（tts_voice_trial/tts_kokoro_trial 输出）
-重绘工具/tts_output/               # TTS 批量合成临时产物（正式产物在素材库 _重读音频素材）
+# TTS 音色试听与批量合成产物（正式产物在素材库 _重读音频素材，不入库）
+重绘工具/tts_trial/
+重绘工具/tts_output/
 
 # 临时 / 系统
 *.tmp
