@@ -95,7 +95,7 @@ body {
 
 /* 数据更新时间独立小字（只显示时间，不标注含义） */
 .header-ts {
-  display: block;
+  margin-left: 6px;
   margin-top: 2px;
   font-size: 9px;
   font-weight: 400;
@@ -184,7 +184,7 @@ body {
   border: 3px solid #ff8c00;
 }
 
-/* 播放中喇叭图标（右上角） */
+/* 播放中喇叭图标（右上角）：颜色与播放框一致（stroke 用 currentColor） */
 .hotspot.is-playing::after {
   content: '';
   position: absolute;
@@ -195,6 +195,7 @@ body {
   background-image: url('./icon-speaker.svg');
   background-size: contain;
   background-repeat: no-repeat;
+  color: #ff8c00;
   animation: pulse 1s ease-in-out infinite;
 }
 

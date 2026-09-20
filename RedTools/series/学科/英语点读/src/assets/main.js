@@ -255,7 +255,7 @@
     var hzT = APP.meta && APP.meta.hotzone_updated_at;
     if (imgT || hzT) {
       var tsEl = makeEl('span', 'header-ts',
-        (imgT || '') + (imgT && hzT ? ' · ' : '') + (hzT || ''));
+        '[' + (imgT || '') + (imgT && hzT ? ' · ' : '') + (hzT || '') + ']');
       brand.appendChild(tsEl);
     }
     titleBox.appendChild(brand);
