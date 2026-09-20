@@ -72,17 +72,27 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 #reviewFull.show{display:flex}
 .rf-top{display:flex;align-items:center;gap:12px;padding:8px 16px;background:#2a2a2a;color:#fff;flex-wrap:wrap}
 .rf-top .rf-title{font-weight:600;font-size:14px}
-.rf-main{flex:1;display:flex;min-height:0;padding:10px}
-.rf-img-wrap{flex:1;position:relative;display:flex;align-items:center;justify-content:center;border:1px solid #444;margin:0 5px;background:#000;border-radius:6px;overflow:hidden}
+.rf-main{flex:1;display:flex;min-height:0;padding:10px;gap:10px}
+.rf-img-wrap{flex:1;position:relative;display:flex;align-items:center;justify-content:center;border:1px solid #444;background:#000;border-radius:6px;overflow:hidden}
 .rf-img-wrap img{max-width:100%;max-height:100%;object-fit:contain}
 .rf-label{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.65);color:#fff;font-size:12px;padding:2px 8px;border-radius:3px;z-index:2}
-.rf-side{width:320px;background:#2a2a2a;padding:14px;display:flex;flex-direction:column;gap:10px;overflow:auto;border-left:1px solid #444}
-.rf-side .ck-list label{color:#ddd}
-.rf-reason{width:100%;padding:6px 8px;border:1px solid #555;border-radius:4px;background:#333;color:#eee;font-size:12px;resize:vertical;min-height:70px}
-.rf-actions{display:flex;gap:8px}
-.rf-nav{display:flex;align-items:center;gap:10px;padding:8px 16px;background:#2a2a2a;justify-content:center;border-top:1px solid #444}
-.rf-nav .rf-idx{font-size:12px;color:#bbb}
-.rf-meta{font-size:11px;color:#999}
+/* 中间操作区（左右两图之间，不占底部） */
+.rf-op{width:300px;flex:0 0 auto;background:#2a2a2a;border:1px solid #444;border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:10px;overflow:auto}
+.rf-op .ck-list label{color:#ddd}
+.rf-op .rf-badge{text-align:center}
+.rf-op .rf-idx{font-size:12px;color:#bbb;text-align:center}
+.rf-op .rf-pagenav{display:flex;gap:8px;justify-content:center}
+.rf-op .rf-pagenav button{flex:1;padding:10px 0;font-size:16px}
+.rf-big{padding:14px 0;border:none;border-radius:8px;cursor:pointer;font-size:16px;font-weight:700;transition:.15s}
+.rf-pass{background:#4CAF50;color:#fff}.rf-pass:hover{background:#388E3C}
+.rf-fail{background:#F44336;color:#fff}.rf-fail:hover{background:#C62828}
+.rf-reason{width:100%;padding:6px 8px;border:1px solid #555;border-radius:4px;background:#333;color:#eee;font-size:12px;resize:vertical;min-height:60px}
+.rf-skip{display:flex;align-items:center;gap:6px;font-size:12px;color:#ccc;cursor:pointer}
+.rf-skip input{width:14px;height:14px}
+#rfMarkBtn.is-active{background:#F44336;color:#fff}
+.rf-draw-preview{position:absolute;border:2px dashed #F44336;background:rgba(244,67,54,.1);pointer-events:none;z-index:6}
+.rf-mark{position:absolute;border:2px solid #F44336;background:rgba(244,67,54,.15);pointer-events:auto;z-index:5;cursor:pointer}
+.rf-mark:hover{background:rgba(244,67,54,.3)}
 </style>
 </head>
 <body>
@@ -116,32 +126,31 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <button class="btn btn-p" onclick="copyExport()">📋 复制</button>
   </div>
 </div>
-<!-- 全屏双图审核模式 -->
+<!-- 全屏双图审核模式：左图 | 中间操作区 | 右图 -->
 <div id="reviewFull">
   <div class="rf-top">
     <button class="btn btn-o" onclick="closeReview()">← 返回列表</button>
     <span class="rf-title" id="rfTitle">Page_000</span>
-    <span id="rfBadge"></span>
     <span class="rf-meta" id="rfMeta"></span>
   </div>
   <div class="rf-main">
     <div class="rf-img-wrap"><span class="rf-label">📄 原图</span><img id="rfOrig" alt="原图"></div>
-    <div class="rf-img-wrap"><span class="rf-label">🎨 重绘</span><img id="rfRedr" alt="重绘"></div>
-  </div>
-  <div class="rf-side">
-    <div id="rfStatus"></div>
-    <div class="ck-list" id="rfIssues"></div>
-    <textarea class="rf-reason" id="rfReason" placeholder="补充说明（需重绘原因）…"></textarea>
-    <div class="rf-actions">
-      <button class="btn btn-g" onclick="rfPass()">✅ 同意过审</button>
-      <button class="btn btn-w" onclick="rfFail()">❌ 需重绘</button>
+    <div class="rf-op">
+      <div class="rf-badge" id="rfBadge"></div>
+      <div class="rf-idx" id="rfIdx">1/1</div>
+      <div class="rf-pagenav">
+        <button class="btn btn-o" onclick="rfPrev()" title="上一页（←）">◀ 上一页</button>
+        <button class="btn btn-o" onclick="rfNext()" title="下一页（→）">下一页 ▶</button>
+      </div>
+      <button class="btn btn-o" id="rfMarkBtn" onclick="toggleRfMark()" title="在原图/重绘上画矩形，标记需要重点纠正的区域">📍 标记矩形</button>
+      <button class="rf-big rf-pass" onclick="rfPass()">✅ 同意过审</button>
+      <button class="rf-big rf-fail" onclick="rfFail()">❌ 需重绘</button>
+      <div class="ck-list" id="rfIssues"></div>
+      <textarea class="rf-reason" id="rfReason" placeholder="补充说明（需重绘原因）…"></textarea>
+      <label class="rf-skip"><input type="checkbox" id="rfSkipPass" checked> 跳过已通过（自动跳到未审/需重绘页）</label>
+      <div style="font-size:11px;color:#888">审核后自动下一张 · 单元完成自动衔接 · 本册结束询问返回</div>
     </div>
-    <div style="font-size:11px;color:#888">提示：←/→ 键盘翻页</div>
-  </div>
-  <div class="rf-nav">
-    <button class="btn btn-o" onclick="rfPrev()">◀ 上一页</button>
-    <span class="rf-idx" id="rfIdx">1/1</span>
-    <button class="btn btn-o" onclick="rfNext()">下一页 ▶</button>
+    <div class="rf-img-wrap"><span class="rf-label">🎨 重绘</span><img id="rfRedr" alt="重绘"></div>
   </div>
 </div>
 <script>
@@ -520,7 +529,10 @@ function renderReview(){
   document.getElementById("rfTitle").textContent=`Page_${String(pg.page).padStart(3,'0')} · ${unitLabel(pg.page)}`;
   document.getElementById("rfOrig").src="file:///"+pg.orig;
   document.getElementById("rfRedr").src="file:///"+pg.redr;
-  document.getElementById("rfIdx").textContent=`${reviewIdx+1}/${reviewList.length}`;
+  // 进度：页序 + 单元位置
+  const ui=BOOK.units.findIndex(u=>pg.page>=u.start&&pg.page<u.end);
+  const unitTxt=ui>=0?` · 单元 ${ui+1}/${BOOK.units.length}`:"";
+  document.getElementById("rfIdx").textContent=`${reviewIdx+1}/${reviewList.length}${unitTxt}`;
   document.getElementById("rfMeta").textContent=metaText(pg);
   const b=st.pass===true?'<span class="badge badge-pass">✅ 已过审</span>':st.pass===false?'<span class="badge badge-fail">❌ 需重绘</span>':'<span class="badge badge-none">⬜ 待审</span>';
   document.getElementById("rfBadge").innerHTML=b;
@@ -542,6 +554,33 @@ function renderReview(){
     if(!S[key])S[key]={issues:[],reason:"",pass:undefined,marks:[]};
     S[key].reason=ta.value;saveState(S);
   };
+  // 标记按钮态 + 矩形标记渲染
+  const mk=document.getElementById("rfMarkBtn");
+  if(mk)mk.classList.toggle("is-active",rfMarkMode);
+  renderRfMarks(k);
+}
+
+/* ---- 审核后自动下一张 + 跳过已通过 + 单元衔接 ---- */
+function shouldSkipPass(){const el=document.getElementById("rfSkipPass");return !el||el.checked;}
+function autoAdvance(delta){
+  let i=reviewIdx+delta;
+  if(delta<0&&i<0){return;}                        // 已到首张
+  if(delta>0&&i>=reviewList.length){               // 本册完成
+    if(confirm("本册已审核完成，返回列表？")){closeReview();}
+    return;
+  }
+  // 跳过已通过（默认勾选）
+  let guard=0;
+  while(shouldSkipPass()&&i>=0&&i<reviewList.length&&(S[pk(reviewList[i].page)]||{}).pass===true){
+    i+=delta;
+    if(++guard>reviewList.length){break;}
+  }
+  if(delta>0&&i>=reviewList.length){
+    if(confirm("本册已审核完成，返回列表？")){closeReview();}
+    return;
+  }
+  if(i<0){i=0;}
+  openReview(i);
 }
 function rfPass(){
   const pg=reviewList[reviewIdx],k=pk(pg.page);
@@ -551,6 +590,7 @@ function rfPass(){
   if(S[k].pass!==undefined&&S[k].pass!==true)pushHistory(k,{pass:S[k].pass,issues:S[k].issues||[],reason:S[k].reason||"",marks:S[k].marks||[],timestamp:new Date().toISOString()});
   S[k].pass=true;S[k].issues=[];S[k].reviewed_at=new Date().toISOString();
   saveState(S);renderReview();
+  autoAdvance(1);                                  // 审核后自动下一张
 }
 function rfFail(){
   const pg=reviewList[reviewIdx],k=pk(pg.page);
@@ -558,16 +598,106 @@ function rfFail(){
   if(S[k].pass===true)pushHistory(k,{pass:true,issues:S[k].issues||[],reason:S[k].reason||"",marks:S[k].marks||[],timestamp:new Date().toISOString()});
   S[k].pass=false;S[k].reviewed_at=new Date().toISOString();
   saveState(S);renderReview();
+  autoAdvance(1);                                  // 审核后自动下一张
 }
-function rfPrev(){openReview(reviewIdx-1)}
-function rfNext(){openReview(reviewIdx+1)}
+function rfPrev(){autoAdvance(-1)}
+function rfNext(){autoAdvance(1)}
 // 全屏时 ←/→ 翻页
 document.addEventListener("keydown",e=>{
   const rf=document.getElementById("reviewFull");
   if(!rf.classList.contains("show"))return;
   if(e.key==="ArrowLeft")rfPrev();
   else if(e.key==="ArrowRight")rfNext();
+  else if(e.key==="Escape"&&rfMarkMode){rfMarkMode=false;renderReview();}
 });
+
+/* ---- 全屏矩形标记（原图/重绘上画框，重绘时重点纠正） ---- */
+let rfMarkMode=false;
+let rfDraw=null;
+function toggleRfMark(){rfMarkMode=!rfMarkMode;renderReview();}
+function imgContentRect(img){
+  const r=img.getBoundingClientRect();
+  const nw=img.naturalWidth,nh=img.naturalHeight;
+  if(!nw||!nh)return r;
+  const scale=Math.min(r.width/nw,r.height/nh);
+  const cw=nw*scale,ch=nh*scale;
+  return {left:r.left+(r.width-cw)/2,top:r.top+(r.height-ch)/2,width:cw,height:ch};
+}
+function bindRfDraw(){
+  ["rfOrig","rfRedr"].forEach(id=>{
+    const img=document.getElementById(id);
+    if(!img)return;
+    img.addEventListener("mousedown",function(e){
+      if(!rfMarkMode)return;
+      e.preventDefault();
+      const c=imgContentRect(img);
+      const pv=document.createElement("div");
+      pv.className="rf-draw-preview";
+      img.parentElement.appendChild(pv);
+      rfDraw={img,c,x0:e.clientX,y0:e.clientY,pv:pv};
+    });
+    img.addEventListener("mousemove",function(e){
+      if(!rfDraw||rfDraw.img!==img)return;
+      const c=rfDraw.c;
+      rfDraw.pv.style.left=(Math.min(rfDraw.x0,e.clientX)-c.left)+"px";
+      rfDraw.pv.style.top=(Math.min(rfDraw.y0,e.clientY)-c.top)+"px";
+      rfDraw.pv.style.width=Math.abs(e.clientX-rfDraw.x0)+"px";
+      rfDraw.pv.style.height=Math.abs(e.clientY-rfDraw.y0)+"px";
+    });
+    img.addEventListener("mouseup",function(e){
+      if(!rfDraw||rfDraw.img!==img)return;
+      const d=rfDraw;rfDraw=null;
+      d.pv.remove();
+      const w=Math.abs(e.clientX-d.x0),h=Math.abs(e.clientY-d.y0);
+      if(w<8||h<8)return;                          // 太小忽略
+      const pg=reviewList[reviewIdx],k=pk(pg.page);
+      if(!S[k])S[k]={issues:[],reason:"",pass:undefined,marks:[]};
+      if(!S[k].marks)S[k].marks=[];
+      const c=d.c;
+      const x=(Math.min(d.x0,e.clientX)-c.left)*img.naturalWidth/c.width;
+      const y=(Math.min(d.y0,e.clientY)-c.top)*img.naturalHeight/c.height;
+      const note=prompt("标记说明（为什么这里需要重绘）：","")||"";
+      S[k].marks.push({x:Math.round(x),y:Math.round(y),w:Math.round(w*img.naturalWidth/c.width),h:Math.round(h*img.naturalHeight/c.height),note:note});
+      autoVerdict(k);saveState(S);renderReview();
+    });
+  });
+}
+bindRfDraw();
+function delRfMark(k,i){
+  if(!S[k]||!S[k].marks)return;
+  S[k].marks.splice(i,1);
+  autoVerdict(k);saveState(S);renderReview();
+}
+function renderRfMarks(k){
+  const marks=(S[k]||{}).marks||[];
+  ["rfOrig","rfRedr"].forEach(id=>{
+    const img=document.getElementById(id);
+    if(!img)return;
+    const wrap=img.parentElement;
+    wrap.querySelectorAll(".rf-mark").forEach(el=>el.remove());
+    if(!marks.length)return;
+    const c=imgContentRect(img);
+    const sx=img.naturalWidth/c.width,sy=img.naturalHeight/c.height;
+    marks.forEach((m,i)=>{
+      const div=document.createElement("div");
+      div.className="rf-mark";
+      div.style.left=(c.left+m.x/sx)+"px";
+      div.style.top=(c.top+m.y/sy)+"px";
+      div.style.width=(m.w/sx)+"px";
+      div.style.height=(m.h/sy)+"px";
+      div.title=m.note||"";
+      const note=document.createElement("span");
+      note.textContent=m.note||("区域"+(i+1));
+      note.style.cssText="position:absolute;top:-16px;left:0;background:#F44336;color:#fff;font-size:10px;padding:1px 5px;border-radius:3px;white-space:nowrap";
+      const del=document.createElement("span");
+      del.textContent="✕";
+      del.style.cssText="position:absolute;top:-16px;right:-8px;background:#999;color:#fff;width:16px;height:16px;border-radius:50%;font-size:10px;line-height:16px;text-align:center;cursor:pointer";
+      del.onclick=()=>delRfMark(k,i);
+      div.appendChild(note);div.appendChild(del);
+      wrap.appendChild(div);
+    });
+  });
+}
 const IR=PLACEHOLDER_REVIEWS;
 if(IR&&Object.keys(IR).length>0){Object.entries(IR).forEach(([ps,rv])=>{const k=pk(parseInt(ps));if(!S[k]||S[k].pass===undefined)S[k]={issues:rv.issues||[],reason:rv.reason||"",pass:rv.pass!==undefined?rv.pass:false,marks:rv.marks||[],history:rv.history||[]}});saveState(S)}
 // 状态筛选栏

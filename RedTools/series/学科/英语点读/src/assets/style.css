@@ -93,6 +93,18 @@ body {
   flex: 0 0 auto;
 }
 
+/* 数据更新时间独立小字（只显示时间，不标注含义） */
+.header-ts {
+  display: block;
+  margin-top: 2px;
+  font-size: 9px;
+  font-weight: 400;
+  color: #b7bcc6;
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 0 auto;
+  flex: 0 0 auto;
+}
+
 /* ---------- 单元切换 ---------- */
 .unit-tabs {
   display: -webkit-box;

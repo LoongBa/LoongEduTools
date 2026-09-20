@@ -319,9 +319,40 @@ def convert_audio(unit: dict, out_dir: Path, audio_dir: Path) -> None:
                 f"({len(payload) // 1024} KB base64)")
 
 
+def fmt_local(ts: float | None) -> str:
+    """时间戳 → 本地 'yyyy-MM-dd HH:mm'（独立时间标记，小字显示用）"""
+    if not ts:
+        return ""
+    import datetime
+    return datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M")
+
+
+def data_source_times(cfg: ToolConfig) -> tuple[float | None, float | None]:
+    """图片数据最新 mtime + 热区校正文件最新 mtime。
+
+    用于发布状态检查与点读工具独立时间标记（与版本号分离）。
+    """
+    img_mt: float | None = None
+    for d in (cfg.redrawn_img_dir, cfg.img_dir):
+        if d and d.exists():
+            fs = [f for f in d.glob("*.png") if f.is_file()]
+            if fs:
+                m = max(f.stat().st_mtime for f in fs)
+                img_mt = m if img_mt is None else max(img_mt, m)
+    hz_mt: float | None = None
+    if cfg.hotzone_dir:
+        for base in (cfg.hotzone_dir, cfg.hotzone_dir / "_重绘图片素材"):
+            if base.exists():
+                for f in base.glob("热区校正_*.json"):
+                    m = f.stat().st_mtime
+                    hz_mt = m if hz_mt is None else max(hz_mt, m)
+    return img_mt, hz_mt
+
+
 def write_data_js(unit: dict, cfg: ToolConfig, book: dict, out_dir: Path, unit_index: int,
                   app_name: str | None = None) -> None:
     bookinfo = book.get("bookinfo", {})
+    img_mt, hz_mt = data_source_times(cfg)
     app_data = {
         "meta": {
             "name": app_name or cfg.app_name,
@@ -332,6 +363,9 @@ def write_data_js(unit: dict, cfg: ToolConfig, book: dict, out_dir: Path, unit_i
             "bookid": bookinfo.get("bookid", ""),
             "bookid_3rd": bookinfo.get("bookid_3rd", ""),
             "unit_index": unit_index,
+            # 独立时间标记（与版本分离；只显示时间，用于确认数据是否最新）
+            "img_updated_at": fmt_local(img_mt),
+            "hotzone_updated_at": fmt_local(hz_mt),
         },
         "units": [unit],
     }
@@ -790,6 +824,19 @@ def build_tool(cfg: ToolConfig, unit_index: int, pages: str | None = None,
             zf.extractall(extract_dir)
         log(f"解压测试版: {extract_dir}")
     log(f"zip 打包完成: {zip_path} ({zip_path.stat().st_size / 1024 / 1024:.2f} MiB)")
+
+    # 发布状态检查：版本 / 图片是否最新 / 热区是否最新
+    if publish:
+        zip_mt = zip_path.stat().st_mtime
+        img_mt, hz_mt = data_source_times(cfg)
+        img_s, hz_s = fmt_local(img_mt), fmt_local(hz_mt)
+        status = (f"发布状态: 版本 {cfg.version} | 图片 {img_s or '无'} "
+                  f"| 热区 {hz_s or '无'} | 构建 {fmt_local(zip_mt)}")
+        if img_mt and img_mt > zip_mt + 1:
+            status += " | ⚠️ 图片晚于构建（产物非最新）"
+        if hz_mt and hz_mt > zip_mt + 1:
+            status += " | ⚠️ 热区晚于构建（产物非最新）"
+        log(status)
     return zip_path
 
 

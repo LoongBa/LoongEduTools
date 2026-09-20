@@ -250,6 +250,14 @@
       var verEl = makeEl('span', 'header-ver', 'v' + ver);
       brand.appendChild(verEl);
     }
+    // 数据更新时间（独立小字，仅时间，不标注含义）：图片 / 热区，与版本分离便于确认数据最新性
+    var imgT = APP.meta && APP.meta.img_updated_at;
+    var hzT = APP.meta && APP.meta.hotzone_updated_at;
+    if (imgT || hzT) {
+      var tsEl = makeEl('span', 'header-ts',
+        (imgT || '') + (imgT && hzT ? ' · ' : '') + (hzT || ''));
+      brand.appendChild(tsEl);
+    }
     titleBox.appendChild(brand);
     headerEl.appendChild(titleBox);
 
