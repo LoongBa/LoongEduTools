@@ -5,8 +5,8 @@
 #       已存在文件自动跳过（不重复下载），可安全重跑
 # ============================================================================
 
-$data = 'F:/LoongBa_Git/LoongMediaTools/Downloader/Diandu/data'
-$script = 'F:/LoongBa_Git/LoongMediaTools/Downloader/Diandu/diandu_audio.py'
+$data = 'F:/LoongBa_Git/LoongEduTools/PEP词库/data/diandu'
+$script = 'F:/LoongBa_Git/LoongEduTools/PEP词库/tools/diandu/diandu_audio.py'
 $root = 'F:/_工作中视频素材库/_课本和教材_/_教材素材/人教版（PEP）（主编：吴欣）'
 
 # ════════════════════════════════════════════════════════════════════

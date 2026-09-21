@@ -26,7 +26,7 @@
 > **book.json 存档**：仓库内已打包 `book_data.zip`（11 本，约 1.3MB），
 > 使用前解压到 `data/` 目录：
 > ```powershell
-> Expand-Archive -Path Downloader/Diandu/book_data.zip -DestinationPath Downloader/Diandu/data -Force
+> Expand-Archive -Path PEP词库/data/diandu/book_data.zip -DestinationPath PEP词库/data/diandu -Force
 > ```
 > `data/` 不入库（已 gitignore），更新数据时重新打包 zip 替换。
 

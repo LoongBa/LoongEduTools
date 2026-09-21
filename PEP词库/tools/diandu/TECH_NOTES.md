@@ -1,7 +1,7 @@
 # 人教点读下载工具 — 技术原理备忘
 
-> ⚠️ **保密提醒**：本项目 GitHub 仓库为 **Private**（`LoongBa/LoongMediaTools`），
-> 本文件及 `Downloader/Diandu/` 下脚本仅限内部使用，**不得公开**。
+> ⚠️ **保密提醒**：本项目 GitHub 仓库为 **Private**（`LoongBa/LoongEduTools`），
+> 本文件及 `PEP词库/tools/diandu/` 下脚本仅限内部使用，**不得公开**。
 > 涉及人教点读接口的逆向信息，请勿外传。
 
 ---
