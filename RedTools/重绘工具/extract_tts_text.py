@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """从 书数据.json（或原始 book.json）提取单元 track 文本清单，供 TTS 批量合成。
 
+⚠️ 本脚本是**点读特有**适配层（book.json → 文本清单）；实际批量合成已统一走
+   通用工具 `LoongMediaTools/音频批量生成工具/`（见其 README，Edge TTS/Kokoro 双引擎）。
+   本目录 `tts_batch.py` 已委托通用工具合成。
+
 用法:
   python extract_tts_text.py --book 四年级_上册 --unit 0      # 提取指定册指定单元
   python extract_tts_text.py --book 四年级_上册 --unit 0 --out C:/tmp/u1.json
