@@ -391,6 +391,39 @@ def validate_audio_coverage(unit: dict, audio_dir: Path) -> dict:
     return {"total_tracks": total, "missing_audio": missing, "ok": not missing}
 
 
+def validate_page_completeness(book: dict, unit: dict, start: int, end: int,
+                               img_dir: Path, redrawn_img_dir: Path | None = None) -> dict:
+    """校验单元书页完整性。
+    missing_pages: range(start,end) 中 book["bookpage"] 缺 page_no（对 book 判——unit 已被过滤）
+    zero_track_pages: unit["pages"] 中 len(tracks)==0
+    redrawn_missing_imgs: 重绘缺但原版兜底（WARN 级，不入 strict 桶）
+    both_missing_imgs: 双缺（ERROR 级，strict 必触发；即 convert_images 会 continue 跳过的页集）
+    返回 {missing_pages, zero_track_pages, redrawn_missing_imgs, both_missing_imgs, total_pages, ok}
+    """
+    page_by_no = {p["page_no"]: p for p in book["bookpage"]}
+    missing, zero, redr_miss, both_miss = [], [], [], []
+    for page_no in range(start, end):
+        if page_no not in page_by_no:
+            missing.append(page_no)
+            continue
+    for p in unit.get("pages", []):
+        if not p.get("tracks"):
+            zero.append(p.get("no"))
+    # Oracle B1：分别判两目录（不能用 (redrawn_img_dir or img_dir) 只查一个目录），
+    # 与 convert_images 回退顺序一致：重绘优先，缺则原版兜底
+    for p in unit.get("pages", []):
+        pno = p.get("no")
+        redr_ok = bool(redrawn_img_dir and (Path(redrawn_img_dir) / f"Page_{pno:03d}.png").exists())
+        orig_ok = bool(img_dir and (Path(img_dir) / f"Page_{pno:03d}.png").exists())
+        if not redr_ok and not orig_ok:
+            both_miss.append(pno)
+        elif redrawn_img_dir and not redr_ok and orig_ok:
+            redr_miss.append(pno)
+    return {"missing_pages": missing, "zero_track_pages": zero, "redrawn_missing_imgs": redr_miss,
+            "both_missing_imgs": both_miss, "total_pages": len(unit.get("pages", [])),
+            "ok": not (missing or both_miss or zero)}
+
+
 def convert_audio(unit: dict, out_dir: Path, audio_dir: Path) -> None:
     audio_out = out_dir / "audio"
     audio_out.mkdir(parents=True, exist_ok=True)
@@ -622,27 +655,64 @@ def _load_pep_vocab_tool():
     return mod
 
 
+def _truncate_books_to_words(books: list[dict], max_words: int | None) -> list[dict]:
+    """B1（V0.5）：词汇表工具 content 级切分——按累计词数截断 books。
+
+    语义：保留前 max_words 个单词（按册顺序 → 单元顺序 → 词顺序），
+    截断发生在单词粒度，册/单元结构完整（截断的单元整体剔除，避免半单元）。
+    max_words=None（free_units=None，如英语点读走 book 源不适用）或 >= 总量时返回原样。
+    """
+    if max_words is None or max_words <= 0:
+        return books
+    out: list[dict] = []
+    remain = max_words
+    for b in books:
+        new_units: list[dict] = []
+        for u in b["units"]:
+            ws = u["words"]
+            if remain <= 0:
+                break
+            if len(ws) <= remain:
+                new_units.append(u)
+                remain -= len(ws)
+            else:
+                new_units.append({"unit": u["unit"], "words": ws[:remain]})
+                remain = 0
+        if new_units:
+            out.append({"grade": b["grade"], "term": b["term"],
+                        "book": b["book"], "units": new_units})
+        if remain <= 0:
+            break
+    return out
+
+
 def write_vocab_data_js(cfg: ToolConfig, out_dir: Path, unit_index: int,
                         app_name: str, mode: str = "offline") -> None:
     """打字背单词/单词闪卡：委托 /PEP词库 解析 PEP 11 册词汇表 → data.js（books）。
 
     同时将规范化词库 JSON 同步到 /PEP词库/data/vocab/pep_vocab.json（公共素材，schema v1）。
     V0.4 P4：RedTools 侧包装补双模式契约字段（mode/free_units/api_version），不改 PEP 核心模块。
+    B1（V0.5）：content 级切分——offline 按 cfg.free_units 截取前 N 词（如 200），online 全量。
     """
     if not cfg.vocab_dir or not cfg.vocab_dir.exists():
         raise SystemExit(f"vocab_dir 不存在: {cfg.vocab_dir}")
     mod = _load_pep_vocab_tool()
     books, total_words = mod.parse_all_books(cfg.vocab_dir)
+    # B1：offline 按 free_units 截断；online 全量（free_units 语义 = 前 N 词）
+    cut = None if mode == "online" else cfg.free_units
+    shipped_books = _truncate_books_to_words(books, cut)
+    shipped_words = sum(len(u["words"]) for b in shipped_books for u in b["units"])
     app_data = mod.build_app_data(app_name, cfg.version, cfg.series, cfg.tool,
-                                  unit_index, books)
+                                  unit_index, shipped_books)
     # V0.4 P4：补双模式契约字段（PEP 模块 meta 无 mode/free_units/api_version）
     app_data.setdefault("meta", {})
     app_data["meta"]["mode"] = mode
     app_data["meta"]["free_units"] = cfg.free_units
     app_data["meta"]["api_version"] = "v0"
     size = mod.write_data_js(app_data, out_dir)
-    log(f"data.js 写入（词汇表工具，{size / 1024:.0f} KB，{len(books)} 册 / {total_words} 词，mode={mode}）")
-    # 公共素材同步：PEP词库/data/vocab/pep_vocab.json
+    cut_note = f"，切分 {shipped_words}/{total_words} 词" if shipped_words != total_words else ""
+    log(f"data.js 写入（词汇表工具，{size / 1024:.0f} KB，{len(shipped_books)} 册 / {shipped_words} 词，mode={mode}{cut_note}）")
+    # 公共素材同步：PEP词库/data/vocab/pep_vocab.json（始终全量——公共素材不受工具免费切分影响）
     vocab_json = ROOT.parent / "PEP词库" / "data" / "vocab" / "pep_vocab.json"
     mod.write_vocab_json(books, total_words, vocab_json)
     log(f"PEP词库 规范化词库 JSON 已同步：{vocab_json.name}（{total_words} 词）")
@@ -915,6 +985,17 @@ def build_tool(cfg: ToolConfig, unit_index: int, pages: str | None = None,
                 log(f"  page {m['page']} track {m['track']}: {m['key']}")
             validation_issues.append(f"音频缺失 {len(audio_cov['missing_audio'])}/{audio_cov['total_tracks']}")
 
+        # ---- V1.3.2 校验：书页完整性（页码连续 / 零 track / 图片对齐；默认 WARN；--strict 硬失败） ----
+        comp = validate_page_completeness(book, unit, start, end, cfg.img_dir, cfg.redrawn_img_dir)
+        if comp["missing_pages"] or comp["both_missing_imgs"] or comp["zero_track_pages"]:
+            log(f"⚠️ 书页完整性: {len(comp['missing_pages'])} 缺页, {len(comp['zero_track_pages'])} 零track(可能为扉页), {len(comp['both_missing_imgs'])} 双缺图")
+            for pno in comp["missing_pages"][:5]: log(f"  缺页: page {pno}")
+            for pno in comp["zero_track_pages"][:5]: log(f"  零track页: page {pno}")
+            for pno in comp["both_missing_imgs"][:5]: log(f"  双缺图: page {pno}")
+            validation_issues.append(f"书页完整性 {len(comp['missing_pages'])+len(comp['zero_track_pages'])+len(comp['both_missing_imgs'])} 项")
+        if comp["redrawn_missing_imgs"]:
+            log(f"⚠️ 重绘缺图(原版兜底): {len(comp['redrawn_missing_imgs'])} 页")
+
         app_name = resolve_app_name(cfg, book, unit_index)
         convert_images(unit["pages"], start, dist_dir, cfg.img_dir, cfg.redrawn_img_dir)
         convert_audio(unit, dist_dir, cfg.audio_dir)
@@ -973,6 +1054,8 @@ def main() -> int:
     parser.add_argument("--pages", default=None)
     parser.add_argument("--mode", default="offline", choices=["offline", "online"],
                         help="构建模式：offline（zip+发布）/ online（仅部署目录）")
+    parser.add_argument("--strict", action="store_true",
+                        help="严格模式：校验异常时构建失败（热区坐标/音频缺失/书页完整性，collect-then-fail）")
     args = parser.parse_args()
 
     from tools import TOOLS
@@ -981,7 +1064,7 @@ def main() -> int:
     cfg = TOOLS[args.tool]
     if args.book:
         cfg.book = args.book
-    build_tool(cfg, args.unit, args.pages, mode=args.mode)
+    build_tool(cfg, args.unit, args.pages, mode=args.mode, strict=args.strict)
     return 0
 
 
