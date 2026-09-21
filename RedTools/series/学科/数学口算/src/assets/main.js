@@ -72,17 +72,18 @@
 
   /* ---------- 持久化 ---------- */
   var STORE_KEY = 'redtools.math.v1';
+  LX_SHARED.storage.configure({ toolName: 'math' });  // V0.4 迁移：键前缀 redtools.math.v1
   function loadStore() {
     try {
-      var raw = window.localStorage.getItem(STORE_KEY);
-      if (raw) { return JSON.parse(raw); }
+      var raw = LX_SHARED.storage.get('v1');
+      if (raw) { return raw; }
     } catch (err) { /* ignore */ }
     return { version: 1, profile: { totalCorrect: 0, maxCombo: 0, tier: '青铜', badges: [], best: { rate: 0, combo: 0, elapsedMs: Infinity } },
              checkin: { dates: [], streak: 0 }, wrongBook: [], history: [] };
   }
   function saveStore() {
     try {
-      window.localStorage.setItem(STORE_KEY, JSON.stringify(store));
+      LX_SHARED.storage.set('v1', store);
     } catch (err) { /* ignore */ }
   }
   var store = loadStore();
@@ -732,22 +733,8 @@
   }
 
   function calcStreak(dates) {
-    // dates 升序、去重后的 YYYYMMDD 列表
-    var streak = 0;
-    var d = new Date();
-    for (var i = dates.length - 1; i >= 0; i--) {
-      if (dates[i] === todayStr()) {
-        streak = 1;
-        continue;
-      }
-      // 从昨天往前数
-      d.setDate(d.getDate() - 1);
-      var want = dateStr(d);
-      if (dates[i] === want) { streak += 1; }
-      else { break; }
-    }
-    return streak;
-  }
+    return LX_SHARED.progress.streak(dates);
+}
 
   function dateStr(d) {
     function p2(n) { return n < 10 ? '0' + n : '' + n; }
@@ -1071,7 +1058,7 @@
     clearBtn.style.color = '#f5222d';
     clearBtn.addEventListener('click', function () {
       if (window.confirm('确定清除所有练习数据？此操作不可恢复。')) {
-        window.localStorage.removeItem(STORE_KEY);
+        LX_SHARED.storage.remove('v1');
         store = loadStore();
         saveStore();
         viewGrade();

@@ -41,6 +41,7 @@
 
   /* ---------- 持久化 ---------- */
   var STORE_KEY = 'redtools.chengyu.v1';
+  LX_SHARED.storage.configure({ toolName: 'chengyu' });  // V0.4 迁移：键前缀 redtools.chengyu.v1
 
   function defaultStore() {
     return {
@@ -54,7 +55,7 @@
   function loadStore() {
     var st = defaultStore();
     try {
-      var data = JSON.parse(window.localStorage.getItem(STORE_KEY));
+      var data = LX_SHARED.storage.get('v1');
       if (data && typeof data === 'object') {
         if (data.checkin && Array.isArray(data.checkin.dates)) {
           st.checkin = { dates: data.checkin.dates.slice(), streak: data.checkin.streak || 0 };
@@ -72,7 +73,7 @@
     return st;
   }
   function saveStore() {
-    try { window.localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (err) { /* ignore */ }
+    try { LX_SHARED.storage.set('v1', store); } catch (err) { /* ignore */ }
   }
   var store = loadStore();
   saveStore();
@@ -144,15 +145,8 @@
     return '' + d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate());
   }
   function calcStreak(dates) {
-    var streak = 0;
-    var d = new Date();
-    for (var i = dates.length - 1; i >= 0; i--) {
-      if (dates[i] === todayStr()) { streak = 1; continue; }
-      d.setDate(d.getDate() - 1);
-      if (dates[i] === dateStr(d)) { streak += 1; } else { break; }
-    }
-    return streak;
-  }
+    return LX_SHARED.progress.streak(dates);
+}
   function fmtMMSS(sec) {
     var m = Math.floor(sec / 60);
     var s = sec % 60;
@@ -831,7 +825,7 @@
     var resetBtn = makeEl('button', 'btn btn-danger', '重置所有数据');
     resetBtn.addEventListener('click', function () {
       if (window.confirm('确定清除所有打卡与成绩数据？此操作不可恢复。')) {
-        try { window.localStorage.removeItem(STORE_KEY); } catch (err) { /* ignore */ }
+        try { LX_SHARED.storage.remove('v1'); } catch (err) { /* ignore */ }
         store = loadStore();
         saveStore();
         viewHome();

@@ -153,18 +153,8 @@
   }
   /* 连续打卡天数：含今天往前推、跨天断（dates 升序去重） */
   function calcStreak(dates) {
-    var streak = 0;
-    var d = new Date();
-    var i;
-    for (i = dates.length - 1; i >= 0; i--) {
-      if (dates[i] === todayStr()) { streak = 1; continue; }
-      d.setDate(d.getDate() - 1);
-      var want = dateStr(d);
-      if (dates[i] === want) { streak += 1; }
-      else { break; }
-    }
-    return streak;
-  }
+    return LX_SHARED.progress.streak(dates);
+}
   function fmtValue(v) {
     if (Math.abs(v - Math.round(v)) < 1e-9) { return '' + Math.round(v); }
     var s = v.toFixed(4);

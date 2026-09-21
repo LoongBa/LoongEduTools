@@ -63,6 +63,7 @@
 
   /* ---------- 持久化（redtools.xijiesousuo.v1） ---------- */
   var STORE_KEY = 'redtools.xijiesousuo.v1';
+  LX_SHARED.storage.configure({ toolName: 'xijiesousuo' });  // V0.4 迁移：键前缀 redtools.xijiesousuo.v1
   function defaultStore() {
     return {
       version: 1,
@@ -74,9 +75,9 @@
   }
   function loadStore() {
     try {
-      var raw = window.localStorage.getItem(STORE_KEY);
+      var raw = LX_SHARED.storage.get('v1');
       if (raw) {
-        var obj = JSON.parse(raw);
+        var obj = raw;
         if (obj && obj.version === 1) {
           if (!obj.best) { obj.best = {}; }
           if (!obj.recent) { obj.recent = {}; }
@@ -91,7 +92,7 @@
   }
   function saveStore() {
     try {
-      window.localStorage.setItem(STORE_KEY, JSON.stringify(store));
+      LX_SHARED.storage.set('v1', store);
     } catch (err) { /* ignore */ }
   }
   var store = loadStore();
@@ -697,21 +698,8 @@
     store.checkin.streak = calcStreak(dates);
   }
   function calcStreak(dates) {
-    if (!dates || dates.length === 0) { return 0; }
-    var seen = {};
-    for (var i = 0; i < dates.length; i++) { seen[dates[i]] = true; }
-    var cur = new Date();
-    var streak = 0;
-    var d = cur;
-    if (!seen[fmtDate(d)]) {
-      d = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() - 1);
-    }
-    while (seen[fmtDate(d)]) {
-      streak += 1;
-      d = new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1);
-    }
-    return streak;
-  }
+    return LX_SHARED.progress.streak(dates);
+}
   function showCheckinView() {
     hideOverlay();
     stopTimer();

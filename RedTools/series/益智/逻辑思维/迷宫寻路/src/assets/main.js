@@ -31,6 +31,7 @@
 
   /* ---------- 常量 ---------- */
   var STORE_KEY = 'redtools.migongxunlu.v1';
+  LX_SHARED.storage.configure({ toolName: 'migongxunlu' });  // V0.4 迁移：键前缀 redtools.migongxunlu.v1
   var SWIPE = 24;                 // 滑动判定阈值 px（同推箱子）
   var DIR = { LEFT: 0, UP: 1, RIGHT: 2, DOWN: 3 };
   var DR = { 0: -1, 1: 0, 2: 1, 3: 0 };  // 列增量（x）
@@ -74,9 +75,9 @@
   }
   function loadStore() {
     try {
-      var raw = window.localStorage.getItem(STORE_KEY);
+      var raw = LX_SHARED.storage.get('v1');
       if (raw) {
-        var obj = JSON.parse(raw);
+        var obj = raw;
         if (obj && obj.version === 1) {
           if (!obj.best) { obj.best = {}; }
           if (!obj.recent) { obj.recent = {}; }
@@ -91,7 +92,7 @@
   }
   function saveStore() {
     try {
-      window.localStorage.setItem(STORE_KEY, JSON.stringify(store));
+      LX_SHARED.storage.set('v1', store);
     } catch (err) { /* ignore */ }
   }
   var store = loadStore();
@@ -115,21 +116,8 @@
            (day < 10 ? '0' + day : '' + day);
   }
   function calcStreak(dates) {
-    if (!dates || !dates.length) { return 0; }
-    var set = {};
-    for (var i = 0; i < dates.length; i++) { set[dates[i]] = true; }
-    var cur = new Date();
-    cur.setHours(0, 0, 0, 0);
-    if (!set[fmtDate(cur)]) {
-      cur.setDate(cur.getDate() - 1); // 今天未打则从昨天起算连续
-    }
-    var streak = 0;
-    while (set[fmtDate(cur)]) {
-      streak++;
-      cur.setDate(cur.getDate() - 1);
-    }
-    return streak;
-  }
+    return LX_SHARED.progress.streak(dates);
+}
   function fmtTime(ms) {
     // 秒 + 1 位小数，如 07.5
     var sec = Math.max(0, ms) / 1000;

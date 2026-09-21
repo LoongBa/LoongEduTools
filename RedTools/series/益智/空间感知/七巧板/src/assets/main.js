@@ -31,6 +31,7 @@
   var ANGLE_TOL = 22.5;         // 磁吸角度容差（°）
   var MAX_HINT = 2;             // 提示封顶
   var LS_KEY = 'redtools.tangram.v1';
+  LX_SHARED.storage.configure({ toolName: 'tangram' });  // V0.4 迁移：键前缀 redtools.tangram.v1
 
   var headerEl = document.getElementById('app-header');
   var viewEl = document.getElementById('view');
@@ -56,13 +57,13 @@
   /* ---------- 持久化 ---------- */
   function loadRec() {
     try {
-      var raw = localStorage.getItem(LS_KEY);
-      if (raw) { return JSON.parse(raw); }
+      var raw = LX_SHARED.storage.get('v1');
+      if (raw) { return raw; }
     } catch (err) { /* ignore */ }
     return { best: {}, done: {}, total: 0, checkin: { dates: [], streak: 0 }, history: [] };
   }
   function saveRec(rec) {
-    try { localStorage.setItem(LS_KEY, JSON.stringify(rec)); } catch (err) { /* ignore */ }
+    try { LX_SHARED.storage.set('v1', rec); } catch (err) { /* ignore */ }
   }
   function p2(n) { return n < 10 ? '0' + n : '' + n; }
   function todayStr() {
@@ -73,16 +74,8 @@
     return '' + d.getFullYear() + p2(d.getMonth() + 1) + p2(d.getDate());
   }
   function calcStreak(dates) {
-    var streak = 0;
-    var d = new Date();
-    for (var i = dates.length - 1; i >= 0; i--) {
-      if (dates[i] === todayStr()) { streak = 1; continue; }
-      d.setDate(d.getDate() - 1);
-      if (dates[i] === dateStr(d)) { streak += 1; }
-      else { break; }
-    }
-    return streak;
-  }
+    return LX_SHARED.progress.streak(dates);
+}
 
   /* ---------- 工具 ---------- */
   function clearNode(node) {

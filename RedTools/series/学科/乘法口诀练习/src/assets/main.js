@@ -44,6 +44,7 @@
 
   /* ---------- 持久化（redtools.mul.v1，version + 迁移兜底） ---------- */
   var STORE_KEY = 'redtools.mul.v1';
+  LX_SHARED.storage.configure({ toolName: 'mul' });  // V0.4 迁移：键前缀 redtools.mul.v1
   M.STORE_KEY = STORE_KEY;
   function defaultStore() {
     return { version: 1, unlockedRows: [1],
@@ -54,7 +55,7 @@
   function loadStore() {
     var st = defaultStore();
     try {
-      var data = JSON.parse(window.localStorage.getItem(STORE_KEY));
+      var data = LX_SHARED.storage.get('v1');
       if (data && typeof data === 'object') {
         if (data.unlockedRows && data.unlockedRows.length) { st.unlockedRows = data.unlockedRows; }
         if (data.profile) {
@@ -73,7 +74,7 @@
     return st;
   }
   function saveStore() {
-    try { window.localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (err) { /* ignore */ }
+    try { LX_SHARED.storage.set('v1', store); } catch (err) { /* ignore */ }
   }
   var store = M.store = loadStore();
   store.unlockedRows.sort(function (a, b) { return a - b; });
@@ -93,14 +94,8 @@
   function dateStr(d) { return '' + d.getFullYear() + p2(d.getMonth() + 1) + p2(d.getDate()); }
   function isRowUnlocked(row) { return store.unlockedRows.indexOf(row) !== -1; }
   function calcStreak(dates) {
-    var streak = 0, d = new Date();
-    for (var i = dates.length - 1; i >= 0; i--) {
-      if (dates[i] === todayStr()) { streak = 1; continue; }
-      d.setDate(d.getDate() - 1);
-      if (dates[i] === dateStr(d)) { streak += 1; } else { break; }
-    }
-    return streak;
-  }
+    return LX_SHARED.progress.streak(dates);
+}
   M.makeEl = makeEl; M.clearNode = clearNode;
   M.todayStr = todayStr; M.dateStr = dateStr; M.calcStreak = calcStreak;
   M.isRowUnlocked = isRowUnlocked;
@@ -353,7 +348,7 @@
     clearBtn.style.color = '#f5222d';
     clearBtn.addEventListener('click', function () {
       if (window.confirm('确定清除所有练习数据？此操作不可恢复。')) {
-        window.localStorage.removeItem(STORE_KEY);
+        LX_SHARED.storage.remove('v1');
         store = M.store = loadStore();
         saveStore();
         viewHome();

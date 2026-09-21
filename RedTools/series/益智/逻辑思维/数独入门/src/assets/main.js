@@ -65,6 +65,7 @@
 
   /* ---------- 持久化（redtools.shudurumen.v1） ---------- */
   var STORE_KEY = 'redtools.shudurumen.v1';
+  LX_SHARED.storage.configure({ toolName: 'shudurumen' });  // V0.4 迁移：键前缀 redtools.shudurumen.v1
   function defaultStore() {
     return {
       version: 1,
@@ -76,9 +77,9 @@
   }
   function loadStore() {
     try {
-      var raw = window.localStorage.getItem(STORE_KEY);
+      var raw = LX_SHARED.storage.get('v1');
       if (raw) {
-        var obj = JSON.parse(raw);
+        var obj = raw;
         if (obj && obj.version === 1) {
           if (!obj.best) { obj.best = {}; }
           if (!obj.recent) { obj.recent = {}; }
@@ -93,7 +94,7 @@
   }
   function saveStore() {
     try {
-      window.localStorage.setItem(STORE_KEY, JSON.stringify(store));
+      LX_SHARED.storage.set('v1', store);
     } catch (err) { /* ignore */ }
   }
   var store = loadStore();
@@ -114,22 +115,8 @@
     return '' + d.getFullYear() + p2(d.getMonth() + 1) + p2(d.getDate());
   }
   function calcStreak(dates) {
-    if (!dates || !dates.length) { return 0; }
-    var set = {};
-    var i;
-    for (i = 0; i < dates.length; i++) { set[dates[i]] = true; }
-    var cur = new Date();
-    cur.setHours(0, 0, 0, 0);
-    if (!set[fmtDate(cur)]) {
-      cur.setDate(cur.getDate() - 1); // 今天未打则从昨天起算连续
-    }
-    var streak = 0;
-    while (set[fmtDate(cur)]) {
-      streak++;
-      cur.setDate(cur.getDate() - 1);
-    }
-    return streak;
-  }
+    return LX_SHARED.progress.streak(dates);
+}
   function fmtTime(ms) {
     // 秒 + 1 位小数，如 07.5
     var sec = Math.max(0, ms) / 1000;

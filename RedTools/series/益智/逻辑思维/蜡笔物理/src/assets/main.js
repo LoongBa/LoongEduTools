@@ -20,6 +20,7 @@
   window.CRAYONS = CRAYONS;
 
   var STORE_KEY = 'redtools.wuli.v1';
+  LX_SHARED.storage.configure({ toolName: 'wuli' });  // V0.4 迁移：键前缀 redtools.wuli.v1
 
   /* ---------- DOM ---------- */
   var view = document.getElementById('view');
@@ -45,29 +46,22 @@
   /* ---------- 存储：成绩 + 打卡 ---------- */
   function loadStore() {
     try {
-      var s = JSON.parse(localStorage.getItem(STORE_KEY)) || {};
+      var s = LX_SHARED.storage.get('v1') || {};
       s.best = s.best || {};
       s.checkin = s.checkin || { dates: [] };
       s.history = s.history || [];
       return s;
     } catch (e) { return { best: {}, checkin: { dates: [] }, history: [] }; }
   }
-  function saveStore(s) { try { localStorage.setItem(STORE_KEY, JSON.stringify(s)); } catch (e) {} }
+  function saveStore(s) { try { LX_SHARED.storage.set('v1', s); } catch (e) {} }
 
   function dateStr(d) {
     var m = d.getMonth() + 1, day = d.getDate();
     return '' + d.getFullYear() + (m < 10 ? '0' : '') + m + (day < 10 ? '0' : '') + day;
   }
   function calcStreak(dates) {
-    if (!dates || !dates.length) return 0;
-    var set = {};
-    for (var i = 0; i < dates.length; i++) set[dates[i]] = true;
-    var d = new Date();
-    if (!set[dateStr(d)]) { d.setDate(d.getDate() - 1); }
-    var streak = 0;
-    while (set[dateStr(d)]) { streak++; d.setDate(d.getDate() - 1); }
-    return streak;
-  }
+    return LX_SHARED.progress.streak(dates);
+}
   function doCheckin(store) {
     var today = dateStr(new Date());
     if (store.checkin.dates.indexOf(today) < 0) store.checkin.dates.push(today);

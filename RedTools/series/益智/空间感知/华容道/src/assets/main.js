@@ -26,6 +26,7 @@
 
   var ROWS = 5, COLS = 4, EXIT_R = 3, EXIT_C = 1;
   var STORE_KEY = 'redtools.hrd.v1';
+  LX_SHARED.storage.configure({ toolName: 'hrd' });  // V0.4 迁移：键前缀 redtools.hrd.v1
   var META = (window.APP_DATA && window.APP_DATA.meta) || { name: '华容道', version: '1.0' };
 
   /* ---------- 状态 ---------- */
@@ -44,38 +45,22 @@
   /* ---------- 本地存储 ---------- */
   function loadStore() {
     try {
-      var raw = localStorage.getItem(STORE_KEY);
-      if (raw) return JSON.parse(raw);
+      var raw = LX_SHARED.storage.get('v1');
+      if (raw) return raw;
     } catch (e) { /* ignore */ }
     return { best: {}, checkin: { dates: [], streak: 0 }, history: [] };
   }
   var store = loadStore();
   function saveStore() {
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) { /* ignore */ }
+    try { LX_SHARED.storage.set('v1', store); } catch (e) { /* ignore */ }
   }
   function today() {
     var d = new Date();
     return '' + d.getFullYear() + (d.getMonth() < 9 ? '0' : '') + (d.getMonth() + 1) + (d.getDate() < 10 ? '0' : '') + d.getDate();
   }
   function calcStreak() {
-    var dates = store.checkin.dates.slice().sort();
-    if (dates.length === 0) return 0;
-    var streak = 0;
-    var d = new Date();
-    var last = dates[dates.length - 1];
-    var lastD = new Date(last.substr(0, 4), parseInt(last.substr(4, 2), 10) - 1, parseInt(last.substr(6, 2), 10));
-    var todayD = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    // 今天未打卡但昨天有 → 从昨天起算
-    var start = lastD < todayD ? lastD : todayD;
-    if ((todayD - lastD) / 86400000 > 1) return 0;
-    var cur = start;
-    while (dates.indexOf(cur.getFullYear() + (cur.getMonth() < 9 ? '0' : '') + (cur.getMonth() + 1) + (cur.getDate() < 10 ? '0' : '') + cur.getDate()) >= 0) {
-      streak++;
-      cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() - 1);
-      if (streak > 365) break;
-    }
-    return streak;
-  }
+    return LX_SHARED.progress.streak(store.checkin.dates);
+}
   function doCheckin() {
     var t = today();
     var dates = store.checkin.dates;

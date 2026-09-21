@@ -29,6 +29,7 @@
   /* ---------- 常量 ---------- */
   var OPEN_LEVELS = 60;               // 当前开放关卡数（数据全量 155 关，扩关只改这里）
   var STORE_KEY = 'redtools.tuixiangzi.v1';
+  LX_SHARED.storage.configure({ toolName: 'tuixiangzi' });  // V0.4 迁移：键前缀 redtools.tuixiangzi.v1
   var SWIPE = 24;                     // 滑动判定阈值 px
   var DIR = { LEFT: 0, UP: 1, RIGHT: 2, DOWN: 3 };
   // 方向 → 行列增量（idx = y*w + x；pr = idx%w 为列 x，pc = floor(idx/w) 为行 y）
@@ -52,8 +53,8 @@
   /* ---------- 持久化（redtools.tuixiangzi.v1） ---------- */
   function loadStore() {
     try {
-      var raw = window.localStorage.getItem(STORE_KEY);
-      if (raw) { return JSON.parse(raw); }
+      var raw = LX_SHARED.storage.get('v1');
+      if (raw) { return raw; }
     } catch (err) { /* ignore */ }
     return {
       version: 1,
@@ -65,7 +66,7 @@
   }
   function saveStore() {
     try {
-      window.localStorage.setItem(STORE_KEY, JSON.stringify(store));
+      LX_SHARED.storage.set('v1', store);
     } catch (err) { /* ignore */ }
   }
   var store = loadStore();
@@ -89,21 +90,8 @@
            (day < 10 ? '0' + day : '' + day);
   }
   function calcStreak(dates) {
-    if (!dates || !dates.length) { return 0; }
-    var set = {};
-    for (var i = 0; i < dates.length; i++) { set[dates[i]] = true; }
-    var cur = new Date();
-    cur.setHours(0, 0, 0, 0);
-    if (!set[fmtDate(cur)]) {
-      cur.setDate(cur.getDate() - 1); // 今天未打则从昨天起算连续
-    }
-    var streak = 0;
-    while (set[fmtDate(cur)]) {
-      streak++;
-      cur.setDate(cur.getDate() - 1);
-    }
-    return streak;
-  }
+    return LX_SHARED.progress.streak(dates);
+}
 
   /* ---------- 音效（Web Audio 合成） ---------- */
   var actx = null;

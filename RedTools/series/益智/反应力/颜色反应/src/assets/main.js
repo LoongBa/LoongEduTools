@@ -59,10 +59,11 @@
 
   /* ---------- 持久化 ---------- */
   var STORE_KEY = 'redtools.colorreact.v1';
+  LX_SHARED.storage.configure({ toolName: 'colorreact' });  // V0.4 迁移：键前缀 redtools.colorreact.v1
   function loadStore() {
     try {
-      var raw = window.localStorage.getItem(STORE_KEY);
-      if (raw) { return JSON.parse(raw); }
+      var raw = LX_SHARED.storage.get('v1');
+      if (raw) { return raw; }
     } catch (err) { /* ignore */ }
     return {
       version: 1,
@@ -74,7 +75,7 @@
   }
   function saveStore() {
     try {
-      window.localStorage.setItem(STORE_KEY, JSON.stringify(store));
+      LX_SHARED.storage.set('v1', store);
     } catch (err) { /* ignore */ }
   }
   var store = loadStore();
@@ -103,17 +104,8 @@
   }
   /* 连续打卡天数：含今天往前推、跨天断（dates 升序去重） */
   function calcStreak(dates) {
-    var streak = 0;
-    var d = new Date();
-    for (var i = dates.length - 1; i >= 0; i--) {
-      if (dates[i] === todayStr()) { streak = 1; continue; }
-      d.setDate(d.getDate() - 1);
-      var want = dateStr(d);
-      if (dates[i] === want) { streak += 1; }
-      else { break; }
-    }
-    return streak;
-  }
+    return LX_SHARED.progress.streak(dates);
+}
   /* 星级：简单/进阶按正确率（全对 3★、≥8 题 2★）；挑战按限时题数 */
   function starFor(level, score, total) {
     if (state.limit > 0) {
