@@ -42,9 +42,9 @@
 
   /* ---------- 难度档（关卡区段） ---------- */
   var LEVELS_CFG = {
-    easy:   { key: 'easy',   label: '简单', from: 0, to: 15 },    // 1-15 关（入门渐进）
-    normal: { key: 'normal', label: '普通', from: 15, to: 40 },   // 16-40 关（进阶推理）
-    hard:   { key: 'hard',   label: '挑战', from: 40, to: 60 }    // 41-60 关（挑战）
+    easy:   { key: 'easy',   label: '简单', from: 0, to: 30 },    // 1-30 关（入门渐进）
+    normal: { key: 'normal', label: '普通', from: 30, to: 80 },   // 31-80 关（进阶推理）
+    hard:   { key: 'hard',   label: '挑战', from: 80, to: 155 }   // 81-155 关（全量挑战）
   };
   var LEVEL_ORDER = ['easy', 'normal', 'hard'];
 
