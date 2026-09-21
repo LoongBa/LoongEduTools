@@ -1,0 +1,679 @@
+/* ============================================================
+   扫雷 — 样式（Chrome 61 基线，经典怀旧浅灰蓝风格）
+   规范：
+   - 无 flex gap / aspect-ratio / clamp() / 逻辑属性 / :has / dvh / grid
+   - 动画双写 @-webkit-keyframes + @keyframes；温和（<=400ms，无频闪）
+   - flex 三重前缀（-webkit-box / -webkit-flex / flex）
+   - 棋盘格子绝对定位 + JS 百分比（GAP=1.5%，棋盘高度 padding-bottom 由 JS 计算）
+   - :active 作为主要反馈
+   ============================================================ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body { height: 100%; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+               "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: #e0e5ec;
+  color: #4a5865;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-flex-direction: column;
+  flex-direction: column;
+  height: 100vh;
+  height: calc(var(--app-height, 100vh));
+  overflow: hidden;
+}
+
+/* ---------- 三段式骨架 ---------- */
+
+.app-header {
+  padding-top: calc(6px + var(--safe-area-inset-top, 0px));
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 0 auto;
+  flex: 0 0 auto;
+}
+
+.ver-badge {
+  display: block;
+  padding-left: 16px;
+  font-size: 11px;
+  color: #9aa7b6;
+}
+
+.app-main {
+  -webkit-box-flex: 1;
+  -webkit-flex: 1 1 auto;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.app-footer {
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 0 auto;
+  flex: 0 0 auto;
+  padding: 6px 16px calc(8px + var(--safe-area-inset-bottom, 0px));
+  text-align: center;
+  font-size: 12px;
+  color: #9aa7b6;
+}
+
+.view {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 6px 16px 20px;
+  width: 100%;
+}
+
+/* ---------- 顶部：标题 ---------- */
+
+.game-top {
+  text-align: center;
+  margin-bottom: 2px;
+}
+
+.game-title h1 {
+  font-size: 40px;
+  font-weight: 800;
+  color: #4a5865;
+  letter-spacing: 6px;
+  line-height: 1.05;
+}
+
+.game-title .sub {
+  font-size: 12px;
+  color: #8b97a5;
+  margin-top: 2px;
+}
+
+/* ---------- 难度 tab ---------- */
+
+.tabs {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+.tab-btn {
+  min-height: 44px;
+  padding: 0 16px;
+  margin: 0 4px;
+  border: none;
+  border-radius: 22px;
+  background: #cfd6e0;
+  color: #4a5865;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tab-btn.active {
+  background: #5b7c99;
+  color: #ffffff;
+}
+
+.tab-btn:active { background: #aab6c5; }
+.tab-btn.active:active { background: #49677f; }
+
+/* ---------- 信息条：剩余雷 | 表情 | 计时 ---------- */
+
+.info-bar {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  margin: 10px 0 8px;
+}
+
+.led {
+  background: #1e2329;
+  border-radius: 8px;
+  padding: 6px 10px 4px;
+  min-width: 78px;
+  text-align: center;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+.led-num {
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 26px;
+  font-weight: 700;
+  color: #ff4438;
+  letter-spacing: 2px;
+  line-height: 1.1;
+  text-shadow: 0 0 6px rgba(255, 68, 56, 0.45);
+}
+
+.face-btn {
+  width: 56px;
+  height: 56px;
+  margin: 0 12px;
+  border: none;
+  border-radius: 10px;
+  background: #eef2f7;
+  font-size: 30px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 1px 1px 0 #ffffff, -1px -1px 0 #9aa7b6;
+}
+
+.face-btn:active {
+  background: #d7dee8;
+  box-shadow: inset 1px 1px 2px rgba(60, 80, 100, 0.25);
+}
+
+/* ---------- 本难度最佳 ---------- */
+
+.best-panel {
+  text-align: center;
+  font-size: 12px;
+  color: #8b97a5;
+  margin-bottom: 10px;
+}
+
+.best-panel .best-val {
+  color: #4a5865;
+  font-weight: 700;
+}
+
+/* ---------- 输入模式条（翻开 / 标旗） ---------- */
+
+.mode-bar {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  margin: 0 0 8px;
+}
+
+.mode-btn {
+  min-height: 40px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 18px;
+  background: #cfd6e0;
+  color: #4a5865;
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 4px;
+  cursor: pointer;
+}
+
+.mode-btn.active {
+  background: #5b7c99;
+  color: #ffffff;
+}
+
+.mode-btn:active { background: #aab6c5; }
+.mode-btn.active:active { background: #49677f; }
+
+/* ---------- 棋盘横向滚动容器（高级/中级手机可横滑） ---------- */
+
+.board-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
+}
+
+/* ---------- 棋盘 ---------- */
+
+.board {
+  position: relative;
+  width: 100%;
+  height: 0;
+  background: #c3cbd7;
+  border-radius: 10px;
+  touch-action: none;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(50, 70, 95, 0.22);
+}
+
+/* 键盘光标高亮（经典 Windows 扫雷） */
+.cell-fill.cursor {
+  outline: 3px solid #e08a2e;
+  outline-offset: -1px;
+  box-shadow: inset 0 0 0 1px #e08a2e;
+}
+
+.cell {
+  position: absolute;
+}
+
+/* 未翻开：凸起立体（浅灰底 + 立体边）；翻开：平凹（内阴影） */
+.cell-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  border-radius: 4px;
+  background: #eef2f7;
+  border: 2px solid;
+  border-color: #ffffff #9aa7b6 #9aa7b6 #ffffff;
+  font-size: 0.7em;
+  font-weight: 700;
+  line-height: 1;
+  overflow: hidden;
+}
+
+.cell-fill.revealed {
+  background: #d7dee8;
+  border: 1px solid #b3bfcd;
+  box-shadow: inset 0 1px 3px rgba(70, 90, 115, 0.28);
+}
+
+/* 数字经典扫雷配色 */
+.cell-fill.num-1 { color: #1976d2; }
+.cell-fill.num-2 { color: #388e3c; }
+.cell-fill.num-3 { color: #d32f2f; }
+.cell-fill.num-4 { color: #673ab7; }
+.cell-fill.num-5 { color: #b71c1c; }
+.cell-fill.num-6 { color: #00838f; }
+.cell-fill.num-7 { color: #212121; }
+.cell-fill.num-8 { color: #757575; }
+
+/* 旗 🚩 / 雷 💣 / 错旗 ✗ */
+.cell-fill.flagged {
+  background: #e2ecd8;
+  font-size: 0.85em;
+}
+
+.cell-fill.mine {
+  background: #d3dae4;
+  border: 1px solid #b3bfcd;
+  font-size: 0.85em;
+}
+
+.cell-fill.mine.boom {
+  background: #e05250;
+  border-color: #b03a38;
+}
+
+.cell-fill.mine.flagged {
+  background: #d9ebd6;
+  border: 1px solid #b3bfcd;
+}
+
+.cell-fill.wrong {
+  background: #e9c9cb;
+  border: 1px solid #cf9ea1;
+  color: #c62828;
+  font-size: 0.85em;
+  font-weight: 800;
+}
+
+/* ---------- 提示条 ---------- */
+
+.hint {
+  text-align: center;
+  margin-top: 12px;
+  font-size: 12px;
+  color: #8b97a5;
+  line-height: 1.5;
+}
+
+.footer-checkin {
+  color: #5b7c99;
+  font-weight: 600;
+}
+
+/* ---------- 防沉迷设置条（docs/通用需求-防沉迷自控力.md） ---------- */
+
+.guard-bar {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  flex-wrap: wrap;
+  margin: 0 0 8px;
+  position: relative;
+}
+
+.guard-btn {
+  min-height: 40px;
+  padding: 0 14px;
+  margin: 3px 4px;
+  border: none;
+  border-radius: 18px;
+  background: #cfd6e0;
+  color: #4a5865;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.guard-btn:active { background: #aab6c5; }
+
+.guard-self-btn {
+  background: #5b7c99;
+  color: #ffffff;
+}
+
+.guard-self-btn:active { background: #49677f; }
+
+.guard-picker {
+  position: absolute;
+  top: 44px;
+  left: 50%;
+  -webkit-transform: translateX(-50%);
+  transform: translateX(-50%);
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 8px 10px 10px;
+  box-shadow: 0 6px 24px rgba(30, 50, 80, 0.22);
+  z-index: 30;
+  width: 200px;
+  text-align: center;
+  -webkit-animation: cardIn 0.18s ease;
+  animation: cardIn 0.18s ease;
+}
+
+.guard-opt {
+  min-height: 40px;
+  padding: 0 14px;
+  margin: 4px 4px;
+  border: none;
+  border-radius: 14px;
+  background: #eef2f7;
+  color: #4a5865;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.guard-opt.active {
+  background: #5b7c99;
+  color: #ffffff;
+}
+
+.guard-opt:active { background: #d7dee8; }
+.guard-opt.active:active { background: #49677f; }
+
+.guard-note {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #9aa7b6;
+  line-height: 1.4;
+}
+
+.guard-line {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #5b7c99;
+  font-weight: 600;
+}
+
+/* ---------- 结算三选按钮 ---------- */
+
+.btn-self {
+  padding: 10px 22px;
+  min-height: 48px;
+  border: none;
+  border-radius: 10px;
+  background: #5b7c99;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  margin-left: 12px;
+  cursor: pointer;
+}
+
+.btn-self:active { background: #49677f; }
+
+/* ---------- 分享打卡卡片 ---------- */
+
+.share-card { width: 90%; max-width: 400px; }
+
+.share-card-wrap {
+  margin: 12px 0 8px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f5f7fa;
+  max-height: 64vh;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+}
+
+.share-img {
+  display: block;
+  max-width: 100%;
+  max-height: 64vh;
+  width: auto;
+  height: auto;
+}
+
+.share-hint {
+  font-size: 12px;
+  color: #8b97a5;
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+
+.share-btns {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+}
+
+.share-btns .btn-main { margin-right: 10px; }
+
+/* ---------- 轻提示 toast ---------- */
+
+.toast {
+  position: fixed;
+  left: 10%;
+  right: 10%;
+  bottom: 20%;
+  background: rgba(35, 45, 58, 0.94);
+  color: #ffffff;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+  z-index: 80;
+  -webkit-animation: cardIn 0.2s ease;
+  animation: cardIn 0.2s ease;
+  word-break: break-all;
+}
+
+/* ---------- 结算弹层 ---------- */
+
+.overlay {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(58, 76, 100, 0.55);
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.overlay-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 26px 24px 24px;
+  text-align: center;
+  width: 84%;
+  max-width: 340px;
+  -webkit-animation: cardIn 0.25s ease;
+  animation: cardIn 0.25s ease;
+  box-shadow: 0 10px 40px rgba(30, 50, 80, 0.3);
+}
+
+@-webkit-keyframes cardIn {
+  0% { -webkit-transform: scale(0.92); transform: scale(0.92); opacity: 0; }
+  100% { -webkit-transform: scale(1); transform: scale(1); opacity: 1; }
+}
+@keyframes cardIn {
+  0% { -webkit-transform: scale(0.92); transform: scale(0.92); opacity: 0; }
+  100% { -webkit-transform: scale(1); transform: scale(1); opacity: 1; }
+}
+
+.overlay-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: #4a5865;
+}
+
+.overlay-sub {
+  margin-top: 6px;
+  font-size: 14px;
+  color: #8b97a5;
+}
+
+.summary {
+  margin: 18px 0 20px;
+}
+
+.summary .score-label {
+  font-size: 13px;
+  color: #94a1b0;
+}
+
+.summary .score-num {
+  font-size: 44px;
+  font-weight: 800;
+  color: #5b7c99;
+  line-height: 1.2;
+}
+
+.summary .best-line {
+  margin-top: 4px;
+  font-size: 14px;
+  color: #8b97a5;
+}
+
+.summary .best-line.new-rec {
+  color: #e08a2e;
+  font-weight: 700;
+  -webkit-animation: recFlash 0.4s ease 0.2s;
+  animation: recFlash 0.4s ease 0.2s;
+}
+
+@-webkit-keyframes recFlash {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes recFlash {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.summary .checkin-line {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #5b7c99;
+  font-weight: 600;
+}
+
+.overlay-btns {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  -webkit-flex-wrap: wrap;
+  flex-wrap: wrap;
+}
+
+.overlay-btns > *:first-child { margin-left: 0; }
+
+.overlay-btns .btn-main,
+.overlay-btns .btn-ghost,
+.overlay-btns .btn-self {
+  margin: 5px 6px;
+}
+
+.btn-main {
+  padding: 12px 30px;
+  min-height: 48px;
+  border: none;
+  border-radius: 10px;
+  background: #5b7c99;
+  color: #ffffff;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-main:active { background: #49677f; }
+
+.btn-ghost {
+  padding: 10px 22px;
+  min-height: 48px;
+  border: none;
+  border-radius: 10px;
+  background: #eef2f7;
+  color: #4a5865;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-ghost:active { background: #d7dee8; }
+
+/* ---------- 响应式：大屏微调 ---------- */
+
+@media (min-width: 400px) {
+  .game-title h1 { font-size: 46px; }
+  .led-num { font-size: 28px; }
+  .face-btn { width: 58px; height: 58px; font-size: 32px; }
+}
