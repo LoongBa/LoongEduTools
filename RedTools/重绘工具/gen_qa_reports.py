@@ -7,6 +7,7 @@
 """
 import argparse
 import json
+import sys
 from pathlib import Path
 
 # 可选：SSIM 预检指标（无 cv2 时自动降级，仅显示体积比）

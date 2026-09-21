@@ -84,6 +84,33 @@ def line_no(text: str, pos: int) -> int:
     return text.count("\n", 0, pos) + 1
 
 
+# ---- 注释区间收集（L2：跳过注释内禁词，行号保持） ----
+# 区间法（非替换法）：避免 .js 字符串内 "//"（URL）误吞后续代码；
+# 只把"命中位置落在注释区间内"的禁词跳过，其余不变。
+RE_BLOCK = re.compile(r"/\*.*?\*/", re.S)      # JS 块注释
+RE_LINE_C = re.compile(r"//[^\n]*")            # JS 行注释（含 .html 内联 <script>）
+RE_HTML_C = re.compile(r"<!--.*?-->", re.S)    # HTML 注释
+
+
+def comment_ranges(text: str) -> list[tuple[int, int]]:
+    """收集三型注释区间 [start, end)，排序。"""
+    spans: list[tuple[int, int]] = []
+    for pat in (RE_BLOCK, RE_LINE_C, RE_HTML_C):
+        spans.extend((m.start(), m.end()) for m in pat.finditer(text))
+    spans.sort()
+    return spans
+
+
+def in_comment(spans: list[tuple[int, int]], pos: int) -> bool:
+    """pos 是否落在任一注释区间内（spans 已排序）。"""
+    for s, e in spans:
+        if s <= pos < e:
+            return True
+        if s > pos:
+            break
+    return False
+
+
 def scan_csp(text: str, label: str, errors: list[str]) -> None:
     """CSP 禁项扫描（只扫 .html/.css 文本）。命中 → ERROR（附 文件:行号）。"""
     for m in RE_INLINE_SCRIPT.finditer(text):
@@ -103,14 +130,20 @@ def scan_csp(text: str, label: str, errors: list[str]) -> None:
 
 
 def scan_redline(text: str, label: str, errors: list[str]) -> None:
-    """产品红线禁词扫描（.html/.js，audio/ 数据目录跳过在前）。命中 → ERROR（附 文件:行号，注释类 false positive 供人工复核）。"""
+    """产品红线禁词扫描（.html/.js，audio/ 数据目录跳过在前）。
+    注释区间内的禁词跳过（L2：如「无排行榜 UI」注释声明，避免人工复核噪音）；命中 → ERROR（附 文件:行号）。"""
     if REDLINE_SKIP_SEGMENTS & set(label.split("/")):
         return
+    spans = comment_ranges(text)
     for w in REDLINE_WORDS:
         for m in re.finditer(re.escape(w), text):
+            if in_comment(spans, m.start()):
+                continue
             errors.append(f"{label}:{line_no(text, m.start())} 红线禁词: {w}")
     for pat, name in REDLINE_PATTERNS:
         for m in pat.finditer(text):
+            if in_comment(spans, m.start()):
+                continue
             errors.append(f"{label}:{line_no(text, m.start())} 红线禁词: {name}")
 
 
