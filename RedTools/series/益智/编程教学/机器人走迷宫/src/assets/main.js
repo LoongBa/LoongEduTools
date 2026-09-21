@@ -42,9 +42,9 @@
 
   /* ---------- 难度档（关卡区段） ---------- */
   var LEVELS_CFG = {
-    easy:   { key: 'easy',   label: '简单', from: 0, to: 5 },    // 1-5 关
-    normal: { key: 'normal', label: '普通', from: 5, to: 10 },   // 6-10 关
-    hard:   { key: 'hard',   label: '挑战', from: 10, to: 15 }   // 11-15 关
+    easy:   { key: 'easy',   label: '简单', from: 0, to: 15 },    // 1-15 关（入门渐进）
+    normal: { key: 'normal', label: '普通', from: 15, to: 40 },   // 16-40 关（进阶推理）
+    hard:   { key: 'hard',   label: '挑战', from: 40, to: 60 }    // 41-60 关（挑战）
   };
   var LEVEL_ORDER = ['easy', 'normal', 'hard'];
 
@@ -372,10 +372,34 @@
     clearNode(box);
     state.cmds.forEach(function (cmd, i) {
       var lbl = cmd.id === 'fwd' ? '↑' : (cmd.id === 'left' ? '↰' : '↱');
-      var chip = makeEl('span', 'cmd-chip', (i + 1) + '.' + lbl);
-      chip.addEventListener('click', function () { removeCmd(i); });
+      var repTxt = (cmd.rep && cmd.rep > 1) ? ('×' + cmd.rep) : '';
+      // 指令 chip：单击循环次数（1→2→3→4→1），✕ 角标删除
+      var chip = makeEl('span', 'cmd-chip' + (repTxt ? ' loop' : ''), (i + 1) + '.' + lbl + repTxt);
+      chip.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        cycleRep(i);
+      });
+      var x = makeEl('span', 'chip-x', '✕');
+      x.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        removeCmd(i);
+      });
+      chip.appendChild(x);
       box.appendChild(chip);
     });
+  }
+
+  // 循环次数递增：1→2→3→4→1（循环指令启蒙）
+  function cycleRep(i) {
+    var cmd = state.cmds[i];
+    if (!cmd) { return; }
+    var next = ((cmd.rep || 1) % 4) + 1;
+    cmd.rep = next;
+    renderSeq();
+  }
+  function setRepFromIdx(i, rep) {
+    var cmd = state.cmds[i];
+    if (cmd) { cmd.rep = rep; }
   }
 
   function renderBoardOnly() {
@@ -384,7 +408,7 @@
   }
 
   function addCmd(id) {
-    state.cmds.push({ id: id });
+    state.cmds.push({ id: id, rep: 1 });
     renderSeq();
   }
   function removeCmd(i) {
@@ -398,6 +422,8 @@
     // 从初始盘面执行（重置到关卡初始）
     loadLevelState();
     state.prog = 0;
+    // 重置循环计数（_loopLeft 残留清理）
+    state.cmds.forEach(function (c) { c._loopLeft = 0; });
     var fb = document.getElementById('game-feedback');
     if (fb) { fb.textContent = '机器人执行中…'; fb.className = 'game-feedback'; }
     execStep();
@@ -411,7 +437,15 @@
       return;
     }
     var cmd = state.cmds[state.prog];
-    state.prog += 1;
+    // 循环：rep>1 时重复执行当前指令 rep 次（复用 prog 计数）
+    if (!cmd._loopLeft) { cmd._loopLeft = cmd.rep || 1; }
+    if (cmd._loopLeft <= 0) {
+      cmd._loopLeft = 0;
+      state.prog += 1;
+      setTimeout(function () { execStep(); }, 60);
+      return;
+    }
+    cmd._loopLeft -= 1;
     if (cmd.id === 'left') {
       state.face = (state.face + 3) % 4;
     } else if (cmd.id === 'right') {
@@ -442,7 +476,7 @@
       }
     }
     renderBoardOnly();
-    // 步进节奏（加速后判定）
+    // 步进节奏（循环指令同节奏，动画可见）
     setTimeout(function () { execStep(); }, 260);
   }
 
@@ -459,28 +493,36 @@
     }
   }
 
+  /* 实际执行步数（循环指令展开后）——星级基准 */
+  function totalSteps(cmds) {
+    var n = 0;
+    cmds.forEach(function (c) { n += (c.rep || 1); });
+    return n;
+  }
+
   function finishLevel() {
-    // 星级：指令数 vs 最少推动数
+    // 星级：实际执行步数（循环展开）vs 最少推动数
+    var steps = totalSteps(state.cmds);
     var best = bestPushes(state.levelIdx);
     var stars = 1;
     if (best !== null) {
-      if (state.cmds.length <= best * 1.5) { stars = 3; }
-      else if (state.cmds.length <= best * 2.5) { stars = 2; }
+      if (steps <= best * 1.5) { stars = 3; }
+      else if (steps <= best * 2.5) { stars = 2; }
     } else {
       stars = 2;
     }
     var lv = state.level;
-    var rec = { date: todayStr(), level: lv, stars: stars, cmds: state.cmds.length, levelIdx: state.levelIdx };
+    var rec = { date: todayStr(), level: lv, stars: stars, cmds: steps, levelIdx: state.levelIdx };
     var prev = store.best[lv];
     if (!prev || stars > prev.stars || (stars === prev.stars && state.levelIdx > prev.levelIdx)) {
-      store.best[lv] = { stars: stars, cmds: state.cmds.length, level: state.levelIdx + 1 };
+      store.best[lv] = { stars: stars, cmds: steps, level: state.levelIdx + 1 };
     }
     store.recent[lv] = stars;
     store.history.push(rec);
     store.history = store.history.slice(-100);
     saveStore();
     var fb = document.getElementById('game-feedback');
-    if (fb) { fb.textContent += '（' + stars + '★，指令 ' + state.cmds.length + ' 条）'; }
+    if (fb) { fb.textContent += '（' + stars + '★，指令 ' + steps + ' 步）'; }
   }
 
   function nextLevel() {
