@@ -1,6 +1,7 @@
 // 内容层：PEP 四上同步拓展练习（原创改写，不使用教材原版文本/角色/音频）
 import type { IpKey } from "./ip";
 import { PIPELINE_U01 } from "./u01Content";
+import { PIPELINE_U02 } from "./u02Content";
 
 export type Stage = "warm" | "new" | "drill" | "wrap";
 
@@ -8,6 +9,8 @@ export interface WordCard {
   word: string;
   cn: string;
   ip: IpKey;
+  /** 管线配图的词卡图（public/units/uXX/images/*.webp）；缺省时回退 IP 角色头像 */
+  image?: string;
 }
 
 export interface SentenceCard {
@@ -716,10 +719,10 @@ const EXAMPLE_UNITS: Unit[] = [
   },
 ];
 
-/** 全部单元：首位为真实 U01（管线产物），其后为示例占位（供 jukebox 选歌等场景使用） */
-export const UNITS: Unit[] = [PIPELINE_U01, ...EXAMPLE_UNITS];
+/** 全部单元：前两位为真实 U01/U02（管线产物），其后为示例占位（供 jukebox 选歌等场景使用） */
+export const UNITS: Unit[] = [PIPELINE_U01, PIPELINE_U02, ...EXAMPLE_UNITS.filter((u) => u.id !== "u2")];
 
-/** 首页/词卡/打印可选择的真实单元行（当前仅接入 U01，示例占位不在此列出） */
+/** 首页/词卡/打印可选择的真实单元行（当前接入 U01/U02，示例占位不在此列出） */
 export interface UnitRow {
   id: string;
   no: number;
@@ -729,12 +732,14 @@ export interface UnitRow {
 
 export const UNIT_ROWS: UnitRow[] = [
   { id: PIPELINE_U01.id, no: PIPELINE_U01.no, title: PIPELINE_U01.title, cn: PIPELINE_U01.cn },
+  { id: PIPELINE_U02.id, no: PIPELINE_U02.no, title: PIPELINE_U02.title, cn: PIPELINE_U02.cn },
 ];
 
-export const TOTAL_WORDS = PIPELINE_U01.words.length;
+export const TOTAL_WORDS = PIPELINE_U01.words.length + PIPELINE_U02.words.length;
 
 export function unitOf(id: string): Unit {
   if (id === PIPELINE_U01.id) return PIPELINE_U01;
+  if (id === PIPELINE_U02.id) return PIPELINE_U02;
   return UNITS.find((u) => u.id === id) ?? PIPELINE_U01;
 }
 

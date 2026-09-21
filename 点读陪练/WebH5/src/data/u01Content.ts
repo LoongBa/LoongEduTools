@@ -193,7 +193,7 @@ function buildCards(): SentenceCard[] {
   ];
 }
 
-/** 词卡：S1 vocab 全量 8 词 + 扩展层实词 2 词凑到 10 */
+/** 词卡：S1 vocab 全量 8 词（带管线配图）+ 扩展层实词 2 词凑到 10（无图，回退 IP 头像） */
 function buildWords(): WordCard[] {
   let seq = 0;
   const ip = (): IpKey => {
@@ -201,20 +201,25 @@ function buildWords(): WordCard[] {
     seq += 1;
     return key;
   };
-  const cards: [string, string][] = [
-    ["farmer", "农民"],
-    ["nurse", "护士"],
-    ["doctor", "医生"],
-    ["office worker", "办公室职员"],
-    ["clean the room", "打扫房间"],
-    ["sweep the floor", "扫地"],
-    ["cook", "做饭"],
-    ["do some chores", "做家务"],
-    // 不足 ~10 时从扩展层句抽实词补足
+  const cards: [string, string, string?][] = [
+    ["farmer", "农民", "u01_v_job01"],
+    ["nurse", "护士", "u01_v_job02"],
+    ["doctor", "医生", "u01_v_job03"],
+    ["office worker", "办公室职员", "u01_v_job04"],
+    ["clean the room", "打扫房间", "u01_v_ch01"],
+    ["sweep the floor", "扫地", "u01_v_ch02"],
+    ["cook", "做饭", "u01_v_ch03"],
+    ["do some chores", "做家务", "u01_v_ch04"],
+    // 扩展层实词补足：无管线配图，走 IP 角色回退
     ["teacher", "老师"],
     ["writer", "作家"],
   ];
-  return cards.map(([word, cn]) => ({ word, cn, ip: ip() }));
+  return cards.map(([word, cn, img]) => ({
+    word,
+    cn,
+    ip: ip(),
+    ...(img ? { image: `/units/u01/images/${img}.webp` } : {}),
+  }));
 }
 
 /** 点唱台：U01 无独立歌曲，用 S7 课文 4 句凑成歌词 */

@@ -182,12 +182,22 @@ function WordTile({
       )}
       {!open ? (
         <>
-          <img
-            src={char.image}
-            alt=""
-            className="h-14 w-14 rounded-full bg-accent/50 object-cover"
-            draggable={false}
-          />
+          {card.image ? (
+            <img
+              src={card.image}
+              alt={card.word}
+              className="h-16 w-16 rounded-2xl border border-border/50 bg-accent/40 object-cover"
+              draggable={false}
+              loading="lazy"
+            />
+          ) : (
+            <img
+              src={char.image}
+              alt=""
+              className="h-14 w-14 rounded-full bg-accent/50 object-cover"
+              draggable={false}
+            />
+          )}
           <p className="mt-2.5 text-[18px] font-bold leading-tight break-words">{card.word}</p>
           <p className="mt-1 inline-flex items-center gap-1 text-[12px] font-semibold text-muted-text">
             <StarIcon className={cn("h-3.5 w-3.5", lit ? "text-[var(--lit)]" : "text-idle")} filled={lit} />
