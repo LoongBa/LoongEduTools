@@ -25,7 +25,7 @@
 | 发布目录 | `RedTools/publish/<系列>/` | **所有系列公共发布目录**：zip + 1024 图标 + 发布文案 + 解压测试版（不入 git，发布文案.txt 除外） |
 | 教师客户端立项 | `../docs/教育工具/教育工具-教师客户端需求分析与设计方案.md` | 桌面壳（Tauri/.NET + 在线验证 + 升级）单独立项 |
 | 素材清单（权威） | `F:\_教材素材\人教版（PEP）（主编：吴欣）\素材清单.md` | 每册素材状态、封面、PDF、制作情况 |
-| 教材数据 book.json | `Downloader/Diandu/data/*.json`（另有 `book_data.zip` 存档） | **点读核心**：页面 + 热区坐标 + 音频/图片直链 |
+| 教材数据 book.json | `PEP词库/data/diandu/*.json`（另有 `book_data.zip` 存档） | **点读核心**：页面 + 热区坐标 + 音频/图片直链 |
 
 ---
 
@@ -135,7 +135,7 @@ H5 点读的**基础数据**是每个单元的 `book.json`（人教点读原始�
 ### 2.1 文件位置
 
 ```
-Downloader/Diandu/data/
+PEP词库/data/diandu/
 ├── 1212001101247_英语（PEP）_一年级_上册.json
 ├── 1212001102247_英语（PEP）_一年级_下册.json
 ├── …（共 11 本，六下无）
@@ -208,7 +208,7 @@ Downloader/Diandu/data/
 | 整单元 | 单元音频 | `Unit01_Unit_1_Helping_at_home.mp3` |
 
 > 本地单句音频文件名 = `P{页:03d}_{track_index:02d}_{clean_name(track_text)}.mp3`
-> （下载侧由 `Downloader/Diandu/diandu_audio.py` 生成，与 track 顺序一致；
+> （下载侧由 `PEP词库/tools/diandu/diandu_audio.py` 生成，与 track 顺序一致；
 > 直接用 `book_json[].bookpage[].track_info[]` 按页顺序 + `track_index` 也能无损重建对应关系）
 
 ### 3.4 字幕

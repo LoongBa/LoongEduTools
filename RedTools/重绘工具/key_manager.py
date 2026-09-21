@@ -12,10 +12,10 @@ import time
 from pathlib import Path
 from typing import Optional
 
-# 优先从公共配置（批量生图工具/keys.json）读取 sensenova keys；
-# 未配置时返回 None（回退内置列表，保持向后兼容）。
+# 优先从公共配置（LoongMediaTools/批量生图工具/keys.json，已随工具迁移）读取
+# sensenova keys；未配置时返回 None（回退内置列表，保持向后兼容）。
 def _load_shared_keys() -> Optional[list[str]]:
-    shared = Path(__file__).resolve().parent.parent / "批量生图工具" / "keys.json"
+    shared = Path(r"F:\LoongBa_Git\LoongMediaTools\批量生图工具\keys.json")
     try:
         if shared.exists():
             with open(shared, "r", encoding="utf-8") as f:
