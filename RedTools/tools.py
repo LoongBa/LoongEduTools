@@ -203,6 +203,17 @@ TOOLS: dict[str, ToolConfig] = {
         free_units=2,
         default_unit=0,
     ),
+    "错误在哪里": ToolConfig(
+        series="益智",
+        subgroup="观察力",     # 子系列目录：series/益智/观察力/错误在哪里/
+        tool="错误在哪里",
+        version="1.0",
+        datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
+        app_name="错误在哪里",
+        modes=["offline", "online"],
+        free_units=2,
+        default_unit=0,
+    ),
     # ---------------- 益智系列 · 记忆力子系列 ----------------
     "翻牌记忆配对": ToolConfig(
         series="益智",

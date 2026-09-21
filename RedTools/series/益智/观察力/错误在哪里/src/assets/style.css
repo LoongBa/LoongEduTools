@@ -1,0 +1,273 @@
+/* ============================================================
+   错误在哪里 — 样式（Chrome 61 基线层）
+   约束：无 flex gap / aspect-ratio / clamp / inset / 逻辑属性 / :has
+   主题：观察力 · 清新橙绿（复用找不同基调）
+   ============================================================ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body { height: 100%; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+               "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: #f5f7fa;
+  color: #1f2329;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-flex-direction: column;
+  flex-direction: column;
+  height: 100vh;
+  height: calc(var(--app-height, 100vh));
+}
+
+/* ---------- 顶栏 ---------- */
+.app-header {
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 0 auto;
+  flex: 0 0 auto;
+  padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  background: #ffffff;
+  border-bottom: 1px solid #e5e6eb;
+}
+
+.header-brand {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  padding: 10px 16px;
+}
+
+.header-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  margin-right: 8px;
+}
+
+.header-name {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.header-streak {
+  position: absolute;
+  right: 12px;
+  top: calc(10px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
+  font-size: 12px;
+  color: #ff7a45;
+}
+
+/* ---------- 主区 ---------- */
+.app-main {
+  -webkit-box-flex: 1;
+  -webkit-flex: 1 1 auto;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  min-height: 0;
+}
+
+.view {
+  padding: 16px;
+  max-width: 560px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ---------- 首页 ---------- */
+.home-wrap { text-align: center; }
+
+.home-title {
+  font-size: 26px;
+  margin: 24px 0 6px;
+  color: #2f6b3a;
+}
+
+.home-sub {
+  font-size: 14px;
+  color: #6b7280;
+  margin-bottom: 24px;
+}
+
+.level-card {
+  display: block;
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid #e5e6eb;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.level-card:active { background: #f2f4f7; }
+
+.level-name {
+  font-size: 17px;
+  font-weight: 600;
+  color: #1f2329;
+}
+
+.level-best {
+  font-size: 13px;
+  color: #86909c;
+  margin-top: 4px;
+}
+
+/* ---------- 按钮 ---------- */
+.btn {
+  display: inline-block;
+  background: #ffffff;
+  border: 1px solid #c9cdd4;
+  border-radius: 24px;
+  padding: 12px 28px;
+  font-size: 15px;
+  color: #1f2329;
+  cursor: pointer;
+  margin: 8px 6px;
+}
+
+.btn-primary {
+  background: #2f6b3a;
+  border-color: #2f6b3a;
+  color: #ffffff;
+}
+
+.btn-checkin { background: #fff7e6; border-color: #ffd591; color: #d46b08; }
+
+.btn-danger { color: #f5222d; border-color: #ffa39e; }
+
+.hidden-entry {
+  width: 0;
+  height: 0;
+  opacity: 0;
+  border: none;
+  padding: 0;
+}
+
+/* ---------- 练习页 ---------- */
+.game-wrap { display: -webkit-box; display: -webkit-flex; display: flex; -webkit-box-orient: vertical; -webkit-flex-direction: column; flex-direction: column; }
+
+.game-top {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: justify;
+  -webkit-justify-content: space-between;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.game-back {
+  background: none;
+  border: none;
+  font-size: 15px;
+  color: #4e5969;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.game-prog { font-size: 14px; font-weight: 600; }
+
+.game-timer { font-size: 14px; color: #86909c; }
+
+.game-errors { font-size: 13px; color: #f5222d; }
+
+.scene-name {
+  font-size: 14px;
+  color: #4e5969;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.scene-wrap {
+  background: #ffffff;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(31, 35, 41, 0.06);
+}
+
+.scene-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.hit-circle { cursor: pointer; }
+.hit-circle.wrong { cursor: pointer; }
+
+.tap-ok { animation: okFlash 0.5s ease; }
+.tap-miss { animation: missFlash 0.5s ease; }
+
+@keyframes okFlash {
+  0% { fill: rgba(82, 196, 26, 0.55); }
+  100% { fill: rgba(0, 0, 0, 0); }
+}
+
+@keyframes missFlash {
+  0% { fill: rgba(245, 34, 45, 0.5); }
+  100% { fill: rgba(0, 0, 0, 0); }
+}
+
+.round-feedback {
+  text-align: center;
+  font-size: 16px;
+  font-weight: 600;
+  min-height: 28px;
+  padding: 10px 0 0;
+}
+
+.round-feedback.ok { color: #52c41a; }
+.round-feedback.miss { color: #f5222d; }
+
+/* ---------- 结算 ---------- */
+.result-wrap { text-align: center; }
+
+.result-title { font-size: 40px; margin: 30px 0 4px; }
+
+.result-sub { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
+
+.result-row { font-size: 15px; color: #4e5969; margin: 4px 0; }
+
+.result-best { font-size: 14px; color: #2f6b3a; margin-top: 6px; font-weight: 600; }
+
+/* ---------- 家长面板 ---------- */
+.parent-wrap { text-align: center; }
+
+.parent-title { font-size: 20px; margin: 20px 0 12px; }
+
+.parent-row { font-size: 14px; color: #4e5969; margin: 6px 0; }
+.parent-row.small { font-size: 13px; color: #86909c; }
+
+.parent-sub { font-size: 15px; margin: 16px 0 6px; color: #1f2329; }
+
+/* ---------- 页脚 ---------- */
+.app-footer {
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 0 auto;
+  flex: 0 0 auto;
+  padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+}
