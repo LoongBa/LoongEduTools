@@ -1,0 +1,25 @@
+# 点读陪练 · 入库边界（源码+docs 入库，构建产物可再生成不入库）
+
+# WebH5 前端：node_modules 及构建产物
+WebH5/node_modules/
+WebH5/dist/
+WebH5/build/
+WebH5/.stats
+
+# WebH5 V0.1.0 原始交付压缩包（内容与 WebH5/ 解压源码重复，留档不入库）
+WebH5.V0.1.0-source.zip
+
+# 单元构建产物（可再生成：音频/图片/任务状态）
+build/**/assets/
+build/**/image_task/
+build/**/sample/
+build/**/_archive/
+build/**/print_worksheet_sample.html
+build/**/U01_管线试跑报告.md
+
+# 交付包
+dist/
+
+# Python
+__pycache__/
+*.py[cod]
