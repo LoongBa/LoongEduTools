@@ -41,6 +41,15 @@
 > 双包构建验证：offline 44 工具 + online 44 工具全成功（online 仅部署目录不入 publish/小红书），
 > 14 款代表工具 Playwright 无 JS 错误回归 14/14 PASS（lx-shared 就绪），审计 3 款抽查 PASS（6-7 files 0 warning）。
 > 经典游戏系列 4 款（⏸ 暂缓）不接入。
+>
+> **V0.4 逻辑迁移（2026-09-22）**：38 款 main.js 存储/打卡/进度逻辑迁移至 `LX_SHARED.storage/progress`
+> （loadStore/saveStore/calcStreak 转发 + `storage.configure({toolName})` 键前缀保持 `redtools.<tool>.v1` 数据零迁移；
+> 防双重解析；B 型 24点/打字背单词自定义三键 storage 保留仅 calcStreak 转发）——提交 6e81d2c。
+> 数学口算 content.js（25 知识点，offline 前 3 / online 全量切分生效）——提交 5600ff0。
+> M3：build 三 write 函数 meta 补 mode/free_units/api_version（book/static/chengyu/vocab 全类）+
+> build_all modes 守卫（经典游戏 4 款 online 跳过）——随并行线 cd3eefd 入库。
+> 验证：静态 38/38 + 构建 44/44 + 轻冒烟 38/38 + 数据兼容 6/6 + M2 切分 + M3 守卫全过；
+> 方案/审核报告见 `docs/教育工具/V0.4-双模式骨架-B批逻辑迁移-{开发方案,审核报告}.md`。
 
 | 系列 | 工具 | 版本 | 构建日期 | 开发与测试状态 | 发布到小红书 | 产物（publish/<系列>/） | 文档位置 | 备注 |
 |------|------|------|----------|------|:---:|------|------|------|
