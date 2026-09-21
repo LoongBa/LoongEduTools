@@ -360,6 +360,17 @@ TOOLS: dict[str, ToolConfig] = {
         free_units=2,
         default_unit=0,
     ),
+    "机器人走迷宫": ToolConfig(
+        series="益智",
+        subgroup="编程教学",     # 子系列目录：series/益智/编程教学/机器人走迷宫/
+        tool="机器人走迷宫",
+        version="1.0",
+        datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
+        app_name="机器人走迷宫",
+        modes=["offline", "online"],
+        free_units=2,
+        default_unit=0,
+    ),
     "旋转拼图": ToolConfig(
         series="益智",
         subgroup="空间感知",     # 子系列目录：series/益智/空间感知/旋转拼图/
