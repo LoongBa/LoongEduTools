@@ -1,0 +1,580 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+/* ============================================================
+   英语点读陪练 · 设计系统
+   取向：活泼但克制、学习优先、护眼
+   - 默认主题为「嫩芽黄绿」：底色偏黄绿、明度高彩度低，接近传统豆沙绿护眼色卡
+     （深浅各三套：嫩芽黄绿 / 抹茶豆沙 / 暖米 / 天蓝 + 苔夜黄绿 / 森林夜绿 / 墨夜）
+   - 提供「跟随系统深色模式」：开启后按 prefers-color-scheme 在浅色/深色档之间自动切换
+   - 文字为深灰而非纯黑，保证对比但不刺眼
+   - 全程不使用红色表达失败
+   组件侧一律消费 var(--*) / theme utility，禁止写死色值
+   ============================================================ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* 语义状态色 */
+  --color-lit: var(--lit);
+  --color-lit-soft: var(--lit-soft);
+  --color-on-lit: var(--on-lit);
+  --color-warm: var(--warm);
+  --color-warm-soft: var(--warm-soft);
+  --color-sky: var(--sky);
+  --color-sky-soft: var(--sky-soft);
+  --color-idle: var(--idle);
+  --color-idle-foreground: var(--idle-foreground);
+
+  /* 字号档位（孩子读 ≥18px，家长读 ≥16px） */
+  --text-child: 1.125rem;
+  --text-sentence: clamp(1.75rem, 6.4vw, 2.5rem);
+  --text-display: clamp(2rem, 8vw, 2.75rem);
+
+  --font-sans: var(--font-sans);
+}
+
+/* ---------- 默认主题：嫩芽黄绿（护眼最强档：底色偏黄绿、明度高彩度低，
+     接近传统「豆沙绿 / 牛油果绿」护眼色卡；深浅各三套，见下方 [data-theme] 段） ---------- */
+:root {
+  --radius: 0.75rem;
+  --font-sans: "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", ui-rounded,
+    "Hiragino Maru Gothic ProN", system-ui, -apple-system, sans-serif;
+
+  --background: oklch(0.962 0.036 122);
+  --surface-deep: oklch(0.932 0.042 122);
+  --foreground: oklch(0.33 0.03 125);
+  --muted-text: oklch(0.52 0.028 125);
+
+  --card: oklch(0.982 0.02 120);
+  --card-foreground: oklch(0.33 0.03 125);
+  --popover: oklch(0.98 0.022 120);
+  --popover-foreground: oklch(0.33 0.03 125);
+
+  /* 主操作：同色系苔绿，与浅黄绿底拉开足够对比 */
+  --primary: oklch(0.56 0.1 128);
+  --primary-foreground: oklch(0.99 0.008 120);
+  --primary-deep: oklch(0.48 0.1 128);
+
+  --secondary: oklch(0.928 0.042 122);
+  --secondary-foreground: oklch(0.37 0.032 125);
+  --muted: oklch(0.93 0.032 122);
+  --muted-foreground: oklch(0.52 0.028 125);
+  --accent: oklch(0.912 0.058 122);
+  --accent-foreground: oklch(0.37 0.04 130);
+
+  --border: oklch(0.875 0.036 122);
+  --input: oklch(0.875 0.036 122);
+  --ring: oklch(0.56 0.1 128);
+
+  /* 状态语义跨主题锁定：完成=草绿、提醒=暖黄、辅助=天蓝、待办=中性 */
+  --lit: oklch(0.665 0.14 142);
+  --lit-soft: oklch(0.925 0.07 142);
+  --on-lit: oklch(0.99 0.008 120);
+  --warm: oklch(0.735 0.125 78);
+  --warm-soft: oklch(0.94 0.068 88);
+  --sky: oklch(0.63 0.105 232);
+  --sky-soft: oklch(0.928 0.042 232);
+  --idle: oklch(0.885 0.026 122);
+  --idle-foreground: oklch(0.56 0.026 122);
+
+  --overlay: oklch(0.29 0.03 125 / 38%);
+
+  --shadow-soft: 0 1px 2px oklch(0.31 0.03 125 / 5%),
+    0 6px 20px -8px oklch(0.31 0.03 125 / 12%);
+  --shadow-lift: 0 2px 4px oklch(0.31 0.03 125 / 6%),
+    0 14px 32px -12px oklch(0.31 0.03 125 / 18%);
+}
+
+/* ---------- 可选主题：抹茶豆沙（绿意更浓，卡片面也带绿相） ---------- */
+[data-theme="matcha"] {
+  --background: oklch(0.928 0.048 156);
+  --surface-deep: oklch(0.895 0.058 156);
+  --foreground: oklch(0.3 0.026 158);
+  --muted-text: oklch(0.48 0.026 158);
+
+  --card: oklch(0.958 0.032 155);
+  --card-foreground: oklch(0.3 0.026 158);
+  --popover: oklch(0.962 0.03 155);
+  --popover-foreground: oklch(0.3 0.026 158);
+
+  --primary: oklch(0.52 0.098 163);
+  --primary-foreground: oklch(0.98 0.012 155);
+  --primary-deep: oklch(0.45 0.095 163);
+
+  --secondary: oklch(0.9 0.048 156);
+  --secondary-foreground: oklch(0.33 0.028 158);
+  --muted: oklch(0.9 0.04 156);
+  --muted-foreground: oklch(0.48 0.026 158);
+  --accent: oklch(0.878 0.062 156);
+  --accent-foreground: oklch(0.33 0.034 162);
+
+  --border: oklch(0.845 0.042 156);
+  --input: oklch(0.845 0.042 156);
+  --ring: oklch(0.52 0.098 163);
+
+  --lit: oklch(0.6 0.145 150);
+  --lit-soft: oklch(0.895 0.085 152);
+  --on-lit: oklch(0.985 0.012 155);
+  --warm: oklch(0.68 0.125 75);
+  --warm-soft: oklch(0.915 0.082 92);
+  --sky: oklch(0.56 0.1 232);
+  --sky-soft: oklch(0.905 0.05 232);
+  --idle: oklch(0.855 0.03 156);
+  --idle-foreground: oklch(0.5 0.024 155);
+
+  --overlay: oklch(0.26 0.03 158 / 45%);
+
+  --shadow-soft: 0 1px 2px oklch(0.28 0.03 158 / 7%),
+    0 6px 20px -8px oklch(0.28 0.03 158 / 14%);
+  --shadow-lift: 0 2px 4px oklch(0.28 0.03 158 / 8%),
+    0 14px 32px -12px oklch(0.28 0.03 158 / 20%);
+}
+
+/* ---------- 可选主题：暖米（原暖橙方案，喜欢暖色可切换） ---------- */
+[data-theme="warm"] {
+  --background: oklch(0.962 0.017 85.5);
+  --surface-deep: oklch(0.938 0.021 85);
+  --foreground: oklch(0.325 0.021 60);
+  --muted-text: oklch(0.52 0.018 70);
+  --card: oklch(0.99 0.006 90);
+  --card-foreground: oklch(0.325 0.021 60);
+  --popover: oklch(0.985 0.008 90);
+  --popover-foreground: oklch(0.325 0.021 60);
+  --primary: oklch(0.685 0.135 55);
+  --primary-foreground: oklch(0.99 0.006 90);
+  --primary-deep: oklch(0.6 0.13 50);
+  --secondary: oklch(0.93 0.026 85);
+  --secondary-foreground: oklch(0.36 0.022 60);
+  --muted: oklch(0.935 0.018 85);
+  --muted-foreground: oklch(0.52 0.018 70);
+  --accent: oklch(0.925 0.045 92);
+  --accent-foreground: oklch(0.36 0.03 65);
+  --border: oklch(0.885 0.022 85);
+  --input: oklch(0.885 0.022 85);
+  --ring: oklch(0.685 0.135 55);
+  --warm: oklch(0.755 0.128 85);
+  --warm-soft: oklch(0.945 0.055 88);
+  --idle: oklch(0.885 0.012 85);
+  --idle-foreground: oklch(0.58 0.015 80);
+  --overlay: oklch(0.32 0.02 60 / 38%);
+  --shadow-soft: 0 1px 2px oklch(0.325 0.021 60 / 5%),
+    0 6px 20px -8px oklch(0.325 0.021 60 / 12%);
+  --shadow-lift: 0 2px 4px oklch(0.325 0.021 60 / 6%),
+    0 14px 32px -12px oklch(0.325 0.021 60 / 18%);
+}
+
+/* ---------- 可选主题：天蓝 ---------- */
+[data-theme="sky"] {
+  --background: oklch(0.965 0.016 225);
+  --surface-deep: oklch(0.94 0.02 225);
+  --foreground: oklch(0.32 0.024 240);
+  --muted-text: oklch(0.52 0.022 235);
+  --card: oklch(0.992 0.006 225);
+  --card-foreground: oklch(0.32 0.024 240);
+  --popover: oklch(0.988 0.008 225);
+  --popover-foreground: oklch(0.32 0.024 240);
+  --primary: oklch(0.6 0.108 240);
+  --primary-foreground: oklch(0.99 0.006 225);
+  --primary-deep: oklch(0.52 0.108 240);
+  --secondary: oklch(0.934 0.024 226);
+  --secondary-foreground: oklch(0.36 0.026 240);
+  --muted: oklch(0.936 0.017 226);
+  --muted-foreground: oklch(0.52 0.022 235);
+  --accent: oklch(0.925 0.04 228);
+  --accent-foreground: oklch(0.36 0.034 240);
+  --border: oklch(0.885 0.02 226);
+  --input: oklch(0.885 0.02 226);
+  --ring: oklch(0.6 0.108 240);
+  --sky: oklch(0.63 0.105 232);
+  --sky-soft: oklch(0.93 0.038 232);
+  --idle: oklch(0.888 0.012 226);
+  --idle-foreground: oklch(0.57 0.018 228);
+  --overlay: oklch(0.28 0.03 240 / 38%);
+  --shadow-soft: 0 1px 2px oklch(0.3 0.025 240 / 5%),
+    0 6px 20px -8px oklch(0.3 0.025 240 / 12%);
+  --shadow-lift: 0 2px 4px oklch(0.3 0.025 240 / 6%),
+    0 14px 32px -12px oklch(0.3 0.025 240 / 18%);
+}
+
+/* ---------- 可选主题：苔夜黄绿（深色·与默认嫩芽黄绿同色相的暗档，
+     跟随系统深色模式时的默认配色；非纯黑底+纯白字） ---------- */
+[data-theme="moss"] {
+  --background: oklch(0.245 0.03 128);
+  --surface-deep: oklch(0.205 0.028 128);
+  --foreground: oklch(0.93 0.026 120);
+  --muted-text: oklch(0.74 0.03 122);
+
+  --card: oklch(0.295 0.034 128);
+  --card-foreground: oklch(0.93 0.026 120);
+  --popover: oklch(0.315 0.036 128);
+  --popover-foreground: oklch(0.93 0.026 120);
+
+  --primary: oklch(0.73 0.11 128);
+  --primary-foreground: oklch(0.24 0.035 128);
+  --primary-deep: oklch(0.79 0.105 128);
+
+  --secondary: oklch(0.35 0.038 128);
+  --secondary-foreground: oklch(0.925 0.024 120);
+  --muted: oklch(0.34 0.034 128);
+  --muted-foreground: oklch(0.735 0.03 122);
+  --accent: oklch(0.395 0.052 128);
+  --accent-foreground: oklch(0.94 0.026 120);
+
+  --border: oklch(0.425 0.04 128);
+  --input: oklch(0.425 0.04 128);
+  --ring: oklch(0.73 0.11 128);
+
+  --lit: oklch(0.75 0.145 142);
+  --lit-soft: oklch(0.36 0.075 142);
+  --on-lit: oklch(0.22 0.035 130);
+  --warm: oklch(0.79 0.125 82);
+  --warm-soft: oklch(0.36 0.07 88);
+  --sky: oklch(0.72 0.1 232);
+  --sky-soft: oklch(0.34 0.055 232);
+  --idle: oklch(0.37 0.026 128);
+  --idle-foreground: oklch(0.7 0.026 124);
+
+  --overlay: oklch(0.12 0.02 128 / 62%);
+
+  --shadow-soft: 0 1px 2px oklch(0.08 0.02 128 / 24%),
+    0 6px 20px -8px oklch(0.08 0.02 128 / 34%);
+  --shadow-lift: 0 2px 4px oklch(0.08 0.02 128 / 26%),
+    0 14px 32px -12px oklch(0.08 0.02 128 / 42%);
+}
+
+/* ---------- 可选主题：森林夜绿（深色·保留绿相，非纯黑） ---------- */
+[data-theme="forest"] {
+  --background: oklch(0.245 0.032 158);
+  --surface-deep: oklch(0.205 0.03 158);
+  --foreground: oklch(0.925 0.022 155);
+  --muted-text: oklch(0.735 0.028 155);
+
+  --card: oklch(0.295 0.036 158);
+  --card-foreground: oklch(0.925 0.022 155);
+  --popover: oklch(0.315 0.038 158);
+  --popover-foreground: oklch(0.925 0.022 155);
+
+  --primary: oklch(0.72 0.115 160);
+  --primary-foreground: oklch(0.24 0.035 158);
+  --primary-deep: oklch(0.78 0.11 160);
+
+  --secondary: oklch(0.35 0.04 158);
+  --secondary-foreground: oklch(0.92 0.022 155);
+  --muted: oklch(0.34 0.036 158);
+  --muted-foreground: oklch(0.73 0.028 155);
+  --accent: oklch(0.395 0.055 158);
+  --accent-foreground: oklch(0.94 0.024 155);
+
+  --border: oklch(0.42 0.042 158);
+  --input: oklch(0.42 0.042 158);
+  --ring: oklch(0.72 0.115 160);
+
+  --lit: oklch(0.74 0.145 152);
+  --lit-soft: oklch(0.36 0.075 152);
+  --on-lit: oklch(0.22 0.035 155);
+  --warm: oklch(0.79 0.125 82);
+  --warm-soft: oklch(0.36 0.07 88);
+  --sky: oklch(0.72 0.1 232);
+  --sky-soft: oklch(0.34 0.055 232);
+  --idle: oklch(0.37 0.028 158);
+  --idle-foreground: oklch(0.7 0.026 156);
+
+  --overlay: oklch(0.12 0.02 158 / 62%);
+
+  --shadow-soft: 0 1px 2px oklch(0.08 0.02 158 / 24%),
+    0 6px 20px -8px oklch(0.08 0.02 158 / 34%);
+  --shadow-lift: 0 2px 4px oklch(0.08 0.02 158 / 26%),
+    0 14px 32px -12px oklch(0.08 0.02 158 / 42%);
+}
+
+/* ---------- 可选主题：墨夜（深色·中性炭调，最暗光环境） ---------- */
+[data-theme="night"] {
+  --background: oklch(0.225 0.018 240);
+  --surface-deep: oklch(0.19 0.016 240);
+  --foreground: oklch(0.92 0.012 235);
+  --muted-text: oklch(0.72 0.016 235);
+
+  --card: oklch(0.275 0.02 240);
+  --card-foreground: oklch(0.92 0.012 235);
+  --popover: oklch(0.3 0.02 240);
+  --popover-foreground: oklch(0.92 0.012 235);
+
+  --primary: oklch(0.74 0.105 155);
+  --primary-foreground: oklch(0.22 0.03 160);
+  --primary-deep: oklch(0.8 0.1 155);
+
+  --secondary: oklch(0.33 0.02 240);
+  --secondary-foreground: oklch(0.91 0.012 235);
+  --muted: oklch(0.32 0.018 240);
+  --muted-foreground: oklch(0.72 0.016 235);
+  --accent: oklch(0.375 0.03 238);
+  --accent-foreground: oklch(0.93 0.014 235);
+
+  --border: oklch(0.4 0.02 240);
+  --input: oklch(0.4 0.02 240);
+  --ring: oklch(0.74 0.105 155);
+
+  --lit: oklch(0.75 0.14 152);
+  --lit-soft: oklch(0.34 0.06 152);
+  --on-lit: oklch(0.2 0.03 160);
+  --warm: oklch(0.8 0.125 82);
+  --warm-soft: oklch(0.35 0.065 88);
+  --sky: oklch(0.73 0.1 232);
+  --sky-soft: oklch(0.33 0.05 232);
+  --idle: oklch(0.35 0.016 240);
+  --idle-foreground: oklch(0.69 0.016 238);
+
+  --overlay: oklch(0.1 0.015 240 / 65%);
+
+  --shadow-soft: 0 1px 2px oklch(0.06 0.015 240 / 26%),
+    0 6px 20px -8px oklch(0.06 0.015 240 / 36%);
+  --shadow-lift: 0 2px 4px oklch(0.06 0.015 240 / 28%),
+    0 14px 32px -12px oklch(0.06 0.015 240 / 44%);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html,
+  body {
+    background-color: var(--background);
+  }
+
+  body {
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-size: var(--text-child);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* 触控面积与可读性优先 */
+  button {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--primary) 20%, transparent);
+  }
+
+  /* 主题切换时颜色平滑过渡，避免整页闪跳 */
+  html,
+  body {
+    transition: background-color 0.35s ease;
+  }
+
+  /* IP 插画为白底图，深色主题下加浅色底板保持原有「圆角白底」观感 */
+  .dark .ip-plate {
+    background-color: oklch(0.95 0.02 130);
+  }
+
+  /* 卡片描边：浅色主题半透明即可，深色主题需实色才看得见层级 */
+  .panel-border {
+    border-color: color-mix(in oklab, var(--border) 70%, transparent);
+  }
+  .dark .panel-border {
+    border-color: var(--border);
+  }
+}
+
+@layer utilities {
+  .bg-surface-deep {
+    background-color: var(--surface-deep);
+  }
+  .text-muted-text {
+    color: var(--muted-text);
+  }
+  .text-primary-deep {
+    color: var(--primary-deep);
+  }
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+  .shadow-lift {
+    box-shadow: var(--shadow-lift);
+  }
+  .tap-target {
+    min-height: 48px;
+  }
+  .bg-overlay {
+    background-color: var(--overlay);
+  }
+}
+
+/* ------------------------------------------------------------
+   动效：温和、短促、可打断。禁止闪烁催促类动效。
+   ------------------------------------------------------------ */
+@keyframes press-pop {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(0.955);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes star-rise {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 0) scale(0.5);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -68px) scale(1.05);
+  }
+}
+
+@keyframes soft-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes word-hint {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes ring-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes slide-card-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--slide-from, 24px));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.anim-pop {
+  animation: press-pop 0.24s ease-out;
+}
+.anim-star {
+  animation: star-rise 1.5s ease-out forwards;
+}
+.anim-float {
+  animation: soft-float 3.6s ease-in-out infinite;
+}
+.anim-word {
+  animation: word-hint 0.42s ease-out;
+}
+.anim-in {
+  animation: ring-in 0.42s ease-out both;
+}
+.anim-card {
+  animation: slide-card-in 0.32s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-pop,
+  .anim-star,
+  .anim-float,
+  .anim-word,
+  .anim-in,
+  .anim-card {
+    animation: none !important;
+  }
+}
+
+/* ------------------------------------------------------------
+   打印：A4 黑白线稿，隐藏应用外壳
+   ------------------------------------------------------------ */
+.print-sheet {
+  background: #fff;
+  color: #111;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 14mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-sheet {
+    position: static !important;
+    width: auto !important;
+    max-width: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .print-break {
+    break-before: page;
+  }
+}
+
+.print-only {
+  display: none;
+}
