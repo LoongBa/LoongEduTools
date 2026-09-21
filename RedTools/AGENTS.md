@@ -1,13 +1,18 @@
 # RedTools — 目录规则（AGENTS.md）
 
-> 本文件定义 RedTools（小红书小工具集）的目录结构、构建/发布流程、git 约定与进度维护规则。
+> 本文件定义 RedTools（教育小工具集，**双模式：在线 + 离线**）的目录结构、构建/发布流程、git 约定与进度维护规则。
 > 改代码 / 新增工具 / 提交前先读本文件 + `series/<系列>/设计文档.md`。
-> 更新：2026-09-18
+> 更新：2026-09-22
 
 ## 1. 定位
 
-RedTools = **小红书小工具开发集**，按「系列 →（子系列 →）工具」组织，数据驱动 + 批量自动化构建。
-所有工具须遵守 `RedTools/.skill/minitool-zip-builder/` 打包规范（离线 zip、容器 CSP、平台白名单）。
+RedTools = **教育小工具开发集**，按「系列 →（子系列 →）工具」组织，数据驱动 + 批量自动化构建。
+**双模式定位（2026-09-22 确立）**：每个工具同时产出「离线包 + 在线包」——
+- **离线包**：纯静态 zip（index.html 双击即用），发布到**小红书**（合规红线：禁排行榜/云存档/多人互动，见 `docs/教育工具/教育工具产品指导原则.md`）；
+- **在线包**：仅部署目录（不入 publish/小红书），对应**微信**场景（在线服务接口就绪、服务端待接，见 `docs/教育工具/教育工具在线版设计要求.md`）。
+- 双模式实现：`_shared/js/` 公共模块（lx-shared.js）+ `build_framework.py` `--mode offline|online` 构建注入，核心玩法逻辑一套代码双模式共用（见 `docs/教育工具/V0.2-双模式骨架-开发方案.md` / `V0.4-...-审核报告.md`）。
+
+离线包须遵守 `RedTools/.skill/minitool-zip-builder/` 打包规范（离线 zip、容器 CSP、平台白名单）。
 产品规划唯一权威：`docs/教育工具/教育工具产品矩阵规划.md`（62 款产品 / 7 大类 / P0-P3 / 三阶段路线，
 本地维护为主，来源信息图 HTML 仅作历史参考）。
 
@@ -55,7 +60,9 @@ RedTools/
   系列/工具 README 只做入口链接，不承载完整文档正文。
 - publish 是**所有系列的公共发布目录**，按系列分目录、**系列内不再细分**（用文件名区分工具）。
 - 系列资源（README/设计文档）**各自独立维护**；系列间共享资源放 `RedTools/` 根下子目录
-  （当前无共享资源；如出现，建 `RedTools/_shared/`）。
+- **仓库级共享资源**：跨系列共用数据/素材放 `RedTools/_shared/`（如
+  `_shared/js/` 双模式公共模块：lx-shared.js 命名空间 + storage/progress/auth/guard/ui-kit，
+  见 `docs/教育工具/V0.2-双模式骨架-开发方案.md`）。
 - **系列内共享资源**：同一系列多个工具共用的数据/素材放 `series/<系列>/_shared/`（如
   `series/学科/_shared/成语词库/`，看图猜成语/成语接龙/成语配对三件套共用）。
 - **仓库级英语词库**：英语类工具（英语点读/打字背单词/单词闪卡）的公共词库数据与工具代码
@@ -77,6 +84,10 @@ python build_all.py --tool 英语点读 --units 0,1,2
 python build_all.py --tool 英语点读 --pages 2-13
 python build_all.py                          # 批量全部
 
+# 构建模式（双模式，2026-09-22 确立）
+python build_all.py --tool 数学口算 --mode offline   # 离线包：zip → publish/<系列>/（小红书）
+python build_all.py --tool 数学口算 --mode online    # 在线包：仅 dist/<工具>/online/ 部署目录（微信，不入 publish/小红书）
+
 # 审计（体积/文本门禁，发布前必跑）
 python .skill/minitool-zip-builder/scripts/audit_artifact.py dist/学科/英语点读
 python .skill/minitool-zip-builder/scripts/audit_artifact.py publish/学科/新英语四上点读1单元.zip
@@ -84,6 +95,8 @@ python .skill/minitool-zip-builder/scripts/audit_artifact.py publish/学科/新�
 
 发布产物自动落到 `publish/<系列>/`（zip + 1024 图标）。**每次构建都会自动解压一份
 `<工具名>_解压测试版/`（覆盖更新，双击 index.html 即测）**。发布文案.txt 人工维护（标题/正文/标签）。
+**双模式发布边界**：offline 包发布到小红书（合规红线见 §1）；online 包仅存 `dist/<工具>/online/` 部署目录，
+**不入 publish/小红书**（在线接口就绪、服务端待接；微信场景上线需另走在线部署流程）。
 
 ## 4. Git 约定
 
@@ -98,7 +111,7 @@ python .skill/minitool-zip-builder/scripts/audit_artifact.py publish/学科/新�
 
 - `RedTools/README.md` 顶部「全系列开发与交付进度清单」为**唯一权威清单**：
   每完成一次构建/发布，更新该表（系列 / 工具 / 版本 / 构建日期 / 开发与测试状态 /
-  是否发布到小红书 / 产物 / 文档位置 / 备注）。
+  是否发布（小红书离线包 / 微信在线包）/ 产物 / 文档位置 / 备注）。
 - 系列内部变更详情（功能/踩坑）记入 `series/<系列>/README.md` 或 `设计文档.md`。
 - 新工具立项：先写 `series/<系列>/<工具>/README.md`（含需求草案），再进入开发。
 - 工具文档（设计/使用）统一在 `docs/工具文档/<系列>/` 维护，与代码目录分离。
