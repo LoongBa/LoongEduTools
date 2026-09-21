@@ -1,0 +1,3 @@
+# 点读原始 book.json（11 册，大文件不入库，用 book_data.zip 归档分发）
+*.json
+!.gitignore

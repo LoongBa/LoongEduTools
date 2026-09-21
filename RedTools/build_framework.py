@@ -481,172 +481,39 @@ def write_chengyu_data_js(cfg: ToolConfig, out_dir: Path, unit_index: int, app_n
     log(f"data.js 写入（成语词库工具，{len(js) / 1024:.0f} KB，课本 {len(data.get('课本', []))} 条 + 扩展 {len(data.get('接龙扩展', []))} 条，接龙索引首字 {len(chain)} 个）")
 
 
-# ---------------- PEP 词汇表（打字背单词） ----------------
-# 词汇表素材：F:\_教材素材\人教版（PEP）（主编：吴欣）\<年级>\<册次>\_音频素材\
-#   - 9 册：*Words_in_each_unit_en_cn.txt（独立词汇表，单词行 + 中文释义行 + 空行，Unit N 标题分隔）
-#   - 三下/五上：整册 <册名>_en_cn.txt 中 "Words in each unit" 区块（格式一致，至 "Useful expressions" 结束）
-# 统一解析规则：非空行两两配对（第1行=英文单词，第2行=中文释义），跳过标题行。
-
-# 11 册清单（年级, 册次, 词汇表文件 glob, 是否整册提取区块）
-# 注意：三下/五上/五下无独立"单元词汇表"文件（独立 Words 文件实际是字母序 Vocabulary 或缺失），
-#       单元词汇表在整册 <册名>_en_cn.txt 的 "Words in each unit" 区块中。
-VOCAB_BOOKS: list[tuple[str, str, str, bool]] = [
-    ("一年级", "上册", "*Words_in_each_unit_en_cn.txt", False),
-    ("一年级", "下册", "*Words_in_each_unit_en_cn.txt", False),
-    ("二年级", "上册", "*Words_in_each_unit_en_cn.txt", False),
-    ("二年级", "下册", "*Words_in_each_unit_en_cn.txt", False),
-    ("三年级", "上册", "*Words_in_each_unit_en_cn.txt", False),
-    ("三年级", "下册", "*三年级*下册*_en_cn.txt", True),     # 无独立词汇表，取整册区块
-    ("四年级", "上册", "*Words_in_each_unit_en_cn.txt", False),
-    ("四年级", "下册", "*Words_in_each_unit_en_cn.txt", False),
-    ("五年级", "上册", "*五年级*上册*_en_cn.txt", True),      # 无独立词汇表，取整册区块
-    ("五年级", "下册", "*五年级*下册*_en_cn.txt", True),      # 独立 Words 文件为字母序 Vocabulary，单元表在整册
-    ("六年级", "上册", "*Words_in_each_unit_en_cn.txt", False),
-]
-
-# 标题行（跳过）：Appendix / 附录 / Words in each unit / 单元词汇表 / Unit N / 第N单元
-_VOCAB_SKIP_RE = _re.compile(
-    r"^(Appendix\s*\d*|附录\s*\d*|Words in each unit|单元词汇表|"
-    r"Unit\s*\d+|第[一二三四五六七八九十\d]+单元)$",
-    _re.IGNORECASE,
-)
-# 区块结束标记：整册 txt 中词汇表区块后紧跟字母序 Vocabulary / 常用表达法 / 语音 等
-_VOCAB_END_RE = _re.compile(
-    r"^(Appendix\s*\d*|附录\s*\d*|Vocabulary|词汇表|"
-    r"Useful expressions|常用表达法|Pronunciation|语音|"
-    r"Irregular verbs|不规则动词|The alphabet|字母表)$",
-    _re.IGNORECASE,
-)
+# ---------------- PEP 词汇表（公共素材：/PEP词库/tools/vocab/parse_pep_vocab.py） ----------------
+PEP_VOCAB_TOOL = ROOT.parent / "PEP词库" / "tools" / "vocab" / "parse_pep_vocab.py"
 
 
-def _clean_cn(cn: str) -> str:
-    """清理中文释义：剥离首尾空白、剥离去声调音标/复数注释前缀（如 （复数children） 儿童；小孩 → 儿童；小孩）。"""
-    cn = cn.strip()
-    # 剥离形如 （复数children） （复数leaves /liːvz/） 等括号前缀注释
-    m = _re.match(r"^（[^）]*[a-zA-Z][^）]*）\s*(.+)$", cn)
-    if m:
-        cn = m.group(1).strip()
-    return cn
-
-
-def _clean_word(word: str) -> str:
-    """清理英文单词：剥离星号标记（教材听力/重点词汇标记 *）、HTML 标签（<i>pl.</i> 等）、
-    尾部括号复数注释（tooth (pl. teeth) → tooth）。"""
-    w = word.strip()
-    w = _re.sub(r"<[^>]+>", "", w).strip()      # HTML 标签
-    w = w.lstrip("*").strip()                    # 星号标记
-    m = _re.match(r"^(.+?)\s*[（(][^）)]*[）)]\s*$", w)  # 尾部括号注释
-    if m:
-        w = m.group(1).strip()
-    return w
-
-
-def _parse_vocab_lines(lines: list[str]) -> list[dict]:
-    """解析词汇表行列表（已按区块裁剪），返回 [{unit, word, cn}]。
-
-    规则：非空行两两配对（第1行=英文单词，第2行=中文释义）；跳过标题行；
-    单元标题行（Unit N / 第N单元）作为单元分隔。释义清理括号注释前缀。
-    """
-    entries: list[dict] = []
-    unit = 0
-    pending_word: str | None = None
-    for raw in lines:
-        line = raw.strip()
-        if not line:
-            continue
-        if _VOCAB_SKIP_RE.match(line):
-            if _re.match(r"^Unit\s*\d+$", line, _re.IGNORECASE):
-                unit = int(_re.search(r"\d+", line).group(0))
-            continue
-        # 配对：英文单词行（含字母）或中文释义行
-        if pending_word is None:
-            # 首行应为英文单词（含英文字母）
-            if _re.search(r"[a-zA-Z]", line):
-                pending_word = _clean_word(line)
-        else:
-            entries.append({"unit": unit, "word": pending_word, "cn": _clean_cn(line)})
-            pending_word = None
-    # 末尾未配对行丢弃（解析容错）
-    return entries
-
-
-def _load_vocab_book(vocab_dir: Path, grade: str, term: str, pattern: str,
-                     from_full_book: bool) -> dict:
-    """加载一册词汇表，返回 {grade, term, book, units:[{unit, words:[{word, cn}]}]}。"""
-    book_dir = vocab_dir / grade / term / "_音频素材"
-    if not book_dir.exists():
-        raise SystemExit(f"词汇表目录不存在: {book_dir}")
-    matches = sorted(book_dir.glob(pattern))
-    if not matches:
-        raise SystemExit(f"词汇表文件缺失: {grade}/{term} pattern={pattern}")
-    src_path = matches[0]
-
-    if from_full_book:
-        # 整册 txt：定位 "Words in each unit" 区块，至 Useful expressions 结束
-        lines = src_path.read_text(encoding="utf-8", errors="replace").splitlines()
-        start = None
-        for i, ln in enumerate(lines):
-            if ln.strip() == "Words in each unit":
-                start = i + 1
-                break
-        if start is None:
-            raise SystemExit(f"{src_path.name} 中未找到 Words in each unit 区块")
-        end = len(lines)
-        for i in range(start, len(lines)):
-            if _VOCAB_END_RE.match(lines[i].strip()):
-                end = i
-                break
-        entries = _parse_vocab_lines(lines[start:end])
-    else:
-        text = src_path.read_text(encoding="utf-8", errors="replace")
-        entries = _parse_vocab_lines(text.splitlines())
-
-    if not entries:
-        raise SystemExit(f"{src_path.name} 词汇表解析为空")
-
-    # 按单元分组
-    units: list[dict] = []
-    cur: dict | None = None
-    for e in entries:
-        if cur is None or e["unit"] != cur["unit"]:
-            cur = {"unit": e["unit"], "words": []}
-            units.append(cur)
-        cur["words"].append({"word": e["word"], "cn": e["cn"]})
-    # 单元序号保序排序
-    units.sort(key=lambda u: u["unit"])
-    return {"grade": grade, "term": term, "book": f"英语（PEP）{grade}{term}", "units": units}
+def _load_pep_vocab_tool():
+    """动态加载 PEP词库 词汇解析模块（库方式复用，保持 976/978 词输出一致）。"""
+    import importlib.util
+    import sys
+    spec = importlib.util.spec_from_file_location("parse_pep_vocab", PEP_VOCAB_TOOL)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules["parse_pep_vocab"] = mod
+    spec.loader.exec_module(mod)
+    return mod
 
 
 def write_vocab_data_js(cfg: ToolConfig, out_dir: Path, unit_index: int,
                         app_name: str) -> None:
-    """打字背单词：解析 PEP 11 册词汇表 → window.APP_DATA.books（数据驱动按册构建）。"""
+    """打字背单词/单词闪卡：委托 /PEP词库 解析 PEP 11 册词汇表 → data.js（books）。
+
+    同时将规范化词库 JSON 同步到 /PEP词库/data/vocab/pep_vocab.json（公共素材，schema v1）。
+    """
     if not cfg.vocab_dir or not cfg.vocab_dir.exists():
         raise SystemExit(f"vocab_dir 不存在: {cfg.vocab_dir}")
-    books = []
-    total_words = 0
-    for grade, term, pattern, from_full in VOCAB_BOOKS:
-        book = _load_vocab_book(cfg.vocab_dir, grade, term, pattern, from_full)
-        n = sum(len(u["words"]) for u in book["units"])
-        total_words += n
-        books.append(book)
-        log(f"  词汇表 {grade}{term}: {len(book['units'])} 单元 / {n} 词")
-
-    app_data = {
-        "meta": {
-            "name": app_name,
-            "version": cfg.version,
-            "series": cfg.series,
-            "tool": cfg.tool,
-            "book": "人教版（PEP）小学英语 1-6 年级",
-            "bookid": "",
-            "bookid_3rd": "",
-            "unit_index": unit_index,
-        },
-        "books": books,
-    }
-    js = "window.APP_DATA = " + json.dumps(app_data, ensure_ascii=False, indent=1) + ";\n"
-    (out_dir / "data.js").write_text(js, encoding="utf-8")
-    log(f"data.js 写入（词汇表工具，{len(js) / 1024:.0f} KB，{len(books)} 册 / {total_words} 词）")
+    mod = _load_pep_vocab_tool()
+    books, total_words = mod.parse_all_books(cfg.vocab_dir)
+    app_data = mod.build_app_data(app_name, cfg.version, cfg.series, cfg.tool,
+                                  unit_index, books)
+    size = mod.write_data_js(app_data, out_dir)
+    log(f"data.js 写入（词汇表工具，{size / 1024:.0f} KB，{len(books)} 册 / {total_words} 词）")
+    # 公共素材同步：PEP词库/data/vocab/pep_vocab.json
+    vocab_json = ROOT.parent / "PEP词库" / "data" / "vocab" / "pep_vocab.json"
+    mod.write_vocab_json(books, total_words, vocab_json)
+    log(f"PEP词库 规范化词库 JSON 已同步：{vocab_json.name}（{total_words} 词）")
 
 
 def make_static_icon(cfg: ToolConfig, out_dir: Path, publish_dir: Path | None = None,

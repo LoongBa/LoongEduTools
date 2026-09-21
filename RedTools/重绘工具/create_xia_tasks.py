@@ -4,7 +4,7 @@ import json, shutil
 from pathlib import Path
 
 MAT = Path(r"F:\_教材素材\人教版（PEP）（主编：吴欣）")
-DATA_DIR = Path(r"F:\LoongBa_Git\LoongEduTools\Downloader\Diandu\data")
+DATA_DIR = Path(r"F:\LoongBa_Git\LoongEduTools\PEP词库\data\diandu")
 TASKS_DIR = Path(r"F:\LoongBa_Git\LoongEduTools\RedTools\重绘工具\tasks")
 PROMPT = "prompts/cartoon_redraw_v2.txt"
 

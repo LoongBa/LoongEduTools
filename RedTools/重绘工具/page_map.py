@@ -4,7 +4,7 @@ import json
 import re
 import sys
 
-BOOK = sys.argv[1] if len(sys.argv) > 1 else r"F:\LoongBa_Git\LoongEduTools\Downloader\Diandu\data\1212001402255_英语（PEP）_四年级_下册.json"
+BOOK = sys.argv[1] if len(sys.argv) > 1 else r"F:\LoongBa_Git\LoongEduTools\PEP词库\data\diandu\1212001402255_英语（PEP）_四年级_下册.json"
 
 with open(BOOK, "r", encoding="utf-8") as f:
     data = json.load(f)

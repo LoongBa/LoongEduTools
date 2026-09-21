@@ -18,7 +18,7 @@ from playwright.async_api import async_playwright
 
 REDTOOLS = Path(r"F:\LoongBa_Git\LoongEduTools\RedTools")
 EDITOR = REDTOOLS / "重绘工具" / "hotzone_editor" / "index.html"
-BOOK = r"F:\LoongBa_Git\LoongEduTools\Downloader\Diandu\data\1212001401255_英语（PEP）_四年级_上册.json"
+BOOK = r"F:\LoongBa_Git\LoongEduTools\PEP词库\data\diandu\1212001401255_英语（PEP）_四年级_上册.json"
 REDRAWN_DIR = r"F:\_教材素材\人教版（PEP）（主编：吴欣）\四年级\上册\_重绘图片素材"
 AUDIO_DIR = r"F:\_教材素材\人教版（PEP）（主编：吴欣）\四年级\上册\_音频素材\单句音频"
 

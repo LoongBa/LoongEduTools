@@ -1,0 +1,4300 @@
+{
+ "schema": "pep-vocab@1",
+ "book": "人教版（PEP）小学英语 1-6 年级",
+ "book_count": 11,
+ "word_count": 976,
+ "generated_at": "2026-09-21",
+ "books": [
+  {
+   "grade": "一年级",
+   "term": "上册",
+   "book": "英语（PEP）一年级上册",
+   "units": [
+    {
+     "unit": 1,
+     "words": [
+      {
+       "word": "hello",
+       "cn": "你好"
+      },
+      {
+       "word": "hi",
+       "cn": "嗨；你好"
+      },
+      {
+       "word": "bye",
+       "cn": "再见"
+      }
+     ]
+    },
+    {
+     "unit": 2,
+     "words": [
+      {
+       "word": "pencil",
+       "cn": "铅笔"
+      },
+      {
+       "word": "book",
+       "cn": "书"
+      },
+      {
+       "word": "show",
+       "cn": "展示"
+      },
+      {
+       "word": "open",
+       "cn": "打开"
+      }
+     ]
+    },
+    {
+     "unit": 3,
+     "words": [
+      {
+       "word": "look",
+       "cn": "看"
+      },
+      {
+       "word": "listen",
+       "cn": "（注意地）听"
+      },
+      {
+       "word": "read",
+       "cn": "读"
+      },
+      {
+       "word": "say",
+       "cn": "说"
+      }
+     ]
+    },
+    {
+     "unit": 4,
+     "words": [
+      {
+       "word": "bottle",
+       "cn": "瓶"
+      },
+      {
+       "word": "pencil case",
+       "cn": "笔袋；铅笔盒"
+      },
+      {
+       "word": "bag",
+       "cn": "包；袋"
+      },
+      {
+       "word": "cap",
+       "cn": "帽子"
+      }
+     ]
+    },
+    {
+     "unit": 5,
+     "words": [
+      {
+       "word": "brother",
+       "cn": "哥；弟"
+      },
+      {
+       "word": "dad",
+       "cn": "爸爸"
+      },
+      {
+       "word": "mum",
+       "cn": "妈妈"
+      },
+      {
+       "word": "sister",
+       "cn": "姐；妹"
+      },
+      {
+       "word": "classmate",
+       "cn": "同班同学"
+      },
+      {
+       "word": "teacher",
+       "cn": "教师"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "grade": "一年级",
+   "term": "下册",
+   "book": "英语（PEP）一年级下册",
+   "units": [
+    {
+     "unit": 1,
+     "words": [
+      {
+       "word": "thank",
+       "cn": "谢谢"
+      },
+      {
+       "word": "Mr",
+       "cn": "（用于男子的姓氏或姓名前）先生"
+      },
+      {
+       "word": "sorry",
+       "cn": "歉疚；意不去"
+      },
+      {
+       "word": "Miss",
+       "cn": "（用于未婚女子的姓氏或姓名前）女士，小姐"
+      }
+     ]
+    },
+    {
+     "unit": 2,
+     "words": [
+      {
+       "word": "wash",
+       "cn": "洗；清洗"
+      },
+      {
+       "word": "hand",
+       "cn": "手"
+      },
+      {
+       "word": "face",
+       "cn": "脸；面部"
+      },
+      {
+       "word": "brush",
+       "cn": "（用刷子）刷净，刷亮"
+      },
+      {
+       "word": "tooth",
+       "cn": "牙齿"
+      }
+     ]
+    },
+    {
+     "unit": 3,
+     "words": [
+      {
+       "word": "noodle",
+       "cn": "面条"
+      },
+      {
+       "word": "tomato",
+       "cn": "西红柿"
+      },
+      {
+       "word": "rice",
+       "cn": "米饭；大米"
+      },
+      {
+       "word": "carrot",
+       "cn": "胡萝卜"
+      },
+      {
+       "word": "apple",
+       "cn": "苹果"
+      },
+      {
+       "word": "banana",
+       "cn": "香蕉"
+      }
+     ]
+    },
+    {
+     "unit": 4,
+     "words": [
+      {
+       "word": "dog",
+       "cn": "狗"
+      },
+      {
+       "word": "bird",
+       "cn": "鸟"
+      },
+      {
+       "word": "fish",
+       "cn": "鱼"
+      },
+      {
+       "word": "rabbit",
+       "cn": "兔"
+      },
+      {
+       "word": "cat",
+       "cn": "猫"
+      }
+     ]
+    },
+    {
+     "unit": 5,
+     "words": [
+      {
+       "word": "big",
+       "cn": "大的"
+      },
+      {
+       "word": "swim",
+       "cn": "游泳"
+      },
+      {
+       "word": "fly",
+       "cn": "飞；飞翔"
+      },
+      {
+       "word": "small",
+       "cn": "小的"
+      },
+      {
+       "word": "run",
+       "cn": "跑；奔跑"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "grade": "二年级",
+   "term": "上册",
+   "book": "英语（PEP）二年级上册",
+   "units": [
+    {
+     "unit": 1,
+     "words": [
+      {
+       "word": "one",
+       "cn": "一"
+      },
+      {
+       "word": "two",
+       "cn": "二"
+      },
+      {
+       "word": "three",
+       "cn": "三"
+      },
+      {
+       "word": "four",
+       "cn": "四"
+      },
+      {
+       "word": "five",
+       "cn": "五"
+      },
+      {
+       "word": "six",
+       "cn": "六"
+      },
+      {
+       "word": "seven",
+       "cn": "七"
+      },
+      {
+       "word": "eight",
+       "cn": "八"
+      },
+      {
+       "word": "nine",
+       "cn": "九"
+      },
+      {
+       "word": "ten",
+       "cn": "十"
+      }
+     ]
+    },
+    {
+     "unit": 2,
+     "words": [
+      {
+       "word": "red",
+       "cn": "红色的"
+      },
+      {
+       "word": "green",
+       "cn": "绿色的"
+      },
+      {
+       "word": "blue",
+       "cn": "蓝色的"
+      },
+      {
+       "word": "yellow",
+       "cn": "黄色的"
+      },
+      {
+       "word": "orange",
+       "cn": "橙红色的"
+      },
+      {
+       "word": "white",
+       "cn": "白色的"
+      },
+      {
+       "word": "brown",
+       "cn": "棕色的"
+      }
+     ]
+    },
+    {
+     "unit": 3,
+     "words": [
+      {
+       "word": "clean",
+       "cn": "打扫"
+      },
+      {
+       "word": "floor",
+       "cn": "地面"
+      },
+      {
+       "word": "table",
+       "cn": "桌子"
+      },
+      {
+       "word": "feed",
+       "cn": "喂养"
+      },
+      {
+       "word": "help",
+       "cn": "帮助"
+      }
+     ]
+    },
+    {
+     "unit": 4,
+     "words": [
+      {
+       "word": "happy",
+       "cn": "高兴的"
+      },
+      {
+       "word": "sad",
+       "cn": "难过的"
+      },
+      {
+       "word": "angry",
+       "cn": "生气的"
+      },
+      {
+       "word": "hungry",
+       "cn": "饿的"
+      },
+      {
+       "word": "tired",
+       "cn": "疲劳的"
+      }
+     ]
+    },
+    {
+     "unit": 5,
+     "words": [
+      {
+       "word": "toy",
+       "cn": "玩具"
+      },
+      {
+       "word": "car",
+       "cn": "小汽车"
+      },
+      {
+       "word": "doll",
+       "cn": "玩偶"
+      },
+      {
+       "word": "ball",
+       "cn": "球"
+      },
+      {
+       "word": "boat",
+       "cn": "小船"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "grade": "二年级",
+   "term": "下册",
+   "book": "英语（PEP）二年级下册",
+   "units": [
+    {
+     "unit": 1,
+     "words": [
+      {
+       "word": "coat",
+       "cn": "外套"
+      },
+      {
+       "word": "sweater",
+       "cn": "毛衣"
+      },
+      {
+       "word": "T-shirt",
+       "cn": "T恤"
+      },
+      {
+       "word": "skirt",
+       "cn": "裙子"
+      }
+     ]
+    },
+    {
+     "unit": 2,
+     "words": [
+      {
+       "word": "push",
+       "cn": "推"
+      },
+      {
+       "word": "climb",
+       "cn": "爬"
+      },
+      {
+       "word": "jump",
+       "cn": "跳"
+      },
+      {
+       "word": "shout",
+       "cn": "喊"
+      }
+     ]
+    },
+    {
+     "unit": 3,
+     "words": [
+      {
+       "word": "bounce a ball",
+       "cn": "拍球"
+      },
+      {
+       "word": "jump rope",
+       "cn": "跳绳"
+      },
+      {
+       "word": "do sit-ups",
+       "cn": "做仰卧起坐"
+      }
+     ]
+    },
+    {
+     "unit": 4,
+     "words": [
+      {
+       "word": "flower",
+       "cn": "花（朵）"
+      },
+      {
+       "word": "tree",
+       "cn": "树"
+      },
+      {
+       "word": "lake",
+       "cn": "湖"
+      },
+      {
+       "word": "house",
+       "cn": "房屋"
+      },
+      {
+       "word": "hill",
+       "cn": "小山"
+      }
+     ]
+    },
+    {
+     "unit": 5,
+     "words": [
+      {
+       "word": "pass",
+       "cn": "传递；给"
+      },
+      {
+       "word": "use",
+       "cn": "用；使用"
+      },
+      {
+       "word": "head",
+       "cn": "头"
+      },
+      {
+       "word": "arm",
+       "cn": "手臂"
+      },
+      {
+       "word": "leg",
+       "cn": "腿"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "grade": "三年级",
+   "term": "上册",
+   "book": "英语（PEP）三年级上册",
+   "units": [
+    {
+     "unit": 1,
+     "words": [
+      {
+       "word": "name",
+       "cn": "名字"
+      },
+      {
+       "word": "nice",
+       "cn": "令人愉快的；友好的"
+      },
+      {
+       "word": "ear",
+       "cn": "耳朵"
+      },
+      {
+       "word": "hand",
+       "cn": "手"
+      },
+      {
+       "word": "eye",
+       "cn": "眼睛"
+      },
+      {
+       "word": "mouth",
+       "cn": "嘴"
+      },
+      {
+       "word": "arm",
+       "cn": "胳膊"
+      },
+      {
+       "word": "can",
+       "cn": "可以"
+      },
+      {
+       "word": "share",
+       "cn": "分享"
+      },
+      {
+       "word": "smile",
+       "cn": "微笑；笑"
+      },
+      {
+       "word": "listen",
+       "cn": "听；倾听"
+      },
+      {
+       "word": "help",
+       "cn": "帮助"
+      },
+      {
+       "word": "say",
+       "cn": "说；讲"
+      },
+      {
+       "word": "friend",
+       "cn": "朋友"
+      },
+      {
+       "word": "good",
+       "cn": "好的"
+      }
+     ]
+    },
+    {
+     "unit": 2,
+     "words": [
+      {
+       "word": "mum",
+       "cn": "（口语）妈妈"
+      },
+      {
+       "word": "dad",
+       "cn": "（口语） 爸爸；爹爹"
+      },
+      {
+       "word": "grandma",
+       "cn": "奶奶；姥姥"
+      },
+      {
+       "word": "grandpa",
+       "cn": "爷爷；姥爷"
+      },
+      {
+       "word": "grandfather",
+       "cn": "（外）祖父；爷爷；姥爷；外公"
+      },
+      {
+       "word": "grandmother",
+       "cn": "（外）祖母；奶奶；姥姥；外婆"
+      },
+      {
+       "word": "mother",
+       "cn": "母亲；妈妈"
+      },
+      {
+       "word": "father",
+       "cn": "父亲；爸爸"
+      },
+      {
+       "word": "me",
+       "cn": "我"
+      },
+      {
+       "word": "sister",
+       "cn": "姐；妹"
+      },
+      {
+       "word": "family",
+       "cn": "家；家庭"
+      },
+      {
+       "word": "have",
+       "cn": "有"
+      },
+      {
+       "word": "big",
+       "cn": "大的"
+      },
+      {
+       "word": "cousin",
+       "cn": "堂（表）兄弟；堂（表）姐妹"
+      },
+      {
+       "word": "brother",
+       "cn": "哥；弟"
+      },
+      {
+       "word": "baby",
+       "cn": "婴儿"
+      },
+      {
+       "word": "uncle",
+       "cn": "伯父；叔父；舅父；姑父；姨父"
+      },
+      {
+       "word": "aunt",
+       "cn": "伯母；婶母；舅母；姑母；姨母"
+      },
+      {
+       "word": "small",
+       "cn": "小的"
+      }
+     ]
+    },
+    {
+     "unit": 3,
+     "words": [
+      {
+       "word": "like",
+       "cn": "喜欢"
+      },
+      {
+       "word": "dog",
+       "cn": "狗"
+      },
+      {
+       "word": "pet",
+       "cn": "宠物"
+      },
+      {
+       "word": "cat",
+       "cn": "猫"
+      },
+      {
+       "word": "fish",
+       "cn": "鱼；鱼肉"
+      },
+      {
+       "word": "bird",
+       "cn": "鸟"
+      },
+      {
+       "word": "rabbit",
+       "cn": "兔"
+      },
+      {
+       "word": "go",
+       "cn": "去；走"
+      },
+      {
+       "word": "zoo",
+       "cn": "动物园"
+      },
+      {
+       "word": "fox",
+       "cn": "狐狸"
+      },
+      {
+       "word": "Miss",
+       "cn": "（学生对女教师的称呼）老师；女士"
+      },
+      {
+       "word": "panda",
+       "cn": "大熊猫"
+      },
+      {
+       "word": "red panda",
+       "cn": "小熊猫"
+      },
+      {
+       "word": "cute",
+       "cn": "可爱的"
+      },
+      {
+       "word": "monkey",
+       "cn": "猴子"
+      },
+      {
+       "word": "tiger",
+       "cn": "老虎"
+      },
+      {
+       "word": "elephant",
+       "cn": "大象"
+      },
+      {
+       "word": "lion",
+       "cn": "狮；狮子"
+      },
+      {
+       "word": "animal",
+       "cn": "动物"
+      },
+      {
+       "word": "giraffe",
+       "cn": "长颈鹿"
+      },
+      {
+       "word": "tall",
+       "cn": "高的"
+      },
+      {
+       "word": "fast",
+       "cn": "快的"
+      }
+     ]
+    },
+    {
+     "unit": 4,
+     "words": [
+      {
+       "word": "apple",
+       "cn": "苹果"
+      },
+      {
+       "word": "banana",
+       "cn": "香蕉"
+      },
+      {
+       "word": "farm",
+       "cn": "农场"
+      },
+      {
+       "word": "air",
+       "cn": "空气"
+      },
+      {
+       "word": "orange",
+       "cn": "橙子；柑橘"
+      },
+      {
+       "word": "grape",
+       "cn": "葡萄"
+      },
+      {
+       "word": "school",
+       "cn": "学校"
+      },
+      {
+       "word": "garden",
+       "cn": "花园"
+      },
+      {
+       "word": "need",
+       "cn": "需要"
+      },
+      {
+       "word": "water",
+       "cn": "给⋯⋯浇水；水"
+      },
+      {
+       "word": "flower",
+       "cn": "花；花朵"
+      },
+      {
+       "word": "grass",
+       "cn": "草；草地"
+      },
+      {
+       "word": "plant",
+       "cn": "种植；植物"
+      },
+      {
+       "word": "new",
+       "cn": "新的"
+      },
+      {
+       "word": "tree",
+       "cn": "树"
+      },
+      {
+       "word": "sun",
+       "cn": "阳光；太阳"
+      },
+      {
+       "word": "give",
+       "cn": "给"
+      },
+      {
+       "word": "us",
+       "cn": "我们"
+      },
+      {
+       "word": "them",
+       "cn": "它们；他们；她们"
+      }
+     ]
+    },
+    {
+     "unit": 5,
+     "words": [
+      {
+       "word": "colour",
+       "cn": "颜色"
+      },
+      {
+       "word": "orange",
+       "cn": "橙红色；橙红色的"
+      },
+      {
+       "word": "green",
+       "cn": "绿色；绿色的"
+      },
+      {
+       "word": "red",
+       "cn": "红色；红色的"
+      },
+      {
+       "word": "blue",
+       "cn": "蓝色；蓝色的"
+      },
+      {
+       "word": "make",
+       "cn": "使出现；做"
+      },
+      {
+       "word": "purple",
+       "cn": "紫色；紫色的"
+      },
+      {
+       "word": "brown",
+       "cn": "棕色；棕色的"
+      },
+      {
+       "word": "bear",
+       "cn": "熊"
+      },
+      {
+       "word": "yellow",
+       "cn": "黄色；黄色的"
+      },
+      {
+       "word": "duck",
+       "cn": "鸭"
+      },
+      {
+       "word": "sea",
+       "cn": "海；海洋"
+      },
+      {
+       "word": "some",
+       "cn": "一些"
+      },
+      {
+       "word": "pink",
+       "cn": "粉色；粉色的"
+      },
+      {
+       "word": "draw",
+       "cn": "画"
+      },
+      {
+       "word": "white",
+       "cn": "白色；白色的"
+      },
+      {
+       "word": "black",
+       "cn": "黑色；黑色的"
+      }
+     ]
+    },
+    {
+     "unit": 6,
+     "words": [
+      {
+       "word": "old",
+       "cn": "（多少）岁；年纪；旧的"
+      },
+      {
+       "word": "five",
+       "cn": "五"
+      },
+      {
+       "word": "year",
+       "cn": "年纪；年"
+      },
+      {
+       "word": "one",
+       "cn": "一"
+      },
+      {
+       "word": "two",
+       "cn": "二"
+      },
+      {
+       "word": "three",
+       "cn": "三"
+      },
+      {
+       "word": "four",
+       "cn": "四"
+      },
+      {
+       "word": "ten",
+       "cn": "十"
+      },
+      {
+       "word": "six",
+       "cn": "六"
+      },
+      {
+       "word": "seven",
+       "cn": "七"
+      },
+      {
+       "word": "eight",
+       "cn": "八"
+      },
+      {
+       "word": "nine",
+       "cn": "九"
+      },
+      {
+       "word": "o'clock",
+       "cn": "（表示整点）⋯⋯点钟"
+      },
+      {
+       "word": "cut",
+       "cn": "切块"
+      },
+      {
+       "word": "eat",
+       "cn": "吃"
+      },
+      {
+       "word": "cake",
+       "cn": "蛋糕"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "grade": "三年级",
+   "term": "下册",
+   "book": "英语（PEP）三年级下册",
+   "units": [
+    {
+     "unit": 1,
+     "words": [
+      {
+       "word": "where",
+       "cn": "在哪里；到哪里"
+      },
+      {
+       "word": "from",
+       "cn": "（表示来源）来自，从⋯⋯来"
+      },
+      {
+       "word": "about",
+       "cn": "大约；左右"
+      },
+      {
+       "word": "today",
+       "cn": "今天"
+      },
+      {
+       "word": "teacher",
+       "cn": "教师"
+      },
+      {
+       "word": "student",
+       "cn": "学生"
+      },
+      {
+       "word": "after",
+       "cn": "在⋯⋯后面"
+      },
+      {
+       "word": "who",
+       "cn": "谁；什么人"
+      },
+      {
+       "word": "girl",
+       "cn": "女孩"
+      },
+      {
+       "word": "neighbour",
+       "cn": "邻居"
+      },
+      {
+       "word": "boy",
+       "cn": "男孩"
+      },
+      {
+       "word": "woman",
+       "cn": "成年女子；妇女"
+      },
+      {
+       "word": "man",
+       "cn": "成年男子；男人"
+      },
+      {
+       "word": "Mr",
+       "cn": "（用于男子的姓氏或姓名前）先生"
+      },
+      {
+       "word": "classmate",
+       "cn": "同班同学"
+      },
+      {
+       "word": "he",
+       "cn": "他"
+      },
+      {
+       "word": "also",
+       "cn": "也"
+      },
+      {
+       "word": "English",
+       "cn": "英语的；英语"
+      },
+      {
+       "word": "she",
+       "cn": "她"
+      },
+      {
+       "word": "very",
+       "cn": "很；非常；十分"
+      },
+      {
+       "word": "UK",
+       "cn": "英国"
+      },
+      {
+       "word": "China",
+       "cn": "中国"
+      },
+      {
+       "word": "Canada",
+       "cn": "加拿大"
+      },
+      {
+       "word": "USA",
+       "cn": "美国"
+      }
+     ]
+    },
+    {
+     "unit": 2,
+     "words": [
+      {
+       "word": "has",
+       "cn": "具有（某种外表、特性或特征）"
+      },
+      {
+       "word": "long",
+       "cn": "（长度或距离）长的"
+      },
+      {
+       "word": "body",
+       "cn": "身体"
+      },
+      {
+       "word": "short",
+       "cn": "短的；个子矮的"
+      },
+      {
+       "word": "leg",
+       "cn": "腿"
+      },
+      {
+       "word": "right",
+       "cn": "（意见或判断）准确，确切，恰当"
+      },
+      {
+       "word": "fat",
+       "cn": "肥的；肥胖的"
+      },
+      {
+       "word": "thin",
+       "cn": "瘦的"
+      },
+      {
+       "word": "slow",
+       "cn": "缓慢的"
+      },
+      {
+       "word": "love",
+       "cn": "喜爱；爱"
+      },
+      {
+       "word": "tail",
+       "cn": "尾；尾巴"
+      },
+      {
+       "word": "her",
+       "cn": "她；她的"
+      },
+      {
+       "word": "gift",
+       "cn": "礼物"
+      },
+      {
+       "word": "picture",
+       "cn": "图画；绘画"
+      },
+      {
+       "word": "card",
+       "cn": "贺卡；慰问卡；卡片"
+      },
+      {
+       "word": "sing",
+       "cn": "唱（歌）；演唱"
+      },
+      {
+       "word": "dance",
+       "cn": "跳舞"
+      },
+      {
+       "word": "talk",
+       "cn": "说话；讲话；谈话"
+      },
+      {
+       "word": "face",
+       "cn": "脸；面孔"
+      },
+      {
+       "word": "all",
+       "cn": "所有；全部"
+      },
+      {
+       "word": "song",
+       "cn": "歌；歌曲"
+      },
+      {
+       "word": "or",
+       "cn": "或；或者；还是"
+      },
+      {
+       "word": "so",
+       "cn": "(表示大小或数量) 这么, 那么"
+      },
+      {
+       "word": "much",
+       "cn": "许多；大量"
+      }
+     ]
+    },
+    {
+     "unit": 3,
+     "words": [
+      {
+       "word": "eraser",
+       "cn": "橡皮"
+      },
+      {
+       "word": "find",
+       "cn": "找到；找回"
+      },
+      {
+       "word": "ruler",
+       "cn": "直尺"
+      },
+      {
+       "word": "pen",
+       "cn": "钢笔"
+      },
+      {
+       "word": "pencil",
+       "cn": "铅笔"
+      },
+      {
+       "word": "book",
+       "cn": "书；书籍"
+      },
+      {
+       "word": "bag",
+       "cn": "包；袋"
+      },
+      {
+       "word": "paper",
+       "cn": "纸"
+      },
+      {
+       "word": "these",
+       "cn": "这些"
+      },
+      {
+       "word": "see",
+       "cn": "看见"
+      },
+      {
+       "word": "smell",
+       "cn": "闻（气味）"
+      },
+      {
+       "word": "taste",
+       "cn": "尝（味道）"
+      },
+      {
+       "word": "hear",
+       "cn": "听见；听到"
+      },
+      {
+       "word": "touch",
+       "cn": "触摸；碰"
+      },
+      {
+       "word": "nose",
+       "cn": "鼻；鼻子"
+      },
+      {
+       "word": "tongue",
+       "cn": "舌；舌头"
+      },
+      {
+       "word": "class",
+       "cn": "课；班级"
+      },
+      {
+       "word": "in class",
+       "cn": "在课堂上"
+      },
+      {
+       "word": "computer",
+       "cn": "计算机；电脑"
+      },
+      {
+       "word": "learn",
+       "cn": "学；学习"
+      }
+     ]
+    },
+    {
+     "unit": 4,
+     "words": [
+      {
+       "word": "breakfast",
+       "cn": "早餐；早饭"
+      },
+      {
+       "word": "time",
+       "cn": "时间"
+      },
+      {
+       "word": "bread",
+       "cn": "面包"
+      },
+      {
+       "word": "egg",
+       "cn": "（作食物用的）蛋；鸡蛋"
+      },
+      {
+       "word": "milk",
+       "cn": "（牛或羊等的）奶"
+      },
+      {
+       "word": "noodle",
+       "cn": "（常用复数）面条"
+      },
+      {
+       "word": "juice",
+       "cn": "果汁"
+      },
+      {
+       "word": "rice",
+       "cn": "大米"
+      },
+      {
+       "word": "meat",
+       "cn": "肉"
+      },
+      {
+       "word": "vegetable",
+       "cn": "蔬菜"
+      },
+      {
+       "word": "healthy",
+       "cn": "健康的"
+      },
+      {
+       "word": "plate",
+       "cn": "盘子"
+      },
+      {
+       "word": "soup",
+       "cn": "汤"
+      },
+      {
+       "word": "fruit",
+       "cn": "水果"
+      },
+      {
+       "word": "colourful",
+       "cn": "五彩缤纷的"
+      },
+      {
+       "word": "candy",
+       "cn": "糖果"
+      },
+      {
+       "word": "yummy",
+       "cn": "很好吃的"
+      }
+     ]
+    },
+    {
+     "unit": 5,
+     "words": [
+      {
+       "word": "boat",
+       "cn": "小船；舟"
+      },
+      {
+       "word": "cool",
+       "cn": "（因时髦、漂亮且与众不同而）酷的，绝妙的"
+      },
+      {
+       "word": "keep",
+       "cn": "保有；留着"
+      },
+      {
+       "word": "at",
+       "cn": "在(某处)"
+      },
+      {
+       "word": "home",
+       "cn": "家；住所"
+      },
+      {
+       "word": "ball",
+       "cn": "球"
+      },
+      {
+       "word": "doll",
+       "cn": "玩偶；玩具娃娃"
+      },
+      {
+       "word": "car",
+       "cn": "小汽车；轿车"
+      },
+      {
+       "word": "on",
+       "cn": "（覆盖、附着）在⋯⋯上"
+      },
+      {
+       "word": "shelf",
+       "cn": "架子"
+      },
+      {
+       "word": "in",
+       "cn": "在... 内；在... 中"
+      },
+      {
+       "word": "box",
+       "cn": "盒子"
+      },
+      {
+       "word": "cap",
+       "cn": "帽子"
+      },
+      {
+       "word": "map",
+       "cn": "地图"
+      },
+      {
+       "word": "under",
+       "cn": "在（或到、通过）⋯⋯下面"
+      },
+      {
+       "word": "still",
+       "cn": "还是；仍然"
+      },
+      {
+       "word": "put",
+       "cn": "放；安置"
+      }
+     ]
+    },
+    {
+     "unit": 6,
+     "words": [
+      {
+       "word": "fifteen",
+       "cn": "十五"
+      },
+      {
+       "word": "twelve",
+       "cn": "十二"
+      },
+      {
+       "word": "fourteen",
+       "cn": "十四"
+      },
+      {
+       "word": "thirteen",
+       "cn": "十三"
+      },
+      {
+       "word": "eleven",
+       "cn": "十一"
+      },
+      {
+       "word": "twenty",
+       "cn": "二十"
+      },
+      {
+       "word": "seventeen",
+       "cn": "十七"
+      },
+      {
+       "word": "sixteen",
+       "cn": "十六"
+      },
+      {
+       "word": "eighteen",
+       "cn": "十八"
+      },
+      {
+       "word": "nineteen",
+       "cn": "十九"
+      },
+      {
+       "word": "piggy bank",
+       "cn": "猪形储钱罐"
+      },
+      {
+       "word": "pay",
+       "cn": "付费"
+      },
+      {
+       "word": "back",
+       "cn": "回到原处"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "grade": "四年级",
+   "term": "上册",
+   "book": "英语（PEP）四年级上册",
+   "units": [
+    {
+     "unit": 1,
+     "words": [
+      {
+       "word": "PE",
+       "cn": "体育(课)"
+      },
+      {
+       "word": "job",
+       "cn": "工作；职业"
+      },
+      {
+       "word": "doctor",
+       "cn": "医生"
+      },
+      {
+       "word": "farmer",
+       "cn": "农场主；农民"
+      },
+      {
+       "word": "nurse",
+       "cn": "护士"
+      },
+      {
+       "word": "office worker",
+       "cn": "公司职员"
+      },
+      {
+       "word": "factory worker",
+       "cn": "工厂工人"
+      },
+      {
+       "word": "busy",
+       "cn": "忙碌的"
+      },
+      {
+       "word": "tired",
+       "cn": "疲倦的"
+      },
+      {
+       "word": "chore",
+       "cn": "家庭杂务"
+      },
+      {
+       "word": "cook",
+       "cn": "烹饪；煮"
+      },
+      {
+       "word": "clean",
+       "cn": "打扫；干净的"
+      },
+      {
+       "word": "room",
+       "cn": "房间"
+      },
+      {
+       "word": "look after",
+       "cn": "照顾"
+      },
+      {
+       "word": "sweep",
+       "cn": "扫"
+      },
+      {
+       "word": "floor",
+       "cn": "地板；地面"
+      },
+      {
+       "word": "together",
+       "cn": "在一起；共同"
+      },
+      {
+       "word": "people",
+       "cn": "人；人们"
+      },
+      {
+       "word": "child",
+       "cn": "儿童；小孩"
+      }
+     ]
+    },
+    {
+     "unit": 2,
+     "words": [
+      {
+       "word": "his",
+       "cn": "他的"
+      },
+      {
+       "word": "strong",
+       "cn": "强壮的"
+      },
+      {
+       "word": "hair",
+       "cn": "头发"
+      },
+      {
+       "word": "kind",
+       "cn": "友好的"
+      },
+      {
+       "word": "quiet",
+       "cn": "文静的"
+      },
+      {
+       "word": "best",
+       "cn": "最好的"
+      },
+      {
+       "word": "read",
+       "cn": "阅读"
+      },
+      {
+       "word": "Chinese",
+       "cn": "中文；中国人；中国的"
+      },
+      {
+       "word": "play",
+       "cn": "玩耍"
+      },
+      {
+       "word": "game",
+       "cn": "游戏"
+      },
+      {
+       "word": "football",
+       "cn": "足球运动"
+      },
+      {
+       "word": "basketball",
+       "cn": "篮球运动"
+      },
+      {
+       "word": "always",
+       "cn": "总是"
+      }
+     ]
+    },
+    {
+     "unit": 3,
+     "words": [
+      {
+       "word": "afternoon",
+       "cn": "下午"
+      },
+      {
+       "word": "there",
+       "cn": "（表示存在或发生）；在那里"
+      },
+      {
+       "word": "playground",
+       "cn": "游乐场；操场"
+      },
+      {
+       "word": "park",
+       "cn": "公园"
+      },
+      {
+       "word": "over",
+       "cn": "在⋯⋯的远端（或对面）"
+      },
+      {
+       "word": "hospital",
+       "cn": "医院"
+      },
+      {
+       "word": "shop",
+       "cn": "商店"
+      },
+      {
+       "word": "toilet",
+       "cn": "厕所；卫生间"
+      },
+      {
+       "word": "bus stop",
+       "cn": "公共汽车站"
+      },
+      {
+       "word": "library",
+       "cn": "图书馆"
+      },
+      {
+       "word": "sport",
+       "cn": "体育运动"
+      },
+      {
+       "word": "walk",
+       "cn": "散步；行走"
+      },
+      {
+       "word": "community",
+       "cn": "社区"
+      },
+      {
+       "word": "favourite",
+       "cn": "最喜欢的"
+      },
+      {
+       "word": "place",
+       "cn": "地方；场所"
+      },
+      {
+       "word": "photo",
+       "cn": "照片"
+      },
+      {
+       "word": "story",
+       "cn": "故事"
+      },
+      {
+       "word": "buy",
+       "cn": "购买"
+      }
+     ]
+    },
+    {
+     "unit": 4,
+     "words": [
+      {
+       "word": "firefighter",
+       "cn": "消防队员"
+      },
+      {
+       "word": "why",
+       "cn": "为什么"
+      },
+      {
+       "word": "driver",
+       "cn": "司机"
+      },
+      {
+       "word": "important",
+       "cn": "重要的"
+      },
+      {
+       "word": "cleaner",
+       "cn": "清洁工"
+      },
+      {
+       "word": "cook",
+       "cn": "厨师"
+      },
+      {
+       "word": "delivery worker",
+       "cn": "快递员"
+      },
+      {
+       "word": "police officer",
+       "cn": "警察；警员"
+      },
+      {
+       "word": "a lot of",
+       "cn": "大量；许多"
+      },
+      {
+       "word": "now",
+       "cn": "现在"
+      },
+      {
+       "word": "make the bed",
+       "cn": "铺床"
+      },
+      {
+       "word": "old",
+       "cn": "过去的；年纪大的；老的"
+      },
+      {
+       "word": "tell",
+       "cn": "讲述；告诉"
+      },
+      {
+       "word": "everyone",
+       "cn": "每人"
+      },
+      {
+       "word": "Ms",
+       "cn": "（用于女子的姓氏或姓名前，不指明婚否）女士"
+      }
+     ]
+    },
+    {
+     "unit": 5,
+     "words": [
+      {
+       "word": "speak",
+       "cn": "说话；发言"
+      },
+      {
+       "word": "weather",
+       "cn": "天气"
+      },
+      {
+       "word": "sunny",
+       "cn": "阳光充足的"
+      },
+      {
+       "word": "hot",
+       "cn": "热的"
+      },
+      {
+       "word": "bad",
+       "cn": "令人不快的；坏的"
+      },
+      {
+       "word": "cold",
+       "cn": "冷的"
+      },
+      {
+       "word": "windy",
+       "cn": "多风的"
+      },
+      {
+       "word": "cloudy",
+       "cn": "多云的"
+      },
+      {
+       "word": "rainy",
+       "cn": "多雨的"
+      },
+      {
+       "word": "snowy",
+       "cn": "多雪的"
+      },
+      {
+       "word": "cool",
+       "cn": "凉爽的"
+      },
+      {
+       "word": "warm",
+       "cn": "温暖的"
+      },
+      {
+       "word": "tomorrow",
+       "cn": "在明天"
+      },
+      {
+       "word": "rain",
+       "cn": "下雨；雨"
+      },
+      {
+       "word": "closed",
+       "cn": "关闭的"
+      },
+      {
+       "word": "film",
+       "cn": "电影"
+      },
+      {
+       "word": "idea",
+       "cn": "想法；主意"
+      },
+      {
+       "word": "fly",
+       "cn": "操纵（飞行器等）；飞"
+      },
+      {
+       "word": "kite",
+       "cn": "风筝"
+      },
+      {
+       "word": "snowman",
+       "cn": "雪人"
+      },
+      {
+       "word": "fun",
+       "cn": "享乐；乐趣"
+      },
+      {
+       "word": "their",
+       "cn": "他们的；她们的；它们的"
+      },
+      {
+       "word": "swim",
+       "cn": "游泳"
+      },
+      {
+       "word": "Sydney",
+       "cn": "悉尼"
+      }
+     ]
+    },
+    {
+     "unit": 6,
+     "words": [
+      {
+       "word": "whose",
+       "cn": "谁的"
+      },
+      {
+       "word": "sweater",
+       "cn": "毛衣"
+      },
+      {
+       "word": "sock",
+       "cn": "短袜"
+      },
+      {
+       "word": "mine",
+       "cn": "我的"
+      },
+      {
+       "word": "wear",
+       "cn": "穿；戴"
+      },
+      {
+       "word": "shirt",
+       "cn": "衬衫"
+      },
+      {
+       "word": "coat",
+       "cn": "外套"
+      },
+      {
+       "word": "dress",
+       "cn": "连衣裙"
+      },
+      {
+       "word": "which",
+       "cn": "哪一个；哪一些"
+      },
+      {
+       "word": "season",
+       "cn": "季节"
+      },
+      {
+       "word": "winter",
+       "cn": "冬天"
+      },
+      {
+       "word": "snow",
+       "cn": "下雪；雪"
+      },
+      {
+       "word": "get together",
+       "cn": "聚会"
+      },
+      {
+       "word": "spring",
+       "cn": "春天"
+      },
+      {
+       "word": "summer",
+       "cn": "夏天"
+      },
+      {
+       "word": "autumn",
+       "cn": "秋天"
+      },
+      {
+       "word": "T-shirt",
+       "cn": "T恤衫"
+      },
+      {
+       "word": "fall",
+       "cn": "落下"
+      },
+      {
+       "word": "leaf",
+       "cn": "叶"
+      },
+      {
+       "word": "glove",
+       "cn": "手套"
+      },
+      {
+       "word": "then",
+       "cn": "然后；那时"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "grade": "四年级",
+   "term": "下册",
+   "book": "英语（PEP）四年级下册",
+   "units": [
+    {
+     "unit": 1,
+     "words": [
+      {
+       "word": "sorry",
+       "cn": "对不起"
+      },
+      {
+       "word": "hurry up",
+       "cn": "快点；赶快"
+      },
+      {
+       "word": "late",
+       "cn": "迟到；迟发生"
+      },
+      {
+       "word": "class",
+       "cn": "课； 课程；班；班级"
+      },
+      {
+       "word": "ready",
+       "cn": "准备好"
+      },
+      {
+       "word": "rule",
+       "cn": "规则； 规章"
+      },
+      {
+       "word": "classroom",
+       "cn": "教室"
+      },
+      {
+       "word": "turn off",
+       "cn": "关掉"
+      },
+      {
+       "word": "light",
+       "cn": "灯；光"
+      },
+      {
+       "word": "blackboard",
+       "cn": "黑板"
+      },
+      {
+       "word": "desk",
+       "cn": "书桌；办公桌"
+      },
+      {
+       "word": "chair",
+       "cn": "椅子"
+      },
+      {
+       "word": "tidy",
+       "cn": "整洁的；整齐的；使整洁；整理"
+      },
+      {
+       "word": "music",
+       "cn": "音乐"
+      },
+      {
+       "word": "door",
+       "cn": "门"
+      },
+      {
+       "word": "window",
+       "cn": "窗"
+      },
+      {
+       "word": "fan",
+       "cn": "风扇"
+      },
+      {
+       "word": "when",
+       "cn": "当⋯⋯时；什么时候"
+      },
+      {
+       "word": "understand",
+       "cn": "懂；理解"
+      },
+      {
+       "word": "wall",
+       "cn": "墙；壁"
+      },
+      {
+       "word": "newspaper",
+       "cn": "报纸"
+      },
+      {
+       "word": "hand out",
+       "cn": "分发"
+      },
+      {
+       "word": "workbook",
+       "cn": "练习册；作业本"
+      }
+     ]
+    },
+    {
+     "unit": 2,
+     "words": [
+      {
+       "word": "watch",
+       "cn": "看"
+      },
+      {
+       "word": "TV",
+       "cn": "电视"
+      },
+      {
+       "word": "homework",
+       "cn": "家庭作业"
+      },
+      {
+       "word": "first",
+       "cn": "首先；首次；第一"
+      },
+      {
+       "word": "wet",
+       "cn": "湿的；未干的"
+      },
+      {
+       "word": "run",
+       "cn": "跑；奔跑"
+      },
+      {
+       "word": "living room",
+       "cn": "客厅；起居室"
+      },
+      {
+       "word": "safe",
+       "cn": "安全的"
+      },
+      {
+       "word": "word",
+       "cn": "言语；单词；字"
+      },
+      {
+       "word": "wash",
+       "cn": "洗"
+      },
+      {
+       "word": "helpful",
+       "cn": "有帮助的；有用的"
+      },
+      {
+       "word": "loud",
+       "cn": "说话太大声的；吵闹的"
+      },
+      {
+       "word": "sleep",
+       "cn": "睡觉"
+      },
+      {
+       "word": "bedroom",
+       "cn": "卧室"
+      },
+      {
+       "word": "kitchen",
+       "cn": "厨房"
+      },
+      {
+       "word": "study",
+       "cn": "书房"
+      },
+      {
+       "word": "bathroom",
+       "cn": "浴室；洗手间"
+      },
+      {
+       "word": "think",
+       "cn": "想；思考"
+      },
+      {
+       "word": "work",
+       "cn": "（花费时间和精力）做（某事） ；工作"
+      },
+      {
+       "word": "hard",
+       "cn": "努力地；费力地"
+      },
+      {
+       "word": "follow",
+       "cn": "遵循, 听从（忠告、指示等）"
+      },
+      {
+       "word": "feel",
+       "cn": "觉得；感到"
+      }
+     ]
+    },
+    {
+     "unit": 3,
+     "words": [
+      {
+       "word": "over",
+       "cn": "结束(的)"
+      },
+      {
+       "word": "kid",
+       "cn": "小孩"
+      },
+      {
+       "word": "dinner",
+       "cn": "（中午或晚上吃的） 正餐"
+      },
+      {
+       "word": "art",
+       "cn": "美术；艺术"
+      },
+      {
+       "word": "lunch",
+       "cn": "午餐"
+      },
+      {
+       "word": "maths",
+       "cn": "数学"
+      },
+      {
+       "word": "get up",
+       "cn": "起床"
+      },
+      {
+       "word": "go to school",
+       "cn": "上学"
+      },
+      {
+       "word": "go home",
+       "cn": "回家"
+      },
+      {
+       "word": "go to bed",
+       "cn": "上床睡觉"
+      },
+      {
+       "word": "want",
+       "cn": "想要"
+      },
+      {
+       "word": "clock",
+       "cn": "时钟"
+      },
+      {
+       "word": "just",
+       "cn": "只是；仅仅；正要"
+      },
+      {
+       "word": "minute",
+       "cn": "分钟"
+      }
+     ]
+    },
+    {
+     "unit": 4,
+     "words": [
+      {
+       "word": "trousers",
+       "cn": "裤子"
+      },
+      {
+       "word": "pair",
+       "cn": "（由连在一起的相似两部分构成的） 一条, 一副"
+      },
+      {
+       "word": "clothes",
+       "cn": "衣服；服装"
+      },
+      {
+       "word": "those",
+       "cn": "（指较远的人或事物） 那些"
+      },
+      {
+       "word": "shorts",
+       "cn": "短裤"
+      },
+      {
+       "word": "jacket",
+       "cn": "夹克衫；短上衣"
+      },
+      {
+       "word": "skirt",
+       "cn": "裙子"
+      },
+      {
+       "word": "dear",
+       "cn": "亲爱的"
+      },
+      {
+       "word": "expensive",
+       "cn": "昂贵的；价格高的"
+      },
+      {
+       "word": "take",
+       "cn": "买下"
+      },
+      {
+       "word": "cheap",
+       "cn": "便宜的"
+      },
+      {
+       "word": "shoe",
+       "cn": "鞋"
+      },
+      {
+       "word": "beautiful",
+       "cn": "美丽的"
+      },
+      {
+       "word": "hat",
+       "cn": "帽子"
+      },
+      {
+       "word": "sunglasses",
+       "cn": "太阳镜；墨镜"
+      },
+      {
+       "word": "free",
+       "cn": "免费的"
+      },
+      {
+       "word": "large",
+       "cn": "（服装、食物、日用品等）大型号的"
+      },
+      {
+       "word": "size",
+       "cn": "尺码；号"
+      },
+      {
+       "word": "list",
+       "cn": "清单；目录"
+      },
+      {
+       "word": "try on",
+       "cn": "试穿"
+      },
+      {
+       "word": "any",
+       "cn": "任何的；任一的"
+      }
+     ]
+    },
+    {
+     "unit": 5,
+     "words": [
+      {
+       "word": "cow",
+       "cn": "奶牛"
+      },
+      {
+       "word": "horse",
+       "cn": "马"
+      },
+      {
+       "word": "sheep",
+       "cn": "羊；绵羊"
+      },
+      {
+       "word": "pig",
+       "cn": "猪"
+      },
+      {
+       "word": "chicken",
+       "cn": "鸡；鸡肉"
+      },
+      {
+       "word": "tomato",
+       "cn": "西红柿"
+      },
+      {
+       "word": "bee",
+       "cn": "蜜蜂"
+      },
+      {
+       "word": "mouse",
+       "cn": "老鼠"
+      },
+      {
+       "word": "carrot",
+       "cn": "胡萝卜"
+      },
+      {
+       "word": "potato",
+       "cn": "土豆"
+      },
+      {
+       "word": "green bean",
+       "cn": "青刀豆；四季豆"
+      },
+      {
+       "word": "can",
+       "cn": "（盛食品或饮料的）金属罐"
+      },
+      {
+       "word": "a box of",
+       "cn": "一盒，一箱（东西）"
+      }
+     ]
+    },
+    {
+     "unit": 6,
+     "words": [
+      {
+       "word": "feed",
+       "cn": "给（人或动物）食物；饲养"
+      },
+      {
+       "word": "pass",
+       "cn": "给；递"
+      },
+      {
+       "word": "pick",
+       "cn": "采；摘"
+      },
+      {
+       "word": "milk",
+       "cn": "挤奶"
+      },
+      {
+       "word": "knife",
+       "cn": "刀"
+      },
+      {
+       "word": "fork",
+       "cn": "餐叉"
+      },
+      {
+       "word": "chopstick",
+       "cn": "（常用复数）筷子"
+      },
+      {
+       "word": "waste",
+       "cn": "浪费；废品"
+      },
+      {
+       "word": "food",
+       "cn": "菜肴；食物"
+      },
+      {
+       "word": "delicious",
+       "cn": "美味的；可口的"
+      },
+      {
+       "word": "clear the table",
+       "cn": "收拾餐桌"
+      },
+      {
+       "word": "set the table",
+       "cn": "摆放餐具"
+      },
+      {
+       "word": "bowl",
+       "cn": "碗"
+      },
+      {
+       "word": "spoon",
+       "cn": "勺；匙；调羹"
+      },
+      {
+       "word": "supermarket",
+       "cn": "超市"
+      },
+      {
+       "word": "herself",
+       "cn": "（用作女性的） 她自己, 自己"
+      },
+      {
+       "word": "week",
+       "cn": "周；星期"
+      },
+      {
+       "word": "salad",
+       "cn": "蔬菜沙拉"
+      },
+      {
+       "word": "Numbers",
+       "cn": "数词"
+      },
+      {
+       "word": "one",
+       "cn": "一"
+      },
+      {
+       "word": "two",
+       "cn": "二"
+      },
+      {
+       "word": "three",
+       "cn": "三"
+      },
+      {
+       "word": "four",
+       "cn": "四"
+      },
+      {
+       "word": "five",
+       "cn": "五"
+      },
+      {
+       "word": "six",
+       "cn": "六"
+      },
+      {
+       "word": "seven",
+       "cn": "七"
+      },
+      {
+       "word": "eight",
+       "cn": "八"
+      },
+      {
+       "word": "nine",
+       "cn": "九"
+      },
+      {
+       "word": "ten",
+       "cn": "十"
+      },
+      {
+       "word": "eleven",
+       "cn": "十一"
+      },
+      {
+       "word": "twelve",
+       "cn": "十二"
+      },
+      {
+       "word": "thirteen",
+       "cn": "十三"
+      },
+      {
+       "word": "fourteen",
+       "cn": "十四"
+      },
+      {
+       "word": "fifteen",
+       "cn": "十五"
+      },
+      {
+       "word": "sixteen",
+       "cn": "十六"
+      },
+      {
+       "word": "seventeen",
+       "cn": "十七"
+      },
+      {
+       "word": "eighteen",
+       "cn": "十八"
+      },
+      {
+       "word": "nineteen",
+       "cn": "十九"
+      },
+      {
+       "word": "twenty",
+       "cn": "二十"
+      },
+      {
+       "word": "thirty",
+       "cn": "三十"
+      },
+      {
+       "word": "forty",
+       "cn": "四十"
+      },
+      {
+       "word": "fifty",
+       "cn": "五十"
+      },
+      {
+       "word": "sixty",
+       "cn": "六十"
+      },
+      {
+       "word": "seventy",
+       "cn": "七十"
+      },
+      {
+       "word": "eighty",
+       "cn": "八十"
+      },
+      {
+       "word": "ninety",
+       "cn": "九十"
+      },
+      {
+       "word": "hundred",
+       "cn": "百"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "grade": "五年级",
+   "term": "上册",
+   "book": "英语（PEP）五年级上册",
+   "units": [
+    {
+     "unit": 1,
+     "words": [
+      {
+       "word": "team",
+       "cn": "（游戏或运动的）队；（一起工作的）组，班"
+      },
+      {
+       "word": "player",
+       "cn": "运动员；参赛选手"
+      },
+      {
+       "word": "him",
+       "cn": "他"
+      },
+      {
+       "word": "lovely",
+       "cn": "美丽的；优美的"
+      },
+      {
+       "word": "clever",
+       "cn": "聪明的；聪颖的"
+      },
+      {
+       "word": "young",
+       "cn": "幼小的；年轻的"
+      },
+      {
+       "word": "hard-working",
+       "cn": "工作努力的；辛勤的"
+      },
+      {
+       "word": "science",
+       "cn": "科学；自然科学"
+      },
+      {
+       "word": "robot",
+       "cn": "机器人"
+      },
+      {
+       "word": "jump",
+       "cn": "跳；跃"
+      },
+      {
+       "word": "rope",
+       "cn": "绳；粗绳"
+      },
+      {
+       "word": "piano",
+       "cn": "钢琴"
+      },
+      {
+       "word": "chess",
+       "cn": "国际象棋"
+      },
+      {
+       "word": "front",
+       "cn": "前部"
+      },
+      {
+       "word": "easy",
+       "cn": "容易的；轻易的"
+      },
+      {
+       "word": "star",
+       "cn": "歌唱（或表演）明星"
+      },
+      {
+       "word": "wonderful",
+       "cn": "令人赞叹的；精彩的；绝妙的"
+      },
+      {
+       "word": "Australia",
+       "cn": "澳大利亚"
+      }
+     ]
+    },
+    {
+     "unit": 2,
+     "words": [
+      {
+       "word": "sad",
+       "cn": "悲哀的；难过的"
+      },
+      {
+       "word": "matter",
+       "cn": "事情；问题"
+      },
+      {
+       "word": "project",
+       "cn": "项目；方案"
+      },
+      {
+       "word": "centre",
+       "cn": "中心"
+      },
+      {
+       "word": "agree",
+       "cn": "同意；赞成"
+      },
+      {
+       "word": "finish",
+       "cn": "完成；做好"
+      },
+      {
+       "word": "worried",
+       "cn": "担心的；担忧的"
+      },
+      {
+       "word": "both",
+       "cn": "两者"
+      },
+      {
+       "word": "excited",
+       "cn": "激动的；兴奋的"
+      },
+      {
+       "word": "wrong",
+       "cn": "错误的"
+      },
+      {
+       "word": "angry",
+       "cn": "愤怒的；生气的"
+      },
+      {
+       "word": "afraid",
+       "cn": "担心；害怕"
+      },
+      {
+       "word": "parent",
+       "cn": "父亲；母亲"
+      },
+      {
+       "word": "ask",
+       "cn": "问；询问"
+      },
+      {
+       "word": "laugh",
+       "cn": "笑"
+      },
+      {
+       "word": "move",
+       "cn": "搬家；移动"
+      },
+      {
+       "word": "yours",
+       "cn": "您的（用于书信结尾的签名前）"
+      }
+     ]
+    },
+    {
+     "unit": 3,
+     "words": [
+      {
+       "word": "Wednesday",
+       "cn": "星期三"
+      },
+      {
+       "word": "subject",
+       "cn": "科目；学科"
+      },
+      {
+       "word": "Tuesday",
+       "cn": "星期二"
+      },
+      {
+       "word": "Friday",
+       "cn": "星期五"
+      },
+      {
+       "word": "because",
+       "cn": "因为"
+      },
+      {
+       "word": "Monday",
+       "cn": "星期一"
+      },
+      {
+       "word": "Thursday",
+       "cn": "星期四"
+      },
+      {
+       "word": "start",
+       "cn": "开始"
+      },
+      {
+       "word": "usually",
+       "cn": "通常地；经常地"
+      },
+      {
+       "word": "weekend",
+       "cn": "周末"
+      },
+      {
+       "word": "sometimes",
+       "cn": "有时；间或"
+      },
+      {
+       "word": "Saturday",
+       "cn": "星期六"
+      },
+      {
+       "word": "Sunday",
+       "cn": "星期日"
+      },
+      {
+       "word": "lesson",
+       "cn": "课；一节课"
+      },
+      {
+       "word": "evening",
+       "cn": "晚上；傍晚"
+      },
+      {
+       "word": "answer",
+       "cn": "答复；回答"
+      },
+      {
+       "word": "ping-pong",
+       "cn": "乒乓球"
+      },
+      {
+       "word": "night",
+       "cn": "夜；夜晚"
+      },
+      {
+       "word": "visit",
+       "cn": "看望；拜访；参观"
+      },
+      {
+       "word": "grandparent",
+       "cn": "祖父；祖母；外祖父；外祖母"
+      }
+     ]
+    },
+    {
+     "unit": 4,
+     "words": [
+      {
+       "word": "stay",
+       "cn": "待；保持；继续是"
+      },
+      {
+       "word": "should",
+       "cn": "（提出或征询建议）该，可以"
+      },
+      {
+       "word": "flu",
+       "cn": "流行性感冒；流感"
+      },
+      {
+       "word": "else",
+       "cn": "其他的；别的"
+      },
+      {
+       "word": "exercise",
+       "cn": "锻炼；训练；操练"
+      },
+      {
+       "word": "enough",
+       "cn": "足够的；充足的；充分的"
+      },
+      {
+       "word": "if",
+       "cn": "如果；假若；倘若"
+      },
+      {
+       "word": "habit",
+       "cn": "习惯"
+      },
+      {
+       "word": "house",
+       "cn": "房子"
+      },
+      {
+       "word": "show",
+       "cn": "（电视或广播）节目"
+      },
+      {
+       "word": "phone",
+       "cn": "电话；电话机"
+      },
+      {
+       "word": "then",
+       "cn": "那么；因此；既然如此"
+      },
+      {
+       "word": "rest",
+       "cn": "休息；放松"
+      },
+      {
+       "word": "take care of",
+       "cn": "爱护；照顾"
+      },
+      {
+       "word": "check",
+       "cn": "查看；查明"
+      },
+      {
+       "word": "less",
+       "cn": "（与不可数名词连用）较少的，更少的"
+      },
+      {
+       "word": "brush",
+       "cn": "（用刷子）刷净，刷亮，刷平顺"
+      },
+      {
+       "word": "tooth",
+       "cn": "牙；齿"
+      },
+      {
+       "word": "twice",
+       "cn": "两次；两遍"
+      },
+      {
+       "word": "hour",
+       "cn": "小时"
+      },
+      {
+       "word": "free",
+       "cn": "没有安排活动的；空闲的"
+      }
+     ]
+    },
+    {
+     "unit": 5,
+     "words": [
+      {
+       "word": "hungry",
+       "cn": "感到饿的"
+      },
+      {
+       "word": "beef",
+       "cn": "牛肉"
+      },
+      {
+       "word": "ice cream",
+       "cn": "（一份）冰激凌"
+      },
+      {
+       "word": "little",
+       "cn": "少许；一点"
+      },
+      {
+       "word": "dumpling",
+       "cn": "饺子；汤圆"
+      },
+      {
+       "word": "tea",
+       "cn": "茶叶；茶；茶水"
+      },
+      {
+       "word": "hamburger",
+       "cn": "汉堡包：汉堡牛肉饼"
+      },
+      {
+       "word": "Mrs",
+       "cn": "（用于女子的姓氏或姓名前）太太，夫人"
+      },
+      {
+       "word": "coconut",
+       "cn": "椰子"
+      },
+      {
+       "word": "interesting",
+       "cn": "有趣的；有吸引力的"
+      },
+      {
+       "word": "seed",
+       "cn": "种子；籽"
+      },
+      {
+       "word": "pull",
+       "cn": "拔出；抽出"
+      },
+      {
+       "word": "stem",
+       "cn": "（花草的）茎；（花或叶的）梗，柄"
+      },
+      {
+       "word": "root",
+       "cn": "根；根茎"
+      },
+      {
+       "word": "lotus",
+       "cn": "莲属植物"
+      },
+      {
+       "word": "lake",
+       "cn": "湖；湖泊"
+      },
+      {
+       "word": "world",
+       "cn": "世界；地球；天下"
+      },
+      {
+       "word": "round",
+       "cn": "圆形的；环形的；球形的"
+      },
+      {
+       "word": "different",
+       "cn": "不同的；有区别的；有差异的"
+      },
+      {
+       "word": "way",
+       "cn": "方法；手段；途径；方式"
+      }
+     ]
+    },
+    {
+     "unit": 6,
+     "words": [
+      {
+       "word": "river",
+       "cn": "河；江"
+      },
+      {
+       "word": "nature",
+       "cn": "自然界；大自然"
+      },
+      {
+       "word": "waterfall",
+       "cn": "瀑布"
+      },
+      {
+       "word": "forest",
+       "cn": "森林；林区"
+      },
+      {
+       "word": "famous",
+       "cn": "著名的；出名的"
+      },
+      {
+       "word": "mountain",
+       "cn": "高山；山岳"
+      },
+      {
+       "word": "wind",
+       "cn": "风；气流"
+      },
+      {
+       "word": "trip",
+       "cn": "（尤指短程往返的）旅行，旅游，出行"
+      },
+      {
+       "word": "dangerous",
+       "cn": "有危险的；不安全的"
+      },
+      {
+       "word": "heavy",
+       "cn": "程度大的；严重的"
+      },
+      {
+       "word": "hotel",
+       "cn": "旅馆；旅社"
+      },
+      {
+       "word": "close",
+       "cn": "关；关闭；闭上"
+      },
+      {
+       "word": "umbrella",
+       "cn": "伞；雨伞"
+      },
+      {
+       "word": "raincoat",
+       "cn": "雨衣"
+      },
+      {
+       "word": "worry",
+       "cn": "担心；担忧；发愁"
+      },
+      {
+       "word": "fine",
+       "cn": "晴朗的"
+      },
+      {
+       "word": "fog",
+       "cn": "雾"
+      },
+      {
+       "word": "flood",
+       "cn": "洪水；水灾"
+      },
+      {
+       "word": "fire",
+       "cn": "火；火灾"
+      },
+      {
+       "word": "know",
+       "cn": "知道；了解"
+      },
+      {
+       "word": "before",
+       "cn": "在⋯⋯之前"
+      },
+      {
+       "word": "go hiking",
+       "cn": "徒步旅行"
+      },
+      {
+       "word": "bring",
+       "cn": "带⋯⋯到某处；带来；取来"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "grade": "五年级",
+   "term": "下册",
+   "book": "英语（PEP）五年级下册",
+   "units": [
+    {
+     "unit": 1,
+     "words": [
+      {
+       "word": "must",
+       "cn": "必须"
+      },
+      {
+       "word": "sir",
+       "cn": "先生"
+      },
+      {
+       "word": "inside",
+       "cn": "在⋯⋯里"
+      },
+      {
+       "word": "scare",
+       "cn": "惊吓；使害怕"
+      },
+      {
+       "word": "password",
+       "cn": "密码"
+      },
+      {
+       "word": "line",
+       "cn": "队伍；行列；线条"
+      },
+      {
+       "word": "wait",
+       "cn": "等待；等候"
+      },
+      {
+       "word": "guard",
+       "cn": "门卫；看守"
+      },
+      {
+       "word": "stand",
+       "cn": "站立；立"
+      },
+      {
+       "word": "shout",
+       "cn": "大声说；叫"
+      },
+      {
+       "word": "smoke",
+       "cn": "吸(烟)"
+      },
+      {
+       "word": "flash",
+       "cn": "闪光灯"
+      },
+      {
+       "word": "open",
+       "cn": "开放；打开"
+      },
+      {
+       "word": "return",
+       "cn": "归还；回去；返回"
+      },
+      {
+       "word": "borrow",
+       "cn": "借；借用"
+      },
+      {
+       "word": "write",
+       "cn": "书写；写字"
+      }
+     ]
+    },
+    {
+     "unit": 2,
+     "words": [
+      {
+       "word": "along",
+       "cn": "沿着；顺着"
+      },
+      {
+       "word": "street",
+       "cn": "大街；街道"
+      },
+      {
+       "word": "station",
+       "cn": "局；所；站"
+      },
+      {
+       "word": "next",
+       "cn": "紧邻；紧接着"
+      },
+      {
+       "word": "far",
+       "cn": "远的；较远的"
+      },
+      {
+       "word": "cinema",
+       "cn": "电影院"
+      },
+      {
+       "word": "between",
+       "cn": "在⋯⋯中间；介于⋯⋯之间"
+      },
+      {
+       "word": "city",
+       "cn": "都市；城市"
+      },
+      {
+       "word": "behind",
+       "cn": "在⋯⋯的后面"
+      },
+      {
+       "word": "left",
+       "cn": "向左；左边"
+      },
+      {
+       "word": "teach",
+       "cn": "教(课程) ；讲授"
+      },
+      {
+       "word": "litter",
+       "cn": "垃圾；废弃物"
+      },
+      {
+       "word": "recycle",
+       "cn": "回收利用；再利用"
+      },
+      {
+       "word": "taxi",
+       "cn": "出租汽车；计程车"
+      },
+      {
+       "word": "traffic",
+       "cn": "交通"
+      },
+      {
+       "word": "direct",
+       "cn": "给(某人) 指路；指挥"
+      },
+      {
+       "word": "artist",
+       "cn": "艺术家；画家"
+      },
+      {
+       "word": "Ms",
+       "cn": "(用于女子的姓氏或姓名前, 不指明婚否) 女士"
+      },
+      {
+       "word": "scientist",
+       "cn": "科学家"
+      },
+      {
+       "word": "volunteer",
+       "cn": "志愿者"
+      },
+      {
+       "word": "live",
+       "cn": "住；居住"
+      },
+      {
+       "word": "train",
+       "cn": "火车；列车"
+      },
+      {
+       "word": "lost",
+       "cn": "迷路的；迷失的"
+      },
+      {
+       "word": "sign",
+       "cn": "指示牌；标志"
+      },
+      {
+       "word": "note",
+       "cn": "笔记；便条"
+      },
+      {
+       "word": "foreign",
+       "cn": "外国的"
+      },
+      {
+       "word": "visitor",
+       "cn": "游客；参观者"
+      }
+     ]
+    },
+    {
+     "unit": 3,
+     "words": [
+      {
+       "word": "January",
+       "cn": "一月"
+      },
+      {
+       "word": "February",
+       "cn": "二月"
+      },
+      {
+       "word": "skate",
+       "cn": "滑冰；溜冰"
+      },
+      {
+       "word": "holiday",
+       "cn": "假期"
+      },
+      {
+       "word": "March",
+       "cn": "三月"
+      },
+      {
+       "word": "April",
+       "cn": "四月"
+      },
+      {
+       "word": "May",
+       "cn": "五月"
+      },
+      {
+       "word": "June",
+       "cn": "六月"
+      },
+      {
+       "word": "party",
+       "cn": "联欢会；聚会"
+      },
+      {
+       "word": "celebrate",
+       "cn": "庆祝；庆贺"
+      },
+      {
+       "word": "December",
+       "cn": "十二月"
+      },
+      {
+       "word": "Christmas",
+       "cn": "圣诞节"
+      },
+      {
+       "word": "turkey",
+       "cn": "火鸡"
+      },
+      {
+       "word": "July",
+       "cn": "七月"
+      },
+      {
+       "word": "August",
+       "cn": "八月"
+      },
+      {
+       "word": "September",
+       "cn": "九月"
+      },
+      {
+       "word": "October",
+       "cn": "十月"
+      },
+      {
+       "word": "November",
+       "cn": "十一月"
+      },
+      {
+       "word": "country",
+       "cn": "国；国家"
+      },
+      {
+       "word": "sit",
+       "cn": "坐"
+      },
+      {
+       "word": "beside",
+       "cn": "在旁边；在附近"
+      },
+      {
+       "word": "west",
+       "cn": "西；西方"
+      },
+      {
+       "word": "cup",
+       "cn": "一杯(的量) ；杯子"
+      },
+      {
+       "word": "sunshine",
+       "cn": "阳光；日光"
+      },
+      {
+       "word": "catch",
+       "cn": "捕捉；接住"
+      },
+      {
+       "word": "ago",
+       "cn": "以前"
+      },
+      {
+       "word": "ice",
+       "cn": "冰；冰块；冰场"
+      },
+      {
+       "word": "Labour Day",
+       "cn": "劳动节"
+      },
+      {
+       "word": "Dragon Boat Festival",
+       "cn": "端午节"
+      },
+      {
+       "word": "CPC Founding Day",
+       "cn": "中国共产党建党日"
+      },
+      {
+       "word": "PLA Day",
+       "cn": "中国人民解放军建军节"
+      },
+      {
+       "word": "National Day",
+       "cn": "国庆节"
+      }
+     ]
+    },
+    {
+     "unit": 4,
+     "words": [
+      {
+       "word": "hometown",
+       "cn": "家乡；故乡"
+      },
+      {
+       "word": "its",
+       "cn": "它的"
+      },
+      {
+       "word": "common",
+       "cn": "共同的；共有的"
+      },
+      {
+       "word": "beach",
+       "cn": "海滩；沙滩"
+      },
+      {
+       "word": "desert",
+       "cn": "沙漠；荒漠"
+      },
+      {
+       "word": "grassland",
+       "cn": "草原；草地"
+      },
+      {
+       "word": "special",
+       "cn": "特别的；特殊的"
+      },
+      {
+       "word": "wild",
+       "cn": "野生的；自然生长的"
+      },
+      {
+       "word": "kangaroo",
+       "cn": "袋鼠"
+      },
+      {
+       "word": "koala",
+       "cn": "考拉"
+      },
+      {
+       "word": "wish",
+       "cn": "希望(做某事)"
+      },
+      {
+       "word": "could",
+       "cn": "(表示可能性) 可以, 可能"
+      },
+      {
+       "word": "high",
+       "cn": "高的"
+      },
+      {
+       "word": "island",
+       "cn": "岛；岛屿"
+      },
+      {
+       "word": "travel",
+       "cn": "旅行；长途行走；从一处到另一处"
+      },
+      {
+       "word": "feel like",
+       "cn": "感觉像是⋯⋯"
+      },
+      {
+       "word": "middle",
+       "cn": "中间；中央"
+      },
+      {
+       "word": "painting",
+       "cn": "油画；绘画"
+      },
+      {
+       "word": "pyramid",
+       "cn": "(古埃及的) 金字塔"
+      },
+      {
+       "word": "ride",
+       "cn": "骑；驾驶"
+      },
+      {
+       "word": "camel",
+       "cn": "骆驼"
+      },
+      {
+       "word": "even",
+       "cn": "(强调出乎意料) 甚至, 连, 即使"
+      },
+      {
+       "word": "Confucius",
+       "cn": "孔子"
+      },
+      {
+       "word": "Beijing opera",
+       "cn": "京剧"
+      },
+      {
+       "word": "Mount Taishan",
+       "cn": "泰山"
+      },
+      {
+       "word": "India",
+       "cn": "印度"
+      },
+      {
+       "word": "Italy",
+       "cn": "意大利"
+      },
+      {
+       "word": "Britain",
+       "cn": "不列颠(包括英格兰、苏格兰及威尔士)"
+      },
+      {
+       "word": "Cairo",
+       "cn": "开罗(埃及首都)"
+      },
+      {
+       "word": "Hawaii",
+       "cn": "夏威夷"
+      }
+     ]
+    },
+    {
+     "unit": 5,
+     "words": [
+      {
+       "word": "early",
+       "cn": "早到的；提前的"
+      },
+      {
+       "word": "underground",
+       "cn": "地铁"
+      },
+      {
+       "word": "bike",
+       "cn": "自行车；脚踏车"
+      },
+      {
+       "word": "foot",
+       "cn": "(复数feet) (人或动物的) 脚, 足"
+      },
+      {
+       "word": "on foot",
+       "cn": "步行"
+      },
+      {
+       "word": "plane",
+       "cn": "飞机"
+      },
+      {
+       "word": "ship",
+       "cn": "（大）船；舰"
+      },
+      {
+       "word": "hurt",
+       "cn": "对⋯⋯有不良影响；(使) 疼痛, 受伤"
+      },
+      {
+       "word": "environment",
+       "cn": "自然环境"
+      },
+      {
+       "word": "tip",
+       "cn": "实用的提示；指点"
+      },
+      {
+       "word": "health",
+       "cn": "健康"
+      },
+      {
+       "word": "carry",
+       "cn": "运送；承载"
+      },
+      {
+       "word": "finally",
+       "cn": "(用于列举) 最后；终于"
+      },
+      {
+       "word": "suggest",
+       "cn": "建议；提议"
+      },
+      {
+       "word": "everyday",
+       "cn": "每天的；日常的"
+      }
+     ]
+    },
+    {
+     "unit": 6,
+     "words": [
+      {
+       "word": "internet",
+       "cn": "互联网；因特网"
+      },
+      {
+       "word": "seafood",
+       "cn": "海鲜"
+      },
+      {
+       "word": "maybe",
+       "cn": "(不确定) 大概, 或许, 可能"
+      },
+      {
+       "word": "join",
+       "cn": "参与；加入"
+      },
+      {
+       "word": "hill",
+       "cn": "山丘；小山"
+      },
+      {
+       "word": "explore",
+       "cn": "探索"
+      },
+      {
+       "word": "culture",
+       "cn": "文化；文明"
+      },
+      {
+       "word": "hotpot",
+       "cn": "火锅"
+      },
+      {
+       "word": "tour",
+       "cn": "旅行；旅游"
+      },
+      {
+       "word": "local",
+       "cn": "当地的；本地的"
+      },
+      {
+       "word": "history",
+       "cn": "历史"
+      },
+      {
+       "word": "plan",
+       "cn": "计划；打算"
+      },
+      {
+       "word": "app",
+       "cn": "应用软件"
+      },
+      {
+       "word": "information",
+       "cn": "信息；消息"
+      },
+      {
+       "word": "blog",
+       "cn": "博客"
+      },
+      {
+       "word": "magazine",
+       "cn": "杂志；期刊"
+      },
+      {
+       "word": "northeast",
+       "cn": "东北；东北方"
+      },
+      {
+       "word": "building",
+       "cn": "建筑物；房子"
+      },
+      {
+       "word": "palace",
+       "cn": "王宫；宫殿"
+      },
+      {
+       "word": "stone",
+       "cn": "石头；岩石"
+      },
+      {
+       "word": "last",
+       "cn": "最后的；末尾的"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "grade": "六年级",
+   "term": "上册",
+   "book": "英语（PEP）六年级上册",
+   "units": [
+    {
+     "unit": 1,
+     "words": [
+      {
+       "word": "was",
+       "cn": "（be的第一和第三人称单数过去式）"
+      },
+      {
+       "word": "climb",
+       "cn": "攀登；爬"
+      },
+      {
+       "word": "kilometre",
+       "cn": "千米；公里"
+      },
+      {
+       "word": "gingerbread house",
+       "cn": "姜饼屋"
+      },
+      {
+       "word": "send",
+       "cn": "邮寄；发送"
+      },
+      {
+       "word": "go",
+       "cn": "去；走"
+      },
+      {
+       "word": "thousand",
+       "cn": "一千"
+      },
+      {
+       "word": "clay",
+       "cn": "黏土；陶土"
+      },
+      {
+       "word": "see",
+       "cn": "看见"
+      },
+      {
+       "word": "village",
+       "cn": "村庄；村镇"
+      },
+      {
+       "word": "eat",
+       "cn": "吃"
+      },
+      {
+       "word": "dry",
+       "cn": "干的"
+      },
+      {
+       "word": "take",
+       "cn": "做（某个动作；和名词连用代替某个动词）"
+      },
+      {
+       "word": "view",
+       "cn": "景色"
+      },
+      {
+       "word": "inspiring",
+       "cn": "鼓舞人心的"
+      },
+      {
+       "word": "bamboo",
+       "cn": "竹；竹子"
+      },
+      {
+       "word": "pumpkin",
+       "cn": "南瓜"
+      },
+      {
+       "word": "restaurant",
+       "cn": "餐馆；餐厅"
+      },
+      {
+       "word": "airport",
+       "cn": "机场"
+      },
+      {
+       "word": "New Zealand",
+       "cn": "新西兰"
+      },
+      {
+       "word": "Hong Kong-Zhuhai-Macao Bridge",
+       "cn": "港珠澳大桥"
+      },
+      {
+       "word": "Paris",
+       "cn": "巴黎"
+      },
+      {
+       "word": "Eiffel Tower",
+       "cn": "埃菲尔铁塔"
+      },
+      {
+       "word": "Terracotta Warriors",
+       "cn": "兵马俑"
+      },
+      {
+       "word": "Jinggangshan Revolution Museum",
+       "cn": "井冈山革命博物馆"
+      },
+      {
+       "word": "the Red Army",
+       "cn": "红军"
+      }
+     ]
+    },
+    {
+     "unit": 2,
+     "words": [
+      {
+       "word": "paste",
+       "cn": "粘贴"
+      },
+      {
+       "word": "dress",
+       "cn": "穿衣服"
+      },
+      {
+       "word": "gala",
+       "cn": "演出；庆典"
+      },
+      {
+       "word": "count down",
+       "cn": "倒计时"
+      },
+      {
+       "word": "marathon",
+       "cn": "马拉松赛跑"
+      },
+      {
+       "word": "as",
+       "cn": "作为"
+      },
+      {
+       "word": "race",
+       "cn": "赛跑；速度竞赛"
+      },
+      {
+       "word": "run",
+       "cn": "跑；奔跑"
+      },
+      {
+       "word": "cheer",
+       "cn": "欢呼；加油"
+      },
+      {
+       "word": "book fair",
+       "cn": "书市"
+      },
+      {
+       "word": "writer",
+       "cn": "作家；作者"
+      },
+      {
+       "word": "read",
+       "cn": "阅读"
+      },
+      {
+       "word": "make",
+       "cn": "做；使出现"
+      },
+      {
+       "word": "sing",
+       "cn": "唱（歌）；演唱"
+      },
+      {
+       "word": "wear",
+       "cn": "穿；戴"
+      },
+      {
+       "word": "yesterday",
+       "cn": "昨天"
+      },
+      {
+       "word": "notice",
+       "cn": "通知"
+      },
+      {
+       "word": "wake",
+       "cn": "醒；醒来"
+      },
+      {
+       "word": "later",
+       "cn": "随后；后来"
+      },
+      {
+       "word": "judge",
+       "cn": "裁判"
+      },
+      {
+       "word": "begin",
+       "cn": "开始"
+      },
+      {
+       "word": "win",
+       "cn": "获胜"
+      },
+      {
+       "word": "winner",
+       "cn": "获胜的人（或队）；成功者"
+      },
+      {
+       "word": "ever",
+       "cn": "（进行比较时用于加强语气）以往任何时候"
+      },
+      {
+       "word": "exciting",
+       "cn": "令人激动的"
+      }
+     ]
+    },
+    {
+     "unit": 3,
+     "words": [
+      {
+       "word": "cold",
+       "cn": "感冒"
+      },
+      {
+       "word": "ill",
+       "cn": "不舒服；生病的"
+      },
+      {
+       "word": "head",
+       "cn": "头；头部"
+      },
+      {
+       "word": "runny nose",
+       "cn": "流鼻涕"
+      },
+      {
+       "word": "soon",
+       "cn": "很快；马上"
+      },
+      {
+       "word": "fever",
+       "cn": "发烧；发热"
+      },
+      {
+       "word": "cough",
+       "cn": "咳嗽"
+      },
+      {
+       "word": "discuss",
+       "cn": "讨论；商量"
+      },
+      {
+       "word": "diet",
+       "cn": "日常饮食"
+      },
+      {
+       "word": "stay up",
+       "cn": "熬夜"
+      },
+      {
+       "word": "cry",
+       "cn": "哭；哭泣"
+      },
+      {
+       "word": "another",
+       "cn": "另一；不同的（人或事物）"
+      },
+      {
+       "word": "call",
+       "cn": "（给⋯⋯）打电话"
+      },
+      {
+       "word": "email",
+       "cn": "电子邮件"
+      },
+      {
+       "word": "unhappy",
+       "cn": "不快乐的；难过的"
+      },
+      {
+       "word": "glass",
+       "cn": "一杯（的量）；玻璃"
+      },
+      {
+       "word": "may",
+       "cn": "也许；可能"
+      },
+      {
+       "word": "add",
+       "cn": "补充说；增加"
+      },
+      {
+       "word": "video",
+       "cn": "视频；录像"
+      },
+      {
+       "word": "better",
+       "cn": "舒畅些的；（病势）好转的"
+      }
+     ]
+    },
+    {
+     "unit": 4,
+     "words": [
+      {
+       "word": "money",
+       "cn": "钱"
+      },
+      {
+       "word": "pocket money",
+       "cn": "零花钱"
+      },
+      {
+       "word": "schoolbag",
+       "cn": "书包"
+      },
+      {
+       "word": "goods",
+       "cn": "商品"
+      },
+      {
+       "word": "drink",
+       "cn": "饮料"
+      },
+      {
+       "word": "service",
+       "cn": "服务"
+      },
+      {
+       "word": "haircut",
+       "cn": "理发；发型"
+      },
+      {
+       "word": "microscope",
+       "cn": "显微镜"
+      },
+      {
+       "word": "lucky",
+       "cn": "幸运的"
+      },
+      {
+       "word": "half",
+       "cn": "一半"
+      },
+      {
+       "word": "save up",
+       "cn": "攒钱"
+      },
+      {
+       "word": "sale",
+       "cn": "特价销售；出售"
+      },
+      {
+       "word": "ticket",
+       "cn": "票"
+      },
+      {
+       "word": "manage",
+       "cn": "管理"
+      },
+      {
+       "word": "sell",
+       "cn": "出售；售卖"
+      },
+      {
+       "word": "jar",
+       "cn": "罐子"
+      },
+      {
+       "word": "for example",
+       "cn": "例如"
+      }
+     ]
+    },
+    {
+     "unit": 5,
+     "words": [
+      {
+       "word": "planet",
+       "cn": "行星"
+      },
+      {
+       "word": "earth",
+       "cn": "地球"
+      },
+      {
+       "word": "sky",
+       "cn": "天；天空"
+      },
+      {
+       "word": "daytime",
+       "cn": "白天"
+      },
+      {
+       "word": "cloud",
+       "cn": "云"
+      },
+      {
+       "word": "moon",
+       "cn": "月球；月亮；卫星"
+      },
+      {
+       "word": "star",
+       "cn": "恒星；星"
+      },
+      {
+       "word": "space",
+       "cn": "太空；空间"
+      },
+      {
+       "word": "outer space",
+       "cn": "外太空"
+      },
+      {
+       "word": "space station",
+       "cn": "空间站"
+      },
+      {
+       "word": "ocean",
+       "cn": "大海；海洋"
+      },
+      {
+       "word": "marble",
+       "cn": "（玻璃）弹子"
+      },
+      {
+       "word": "satellite",
+       "cn": "人造卫星"
+      },
+      {
+       "word": "soil",
+       "cn": "土壤"
+      },
+      {
+       "word": "alien",
+       "cn": "外星生物"
+      },
+      {
+       "word": "sunrise",
+       "cn": "日出"
+      },
+      {
+       "word": "rover",
+       "cn": "探测器"
+      },
+      {
+       "word": "into",
+       "cn": "朝；进入"
+      },
+      {
+       "word": "telescope",
+       "cn": "望远镜"
+      },
+      {
+       "word": "astronaut",
+       "cn": "航天员；宇航员"
+      },
+      {
+       "word": "spaceship",
+       "cn": "宇宙飞船"
+      },
+      {
+       "word": "month",
+       "cn": "月；月份"
+      },
+      {
+       "word": "taikonaut",
+       "cn": "中国航天员"
+      },
+      {
+       "word": "cloth",
+       "cn": "（一块）布；织物"
+      },
+      {
+       "word": "toothpaste",
+       "cn": "牙膏"
+      },
+      {
+       "word": "question",
+       "cn": "问题"
+      },
+      {
+       "word": "sunset",
+       "cn": "日落"
+      },
+      {
+       "word": "time",
+       "cn": "次；回"
+      },
+      {
+       "word": "Mars",
+       "cn": "火星"
+      }
+     ]
+    },
+    {
+     "unit": 6,
+     "words": [
+      {
+       "word": "power",
+       "cn": "能；能量"
+      },
+      {
+       "word": "electricity",
+       "cn": "电"
+      },
+      {
+       "word": "solar",
+       "cn": "太阳的"
+      },
+      {
+       "word": "type",
+       "cn": "类型；种类"
+      },
+      {
+       "word": "energy",
+       "cn": "能源"
+      },
+      {
+       "word": "light",
+       "cn": "照亮"
+      },
+      {
+       "word": "heat",
+       "cn": "加热；（使）变暖；热量"
+      },
+      {
+       "word": "cool",
+       "cn": "（使）变凉, 冷却"
+      },
+      {
+       "word": "run",
+       "cn": "（使）运转"
+      },
+      {
+       "word": "resource",
+       "cn": "资源"
+      },
+      {
+       "word": "run out",
+       "cn": "用完"
+      },
+      {
+       "word": "change",
+       "cn": "（使）不同；改变"
+      },
+      {
+       "word": "quick",
+       "cn": "迅速的；快的"
+      },
+      {
+       "word": "shower",
+       "cn": "淋浴"
+      },
+      {
+       "word": "unplug",
+       "cn": "拔掉⋯⋯的电源插头"
+      },
+      {
+       "word": "difference",
+       "cn": "差别；不同（之处）"
+      },
+      {
+       "word": "reduce",
+       "cn": "减少"
+      },
+      {
+       "word": "air conditioner",
+       "cn": "空调机"
+      },
+      {
+       "word": "drive",
+       "cn": "驾驶；开车"
+      },
+      {
+       "word": "reuse",
+       "cn": "再次使用；重复使用"
+      },
+      {
+       "word": "own",
+       "cn": "自己的"
+      },
+      {
+       "word": "market",
+       "cn": "集市；市场"
+      },
+      {
+       "word": "bottle",
+       "cn": "瓶子"
+      },
+      {
+       "word": "top",
+       "cn": "（位置、级别或程度）最高的"
+      },
+      {
+       "word": "useful",
+       "cn": "有用的；有益的"
+      },
+      {
+       "word": "dirty",
+       "cn": "脏的"
+      },
+      {
+       "word": "side",
+       "cn": "一面；一边"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

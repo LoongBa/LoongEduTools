@@ -3,7 +3,7 @@
 import json
 import sys
 
-BOOK = sys.argv[1] if len(sys.argv) > 1 else r"F:\LoongBa_Git\LoongEduTools\Downloader\Diandu\data\1212001401255_英语（PEP）_四年级_上册.json"
+BOOK = sys.argv[1] if len(sys.argv) > 1 else r"F:\LoongBa_Git\LoongEduTools\PEP词库\data\diandu\1212001401255_英语（PEP）_四年级_上册.json"
 pages = [int(x) for x in sys.argv[2].split(",")] if len(sys.argv) > 2 else [15]
 
 with open(BOOK, "r", encoding="utf-8") as f:

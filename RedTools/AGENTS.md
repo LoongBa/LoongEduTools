@@ -58,6 +58,10 @@ RedTools/
   （当前无共享资源；如出现，建 `RedTools/_shared/`）。
 - **系列内共享资源**：同一系列多个工具共用的数据/素材放 `series/<系列>/_shared/`（如
   `series/学科/_shared/成语词库/`，看图猜成语/成语接龙/成语配对三件套共用）。
+- **仓库级英语词库**：英语类工具（英语点读/打字背单词/单词闪卡）的公共词库数据与工具代码
+  统一放仓库根目录 `../PEP词库/`（词汇表 `data/vocab/` + 点读数据 `data/diandu/` + 解析/下载
+  工具 `tools/`）。`RedTools/build_framework.py` 构建时委托 `PEP词库/tools/vocab/parse_pep_vocab.py`
+  解析词汇表并同步规范化 JSON，勿在 RedTools 内另建英语词库。
 
 ## 3. 构建与发布流程
 
@@ -87,7 +91,8 @@ python .skill/minitool-zip-builder/scripts/audit_artifact.py publish/学科/新�
   `.skill/` 规范、`publish/<系列>/发布文案.txt`。
 - **不入库**（见 `.gitignore`）：`dist/`、`publish/` 内除发布文案外的一切生成物
   （zip / 1024 图标 / 解压测试版）、`*.zip`、`*.skill` 源包、`__pycache__/`。
-- 素材（book.json data/、_教材素材）不入库（仓库级约定，走素材库 / book_data.zip）。
+- 素材（点读原始 book.json、_教材素材）不入库（仓库级约定，走素材库 / `PEP词库/data/diandu/book_data.zip` 分发；
+  `PEP词库/data/vocab/pep_vocab.json` 词汇表规范化产物入库）。
 
 ## 5. 进度维护规则
 

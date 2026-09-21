@@ -16,7 +16,7 @@ BOOKS = [
     ("1212001601265","六年级","上册"),
 ]
 
-DATA_DIR = Path(r"F:\LoongBa_Git\LoongEduTools\Downloader\Diandu\data")
+DATA_DIR = Path(r"F:\LoongBa_Git\LoongEduTools\PEP词库\data\diandu")
 
 def load_units(grade, vol):
     """从 book.json 加载单元结构"""

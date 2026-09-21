@@ -10,7 +10,7 @@
 
 功能:
   1. 【副本数据】把 book.json 复制到素材目录的重绘目录（如 四年级/上册/_重绘图片素材/书数据.json），
-     编辑器加载并修改的是这份副本，与 Downloader/Diandu/data 原始数据断开；
+     编辑器加载并修改的是这份副本，与 PEP词库/data/diandu 原始数据断开；
      已存在且未变化则跳过（--force 覆盖，谨慎：会覆盖人工改动）。
   2. 【本地服务】自写 HTTP 服务：
         /redtools/*  →  RedTools 根（编辑器页面）
@@ -39,7 +39,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 REDTOOLS = Path(r"F:\LoongBa_Git\LoongEduTools\RedTools")
 if str(REDTOOLS) not in sys.path:
     sys.path.insert(0, str(REDTOOLS))  # 允许 from build_framework import resolve_unit_no 等复用
-DATA_DIR = Path(r"F:\LoongBa_Git\LoongEduTools\Downloader\Diandu\data")
+DATA_DIR = Path(r"F:\LoongBa_Git\LoongEduTools\PEP词库\data\diandu")
 MAT_ROOT = Path(r"F:\_教材素材\人教版（PEP）（主编：吴欣）")
 
 # 册次映射：key → (bookid, grade, vol, 工具名, 素材册目录)

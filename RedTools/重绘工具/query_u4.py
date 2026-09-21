@@ -12,7 +12,7 @@ BOOKS = [
 ]
 
 for bookid, grade, vol in BOOKS:
-    path = f"F:/LoongBa_Git/LoongEduTools/Downloader/Diandu/data/{bookid}_英语（PEP）_{grade}_{vol}.json"
+    path = f"F:/LoongBa_Git/LoongEduTools/PEP词库/data/diandu/{bookid}_英语（PEP）_{grade}_{vol}.json"
     data = json.load(open(path, "r", encoding="utf-8"))
     ch = data.get("bookaudio_v3", [])
     if len(ch) >= 5:

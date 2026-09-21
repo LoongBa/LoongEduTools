@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 
 MAT = Path(r"F:\_教材素材\人教版（PEP）（主编：吴欣）")
-DATA_DIR = Path(r"F:\LoongBa_Git\LoongEduTools\Downloader\Diandu\data")
+DATA_DIR = Path(r"F:\LoongBa_Git\LoongEduTools\PEP词库\data\diandu")
 
 BOOKS = [
     ("1212001102247","一年级","下册"),

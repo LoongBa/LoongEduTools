@@ -19,7 +19,7 @@ except Exception:
     HAVE_SSIM = False
 
 MAT = Path(r"F:\_教材素材\人教版（PEP）（主编：吴欣）")
-DATA_DIR = Path(r"F:\LoongBa_Git\LoongEduTools\Downloader\Diandu\data")
+DATA_DIR = Path(r"F:\LoongBa_Git\LoongEduTools\PEP词库\data\diandu")
 OUT_DIR = Path(r"F:\LoongBa_Git\LoongEduTools\RedTools\重绘工具\qa_reports")
 TEMPLATE = Path(r"F:\LoongBa_Git\LoongEduTools\RedTools\重绘工具\quality_review_template.html")
 MAT = Path(r"F:\_教材素材\人教版（PEP）（主编：吴欣）")

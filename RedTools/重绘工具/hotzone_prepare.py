@@ -30,7 +30,7 @@ from PIL import Image
 
 REDTOOLS = Path(r"F:\LoongBa_Git\LoongEduTools\RedTools")
 MAT = Path(r"F:\_教材素材\人教版（PEP）（主编：吴欣）")
-DATA_DIR = Path(r"F:\LoongBa_Git\LoongEduTools\Downloader\Diandu\data")
+DATA_DIR = Path(r"F:\LoongBa_Git\LoongEduTools\PEP词库\data\diandu")
 OUT_ROOT = REDTOOLS / "重绘工具" / "hotzone_editor" / "data"
 
 BOOKS = [

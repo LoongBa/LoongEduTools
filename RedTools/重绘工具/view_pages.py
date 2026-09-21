@@ -3,7 +3,7 @@
 import json
 import sys
 
-BOOK = r"F:\LoongBa_Git\LoongEduTools\Downloader\Diandu\data\1212001401255_英语（PEP）_四年级_上册.json"
+BOOK = r"F:\LoongBa_Git\LoongEduTools\PEP词库\data\diandu\1212001401255_英语（PEP）_四年级_上册.json"
 
 with open(BOOK, "r", encoding="utf-8") as f:
     data = json.load(f)
