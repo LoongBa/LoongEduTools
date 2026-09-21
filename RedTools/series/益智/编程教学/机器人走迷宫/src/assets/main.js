@@ -67,7 +67,11 @@
     won: false,
     execDone: false,
     startMs: 0, elapsed: 0, timerId: null,
-    finished: false
+    finished: false,
+    // V1.4 调试反馈（执行期内存字段，不入库）
+    firstFail: null,   // 首个失败：{absStep, prog, cmdId, reason: 'wall'|'box'|'edge'}
+    absStep: 0,        // 展开步计数（循环指令按 rep 展开的绝对步数）
+    execLock: false    // 执行中锁定（防执行期间改指令序列）
   };
 
   /* ---------- 小工具 ---------- */
@@ -237,6 +241,8 @@
 
   /* ---------- 视图：练习页 ---------- */
   function startGame(level) {
+    // V1.4：状态复位（防残留锁）
+    state.firstFail = null; state.absStep = 0; state.execLock = false;
     state.level = level;
     state.levelIdx = LEVELS_CFG[level].from;
     state.cmds = [];
@@ -343,7 +349,13 @@
     runBtn.addEventListener('click', function () { execRun(); });
     ctrl.appendChild(runBtn);
     var resetBtn = makeEl('button', 'btn', '⟲ 重置');
-    resetBtn.addEventListener('click', function () { loadLevelState(); renderBoardOnly(); renderSeq(); });
+    resetBtn.addEventListener('click', function () {
+      state.firstFail = null;
+      state.absStep = 0;
+      state.execLock = false;
+      setCmdLocked(false);
+      loadLevelState(); renderBoardOnly(); renderSeq(); clearExecHighlight();
+    });
     ctrl.appendChild(resetBtn);
     var nextBtn = makeEl('button', 'btn', '下一关 ›');
     nextBtn.id = 'next-btn';
@@ -392,6 +404,7 @@
 
   // 循环次数递增：1→2→3→4→1（循环指令启蒙）
   function cycleRep(i) {
+    if (state.execLock) { return; }
     var cmd = state.cmds[i];
     if (!cmd) { return; }
     var next = ((cmd.rep || 1) % 4) + 1;
@@ -409,10 +422,12 @@
   }
 
   function addCmd(id) {
+    if (state.execLock) { return; }
     state.cmds.push({ id: id, rep: 1 });
     renderSeq();
   }
   function removeCmd(i) {
+    if (state.execLock) { return; }
     state.cmds.splice(i, 1);
     renderSeq();
   }
@@ -420,6 +435,10 @@
   /* ---------- 执行器（编程核心） ---------- */
   function execRun() {
     if (state.execDone || state.won || !state.cmds.length) { return; }
+    // V1.4：执行锁定 + 调试追踪状态清零
+    state.execLock = true;
+    state.firstFail = null;
+    state.absStep = 0;
     // 从初始盘面执行（重置到关卡初始）
     loadLevelState();
     state.prog = 0;
@@ -427,6 +446,10 @@
     state.cmds.forEach(function (c) { c._loopLeft = undefined; });
     var fb = document.getElementById('game-feedback');
     if (fb) { fb.textContent = '机器人执行中…'; fb.className = 'game-feedback'; }
+    // 指令锁定灰显 + 高亮第 1 条
+    setCmdLocked(true);
+    renderSeq();
+    renderSeqHighlight();
     execStep();
   }
 
@@ -444,10 +467,13 @@
     if (cmd._loopLeft <= 0) {
       cmd._loopLeft = 0;
       state.prog += 1;
+      renderSeqHighlight();
       setTimeout(function () { execStep(); }, 60);
       return;
     }
     cmd._loopLeft -= 1;
+    // V1.4：展开步计数（每条指令每次展开执行 +1）
+    state.absStep += 1;
     if (cmd.id === 'left') {
       state.face = (state.face + 3) % 4;
     } else if (cmd.id === 'right') {
@@ -458,8 +484,10 @@
       var pc = Math.floor(state.player / state.w);
       var dx = DIRS[state.face][0], dy = DIRS[state.face][1];
       var nr = pr + dx, nc = pc + dy;
+      var moved = false;
       if (cmd.id === 'block') {
         // v1.3 条件指令「前方探测」：若前方越界/墙/箱子（障碍）→ 条件成立不前进；否则前进
+        // V1.4 决议：block 永不报错（前方有障碍是条件成立，非错误）
         if (nr >= 0 && nr < state.w && nc >= 0 && nc < state.h && !state.walls[nc * state.w + nr] && !state.boxes[nc * state.w + nr]) {
           state.player = nc * state.w + nr;
         }
@@ -474,12 +502,22 @@
                 delete state.boxes[nIdx];
                 state.boxes[bIdx] = true;
                 state.player = nIdx;
+                moved = true;
               }
             }
           } else {
             state.player = nIdx;
+            moved = true;
           }
         }
+      }
+      // V1.4 失败定位：fwd 试图移动但未动 → 记首个失败（调试器断点语义）
+      if (!moved && !state.firstFail && cmd.id === 'fwd') {
+        var reason = 'box'; // 箱后墙/箱推不动
+        if (nr < 0 || nr >= state.w || nc < 0 || nc >= state.h) { reason = 'edge'; }
+        else if (state.walls[nc * state.w + nr]) { reason = 'wall'; }
+        else if (!state.boxes[nc * state.w + nr]) { reason = 'wall'; } // 非箱非墙但没动（箱挡住推到目标外推不动实际由 box 分支兜底）
+        state.firstFail = { absStep: state.absStep, prog: state.prog, cmdId: cmd.id, reason: reason };
       }
     }
     renderBoardOnly();
@@ -491,12 +529,70 @@
     state.won = isWon(state.boxes, state.goals);
     var fb = document.getElementById('game-feedback');
     var nextBtn = document.getElementById('next-btn');
+    // V1.4：执行结束解锁 + 清除高亮（err 定位保留供查看）
+    state.execLock = false;
+    clearExecHighlight();
     if (state.won) {
       if (fb) { fb.textContent = '✓ 完成！箱子都到目标点了！'; fb.className = 'game-feedback ok'; }
       if (nextBtn) { nextBtn.style.display = 'inline-block'; }
       finishLevel();
     } else {
-      if (fb) { fb.textContent = '✗ 还有箱子没到目标点，调整指令再试（点 ⟲ 重置）'; fb.className = 'game-feedback miss'; }
+      // V1.4 差箱统计 + 失败定位（调试器断点语义）
+      var left = 0;
+      for (var k in state.boxes) {
+        if (Object.prototype.hasOwnProperty.call(state.boxes, k) && !state.goals[k]) { left += 1; }
+      }
+      var msg;
+      if (state.firstFail) {
+        var reasonTxt = state.firstFail.reason === 'wall' ? '前面是墙' : (state.firstFail.reason === 'edge' ? '要走出迷宫啦' : '前面的箱子推不动');
+        msg = '✗ 第 ' + (state.firstFail.prog + 1) + ' 条指令 ⬆ 卡住了：' + reasonTxt + '（还差 ' + left + ' 个箱子）';
+        markErrCmd(state.firstFail.prog);
+      } else {
+        msg = '✗ 还差 ' + left + ' 个箱子到目标点，调整指令再试（点 ⟲ 重置）';
+      }
+      if (fb) { fb.textContent = msg; fb.className = 'game-feedback miss'; }
+    }
+  }
+
+  /* ---------- V1.4 调试反馈：执行高亮 / 失败定位 / 锁定 ---------- */
+  // 执行中高亮：只改 classList 不重建 seq-box（事件不丢）
+  function renderSeqHighlight() {
+    var box = document.getElementById('seq-box');
+    if (!box) { return; }
+    var chips = box.querySelectorAll('.cmd-chip');
+    for (var i = 0; i < chips.length; i++) {
+      if (state.execLock && i === state.prog) { chips[i].classList.add('exec'); }
+      else { chips[i].classList.remove('exec'); }
+    }
+  }
+  function clearExecHighlight() {
+    var box = document.getElementById('seq-box');
+    if (!box) { return; }
+    var chips = box.querySelectorAll('.cmd-chip');
+    for (var i = 0; i < chips.length; i++) {
+      chips[i].classList.remove('exec');
+    }
+  }
+  // 失败定位：目标指令 chip 红框 + 前置 ❗
+  function markErrCmd(prog) {
+    var box = document.getElementById('seq-box');
+    if (!box) { return; }
+    var chips = box.querySelectorAll('.cmd-chip');
+    for (var i = 0; i < chips.length; i++) {
+      if (i === prog) {
+        chips[i].classList.add('err');
+        if (chips[i].textContent.charAt(0) !== '❗') {
+          chips[i].textContent = '❗' + chips[i].textContent;
+        }
+      } else { chips[i].classList.remove('err'); }
+    }
+  }
+  // 执行锁定：指令按钮/序列灰显不可点
+  function setCmdLocked(locked) {
+    var bars = document.querySelectorAll('.cmd-add, .seq-clear, .cmd-chip');
+    for (var i = 0; i < bars.length; i++) {
+      if (locked) { bars[i].setAttribute('disabled', 'disabled'); }
+      else { bars[i].removeAttribute('disabled'); }
     }
   }
 
@@ -533,6 +629,8 @@
   }
 
   function nextLevel() {
+    // V1.4：状态复位（防残留锁）
+    state.firstFail = null; state.absStep = 0; state.execLock = false;
     var maxIdx = LEVELS_CFG[state.level].to - 1;
     if (state.levelIdx < maxIdx) {
       state.levelIdx += 1;

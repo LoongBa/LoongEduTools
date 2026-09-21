@@ -286,6 +286,26 @@ body {
   cursor: pointer;
 }
 
+/* V1.4 调试反馈：执行中高亮 / 失败定位 / 锁定灰显 */
+.cmd-chip.exec {
+  background: #ffffff;
+  color: #3a7bd5;
+  border: 2px solid #3a7bd5;
+  padding: 4px 9px;
+  box-shadow: 0 2px 6px rgba(58, 123, 213, 0.4);
+}
+.cmd-chip.err {
+  background: #f5222d;
+  color: #ffffff;
+  border: 2px solid #cf1322;
+  padding: 4px 9px;
+}
+.cmd-add[disabled], .seq-clear[disabled], .cmd-chip[disabled] {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
+
 .seq-clear {
   -webkit-box-flex: 0;
   -webkit-flex: 0 0 auto;
