@@ -83,7 +83,7 @@ def resolve_unit_no(book: dict | None, unit_index: int) -> str | int:
     """解析单元序号/章节类型标识（供 app_name 模板 {unit_no} 替换）：
     - book 为 None（静态工具）→ unit_index + 1
     - "Unit 3 ..." → 3
-    - "Revision ..." → "复习"
+    - "Revision ..." → "复习"；"Recycle N ..." → "复习N"（PEP 含 Recycle 单元）
     - "Appendix N ..." → "附录N"（无编号 → "附录"）
     - 其他 → unit_index + 1
     与 build_framework 产物命名同源；工作台服务端 app_name 计算复用此函数。
@@ -92,15 +92,17 @@ def resolve_unit_no(book: dict | None, unit_index: int) -> str | int:
         return unit_index + 1
     chapters = book.get("bookaudio_v3", [])
     title = chapters[unit_index].get("title", "") if unit_index < len(chapters) else ""
-    import re as _re
     # "Unit 3 ..." → 3
     m = _re.search(r"Unit\s*(\d+)", title, _re.IGNORECASE)
     if m:
         return int(m.group(1))
-    # 复习/附录：Revision → "复习"；Appendix N → "附录N"
+    # 复习/附录：Revision → "复习"；Recycle N → "复习N"；Appendix N → "附录N"
     low = title.lower()
     if low.startswith("revision"):
         return "复习"
+    if low.startswith("recycle"):
+        rm = _re.search(r"Recycle\s*(\d+)", title, _re.IGNORECASE)
+        return f"复习{rm.group(1)}" if rm else "复习"
     if low.startswith("appendix"):
         am = _re.search(r"Appendix\s*(\d+)", title, _re.IGNORECASE)
         return f"附录{am.group(1)}" if am else "附录"
@@ -248,6 +250,8 @@ def build_unit_data(book: dict, unit_index: int, start: int, end: int,
                 "bottom": bottom,
                 "duration": t.get("track_duration"),
                 "track_index": ti,
+                # 内部标记：该坐标来自热区校正覆盖（供 validate_hotzones 溯源；序列化前剥离）
+                "_from_correction": bool(corr),
             }
             page_tracks.append(item)
             if not subtitle and item["cn"]:
@@ -292,6 +296,20 @@ def convert_images(pages: list[dict], start: int, out_dir: Path, img_dir: Path, 
         log(f"图片 {src.name} -> {dst.name} ({dst.stat().st_size // 1024} KB)")
 
 
+def _resolve_audio_dirs(audio_dir: Path) -> tuple[Path, Path | None]:
+    """解析音频目录 + 回退目录：
+    - 主目录为 <册>/_重读音频素材/单句音频 时，同级 <册>/_音频素材/单句音频 兜底（TTS 重读优先、原版兜底）
+    - 其他路径无回退（直接用主目录）
+    convert_audio 与 validate_audio_coverage 共用，保证口径一致。"""
+    fallback: Path | None = None
+    if audio_dir.name == "单句音频" and audio_dir.parent.name == "_重读音频素材":
+        book_root = audio_dir.parent.parent  # <册>/
+        sibling = book_root / "_音频素材" / "单句音频"
+        if sibling != audio_dir and sibling.exists():
+            fallback = sibling
+    return audio_dir, fallback
+
+
 def find_source_audio(audio_dir: Path, page_no: int, track: dict,
                       fallback_dir: Path | None = None) -> Path | None:
     """查找单句音频：主 audio_dir 优先，缺失回退 fallback_dir。
@@ -310,23 +328,81 @@ def find_source_audio(audio_dir: Path, page_no: int, track: dict,
     return None
 
 
+def validate_hotzones(unit: dict) -> list[dict]:
+    """校验单元最终产物（post-correction）热区坐标合法性。
+
+    unit = build_unit_data() 返回值（已是校正后坐标，仅校验打进包的这份）。
+    返回异常列表 [{page, track, kind, detail, from_correction}]：
+      out_of_range — left/top/right/bottom 超出 [0,1]
+      inverted     — right<=left 或 bottom<=top
+      zero_area    — 面积 <= 1e-6
+      corrupt      — 坐标非数值
+    from_correction: True=该坐标来自热区校正覆盖（便于编辑器定位上游）
+    """
+    issues: list[dict] = []
+    for page in unit.get("pages", []):
+        pno = page.get("no")
+        for t in page.get("tracks", []):
+            ti = t.get("track_index")
+            corr = bool(t.get("_from_correction"))
+            try:
+                left = float(t.get("left"))
+                top = float(t.get("top"))
+                right = float(t.get("right"))
+                bottom = float(t.get("bottom"))
+            except (TypeError, ValueError):
+                issues.append({"page": pno, "track": ti, "kind": "corrupt",
+                               "detail": "坐标非数值", "from_correction": corr})
+                continue
+            if not (0.0 <= left <= 1.0 and 0.0 <= top <= 1.0
+                    and 0.0 <= right <= 1.0 and 0.0 <= bottom <= 1.0):
+                issues.append({"page": pno, "track": ti, "kind": "out_of_range",
+                               "detail": f"left={left} top={top} right={right} bottom={bottom}",
+                               "from_correction": corr})
+            elif right <= left or bottom <= top:
+                issues.append({"page": pno, "track": ti, "kind": "inverted",
+                               "detail": f"right={right} left={left} bottom={bottom} top={top}",
+                               "from_correction": corr})
+            elif (right - left) * (bottom - top) <= 1e-6:
+                # 宽度/高度均非负（倒置已在上方排除），面积 <= 阈值 → 退化矩形
+                issues.append({"page": pno, "track": ti, "kind": "zero_area",
+                               "detail": f"w={right - left:.6f} h={bottom - top:.6f}",
+                               "from_correction": corr})
+    return issues
+
+
+def validate_audio_coverage(unit: dict, audio_dir: Path) -> dict:
+    """校验单元音频覆盖矩阵（与 convert_audio 完全同口径：_resolve_audio_dirs + find_source_audio）。
+
+    返回 {total_tracks, missing_audio: [{page, track, key}], ok: bool}
+    不重新实现 glob 匹配——直接调 find_source_audio 判存在性。
+    """
+    primary, fallback = _resolve_audio_dirs(audio_dir)
+    total = 0
+    missing: list[dict] = []
+    for page in unit.get("pages", []):
+        pno = page.get("no")
+        for t in page.get("tracks", []):
+            total += 1
+            src = find_source_audio(primary, pno, t, fallback)
+            if not src:
+                missing.append({"page": pno, "track": t.get("track_index"),
+                                "key": t.get("audio")})
+    return {"total_tracks": total, "missing_audio": missing, "ok": not missing}
+
+
 def convert_audio(unit: dict, out_dir: Path, audio_dir: Path) -> None:
     audio_out = out_dir / "audio"
     audio_out.mkdir(parents=True, exist_ok=True)
     # 回退目录：主目录为 <册>/_重读音频素材/单句音频 时，同级 <册>/_音频素材/单句音频 兜底
-    fallback_dir: Path | None = None
-    if audio_dir.name == "单句音频" and audio_dir.parent.name == "_重读音频素材":
-        book_root = audio_dir.parent.parent  # <册>/
-        sibling = book_root / "_音频素材" / "单句音频"
-        if sibling != audio_dir and sibling.exists():
-            fallback_dir = sibling
+    primary_dir, fallback_dir = _resolve_audio_dirs(audio_dir)
     for page in unit["pages"]:
         for t in page["tracks"]:
             key = t["audio"]
             dst = audio_out / f"{key}.js"
             if dst.exists():
                 continue
-            src = find_source_audio(audio_dir, page["no"], t, fallback_dir)
+            src = find_source_audio(primary_dir, page["no"], t, fallback_dir)
             if not src:
                 log(f"WARN 音频缺失: {key}（page {page['no']}），生成空 js")
                 payload = ""
@@ -418,6 +494,14 @@ def write_data_js(unit: dict, cfg: ToolConfig, book: dict, out_dir: Path, unit_i
         },
         "units": [unit],
     }
+    # 剥离内部标记（_from_correction 仅供校验溯源，不进产物 data.js）
+    def _strip_internal(obj):
+        if isinstance(obj, dict):
+            return {k: _strip_internal(v) for k, v in obj.items() if not k.startswith("_")}
+        if isinstance(obj, list):
+            return [_strip_internal(x) for x in obj]
+        return obj
+    app_data["units"] = [_strip_internal(u) for u in app_data["units"]]
     js = "window.APP_DATA = " + json.dumps(app_data, ensure_ascii=False, indent=1) + ";\n"
     (out_dir / "data.js").write_text(js, encoding="utf-8")
     log(f"data.js 写入 ({len(js)} 字节, {len(unit['pages'])} 页, "
@@ -749,8 +833,11 @@ def package_zip(out_dir: Path, name: str) -> Path:
 
 def build_tool(cfg: ToolConfig, unit_index: int, pages: str | None = None,
                out_root: Path | None = None, publish_root: Path | None = None,
-               publish: bool = True, mode: str = "offline") -> Path | None:
+               publish: bool = True, mode: str = "offline",
+               strict: bool = False) -> Path | None:
     """构建单个工具单单元，返回 zip 路径（offline）/ 部署目录（online）。
+
+    strict=True 时：热区坐标异常 / 音频缺失累计 >0 → SystemExit（collect-then-fail）。
 
     cfg.datasource:
       - 'book': 教材数据源（英语点读等），需 book/img_dir/audio_dir
@@ -765,6 +852,7 @@ def build_tool(cfg: ToolConfig, unit_index: int, pages: str | None = None,
     dist_dir = (out_root or cfg.dist_root) / cfg.tool / mode_dir
     pub_dir = publish_root or cfg.publish_root   # publish/<系列>/ 系列内平铺，不按工具细分
     unit = None   # 仅 datasource='book' 时赋值（静态/成语/词汇表工具无单元数据）
+    validation_issues: list[str] = []
     if dist_dir.exists():
         shutil.rmtree(dist_dir)
     dist_dir.mkdir(parents=True)
@@ -797,12 +885,31 @@ def build_tool(cfg: ToolConfig, unit_index: int, pages: str | None = None,
                 if not t.get("track_index"):
                     raise SystemExit(f"page {p['no']} 存在缺失 track_index 的 track: {t.get('text')}")
 
+        # ---- V1.3.1 校验：热区坐标合法性 + 音频覆盖（默认 WARN；--strict 硬失败） ----
+        hz_issues = validate_hotzones(unit)
+        if hz_issues:
+            log(f"⚠️ 热区坐标校验: {len(hz_issues)} 个异常（top 5）")
+            for it in hz_issues[:5]:
+                corr_tag = "[校正]" if it["from_correction"] else ""
+                log(f"  page {it['page']} track {it['track']} {it['kind']}{corr_tag}: {it['detail']}")
+            validation_issues.append(f"热区坐标 {len(hz_issues)} 个异常")
+        audio_cov = validate_audio_coverage(unit, cfg.audio_dir)
+        if not audio_cov["ok"]:
+            log(f"⚠️ 音频覆盖校验: {len(audio_cov['missing_audio'])}/{audio_cov['total_tracks']} 缺音频（top 5）")
+            for m in audio_cov["missing_audio"][:5]:
+                log(f"  page {m['page']} track {m['track']}: {m['key']}")
+            validation_issues.append(f"音频缺失 {len(audio_cov['missing_audio'])}/{audio_cov['total_tracks']}")
+
         app_name = resolve_app_name(cfg, book, unit_index)
         convert_images(unit["pages"], start, dist_dir, cfg.img_dir, cfg.redrawn_img_dir)
         convert_audio(unit, dist_dir, cfg.audio_dir)
         if publish and mode_dir == 'offline':
             make_icon(cfg, book, unit_index, dist_dir, pub_dir, app_name)
         write_data_js(unit, cfg, book, dist_dir, unit_index, app_name)
+
+    # --strict：收集全部问题后统一失败（collect-then-fail，一次看全）
+    if strict and validation_issues:
+        raise SystemExit(f"strict 模式校验失败: {'; '.join(validation_issues)}")
 
     # online 模式：仅部署目录（不入 zip、不入 publish、不入小红书——合规红线 §4.4）
     if mode_dir == 'online':
