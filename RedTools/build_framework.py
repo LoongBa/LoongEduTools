@@ -56,6 +56,10 @@ class ToolConfig:
     app_name: str | None = None      # zip/图标文件名（默认 {tool}；app_name_template 为空时用）
     app_name_template: str | None = None  # 按单元动态命名，如 "新英语四上点读{unit_no}单元"
     default_unit: int = 0            # 默认构建单元下标（bookaudio_v3）
+    # ---- 双模式骨架（V0.2）新增字段，全部带默认值向后兼容 ----
+    modes: list[str] = field(default_factory=lambda: ["offline"])  # ["offline"] | ["offline","online"]
+    free_units: int | None = None   # 离线免费章节数（None=全部；offline 构建时截取 content）
+    shared_js: bool = True          # 是否合并 _shared/js 公共模块（lx-shared.js）
     tool_dir: Path | None = field(default=None, repr=False)   # 自动填充
     src_dir: Path | None = field(default=None, repr=False)
     dist_root: Path | None = field(default=None, repr=False)
@@ -420,8 +424,14 @@ def write_data_js(unit: dict, cfg: ToolConfig, book: dict, out_dir: Path, unit_i
         f"{sum(len(p['tracks']) for p in unit['pages'])} 热区)")
 
 
-def write_static_data_js(cfg: ToolConfig, out_dir: Path, unit_index: int, app_name: str) -> None:
-    """静态工具（无 book/units）：仅写 meta，不含 units。"""
+def write_static_data_js(cfg: ToolConfig, out_dir: Path, unit_index: int, app_name: str,
+                         mode: str = "offline") -> None:
+    """静态工具：写 meta + content（V0.2 双模式扩展）。
+    - meta.mode = 'offline'|'online'
+    - content：offline 时截取前 cfg.free_units 条（若 src/content.js 提供）；
+      online 时全量。content 来源优先 src/content.js（window.CONTENT_DATA），
+      否则为空数组（静态工具如 24点/涂色 无章节概念，content=[]）。
+    """
     app_data = {
         "meta": {
             "name": app_name,
@@ -432,12 +442,35 @@ def write_static_data_js(cfg: ToolConfig, out_dir: Path, unit_index: int, app_na
             "bookid": "",
             "bookid_3rd": "",
             "unit_index": unit_index,
+            "mode": mode,
+            "free_units": cfg.free_units,
+            "api_version": "v0",
         },
         "units": [],
+        "content": [],
     }
+    # content：若 src 提供 content.js（window.CONTENT_DATA），按 mode 切分
+    # 实现：JS 文件不能按 Python 语法编译（注释符不同），改用「剥离注释 + 正则提取 JSON 数组」
+    content_js = cfg.src_dir / "content.js"
+    if content_js.exists():
+        try:
+            content_src = content_js.read_text(encoding="utf-8")
+            if content_src.startswith("\ufeff"):
+                content_src = content_src[1:]
+            # 剥离 /* */ 与 // 注释（避免中文/特殊字符干扰）
+            content_src = _re.sub(r"/\*.*?\*/", "", content_src, flags=_re.S)
+            content_src = _re.sub(r"//[^\n]*", "", content_src)
+            m = _re.search(r"window\.CONTENT_DATA\s*=\s*(\[[\s\S]*?\])\s*;", content_src)
+            if m:
+                content = json.loads(m.group(1))
+                if mode == "offline" and cfg.free_units is not None:
+                    content = content[: cfg.free_units]
+                app_data["content"] = content
+        except Exception as e:  # noqa: BLE001
+            log(f"WARN content.js 解析失败（{e}），content 为空")
     js = "window.APP_DATA = " + json.dumps(app_data, ensure_ascii=False, indent=1) + ";\n"
     (out_dir / "data.js").write_text(js, encoding="utf-8")
-    log(f"data.js 写入（静态工具，{len(js)} 字节）")
+    log(f"data.js 写入（静态工具，{len(js)} 字节，mode={mode}，content={len(app_data['content'])} 条）")
 
 
 def write_chengyu_data_js(cfg: ToolConfig, out_dir: Path, unit_index: int, app_name: str) -> None:
@@ -567,13 +600,58 @@ def make_static_icon(cfg: ToolConfig, out_dir: Path, publish_dir: Path | None = 
         log(f"图标生成: {png_path.name}（角标「{label}」，1024px，上传用）")
 
 
-def copy_static(cfg: ToolConfig, out_dir: Path) -> None:
-    shutil.copytree(cfg.src_dir / "assets", out_dir / "assets", dirs_exist_ok=True)
+def copy_static(cfg: ToolConfig, out_dir: Path, mode: str = "offline") -> None:
+    """静态工具复制（V0.2 双模式扩展）：
+    - src/assets/ → out_dir/assets/（现有）
+    - src/index.html → out_dir/index.html（现有）
+    - 新：src/core/ → out_dir/core/（若存在，双模式共用核心）
+    - 新：src/adapters/<mode>/ → out_dir/adapters/（若存在，按模式注入适配层）
+    - 新：cfg.shared_js → 合并 _shared/js/src/*.js → out_dir/_shared/lx-shared.js
+    """
+    if (cfg.src_dir / "assets").exists():
+        shutil.copytree(cfg.src_dir / "assets", out_dir / "assets", dirs_exist_ok=True)
     shutil.copy2(cfg.src_dir / "index.html", out_dir / "index.html")
+    # 双模式新结构：core/（共用）+ adapters/<mode>/（按模式）
+    if (cfg.src_dir / "core").exists():
+        shutil.copytree(cfg.src_dir / "core", out_dir / "core", dirs_exist_ok=True)
+    mode_adapters = cfg.src_dir / "adapters" / mode
+    if mode_adapters.exists():
+        shutil.copytree(mode_adapters, out_dir / "adapters", dirs_exist_ok=True)
+    elif (cfg.src_dir / "adapters").exists():
+        # 无按模式子目录时回退复制 adapters/ 根（单套适配层）
+        shutil.copytree(cfg.src_dir / "adapters", out_dir / "adapters", dirs_exist_ok=True)
+    # 公共模块合并：_shared/js/src/*.js → out_dir/_shared/lx-shared.js
+    if cfg.shared_js:
+        merge_shared_js(cfg, out_dir)
     base = out_dir / "assets" / "icon_base.png"
     if base.exists():
         base.unlink()
-    log("静态文件复制完成 (index.html + assets/)")
+    log(f"静态文件复制完成 (index.html + assets/ + core/ + adapters/{mode} + shared)")
+
+
+def merge_shared_js(cfg: ToolConfig, out_dir: Path) -> None:
+    """合并 _shared/js/src/*.js → out_dir/_shared/lx-shared.js（构建注入公共模块）。
+    合并顺序：lx-shared-core → storage → progress → auth → guard → ui-kit
+    （core 先定义命名空间与 register，各模块随后注册进 LX_SHARED）
+    """
+    shared_src = ROOT / "_shared" / "js" / "src"
+    if not shared_src.exists():
+        log("WARN _shared/js/src 不存在，跳过公共模块合并")
+        return
+    order = ["lx-shared-core.js", "storage.js", "progress.js", "auth.js", "guard.js", "ui-kit.js"]
+    parts = []
+    for name in order:
+        f = shared_src / name
+        if f.exists():
+            parts.append(f.read_text(encoding="utf-8"))
+        else:
+            log(f"WARN 公共模块缺失: {name}")
+    if not parts:
+        return
+    out_shared = out_dir / "_shared"
+    out_shared.mkdir(parents=True, exist_ok=True)
+    (out_shared / "lx-shared.js").write_text("\n".join(parts), encoding="utf-8")
+    log(f"公共模块合并: _shared/lx-shared.js ({sum(len(p) for p in parts) // 1024} KB)")
 
 
 def badge_text(book: dict, unit_index: int) -> str:
@@ -671,21 +749,26 @@ def package_zip(out_dir: Path, name: str) -> Path:
 
 def build_tool(cfg: ToolConfig, unit_index: int, pages: str | None = None,
                out_root: Path | None = None, publish_root: Path | None = None,
-               publish: bool = True) -> Path | None:
-    """构建单个工具单单元，返回 zip 路径。
+               publish: bool = True, mode: str = "offline") -> Path | None:
+    """构建单个工具单单元，返回 zip 路径（offline）/ 部署目录（online）。
 
     cfg.datasource:
       - 'book': 教材数据源（英语点读等），需 book/img_dir/audio_dir
       - 'static': 静态工具（数学口算等），无数据源，仅复制 src/
       - 'chengyu': 成语词库工具（看图猜成语/成语接龙），复制 src/ + 注入共享成语词库 data.js
+
+    mode（V0.2 双模式）:
+      - 'offline': 产物 dist/<tool>/offline/，zip → publish/<系列>/（小红书发布）
+      - 'online':  产物 dist/<tool>/online/，仅部署目录（不入 zip、不入 publish、不入小红书）
     """
-    dist_dir = (out_root or cfg.dist_root) / cfg.tool
+    mode_dir = mode if mode in ('offline', 'online') else 'offline'
+    dist_dir = (out_root or cfg.dist_root) / cfg.tool / mode_dir
     pub_dir = publish_root or cfg.publish_root   # publish/<系列>/ 系列内平铺，不按工具细分
     unit = None   # 仅 datasource='book' 时赋值（静态/成语/词汇表工具无单元数据）
     if dist_dir.exists():
         shutil.rmtree(dist_dir)
     dist_dir.mkdir(parents=True)
-    copy_static(cfg, dist_dir)
+    copy_static(cfg, dist_dir, mode=mode_dir)
 
     if cfg.datasource in ('static', 'chengyu', 'vocab'):
         # 静态/成语词库/词汇表工具：无 book / 图片 / 音频
@@ -695,8 +778,8 @@ def build_tool(cfg: ToolConfig, unit_index: int, pages: str | None = None,
         elif cfg.datasource == 'vocab':
             write_vocab_data_js(cfg, dist_dir, unit_index, app_name)
         else:
-            write_static_data_js(cfg, dist_dir, unit_index, app_name)
-        if publish:
+            write_static_data_js(cfg, dist_dir, unit_index, app_name, mode=mode_dir)
+        if publish and mode_dir == 'offline':
             make_static_icon(cfg, dist_dir, pub_dir, app_name)
     else:
         if not cfg.book.exists():
@@ -717,9 +800,14 @@ def build_tool(cfg: ToolConfig, unit_index: int, pages: str | None = None,
         app_name = resolve_app_name(cfg, book, unit_index)
         convert_images(unit["pages"], start, dist_dir, cfg.img_dir, cfg.redrawn_img_dir)
         convert_audio(unit, dist_dir, cfg.audio_dir)
-        if publish:
+        if publish and mode_dir == 'offline':
             make_icon(cfg, book, unit_index, dist_dir, pub_dir, app_name)
         write_data_js(unit, cfg, book, dist_dir, unit_index, app_name)
+
+    # online 模式：仅部署目录（不入 zip、不入 publish、不入小红书——合规红线 §4.4）
+    if mode_dir == 'online':
+        log(f"在线包构建完成（仅部署目录，不入 publish/小红书）: {dist_dir}")
+        return dist_dir
 
     zip_path = package_zip(dist_dir, f"{app_name}.zip")
     # zip 复制到发布目录（系列公共目录）
@@ -761,6 +849,8 @@ def main() -> int:
     parser.add_argument("--book", type=Path, default=None)
     parser.add_argument("--unit", type=int, default=0)
     parser.add_argument("--pages", default=None)
+    parser.add_argument("--mode", default="offline", choices=["offline", "online"],
+                        help="构建模式：offline（zip+发布）/ online（仅部署目录）")
     args = parser.parse_args()
 
     from tools import TOOLS
@@ -769,7 +859,7 @@ def main() -> int:
     cfg = TOOLS[args.tool]
     if args.book:
         cfg.book = args.book
-    build_tool(cfg, args.unit, args.pages)
+    build_tool(cfg, args.unit, args.pages, mode=args.mode)
     return 0
 
 

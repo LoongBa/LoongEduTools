@@ -81,6 +81,8 @@ def main() -> int:
     parser.add_argument("--list", action="store_true", help="列出已登记工具")
     parser.add_argument("--bump", choices=["patch", "minor", "major"], default=None,
                         help="升版后构建（需配合 --tool 使用）")
+    parser.add_argument("--mode", default="offline", choices=["offline", "online"],
+                        help="构建模式：offline（zip+发布）/ online（仅部署目录，默认 offline）")
     args = parser.parse_args()
 
     if args.list:
@@ -116,7 +118,7 @@ def main() -> int:
         unit_list = units if units else [cfg.default_unit]
         for u in unit_list:
             try:
-                zip_path = build_tool(cfg, u, args.pages)
+                zip_path = build_tool(cfg, u, args.pages, mode=args.mode)
                 if zip_path:
                     built += 1
             except SystemExit as e:

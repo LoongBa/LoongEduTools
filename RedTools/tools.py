@@ -94,6 +94,18 @@ TOOLS: dict[str, ToolConfig] = {
         app_name="成语配对",
         default_unit=0,
     ),
+    # ---- 双模式试点（V0.2 骨架）：新结构 src/core/ + src/adapters/<mode>/ ----
+    "点读陪练": ToolConfig(
+        series="学科",
+        tool="点读陪练",
+        version="0.1",
+        datasource="static",   # 静态工具：复制 src/（含 core/ adapters/）+ 注入公共模块
+        app_name="点读陪练",
+        default_unit=0,
+        modes=["offline", "online"],   # 双模式：offline（zip 发布）/ online（部署目录）
+        free_units=1,                  # 离线免费 Unit1（设计要求书 §六：首单元免费）
+        shared_js=True,                # 合并 _shared/js 公共模块
+    ),
     # ---------------- 益智系列 · 专注力子系列 ----------------
 "舒尔特方格": ToolConfig(
     series="益智",

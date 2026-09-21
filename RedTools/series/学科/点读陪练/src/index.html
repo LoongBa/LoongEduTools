@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>数学口算</title>
+  <title>英语点读陪练</title>
   <link rel="icon" href="./assets/icon.png" type="image/png" />
   <link rel="stylesheet" href="./assets/style.css" />
 </head>
@@ -14,9 +14,15 @@
     <div id="view" class="view"></div>
   </main>
   <footer id="app-footer" class="app-footer"></footer>
+  <!-- 双模式骨架注入顺序（V0.2 oracle 审核修订）：
+       data.js（APP_DATA.meta.mode）→ lx-shared.js → adapters/*.js → core/*.js
+       adapters 与 core 由构建按 --mode offline|online 从 src/adapters/<mode>/ 复制 -->
   <script src="./data.js"></script>
   <script src="./_shared/lx-shared.js"></script>
-  <script src="./assets/generators.js"></script>
-  <script src="./assets/main.js"></script>
+  <script src="./adapters/auth.js"></script>
+  <script src="./adapters/storage.js"></script>
+  <script src="./adapters/content.js"></script>
+  <script src="./core/generators.js"></script>
+  <script src="./core/main.js"></script>
 </body>
 </html>
