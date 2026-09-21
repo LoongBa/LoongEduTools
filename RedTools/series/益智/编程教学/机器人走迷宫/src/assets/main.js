@@ -52,6 +52,7 @@
   var CMD_FWD = { id: 'fwd', label: '↑ 前进' };
   var CMD_L = { id: 'left', label: '↰ 左转' };
   var CMD_R = { id: 'right', label: '↱ 右转' };
+  var CMD_BLOCK = { id: 'block', label: '🧱 前方探测' };   // v1.3 条件指令：前方有墙/边界则不走
   var DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]]; // 右/下/左/上
 
   /* ---------- 状态 ---------- */
@@ -316,7 +317,7 @@
     // 指令区
     var cmdBar = makeEl('div', 'cmd-bar');
     cmdBar.id = 'cmd-bar';
-    [CMD_FWD, CMD_L, CMD_R].forEach(function (cmd) {
+    [CMD_FWD, CMD_L, CMD_R, CMD_BLOCK].forEach(function (cmd) {
       var btn = makeEl('button', 'cmd-add', cmd.label);
       btn.addEventListener('click', function () { addCmd(cmd.id); });
       cmdBar.appendChild(btn);
@@ -371,7 +372,7 @@
     box.className = 'seq-box active';
     clearNode(box);
     state.cmds.forEach(function (cmd, i) {
-      var lbl = cmd.id === 'fwd' ? '↑' : (cmd.id === 'left' ? '↰' : '↱');
+      var lbl = cmd.id === 'fwd' ? '↑' : (cmd.id === 'left' ? '↰' : (cmd.id === 'right' ? '↱' : '🧱'));
       var repTxt = (cmd.rep && cmd.rep > 1) ? ('×' + cmd.rep) : '';
       // 指令 chip：单击循环次数（1→2→3→4→1），✕ 角标删除
       var chip = makeEl('span', 'cmd-chip' + (repTxt ? ' loop' : ''), (i + 1) + '.' + lbl + repTxt);
@@ -422,8 +423,8 @@
     // 从初始盘面执行（重置到关卡初始）
     loadLevelState();
     state.prog = 0;
-    // 重置循环计数（_loopLeft 残留清理）
-    state.cmds.forEach(function (c) { c._loopLeft = 0; });
+    // 重置循环计数（_loopLeft 残留清理→undefined 使 execStep 重新初始化）
+    state.cmds.forEach(function (c) { c._loopLeft = undefined; });
     var fb = document.getElementById('game-feedback');
     if (fb) { fb.textContent = '机器人执行中…'; fb.className = 'game-feedback'; }
     execStep();
@@ -438,7 +439,8 @@
     }
     var cmd = state.cmds[state.prog];
     // 循环：rep>1 时重复执行当前指令 rep 次（复用 prog 计数）
-    if (!cmd._loopLeft) { cmd._loopLeft = cmd.rep || 1; }
+    // 修复：_loopLeft 用 undefined 判未初始化（0 = 执行完，不能重置）
+    if (cmd._loopLeft === undefined) { cmd._loopLeft = cmd.rep || 1; }
     if (cmd._loopLeft <= 0) {
       cmd._loopLeft = 0;
       state.prog += 1;
@@ -451,12 +453,17 @@
     } else if (cmd.id === 'right') {
       state.face = (state.face + 1) % 4;
     } else {
-      // 前进：前方有箱子则推箱
+      // 前进方向目标格
       var pr = state.player % state.w;
       var pc = Math.floor(state.player / state.w);
       var dx = DIRS[state.face][0], dy = DIRS[state.face][1];
       var nr = pr + dx, nc = pc + dy;
-      if (nr >= 0 && nr < state.w && nc >= 0 && nc < state.h) {
+      if (cmd.id === 'block') {
+        // v1.3 条件指令「前方探测」：若前方越界/墙/箱子（障碍）→ 条件成立不前进；否则前进
+        if (nr >= 0 && nr < state.w && nc >= 0 && nc < state.h && !state.walls[nc * state.w + nr] && !state.boxes[nc * state.w + nr]) {
+          state.player = nc * state.w + nr;
+        }
+      } else if (nr >= 0 && nr < state.w && nc >= 0 && nc < state.h) {
         var nIdx = nc * state.w + nr;
         if (!state.walls[nIdx]) {
           if (state.boxes[nIdx]) {
