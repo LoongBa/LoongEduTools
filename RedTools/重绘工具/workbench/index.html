@@ -44,6 +44,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .badge{padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500}
 .b-ok{background:#E8F5E9;color:#2E7D32}.b-fail{background:#FFEBEE;color:#C62828}
 .b-pend{background:#FFF3E0;color:#E65100}.b-hz{background:#FFF8E1;color:#F9A825}
+.b-val{background:#E3F2FD;color:#1565C0}.b-val-ok{background:#E8F5E9;color:#2E7D32}
+.b-val-bad{background:#FFEBEE;color:#C62828}.b-val-mid{background:#FFF3E0;color:#E65100}
 .unit-actions{display:flex;gap:8px;flex-wrap:wrap}
 .unit-actions a{text-decoration:none}
 #workArea{display:none;position:fixed;inset:0;background:#fff;z-index:100;flex-direction:column}
@@ -168,10 +170,23 @@ function renderUnits(){
     const failBadge = (rv.fail > 0) ? `<span class="badge b-fail">❌${rv.fail}需重绘</span>` : "";
     const pend = (u.pages - (rv.done || 0)) > 0 ? `<span class="badge b-pend">⬜${u.pages - rv.done}待审</span>` : "";
     const hzBadge = u.hotzone ? `<span class="badge b-hz">🔧热区 ${fmtTime(u.hotzone.updated_at).slice(5)}</span>` : `<span class="badge b-pend">热区未校</span>`;
+    // 校验状态：热区坐标（自动）+ 音频覆盖（缓存/按需）
+    const v = u.validation || {};
+    let hzVal = "";
+    if (v.hz_issues === -1) hzVal = `<span class="badge b-val" title="热区坐标校验：数据异常无法计算">⚠️热区异常</span>`;
+    else if (v.hz_issues > 0) hzVal = `<span class="badge b-val-bad" title="热区坐标异常（超界/倒置/零面积）">⚠️热区 ${v.hz_issues}</span>`;
+    else hzVal = `<span class="badge b-val-ok" title="热区坐标全部合法">📐热区 ✓</span>`;
+    let auVal = "";
+    if (v.audio_missing === null || v.audio_missing === undefined)
+      auVal = `<span class="badge b-val clickable" onclick="validateUnit(${u.index})" style="cursor:pointer" title="点击校验音频覆盖">🔇未校验</span>`;
+    else if (v.audio_missing > 0)
+      auVal = `<span class="badge b-val-bad" title="音频缺失（点击重校验）">🔇缺音频 ${v.audio_missing}</span>`;
+    else
+      auVal = `<span class="badge b-val-ok" title="音频覆盖完整">🔊音频 ✓</span>`;
     card.innerHTML = `
       <div class="unit-head"><span class="unit-title">${esc(u.title)}</span><span style="font-size:11px;color:#999">${u.pages} 页</span></div>
       <div class="unit-meta">页 ${u.start}-${u.end - 1}${u.hotzone ? " · " + esc(u.hotzone.file) : ""}</div>
-      <div class="unit-badges">${passBadge}${failBadge}${pend}${hzBadge}</div>
+      <div class="unit-badges">${passBadge}${failBadge}${pend}${hzBadge}${hzVal}${auVal}</div>
       <div class="unit-actions">
         <button class="btn btn-p" onclick="openUnit(${u.index},'review')">📋 审核</button>
         <button class="btn btn-w" onclick="openUnit(${u.index},'hotzone')">🔧 热区</button>
@@ -256,6 +271,28 @@ function showPub(msg){
   const st = document.getElementById("pubStatus");
   st.textContent = msg;
   st.style.whiteSpace = "normal";
+}
+
+/* ---- 校验（V1.3.1）：音频覆盖按需校验 + 结果刷新 ---- */
+async function validateUnit(ui){
+  const st = document.getElementById("pubStatus");
+  st.textContent = "🔍 校验音频覆盖中…（需数秒）";
+  try {
+    const res = await fetch("/api/validate", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ book: curBook, unit: ui }),
+    });
+    const j = await res.json();
+    if (j.ok) {
+      const r = j.results[0];
+      st.textContent = r
+        ? `✅ 校验完成：热区 ${r.hz_issues} 异常 / 音频 ${r.audio_missing}/${r.audio_total} 缺失`
+        : "✅ 校验完成";
+      loadStatus();
+    } else {
+      st.textContent = "❌ " + (j.error || "校验失败");
+    }
+  } catch (e) { st.textContent = "❌ " + e.message; }
 }
 
 /* ---- 发布操作（M4：提材 / 重建，闭环） ---- */

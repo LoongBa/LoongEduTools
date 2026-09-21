@@ -116,7 +116,14 @@ def main() -> int:
 
     built = 0
     failed = 0
+    skipped = 0
     for name, cfg in tools.items():
+        # V0.4 P5：modes 守卫——工具未登记目标模式则跳过（如经典游戏 offline-only 不被 --mode online 构建）
+        modes = getattr(cfg, "modes", None) or ["offline"]
+        if args.mode not in modes:
+            log(f"[{cfg.series}/{name}] 跳过 {args.mode}（未登记模式 {modes}）")
+            skipped += 1
+            continue
         unit_list = units if units else [cfg.default_unit]
         for u in unit_list:
             try:
@@ -130,7 +137,7 @@ def main() -> int:
                 print(f"ERROR: [{cfg.series}/{name}] unit {u}: {e!r}")
                 failed += 1
 
-    log(f"批量构建完成: 成功 {built}，失败 {failed}")
+    log(f"批量构建完成: 成功 {built}，失败 {failed}，跳过 {skipped}（未登记模式）")
     return 1 if failed else 0
 
 

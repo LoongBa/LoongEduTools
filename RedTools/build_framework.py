@@ -475,7 +475,7 @@ def data_source_times(cfg: ToolConfig, unit_title: str | None = None) -> tuple[f
 
 
 def write_data_js(unit: dict, cfg: ToolConfig, book: dict, out_dir: Path, unit_index: int,
-                  app_name: str | None = None) -> None:
+                  app_name: str | None = None, mode: str = "offline") -> None:
     bookinfo = book.get("bookinfo", {})
     img_mt, hz_mt = data_source_times(cfg, unit_title=unit.get("title"))
     app_data = {
@@ -488,6 +488,10 @@ def write_data_js(unit: dict, cfg: ToolConfig, book: dict, out_dir: Path, unit_i
             "bookid": bookinfo.get("bookid", ""),
             "bookid_3rd": bookinfo.get("bookid_3rd", ""),
             "unit_index": unit_index,
+            # V0.4 P4：双模式契约字段（对齐 write_static_data_js）
+            "mode": mode,
+            "free_units": cfg.free_units,
+            "api_version": "v0",
             # 独立时间标记（与版本分离；只显示时间，用于确认数据是否最新）
             "img_updated_at": fmt_local(img_mt),
             "hotzone_updated_at": fmt_local(hz_mt),
@@ -557,7 +561,8 @@ def write_static_data_js(cfg: ToolConfig, out_dir: Path, unit_index: int, app_na
     log(f"data.js 写入（静态工具，{len(js)} 字节，mode={mode}，content={len(app_data['content'])} 条）")
 
 
-def write_chengyu_data_js(cfg: ToolConfig, out_dir: Path, unit_index: int, app_name: str) -> None:
+def write_chengyu_data_js(cfg: ToolConfig, out_dir: Path, unit_index: int, app_name: str,
+                          mode: str = "offline") -> None:
     """成语词库工具（看图猜成语/成语接龙）：
     - meta（同静态工具）+ 共享成语词库 window.CHENGYU_DATA
     - 预建接龙索引 window.CHENGYU_CHAIN：{尾字: [以该字开头的成语...]}（课本+扩展全量）
@@ -575,6 +580,10 @@ def write_chengyu_data_js(cfg: ToolConfig, out_dir: Path, unit_index: int, app_n
             "bookid": "",
             "bookid_3rd": "",
             "unit_index": unit_index,
+            # V0.4 P4：双模式契约字段（对齐 write_static_data_js）
+            "mode": mode,
+            "free_units": cfg.free_units,
+            "api_version": "v0",
         },
         "units": [],
     }
@@ -614,10 +623,11 @@ def _load_pep_vocab_tool():
 
 
 def write_vocab_data_js(cfg: ToolConfig, out_dir: Path, unit_index: int,
-                        app_name: str) -> None:
+                        app_name: str, mode: str = "offline") -> None:
     """打字背单词/单词闪卡：委托 /PEP词库 解析 PEP 11 册词汇表 → data.js（books）。
 
     同时将规范化词库 JSON 同步到 /PEP词库/data/vocab/pep_vocab.json（公共素材，schema v1）。
+    V0.4 P4：RedTools 侧包装补双模式契约字段（mode/free_units/api_version），不改 PEP 核心模块。
     """
     if not cfg.vocab_dir or not cfg.vocab_dir.exists():
         raise SystemExit(f"vocab_dir 不存在: {cfg.vocab_dir}")
@@ -625,8 +635,13 @@ def write_vocab_data_js(cfg: ToolConfig, out_dir: Path, unit_index: int,
     books, total_words = mod.parse_all_books(cfg.vocab_dir)
     app_data = mod.build_app_data(app_name, cfg.version, cfg.series, cfg.tool,
                                   unit_index, books)
+    # V0.4 P4：补双模式契约字段（PEP 模块 meta 无 mode/free_units/api_version）
+    app_data.setdefault("meta", {})
+    app_data["meta"]["mode"] = mode
+    app_data["meta"]["free_units"] = cfg.free_units
+    app_data["meta"]["api_version"] = "v0"
     size = mod.write_data_js(app_data, out_dir)
-    log(f"data.js 写入（词汇表工具，{size / 1024:.0f} KB，{len(books)} 册 / {total_words} 词）")
+    log(f"data.js 写入（词汇表工具，{size / 1024:.0f} KB，{len(books)} 册 / {total_words} 词，mode={mode}）")
     # 公共素材同步：PEP词库/data/vocab/pep_vocab.json
     vocab_json = ROOT.parent / "PEP词库" / "data" / "vocab" / "pep_vocab.json"
     mod.write_vocab_json(books, total_words, vocab_json)
@@ -862,9 +877,9 @@ def build_tool(cfg: ToolConfig, unit_index: int, pages: str | None = None,
         # 静态/成语词库/词汇表工具：无 book / 图片 / 音频
         app_name = resolve_app_name(cfg, None, unit_index)
         if cfg.datasource == 'chengyu':
-            write_chengyu_data_js(cfg, dist_dir, unit_index, app_name)
+            write_chengyu_data_js(cfg, dist_dir, unit_index, app_name, mode=mode_dir)
         elif cfg.datasource == 'vocab':
-            write_vocab_data_js(cfg, dist_dir, unit_index, app_name)
+            write_vocab_data_js(cfg, dist_dir, unit_index, app_name, mode=mode_dir)
         else:
             write_static_data_js(cfg, dist_dir, unit_index, app_name, mode=mode_dir)
         if publish and mode_dir == 'offline':
@@ -905,7 +920,7 @@ def build_tool(cfg: ToolConfig, unit_index: int, pages: str | None = None,
         convert_audio(unit, dist_dir, cfg.audio_dir)
         if publish and mode_dir == 'offline':
             make_icon(cfg, book, unit_index, dist_dir, pub_dir, app_name)
-        write_data_js(unit, cfg, book, dist_dir, unit_index, app_name)
+        write_data_js(unit, cfg, book, dist_dir, unit_index, app_name, mode=mode_dir)
 
     # --strict：收集全部问题后统一失败（collect-then-fail，一次看全）
     if strict and validation_issues:

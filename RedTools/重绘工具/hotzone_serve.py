@@ -232,8 +232,9 @@ class Handler(SimpleHTTPRequestHandler):
                 if i + 1 < len(ch) and ch[i + 1].get("page_no"):
                     end = int(ch[i + 1].get("page_no"))
                 title = c.get("title", f"Unit {i + 1}")
-                # 匹配本单元校正文件（重绘目录；标题归一化）
+                # 匹配本单元校正文件（重绘目录；标题归一化）——hz=展示元数据，hz_data=内容（校验用）
                 hz = None
+                hz_data = None
                 if redr.exists():
                     norm = title.replace(" ", "").replace("_", "")
                     for f in redr.glob("热区校正_*.json"):
@@ -241,6 +242,10 @@ class Handler(SimpleHTTPRequestHandler):
                         if stem.replace(" ", "").replace("_", "") == norm:
                             hz = {"file": f.name,
                                   "updated_at": fmt_local(f.stat().st_mtime)}
+                            try:
+                                hz_data = json.loads(f.read_text(encoding="utf-8"))
+                            except Exception:
+                                hz_data = None
                             break
                 # 审核统计（该单元页码范围）
                 done = passed = failed = 0
@@ -257,16 +262,54 @@ class Handler(SimpleHTTPRequestHandler):
                 actual_pages = sum(1 for p in bookdata.get("bookpage", [])
                                    if start <= int(p.get("page_no") or 0) < end)
                 try:
-                    from build_framework import resolve_unit_no
+                    from build_framework import resolve_unit_no, build_unit_data, validate_hotzones
                     unit_no = resolve_unit_no(bookdata, i)
+                    # 热区坐标校验：纯计算、无 IO 成本，status 自动算（校正后最终坐标）
+                    hz_issues = 0
+                    try:
+                        unit = build_unit_data(bookdata, i, start, end, hz)
+                        hz_issues = len(validate_hotzones(unit))
+                    except Exception:
+                        hz_issues = -1  # 无法构建单元（数据异常）
                 except ImportError:
                     unit_no = title
+                    hz_issues = -1
                 app_name = f"{app_prefix}{unit_no}单元"
+                # 音频缺失：读缓存（校验记录.json；null=未校验；mtime 变化=stale→null）
+                audio_missing = None
+                vf = redr / "校验记录.json"
+                if vf.exists():
+                    try:
+                        vdata = json.loads(vf.read_text(encoding="utf-8"))
+                        am = vdata.get("audio", {}).get(str(i))
+                        if am is not None:
+                            # staleness：书数据/校正/音频任一 mtime 变化 → 缓存过期 → null
+                            stale = False
+                            mt = vdata.get("mtime") or {}
+                            if mt.get("book") != (bpath.stat().st_mtime if bpath.exists() else 0):
+                                stale = True
+                            elif mt.get("hotzone") != (
+                                    max((f.stat().st_mtime for f in redr.glob("热区校正_*.json")), default=0)
+                                    if redr.exists() else 0):
+                                stale = True
+                            else:
+                                ad = MAT_ROOT / grade / vol / "_重读音频素材" / "单句音频"
+                                if not ad.exists():
+                                    ad = MAT_ROOT / grade / vol / "_音频素材" / "单句音频"
+                                if mt.get("audio") != (
+                                        max((f.stat().st_mtime for f in ad.glob("*.mp3")), default=0)
+                                        if ad.exists() else 0):
+                                    stale = True
+                            if not stale:
+                                audio_missing = am.get("missing", 0)
+                    except Exception:
+                        pass
                 units.append({"index": i, "title": title, "start": start, "end": end,
                               "pages": actual_pages,
                               "hotzone": hz,
                               "app_name": app_name,
-                              "review": {"done": done, "pass": passed, "fail": failed}})
+                              "review": {"done": done, "pass": passed, "fail": failed},
+                              "validation": {"hz_issues": hz_issues, "audio_missing": audio_missing}})
         self._send_json({"book": book, "grade": grade, "vol": vol,
                          "img_updated_at": fmt_local(img_mt), "units": units})
 
@@ -287,6 +330,8 @@ class Handler(SimpleHTTPRequestHandler):
             self._api_tasks()
         elif path == "/api/tasks/clear":
             self._api_tasks_clear()
+        elif path == "/api/validate":
+            self._api_validate()
         else:
             self.send_error(404, "unknown api")
 
@@ -494,6 +539,87 @@ class Handler(SimpleHTTPRequestHandler):
             removed = len(TASK_QUEUE) - len(kept)
             TASK_QUEUE[:] = kept
         self._send_json({"ok": True, "removed": removed})
+
+    # ---- 校验：POST /api/validate {book, unit?} → 跑热区+音频校验，写 _重绘图片素材/校验记录.json（缓存） ----
+    def _api_validate(self) -> None:
+        try:
+            data = self._read_json()
+        except Exception:
+            self._send_json({"error": "bad json"}, 400)
+            return
+        book = data.get("book", "四年级_上册")
+        unit_filter = data.get("unit")  # None=全部单元
+        if book not in BOOK_MAP:
+            self._send_json({"error": f"未知册次: {book}"}, 400)
+            return
+        _bid, grade, vol, _tool = BOOK_MAP[book]
+        redr = MAT_ROOT / grade / vol / "_重绘图片素材"
+        bpath = redr / "书数据.json"
+        if not bpath.exists():
+            bpath = redr / "book.json"
+        if not bpath.exists():
+            self._send_json({"error": "书数据.json 不存在（该册未初始化重绘目录）"}, 400)
+            return
+        bookdata = json.loads(bpath.read_text(encoding="utf-8-sig"))
+        ch = bookdata.get("bookaudio_v3", [])
+        pages_max = max((int(p.get("page_no") or 0) for p in bookdata.get("bookpage", [])), default=0)
+        try:
+            from build_framework import build_unit_data, validate_hotzones, validate_audio_coverage
+        except ImportError:
+            self._send_json({"error": "build_framework 不可用（缺少依赖）"}, 500)
+            return
+        audio_dir = MAT_ROOT / grade / vol / "_重读音频素材" / "单句音频"
+        if not audio_dir.exists():
+            audio_dir = MAT_ROOT / grade / vol / "_音频素材" / "单句音频"
+        # 读缓存（保留未变更单元的旧结果）
+        vf = redr / "校验记录.json"
+        vdata = json.loads(vf.read_text(encoding="utf-8")) if vf.exists() else {}
+        vdata.setdefault("audio", {})
+        audio_res = vdata.get("audio", {})
+        results = []
+        for i, c in enumerate(ch):
+            if unit_filter is not None and int(unit_filter) != i:
+                continue
+            start = int(c.get("page_no", 0))
+            end = pages_max + 1
+            if i + 1 < len(ch) and ch[i + 1].get("page_no"):
+                end = int(ch[i + 1].get("page_no"))
+            # 加载本单元校正文件（校验校正后最终坐标，与 build 同口径）
+            title = c.get("title", f"Unit {i + 1}")
+            hz_data = None
+            if redr.exists():
+                norm = title.replace(" ", "").replace("_", "")
+                for f in redr.glob("热区校正_*.json"):
+                    stem = f.stem[len("热区校正_"):]
+                    if stem.replace(" ", "").replace("_", "") == norm:
+                        try:
+                            hz_data = json.loads(f.read_text(encoding="utf-8"))
+                        except Exception:
+                            hz_data = None
+                        break
+            try:
+                unit = build_unit_data(bookdata, i, start, end, hz_data)
+                hz = len(validate_hotzones(unit))
+                ac = validate_audio_coverage(unit, audio_dir)
+                missing = len(ac["missing_audio"])
+            except Exception as e:
+                self._send_json({"error": f"单元 {i} 校验失败: {e}"}, 500)
+                return
+            audio_res[str(i)] = {"missing": missing, "total": ac["total_tracks"]}
+            results.append({"unit": i, "hz_issues": hz, "audio_missing": missing,
+                            "audio_total": ac["total_tracks"]})
+        vdata["audio"] = audio_res
+        vdata["checked_at"] = _now_iso()
+        # 缓存失效键：书数据 / 热区校正 / 音频目录 mtime——任一变化 → status 判 stale
+        vdata["mtime"] = {
+            "book": bpath.stat().st_mtime if bpath.exists() else 0,
+            "hotzone": max((f.stat().st_mtime for f in redr.glob("热区校正_*.json")), default=0)
+                       if redr.exists() else 0,
+            "audio": max((f.stat().st_mtime for f in audio_dir.glob("*.mp3")), default=0)
+                     if audio_dir.exists() else 0,
+        }
+        vf.write_text(json.dumps(vdata, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        self._send_json({"ok": True, "results": results, "file": str(vf)})
 
     def translate_path(self, path: str) -> str:
         # 去掉查询串 + 中文路径 percent-encode 解码

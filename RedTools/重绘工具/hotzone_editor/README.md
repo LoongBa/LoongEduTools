@@ -66,8 +66,15 @@ python test_hotzone_editor.py   # 需 playwright + chromium
 覆盖：book.json 加载 → 目录选择 → 进入校正 → 热区渲染 → 点列表选中 →
 拖动移动 → 手柄缩放 → localStorage 保存 → 导出下载 → 翻页 → 无 JS 错误。
 
-## 后续接入构建管线
+## 构建管线接入（✅ 已实现）
 
-`build_framework.py` 的 `convert_images()` 已支持 `redrawn_img_dir` 优先；
-下一步让 `build_unit_data()` 接收可选校正 JSON 路径，按 `page_no/track_index`
-覆盖热区坐标即可（当前尚未实现）。
+校正文件导出后**自动接入构建**，无需手动修改：
+
+1. 把导出的 `热区校正_<单元标题>.json` 放入 `_重绘图片素材/`（或册根目录，两处都扫描）
+2. `python build_all.py --tool 英语点读 --units N` 构建时：
+   - `build_framework.load_hotzone_corrections()` 按单元标题匹配校正文件（空格/下划线变体 + 宽松归一化）
+   - `build_unit_data()` 按 `page_no + track_index` 覆盖热区坐标（只覆盖校正过的条目）
+   - 支持 `deleted` 映射删除热区；`data_source_times()` 按单元显示热区更新时间
+3. 发布状态行显示 `热区 HH:MM`（与版本/图片时间独立标记）
+
+> 校正文件若在 `_重绘图片素材/书数据.json` 目录下（推荐位置），编辑器经 `hotzone_serve.py` 修改的就是这份，与重绘图片对齐存放、彻底脱离原始数据。
