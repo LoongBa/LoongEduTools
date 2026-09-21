@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "小学英语素材管理系统 - manifest.json schema",
+  "version": "1.0",
+  "description": "SSOT 清单：册→单元→页→track。数据来源 JOIN bookaudio_v3（单元→页）+ bookpage[]（页→track/热区）。字段名对齐 book.json 原生命名。",
+  "type": "object",
+  "required": ["schema_version", "generated_at", "root", "diandu_root", "grades"],
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "root": { "type": "string" },
+    "diandu_root": { "type": "string" },
+    "track_assert": {
+      "type": "object",
+      "properties": {
+        "seen": { "type": "integer" },
+        "expected": { "type": "integer" },
+        "ok": { "type": "boolean" }
+      }
+    },
+    "grades": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["grade", "term", "published"],
+        "properties": {
+          "grade": { "type": "string" },
+          "term": { "type": "string" },
+          "book_id": { "type": "string" },
+          "published": { "type": "boolean" },
+          "book_name": { "type": "string" },
+          "pdf": { "type": ["string", "null"] },
+          "cover": {
+            "type": ["object", "null"],
+            "properties": {
+              "file": { "type": "string" },
+              "source": { "type": "string", "enum": ["pdf_page1", "network", "unknown"] },
+              "w": { "type": "integer" },
+              "h": { "type": "integer" }
+            }
+          },
+          "stats": {
+            "type": "object",
+            "properties": {
+              "page_images": { "type": "integer" },
+              "audio_tracks": { "type": "integer" },
+              "subtitles": { "type": "integer" },
+              "size_mb": { "type": "number" }
+            }
+          },
+          "units": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["unit_no", "title", "pages"],
+              "properties": {
+                "unit_no": { "type": "string" },
+                "title": { "type": "string" },
+                "pages": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["page_no", "image", "page_audio"],
+                    "properties": {
+                      "page_no": { "type": "integer" },
+                      "image": { "type": "string" },
+                      "image_exists": { "type": ["boolean", "null"] },
+                      "page_audio": { "type": "string" },
+                      "page_audio_exists": { "type": ["boolean", "null"] },
+                      "no_audio_page": { "type": "boolean" },
+                      "tracks": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": ["track_id", "track_index", "track_text", "audio_local"],
+                          "properties": {
+                            "track_id": { "type": ["integer", "null"] },
+                            "track_index": { "type": ["integer", "null"] },
+                            "track_text": { "type": "string" },
+                            "track_genre": { "type": "string" },
+                            "track_duration": { "type": ["number", "null"] },
+                            "audio_local": { "type": "string" },
+                            "audio_exists": { "type": ["boolean", "null"] },
+                            "hotzone": {
+                              "type": ["object", "null"],
+                              "properties": {
+                                "left": { "type": ["number", "null"] },
+                                "top": { "type": ["number", "null"] },
+                                "right": { "type": ["number", "null"] },
+                                "bottom": { "type": ["number", "null"] }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,6 @@
+# 清单产物（可重建：python inventory.py scan && check && report 一键还原，设计 N2）不入库
+manifest.json
+integrity.json
+production.json
+readiness.json
+report.md
