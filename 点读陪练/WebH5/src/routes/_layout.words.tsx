@@ -1,7 +1,7 @@
 // 词卡收藏册：翻面卡片 + 单元筛选 + 柔性「该复习啦」角标
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { UNITS, unitOf, type WordCard } from "@/data/content";
+import { UNIT_ROWS, unitOf, type WordCard } from "@/data/content";
 import { ipOf } from "@/data/ip";
 import { useProgress } from "@/lib/store";
 import { speechSupported, speak } from "@/lib/speech";
@@ -70,7 +70,7 @@ function WordsPage() {
 
       {/* 单元筛选 */}
       <div className="-mx-1 flex snap-x gap-1.5 overflow-x-auto px-1 pb-1">
-        {UNITS.map((u) => (
+        {UNIT_ROWS.map((u) => (
           <button
             key={u.id}
             type="button"

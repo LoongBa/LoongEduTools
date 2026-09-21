@@ -1,7 +1,7 @@
 // 我的：学习概览 + 护眼与朗读设置 + 内容范围 + 数据管理 + 家长说明
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { UNITS } from "@/data/content";
+import { UNIT_ROWS } from "@/data/content";
 import { IP_CHARACTERS } from "@/data/ip";
 import { speechSupported } from "@/lib/speech";
 import { resolveTheme, THEMES, useProgress } from "@/lib/store";
@@ -27,7 +27,7 @@ function MePage() {
         <ul className="grid grid-cols-2 gap-y-4">
           <Stat label="累计打卡" value={p.stats.totalDays} unit="天" />
           <Stat label="连续天数" value={p.stats.streak} unit="天" />
-          <Stat label="已学单元" value={`${p.stats.unitsDone} / ${UNITS.length}`} />
+          <Stat label="已学单元" value={`${p.stats.unitsDone} / ${UNIT_ROWS.length}`} />
           <Stat label="收集词卡" value={p.stats.collected} unit={`/ ${p.stats.totalWords}`} />
         </ul>
       </Panel>
@@ -41,7 +41,7 @@ function MePage() {
       {/* 内容与范围 */}
       <Section title="学习内容" note="切换后各页内容整体替换，历史周卡保留">
         <div className="flex flex-wrap gap-1.5">
-          {UNITS.map((u) => (
+          {UNIT_ROWS.map((u) => (
             <button
               key={u.id}
               type="button"

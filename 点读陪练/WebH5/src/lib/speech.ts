@@ -1,5 +1,6 @@
 // 发音：浏览器内置语音合成（Web Speech API）；不支持时由调用方走文字退化
 import { useCallback, useEffect, useRef, useState } from "react";
+import { audioUrl } from "./audio";
 
 let cachedVoices: SpeechSynthesisVoice[] = [];
 
@@ -48,6 +49,40 @@ export function speak(text: string, opts: SpeakOptions = {}): boolean {
     return true;
   } catch {
     return false;
+  }
+}
+
+/**
+ * mp3 优先的朗读：key 对应管线 TTS 文件 → 播放 mp3；文件缺失/播放失败 → 回退 speak()。
+ * 返回是否成功发起发声（mp3 的异步失败会自动回退浏览器朗读）。
+ */
+export function speakMp3(
+  key: string | undefined,
+  text: string,
+  opts: SpeakOptions = {},
+): boolean {
+  if (!key) return speak(text, opts);
+  try {
+    const a = new Audio(audioUrl(key));
+    let settled = false;
+    const settleEnd = () => {
+      if (settled) return;
+      settled = true;
+      opts.onEnd?.();
+    };
+    const fallback = () => {
+      if (settled) return;
+      settled = true;
+      opts.onEnd?.();
+      speak(text, opts);
+    };
+    a.addEventListener("ended", settleEnd, { once: true });
+    a.addEventListener("error", fallback, { once: true });
+    const p = a.play();
+    if (p) p.catch(fallback);
+    return true;
+  } catch {
+    return speak(text, opts);
   }
 }
 

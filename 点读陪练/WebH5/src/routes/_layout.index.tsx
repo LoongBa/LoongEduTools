@@ -1,7 +1,7 @@
 // 首页：唯一视觉重心是「今日陪练」，其余入口降级为小卡列表
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { UNITS, DAY_TITLES } from "@/data/content";
+import { UNIT_ROWS, DAY_TITLES } from "@/data/content";
 import { IP_CHARACTERS } from "@/data/ip";
 import { useProgress } from "@/lib/store";
 import { Btn, DayDots, Panel } from "@/components/ui-kit";
@@ -42,7 +42,7 @@ function HomePage() {
             不需要注册，也不填任何信息。进度只存在这台设备上。
           </p>
           <div className="mt-3 flex flex-wrap gap-1.5">
-            {UNITS.map((u) => (
+            {UNIT_ROWS.map((u) => (
               <button
                 key={u.id}
                 type="button"

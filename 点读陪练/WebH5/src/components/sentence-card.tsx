@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { splitSentence, type SentenceCard } from "@/data/content";
 import { ipOf } from "@/data/ip";
-import { speechSupported, speak } from "@/lib/speech";
+import { speechSupported, speak, speakMp3 } from "@/lib/speech";
 import { ArrowIcon, MicIcon, Panel, SpeakerIcon, StarIcon, TurtleIcon } from "./ui-kit";
 import { useRecorder } from "@/lib/speech";
 
@@ -49,7 +49,8 @@ export function SentenceCardView({
 
   const playSentence = (slowIt: boolean) => {
     setActiveWord(null);
-    const ok = soundOn && speak(card.en, { slow: slowIt, onEnd: () => setPlaying(false) });
+    // 有管线 mp3 则播放 mp3，否则回退浏览器朗读（speakMp3 内部处理）
+    const ok = soundOn && speakMp3(card.mp3, card.en, { slow: slowIt, onEnd: () => setPlaying(false) });
     if (!ok) {
       setNoVoice(true);
       return;

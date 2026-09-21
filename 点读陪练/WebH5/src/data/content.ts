@@ -1,5 +1,6 @@
 // 内容层：PEP 四上同步拓展练习（原创改写，不使用教材原版文本/角色/音频）
 import type { IpKey } from "./ip";
+import { PIPELINE_U01 } from "./u01Content";
 
 export type Stage = "warm" | "new" | "drill" | "wrap";
 
@@ -17,6 +18,8 @@ export interface SentenceCard {
   /** 句中可单独点读的单词 */
   words: { text: string; cn: string }[];
   stage: Stage;
+  /** 管线 TTS 生成的 mp3 文件名（public/units/u01/audio/ 下）；缺省时用浏览器朗读兜底 */
+  mp3?: string;
 }
 
 export interface SongLine {
@@ -118,7 +121,8 @@ function card(
   return { id, stage, ip, en, cn, words };
 }
 
-export const UNITS: Unit[] = [
+// 真实 U01 之外的 5 个示例占位单元（保留以便恢复）；正式内容逐单元接入后移除
+const EXAMPLE_UNITS: Unit[] = [
   {
     id: "u1",
     no: 1,
@@ -712,21 +716,37 @@ export const UNITS: Unit[] = [
   },
 ];
 
-export const TOTAL_WORDS = UNITS.reduce((n, u) => n + u.words.length, 0);
+/** 全部单元：首位为真实 U01（管线产物），其后为示例占位（供 jukebox 选歌等场景使用） */
+export const UNITS: Unit[] = [PIPELINE_U01, ...EXAMPLE_UNITS];
+
+/** 首页/词卡/打印可选择的真实单元行（当前仅接入 U01，示例占位不在此列出） */
+export interface UnitRow {
+  id: string;
+  no: number;
+  title: string;
+  cn: string;
+}
+
+export const UNIT_ROWS: UnitRow[] = [
+  { id: PIPELINE_U01.id, no: PIPELINE_U01.no, title: PIPELINE_U01.title, cn: PIPELINE_U01.cn },
+];
+
+export const TOTAL_WORDS = PIPELINE_U01.words.length;
 
 export function unitOf(id: string): Unit {
-  return UNITS.find((u) => u.id === id) ?? UNITS[0];
+  if (id === PIPELINE_U01.id) return PIPELINE_U01;
+  return UNITS.find((u) => u.id === id) ?? PIPELINE_U01;
 }
 
 export function cardsByStage(unit: Unit, stage: Stage): SentenceCard[] {
   return unit.cards.filter((c) => c.stage === stage);
 }
 
-/** 本册共 6 周 × 5 天，Day 主题句 */
+/** 本册 5 个陪练日的主题（U01 两周制日程，读 05_schedule.json 含义） */
 export const DAY_TITLES = [
-  "我们一起做的事",
-  "把昨天听到的说出来",
-  "换我来问问题了",
-  "把句子说得更长一点",
-  "今天全部串起来",
+  "一起做的事/新学家务词",
+  "Can...help? 问与答",
+  "问家人的职业",
+  "我能做的事连起来说",
+  "ch 语音+短文读一读",
 ];

@@ -1,7 +1,7 @@
 // 打印小单：A4 黑白线稿（句卡 / PBL 模板 / 检验记录单 / 单元地图 / 练习小单含背面答案）
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { UNITS, shuffled, stageLabel, unitOf, type Stage } from "@/data/content";
+import { UNIT_ROWS, shuffled, stageLabel, unitOf, type Stage } from "@/data/content";
 import { useProgress } from "@/lib/store";
 import { Btn, PageHead, Panel } from "@/components/ui-kit";
 import { PrintIcon } from "@/components/icons";
@@ -62,7 +62,7 @@ function PrintPage() {
           ))}
         </div>
         <div className="-mx-1 flex snap-x gap-1.5 overflow-x-auto px-1">
-          {UNITS.map((u) => (
+          {UNIT_ROWS.map((u) => (
             <button
               key={u.id}
               type="button"
