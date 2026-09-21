@@ -552,7 +552,15 @@ function dedupeHistory(hist){
 function resetAll(){if(!confirm("重置当前册所有审核记录？"))return;BOOK.pages.forEach(p=>{delete S[pk(p.page)]});saveState(S);render()}
 
 // ===== 全屏双图审核模式 =====
-function reviewOrder(){reviewList=BOOK.pages.filter(p=>p.has_redr)}
+// ?unit=N 时限定当前单元（工作台审核视图，单元末自动衔接）；无 ?unit 保持全册
+function reviewOrder(){
+  if(_qsUnit!==null&&_qsUnit>=0&&_qsUnit<BOOK.units.length){
+    const u=BOOK.units[_qsUnit];
+    reviewList=BOOK.pages.filter(p=>p.page>=u.start&&p.page<u.end&&p.has_redr);
+  }else{
+    reviewList=BOOK.pages.filter(p=>p.has_redr);
+  }
+}
 function openReview(idx){
   if(!reviewList.length)return;
   reviewIdx=(idx+reviewList.length)%reviewList.length;
@@ -609,8 +617,12 @@ function renderReview(){
 function shouldSkipPass(){const el=document.getElementById("rfSkipPass");return !el||el.checked;}
 function autoAdvance(delta){
   let i=reviewIdx+delta;
-  if(delta<0&&i<0){return;}                        // 已到首张
-  if(delta>0&&i>=reviewList.length){               // 本册完成
+  if(delta<0&&i<0){return;}                        // 已到首张 / 向后不跨单元
+  if(delta>0&&i>=reviewList.length){               // 越界：单元末（?unit）或册末（全册）
+    if(_qsUnit!==null){                            // 单元模式：通知工作台衔接下一单元
+      window.parent.postMessage({type:"unit_review_done",book:GRADE_VOL,unit:_qsUnit},"*");
+      return;
+    }
     if(confirm("本册已审核完成，返回列表？")){closeReview();}
     return;
   }
@@ -620,7 +632,11 @@ function autoAdvance(delta){
     i+=delta;
     if(++guard>reviewList.length){break;}
   }
-  if(delta>0&&i>=reviewList.length){
+  if(delta>0&&i>=reviewList.length){               // skipPass 跳过后越界同样走该分支
+    if(_qsUnit!==null){
+      window.parent.postMessage({type:"unit_review_done",book:GRADE_VOL,unit:_qsUnit},"*");
+      return;
+    }
     if(confirm("本册已审核完成，返回列表？")){closeReview();}
     return;
   }
@@ -768,15 +784,17 @@ function autoVerdict(k){
   S[k].reviewed_at=new Date().toISOString();
 }
 render();
-// 默认进入全屏双图审核模式；?unit=N 时定位到该单元首张重绘页（工作台审核视图传入）
+// 默认进入全屏双图审核模式；?unit=N 时限定到该单元（工作台审核视图传入，单元末自动衔接下一单元）
 const _qsUnit=(()=>{const m=/[?&]unit=(\d+)/.exec(location.search);return m?parseInt(m[1]):null;})();
 reviewOrder();
-if(reviewList.length){
+if(!reviewList.length){
+  // 空 reviewList（?unit=N 且该单元无 has_redr 页）→ 立即通知工作台跳过，不卡白屏
+  if(_qsUnit!==null){
+    window.parent.postMessage({type:"unit_review_done",book:GRADE_VOL,unit:_qsUnit},"*");
+  }
+}else{
   if(_qsUnit!==null&&_qsUnit>=0&&_qsUnit<BOOK.units.length){
-    const u=BOOK.units[_qsUnit];
-    const idx=reviewList.findIndex(p=>p.page>=u.start&&p.page<u.end);
-    if(idx>=0){currentUnit=_qsUnit;showUnit(_qsUnit);openReview(idx);}
-    else{currentUnit=_qsUnit;showUnit(_qsUnit);openReview(0);}
+    currentUnit=_qsUnit;showUnit(_qsUnit);openReview(0);
   }else{
     openReview(0);
   }

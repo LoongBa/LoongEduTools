@@ -62,6 +62,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .pub-log[hidden]{display:none}
 #waFrame{flex:1;border:none;min-height:0}
 .wa-note{font-size:11px;color:#888;margin-left:6px}
+/* V1.3.2：任务日志流式 + 审计弹层 */
+.tp-log{background:#fafafa;border-bottom:1px solid #f0f0f0;padding:0 14px 8px;max-height:140px;overflow:auto;font-size:11px;line-height:1.5}
+.tp-log pre{margin:0;white-space:pre-wrap;word-break:break-all;font-family:Consolas,Menlo,monospace;color:#555}
+.tp-err{color:#C62828;font-size:11px;padding:2px 0;white-space:pre-wrap;word-break:break-all}
+#auditModal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400;display:flex;align-items:center;justify-content:center}
+#auditModal[hidden]{display:none}
+.am-box{background:#fff;border-radius:10px;width:720px;max-width:92vw;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.3)}
+.am-head{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#E3F2FD;font-weight:600;font-size:14px}
+.am-body{overflow:auto;padding:12px 16px;font-family:Consolas,Menlo,monospace;font-size:11px;line-height:1.6;white-space:pre-wrap;word-break:break-all}
+.am-err{color:#C62828}.am-warn{color:#E65100}.am-ok{color:#2E7D32}.am-line{color:#555}
 </style>
 </head>
 <body>
@@ -95,6 +105,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <div class="wa-pub">
       <button class="btn btn-w" onclick="doPromote()" title="把审核通过的页面从任务输出复制到重绘目录">⬆️ 提材通过页</button>
       <button class="btn btn-p" onclick="doRebuild()" title="重建当前单元点读 zip">🔨 重建单元</button>
+      <button class="btn btn-w" onclick="doAudit()" title="对当前单元产物运行体积/文本门禁审计与合规自查">🔍 审计</button>
       <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
         <span class="pub-status" id="pubStatus"></span>
         <pre class="pub-log" id="pubLog" hidden></pre>
@@ -107,6 +118,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     </div>
   </div>
   <iframe id="waFrame" src="about:blank"></iframe>
+</div>
+
+<!-- V1.3.2：审计结果弹层（audit + compliance 的 ERROR/WARN 行列表） -->
+<div id="auditModal" hidden>
+  <div class="am-box">
+    <div class="am-head"><span>🔍 审计结果</span><button class="btn btn-o" onclick="closeAuditModal()">✕ 关闭</button></div>
+    <div class="am-body" id="auditBody"></div>
+  </div>
 </div>
 
 <script>
@@ -183,10 +202,21 @@ function renderUnits(){
       auVal = `<span class="badge b-val-bad" title="音频缺失（点击重校验）">🔇缺音频 ${v.audio_missing}</span>`;
     else
       auVal = `<span class="badge b-val-ok" title="音频覆盖完整">🔊音频 ✓</span>`;
+    // 书页完整性校验（V1.3.2）：serve 下发 page_issues（缺页+双缺图计数）；-1=数据异常无法计算
+    let pgVal = "";
+    const pgi = Number(v.page_issues);
+    const pzt = Number(v.page_zt);
+    if (pgi === -1 || pzt === -1) {
+      pgVal = `<span class="badge b-val-bad" title="书页完整性：数据异常无法计算">⚠️ 页异常</span>`;
+    } else {
+      if (pgi > 0) pgVal += `<span class="badge b-val-bad" title="书页缺失（缺页/双缺图）">📄 缺页 ${pgi}</span>`;
+      if (pzt > 0) pgVal += `<span class="badge b-val-mid" title="零 track 页（可能为扉页，可人工放行）">📄 零track ${pzt}</span>`;
+      if (!pgVal && !isNaN(pgi)) pgVal = `<span class="badge b-val-ok" title="书页完整">📄 完整</span>`;
+    }
     card.innerHTML = `
       <div class="unit-head"><span class="unit-title">${esc(u.title)}</span><span style="font-size:11px;color:#999">${u.pages} 页</span></div>
       <div class="unit-meta">页 ${u.start}-${u.end - 1}${u.hotzone ? " · " + esc(u.hotzone.file) : ""}</div>
-      <div class="unit-badges">${passBadge}${failBadge}${pend}${hzBadge}${hzVal}${auVal}</div>
+      <div class="unit-badges">${passBadge}${failBadge}${pend}${hzBadge}${hzVal}${auVal}${pgVal}</div>
       <div class="unit-actions">
         <button class="btn btn-p" onclick="openUnit(${u.index},'review')">📋 审核</button>
         <button class="btn btn-w" onclick="openUnit(${u.index},'hotzone')">🔧 热区</button>
@@ -338,25 +368,140 @@ async function doRebuild(){
   } catch (e) { st.textContent = "❌ " + e.message; }
 }
 
-/* ---- 重绘任务队列（右上角角标 + 面板） ---- */
+/* ---- 审计（V1.3.2）：体积/文本门禁 + 合规自查，一键展示 ERROR/WARN ---- */
+function auditLines(block){
+  if (!block) return [];
+  if (typeof block === "string") return block.split("\n");
+  if (Array.isArray(block)) return block.map(String);
+  const out = [];
+  ["errors", "warnings", "failed", "passed"].forEach(k => {   // 与 _api_audit 返回字段对齐（failed/passed 汇总行）
+    const v = block[k];
+    if (v === null || v === undefined) return;
+    if (Array.isArray(v)) v.forEach(x => out.push(String(x)));
+    else out.push(String(v));
+  });
+  return out;
+}
+function showAuditModal(j, errMsg){
+  const body = document.getElementById("auditBody");
+  let html = "";
+  if (errMsg) {
+    html = `<div class="am-err">${esc(errMsg)}</div>`;
+  } else {
+    const lines = auditLines(j.audit).concat(auditLines(j.compliance));
+    if (!lines.length && j.tail) lines.push(...String(j.tail).split("\n"));
+    if (!lines.length) {
+      html = `<div class="am-ok">✅ 未发现问题（无 ERROR / WARN 输出）</div>`;
+    } else {
+      lines.forEach(l => {
+        const s = String(l);
+        const cls = /^ERROR[:：]|^FAILED/.test(s) ? "am-err" : /^WARN[:：]/.test(s) ? "am-warn" : /^PASS/.test(s) ? "am-ok" : "am-line";
+        html += `<div class="${cls}">${esc(s)}</div>`;
+      });
+    }
+  }
+  body.innerHTML = html;
+  document.getElementById("auditModal").hidden = false;
+}
+function closeAuditModal(){ document.getElementById("auditModal").hidden = true; }
+async function doAudit(){
+  const st = document.getElementById("pubStatus");
+  const u = STATUS && STATUS.units && STATUS.units[curUnit];
+  if (!u) { showAuditModal(null, "❌ 无当前单元（请先刷新状态）"); return; }
+  st.textContent = "🔍 审计当前产物中…";
+  st.style.whiteSpace = "nowrap";
+  try {
+    // target：当前选中单元对应 dist 产物 zip（照 /api/rebuild 同款参数，后端以 target 为准、tool/units 供回退解析）
+    const target = "dist/学科/英语点读/" + (u.app_name || "unit" + (curUnit + 1)) + ".zip";
+    const res = await fetch("/api/audit", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target: target, tool: "英语点读", units: [curUnit], book: curBook }),
+    });
+    const j = await res.json();
+    if (!res.ok) {
+      showAuditModal(null, "❌ HTTP " + res.status + " " + (j.error || ""));
+      st.textContent = "❌ 审计失败";
+      return;
+    }
+    showAuditModal(j, null);
+    st.textContent = "🔍 审计完成（点开结果弹层查看 ERROR/WARN）";
+  } catch (e) {
+    st.textContent = "❌ 审计请求失败";
+    showAuditModal(null, "❌ " + e.message);
+  }
+}
 let taskTimer = null;
 const ST_LABEL = { queued: "⏳队列", running: "🔨进行", done: "✅完成", failed: "❌失败" };
+// V1.3.2 日志流式：每任务已渲染行数 + 日志容器（按 任务名|页码 复用，避免全量重写清空已渲染日志）
+window.__lastLogLen = {};
+const taskLogEls = {};
+function taskKey(t){ return t.task + "|" + t.page; }
 async function refreshTasks(){
   try {
     const r = await fetch("/api/tasks");
     const j = await r.json();
     document.getElementById("taskBadge").textContent = `🔄 ${j.queue}/${j.done}`;
     const list = document.getElementById("taskList");
-    if (!j.tasks.length) { list.innerHTML = '<div style="color:#999;padding:10px 14px">（暂无任务）</div>'; return; }
-    list.innerHTML = j.tasks.map(t => {
+    if (!j.tasks.length) {
+      list.innerHTML = '<div style="color:#999;padding:10px 14px">（暂无任务）</div>';
+      Object.keys(taskLogEls).forEach(k => delete taskLogEls[k]);
+      window.__lastLogLen = {};
+      return;
+    }
+    // 状态行全量刷新 + 日志区增量 append（复用日志容器，自动滚动到底）
+    const seen = {};
+    list.innerHTML = "";
+    j.tasks.forEach(t => {
+      const key = taskKey(t);
+      seen[key] = true;
       const st = ST_LABEL[t.status] || t.status;
       const time = t.status === "queued" ? t.created_at.slice(5, 16) : (t.done_at || t.started_at || "").slice(5, 16);
-      return `<div class="tp-item">
-        <span class="tp-st st-${t.status}">${st}</span>
+      const item = document.createElement("div");
+      item.className = "tp-item";
+      item.innerHTML = `<span class="tp-st st-${t.status}">${st}</span>
         <span class="tp-info">${esc(t.task)} · P${t.page}</span>
-        <span class="tp-time">${esc(time)}</span>
-      </div>`;
-    }).join("");
+        <span class="tp-time">${esc(time)}</span>`;
+      list.appendChild(item);
+      // 日志容器（按任务键复用，不清空重建 → __lastLogLen 精确）
+      let logEl = taskLogEls[key];
+      if (!logEl) {
+        logEl = document.createElement("div");
+        logEl.className = "tp-log";
+        logEl.appendChild(document.createElement("pre"));
+        taskLogEls[key] = logEl;
+      }
+      // 失败任务 error 摘要（状态变化时更新）
+      const errEl = logEl.querySelector(".tp-err");
+      if (t.status === "failed" && t.error) {
+        if (!errEl) {
+          const er = document.createElement("div");
+          er.className = "tp-err";
+          er.textContent = "❌ " + t.error;
+          logEl.insertBefore(er, logEl.firstChild);
+        } else { errEl.textContent = "❌ " + t.error; }
+      } else if (errEl) { errEl.remove(); }
+      // 增量 append 新增日志行（j.tasks 每项 logs 数组切片）
+      const pre = logEl.querySelector("pre");
+      const logs = t.logs || [];
+      const last = window.__lastLogLen[key] || 0;
+      if (logs.length > last) {
+        // 正常增量：只 append 新增行
+        for (let k = last; k < logs.length; k++) {
+          pre.appendChild(document.createTextNode((k === last ? "" : "\n") + logs[k]));
+        }
+        window.__lastLogLen[key] = logs.length;
+      } else {
+        // 后端 [-200:] 截断滚动（logs >200 行被裁剪，长度不再单调增长）→ 全量重设防新行丢失
+        pre.textContent = logs.join("\n");
+        window.__lastLogLen[key] = logs.length;
+      }
+      logEl.scrollTop = logEl.scrollHeight;      // 自动滚动到底
+      list.appendChild(logEl);
+    });
+    // 清理已消失任务（完成被清空）的容器与计数
+    Object.keys(taskLogEls).forEach(k => {
+      if (!seen[k]) { delete taskLogEls[k]; delete window.__lastLogLen[k]; }
+    });
   } catch (e) { /* 服务未启动 */ }
 }
 function toggleTaskPanel(){
@@ -371,7 +516,14 @@ async function clearTasks(){
 // 轮询任务状态 + iframe 通知（审核视图发重绘后立即刷新）
 setInterval(refreshTasks, 5000);
 window.addEventListener("message", e => {
-  if (e.data && e.data.type === "redraw_sent") { refreshTasks(); }
+  const t = e.data && e.data.type;
+  if (t === "redraw_sent") refreshTasks();
+  else if (t === "hotzone_saved") loadStatus();                       // 热区保存回传刷新
+  else if (t === "unit_review_done") {                                // 审核单元完成衔接
+    const nu = curUnit + 1;
+    if (STATUS && STATUS.units && nu < STATUS.units.length) openUnit(nu, "review");
+    else { backHome(); alert("本册全部单元审核完成 🎉"); loadStatus(); }
+  }
 });
 
 /* 初始化 */

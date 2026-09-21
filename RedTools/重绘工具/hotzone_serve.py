@@ -24,6 +24,7 @@ import argparse
 import datetime
 import json
 import os
+import queue
 import re
 import shutil
 import subprocess
@@ -61,6 +62,7 @@ BOOK_MAP = {k: (bid, g, v, tool) for k, (bid, g, v, tool) in [(b[0], (b[1], b[2]
 # ---- 重绘任务队列（内存 + 后台 worker 线程） ----
 TASK_QUEUE: list[dict] = []
 TASK_LOCK = threading.Lock()
+FILE_LOCK = threading.Lock()  # 校验记录.json / 审核记录.json 并发读写一致性（read-modify-write 整段持锁）
 TASK_WORKER_STARTED = False
 REDRAW_PROMPT = "prompts/cartoon_redraw_clear_text.txt"  # 强化提示词（文字清晰）
 REDRAW_OUTDIR = "output_v2fix"
@@ -104,10 +106,43 @@ def redraw_worker() -> None:
                "--force"]  # 强制覆盖输出（任务语义=重新重绘该页）
         err = ""
         try:
-            p = subprocess.run(cmd, capture_output=True, text=True, timeout=600, encoding="utf-8")
-            ok = p.returncode == 0
+            # 增量日志：stdout/stderr 并流收集；线程读 stdout 入队 + 主循环带超时 poll——
+            # 子进程零输出挂起时也能每 1s 检查 deadline 后 kill（纯 for line 会永久阻塞读）
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                    text=True, encoding="utf-8", errors="replace")
+            q: queue.Queue[str | None] = queue.Queue()
+            _end = object()
+
+            def _reader() -> None:
+                try:
+                    for ln in proc.stdout:
+                        q.put(ln)
+                except Exception:
+                    pass
+                finally:
+                    q.put(_end)  # EOF sentinel
+
+            threading.Thread(target=_reader, daemon=True).start()
+            deadline = time.time() + 600
+            while True:
+                try:
+                    ln = q.get(timeout=1.0)
+                    if ln is _end:
+                        break
+                    task["logs"].append(ln.rstrip())
+                    if len(task["logs"]) > 500:
+                        task["logs"] = task["logs"][-500:]
+                except queue.Empty:
+                    if time.time() > deadline:
+                        task["logs"].append("[timeout] 子进程超时，强制终止")
+                        proc.kill()
+                        break
+                    if proc.poll() is not None:
+                        break  # 子进程已退出但 stdout 未 EOF（异常）→ 结束收集
+            proc.wait(timeout=10)  # kill/退出后 wait 快速返回
+            ok = proc.returncode == 0
             if not ok:
-                err = (p.stderr or p.stdout or "")[-300:]
+                err = "\n".join(task["logs"][-300:])
         except Exception as e:
             ok = False
             err = str(e)
@@ -214,7 +249,8 @@ class Handler(SimpleHTTPRequestHandler):
         reviews: dict = {}
         qf = MAT_ROOT / grade / vol / "_重绘图片素材" / "审核记录.json"
         if qf.exists():
-            reviews = json.loads(qf.read_text(encoding="utf-8"))
+            with FILE_LOCK:
+                reviews = json.loads(qf.read_text(encoding="utf-8"))
         # 单元列表 + 各单元校正文件
         units: list[dict] = []
         bpath = redr / "书数据.json"
@@ -262,25 +298,37 @@ class Handler(SimpleHTTPRequestHandler):
                 actual_pages = sum(1 for p in bookdata.get("bookpage", [])
                                    if start <= int(p.get("page_no") or 0) < end)
                 try:
-                    from build_framework import resolve_unit_no, build_unit_data, validate_hotzones
+                    from build_framework import resolve_unit_no, build_unit_data, validate_hotzones, validate_page_completeness
                     unit_no = resolve_unit_no(bookdata, i)
                     # 热区坐标校验：纯计算、无 IO 成本，status 自动算（校正后最终坐标）
                     hz_issues = 0
+                    page_issues = 0
+                    page_zt = 0
                     try:
                         unit = build_unit_data(bookdata, i, start, end, hz)
                         hz_issues = len(validate_hotzones(unit))
+                        # 书页完整性：缺页 + 双缺图（原版兜底 WARN 不计数）；零track 单独 page_zt 展示
+                        comp = validate_page_completeness(bookdata, unit, start, end,
+                                                          MAT_ROOT / grade / vol / "_图片素材", redr)
+                        page_issues = len(comp["missing_pages"]) + len(comp["both_missing_imgs"])
+                        page_zt = len(comp["zero_track_pages"])
                     except Exception:
                         hz_issues = -1  # 无法构建单元（数据异常）
+                        page_issues = -1
+                        page_zt = -1
                 except ImportError:
                     unit_no = title
                     hz_issues = -1
+                    page_issues = -1
+                    page_zt = -1
                 app_name = f"{app_prefix}{unit_no}单元"
                 # 音频缺失：读缓存（校验记录.json；null=未校验；mtime 变化=stale→null）
                 audio_missing = None
                 vf = redr / "校验记录.json"
                 if vf.exists():
                     try:
-                        vdata = json.loads(vf.read_text(encoding="utf-8"))
+                        with FILE_LOCK:
+                            vdata = json.loads(vf.read_text(encoding="utf-8"))
                         am = vdata.get("audio", {}).get(str(i))
                         if am is not None:
                             # staleness：书数据/校正/音频任一 mtime 变化 → 缓存过期 → null
@@ -309,7 +357,8 @@ class Handler(SimpleHTTPRequestHandler):
                               "hotzone": hz,
                               "app_name": app_name,
                               "review": {"done": done, "pass": passed, "fail": failed},
-                              "validation": {"hz_issues": hz_issues, "audio_missing": audio_missing}})
+                              "validation": {"hz_issues": hz_issues, "page_issues": page_issues,
+                                              "page_zt": page_zt, "audio_missing": audio_missing}})
         self._send_json({"book": book, "grade": grade, "vol": vol,
                          "img_updated_at": fmt_local(img_mt), "units": units})
 
@@ -332,6 +381,8 @@ class Handler(SimpleHTTPRequestHandler):
             self._api_tasks_clear()
         elif path == "/api/validate":
             self._api_validate()
+        elif path == "/api/audit":
+            self._api_audit()
         else:
             self.send_error(404, "unknown api")
 
@@ -392,26 +443,27 @@ class Handler(SimpleHTTPRequestHandler):
                     hist.append(e)
                 return hist
         qf = MAT_ROOT / grade / vol / "_重绘图片素材" / "审核记录.json"
-        bref = json.loads(qf.read_text(encoding="utf-8")) if qf.exists() else {}
-        changed = 0
-        for page, rv in reviews.items():
-            page = str(page)
-            if rv.get("pass") is True:
-                clean = {"pass": True, "issues": [], "reason": "", "marks": [], "labels": [],
-                         "reviewed_at": rv.get("reviewed_at"), "history": []}
-                if bref.get(page) != clean:
-                    changed += 1
-                bref[page] = clean
-            else:
-                old = bref.get(page) or {}
-                entry = {"pass": rv.get("pass", False), "issues": rv.get("issues", []),
-                         "reason": rv.get("reason", ""), "marks": rv.get("marks", []),
-                         "labels": rv.get("labels", []), "reviewed_at": rv.get("reviewed_at"),
-                         "history": merge_history(old.get("history"), rv.get("history", []))}
-                if bref.get(page) != entry:
-                    changed += 1
-                bref[page] = entry
-        qf.write_text(json.dumps(bref, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        with FILE_LOCK:
+            bref = json.loads(qf.read_text(encoding="utf-8")) if qf.exists() else {}
+            changed = 0
+            for page, rv in reviews.items():
+                page = str(page)
+                if rv.get("pass") is True:
+                    clean = {"pass": True, "issues": [], "reason": "", "marks": [], "labels": [],
+                             "reviewed_at": rv.get("reviewed_at"), "history": []}
+                    if bref.get(page) != clean:
+                        changed += 1
+                    bref[page] = clean
+                else:
+                    old = bref.get(page) or {}
+                    entry = {"pass": rv.get("pass", False), "issues": rv.get("issues", []),
+                             "reason": rv.get("reason", ""), "marks": rv.get("marks", []),
+                             "labels": rv.get("labels", []), "reviewed_at": rv.get("reviewed_at"),
+                             "history": merge_history(old.get("history"), rv.get("history", []))}
+                    if bref.get(page) != entry:
+                        changed += 1
+                    bref[page] = entry
+            qf.write_text(json.dumps(bref, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         # 重生成报告（限本册，避免全量 SSIM 拖慢）
         subprocess.run([sys.executable, str(REDTOOLS / "重绘工具" / "gen_qa_reports.py"),
                         "--book", book], capture_output=True, timeout=600)
@@ -481,6 +533,54 @@ class Handler(SimpleHTTPRequestHandler):
         self._send_json({"ok": proc.returncode == 0, "rc": proc.returncode,
                          "status": status_line, "tail": out[-1200:]})
 
+    # ---- 审计：POST /api/audit {target} → audit_artifact.py（体积/文本门禁）+ compliance_check.py（合规自查） ----
+    def _api_audit(self) -> None:
+        try:
+            data = self._read_json()
+        except Exception:
+            self._send_json({"error": "bad json"}, 400)
+            return
+        target = data.get("target", "")  # dist 目录或 zip 绝对路径
+        if not target:
+            self._send_json({"error": "需 target（dist 目录或 zip 绝对路径）"}, 400)
+            return
+        scripts = {
+            "audit": REDTOOLS / ".skill" / "minitool-zip-builder" / "scripts" / "audit_artifact.py",
+            "compliance": REDTOOLS / "scripts" / "compliance_check.py",
+        }
+        results: dict = {}
+        tail_lines: list[str] = []
+        all_ok = True
+        for name, script in scripts.items():
+            if not script.exists():
+                results[name] = {"error": "script not found"}
+                all_ok = False
+                continue
+            try:
+                proc = subprocess.run([sys.executable, str(script), target],
+                                      capture_output=True, text=True, encoding="utf-8", timeout=60)
+            except subprocess.TimeoutExpired:
+                results[name] = {"error": "audit 超时"}
+                all_ok = False
+                continue
+            out = (proc.stdout or "") + (proc.stderr or "")
+            lines = out.splitlines()
+            errs = [l for l in lines if l.startswith("ERROR:")]
+            warns = [l for l in lines if l.startswith("WARN:")]
+            fails = [l for l in lines if l.startswith("FAILED:")]
+            passes = [l for l in lines if l.startswith("PASS:")]
+            ok = proc.returncode == 0
+            if not ok:
+                all_ok = False
+            results[name] = {"rc": proc.returncode, "ok": ok,
+                             "errors": errs, "warnings": warns,
+                             "failed": fails, "passed": passes}
+            tail_lines.append(out[-600:])
+        self._send_json({"ok": all_ok, "target": target,
+                         "audit": results.get("audit", {}),
+                         "compliance": results.get("compliance", {}),
+                         "tail": "\n".join(tail_lines)[-1200:]})
+
     # ---- 发送重绘任务：POST /api/redraw {book, unit, page} → 入队后台执行 ----
     def _api_redraw(self) -> None:
         try:
@@ -517,7 +617,7 @@ class Handler(SimpleHTTPRequestHandler):
                 return
             TASK_QUEUE.append({"task": tname, "page": page, "unit": unit, "book": book,
                                "status": "queued", "created_at": _now_iso(),
-                               "started_at": None, "done_at": None, "error": ""})
+                               "started_at": None, "done_at": None, "error": "", "logs": []})
         ensure_worker()
         q = sum(1 for t in TASK_QUEUE if t["status"] in ("queued", "running"))
         d = sum(1 for t in TASK_QUEUE if t["status"] in ("done", "failed"))
@@ -528,6 +628,8 @@ class Handler(SimpleHTTPRequestHandler):
     def _api_tasks(self) -> None:
         with TASK_LOCK:
             items = [dict(t) for t in reversed(TASK_QUEUE)]
+        # logs 截尾 200 行（浅拷贝，避免共享可变列表的心理预期，保持 reversed 顺序）
+        items = [{**t, "logs": t.get("logs", [])[-200:]} for t in items]
         self._send_json({"tasks": items,
                          "queue": sum(1 for t in items if t["status"] in ("queued", "running")),
                          "done": sum(1 for t in items if t["status"] in ("done", "failed"))})
@@ -571,54 +673,55 @@ class Handler(SimpleHTTPRequestHandler):
         audio_dir = MAT_ROOT / grade / vol / "_重读音频素材" / "单句音频"
         if not audio_dir.exists():
             audio_dir = MAT_ROOT / grade / vol / "_音频素材" / "单句音频"
-        # 读缓存（保留未变更单元的旧结果）
+        # 读缓存（保留未变更单元的旧结果）；read-modify-write 整段持锁
         vf = redr / "校验记录.json"
-        vdata = json.loads(vf.read_text(encoding="utf-8")) if vf.exists() else {}
-        vdata.setdefault("audio", {})
-        audio_res = vdata.get("audio", {})
-        results = []
-        for i, c in enumerate(ch):
-            if unit_filter is not None and int(unit_filter) != i:
-                continue
-            start = int(c.get("page_no", 0))
-            end = pages_max + 1
-            if i + 1 < len(ch) and ch[i + 1].get("page_no"):
-                end = int(ch[i + 1].get("page_no"))
-            # 加载本单元校正文件（校验校正后最终坐标，与 build 同口径）
-            title = c.get("title", f"Unit {i + 1}")
-            hz_data = None
-            if redr.exists():
-                norm = title.replace(" ", "").replace("_", "")
-                for f in redr.glob("热区校正_*.json"):
-                    stem = f.stem[len("热区校正_"):]
-                    if stem.replace(" ", "").replace("_", "") == norm:
-                        try:
-                            hz_data = json.loads(f.read_text(encoding="utf-8"))
-                        except Exception:
-                            hz_data = None
-                        break
-            try:
-                unit = build_unit_data(bookdata, i, start, end, hz_data)
-                hz = len(validate_hotzones(unit))
-                ac = validate_audio_coverage(unit, audio_dir)
-                missing = len(ac["missing_audio"])
-            except Exception as e:
-                self._send_json({"error": f"单元 {i} 校验失败: {e}"}, 500)
-                return
-            audio_res[str(i)] = {"missing": missing, "total": ac["total_tracks"]}
-            results.append({"unit": i, "hz_issues": hz, "audio_missing": missing,
-                            "audio_total": ac["total_tracks"]})
-        vdata["audio"] = audio_res
-        vdata["checked_at"] = _now_iso()
-        # 缓存失效键：书数据 / 热区校正 / 音频目录 mtime——任一变化 → status 判 stale
-        vdata["mtime"] = {
-            "book": bpath.stat().st_mtime if bpath.exists() else 0,
-            "hotzone": max((f.stat().st_mtime for f in redr.glob("热区校正_*.json")), default=0)
-                       if redr.exists() else 0,
-            "audio": max((f.stat().st_mtime for f in audio_dir.glob("*.mp3")), default=0)
-                     if audio_dir.exists() else 0,
-        }
-        vf.write_text(json.dumps(vdata, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        with FILE_LOCK:
+            vdata = json.loads(vf.read_text(encoding="utf-8")) if vf.exists() else {}
+            vdata.setdefault("audio", {})
+            audio_res = vdata.get("audio", {})
+            results = []
+            for i, c in enumerate(ch):
+                if unit_filter is not None and int(unit_filter) != i:
+                    continue
+                start = int(c.get("page_no", 0))
+                end = pages_max + 1
+                if i + 1 < len(ch) and ch[i + 1].get("page_no"):
+                    end = int(ch[i + 1].get("page_no"))
+                # 加载本单元校正文件（校验校正后最终坐标，与 build 同口径）
+                title = c.get("title", f"Unit {i + 1}")
+                hz_data = None
+                if redr.exists():
+                    norm = title.replace(" ", "").replace("_", "")
+                    for f in redr.glob("热区校正_*.json"):
+                        stem = f.stem[len("热区校正_"):]
+                        if stem.replace(" ", "").replace("_", "") == norm:
+                            try:
+                                hz_data = json.loads(f.read_text(encoding="utf-8"))
+                            except Exception:
+                                hz_data = None
+                            break
+                try:
+                    unit = build_unit_data(bookdata, i, start, end, hz_data)
+                    hz = len(validate_hotzones(unit))
+                    ac = validate_audio_coverage(unit, audio_dir)
+                    missing = len(ac["missing_audio"])
+                except Exception as e:
+                    self._send_json({"error": f"单元 {i} 校验失败: {e}"}, 500)
+                    return
+                audio_res[str(i)] = {"missing": missing, "total": ac["total_tracks"]}
+                results.append({"unit": i, "hz_issues": hz, "audio_missing": missing,
+                                "audio_total": ac["total_tracks"]})
+            vdata["audio"] = audio_res
+            vdata["checked_at"] = _now_iso()
+            # 缓存失效键：书数据 / 热区校正 / 音频目录 mtime——任一变化 → status 判 stale
+            vdata["mtime"] = {
+                "book": bpath.stat().st_mtime if bpath.exists() else 0,
+                "hotzone": max((f.stat().st_mtime for f in redr.glob("热区校正_*.json")), default=0)
+                           if redr.exists() else 0,
+                "audio": max((f.stat().st_mtime for f in audio_dir.glob("*.mp3")), default=0)
+                         if audio_dir.exists() else 0,
+            }
+            vf.write_text(json.dumps(vdata, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         self._send_json({"ok": True, "results": results, "file": str(vf)})
 
     def translate_path(self, path: str) -> str:

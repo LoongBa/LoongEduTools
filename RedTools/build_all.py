@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -128,6 +129,14 @@ def main() -> int:
         for u in unit_list:
             try:
                 zip_path = build_tool(cfg, u, args.pages, mode=args.mode, strict=args.strict)
+                # V1.3.2: --strict 时对发布 zip 附加体积/文本门禁审计（zip 打包完成后才能审计）
+                if args.strict and zip_path and str(zip_path).endswith(".zip"):
+                    audit_script = Path(__file__).parent / ".skill" / "minitool-zip-builder" / "scripts" / "audit_artifact.py"
+                    ac = subprocess.run([sys.executable, str(audit_script), str(zip_path)],
+                                        capture_output=True, text=True, encoding="utf-8", timeout=60)
+                    if ac.returncode != 0:
+                        detail = (ac.stdout or "") + (ac.stderr or "")
+                        raise SystemExit(f"体积/文本门禁审计失败 rc={ac.returncode}: {detail[-600:]}")
                 if zip_path:
                     built += 1
             except SystemExit as e:

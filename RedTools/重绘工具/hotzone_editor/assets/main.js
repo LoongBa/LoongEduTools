@@ -351,6 +351,10 @@
         return r.text();
       }).then(function (msg) {
         flashSaveStatus('✅ ' + msg);
+        // 回传工作台：热区已保存 → 父页面刷新 hotzone.updated_at / hz_issues / page_issues
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({ type: 'hotzone_saved', book: currentBookKey, unit: currentUnit }, '*');
+        }
       }).catch(function (err) {
         flashSaveStatus('❌ 保存失败: ' + err.message + '（已改为下载留档）');
         var fname = downloadExport(payload);
