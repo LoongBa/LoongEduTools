@@ -74,7 +74,7 @@ PEP词库/
 ### 点读数据（data/diandu/*.json）
 
 - **源**：人教点读小程序（`get_book_json.js` 浏览器取）→ 解压 `book_data.zip` 到
-  `data/diandu/` 即得 11 册（六下未出版，2027 寒假再检查）。
+  `data/diandu/` 即得 11 册（六下未出版，推测 27 年寒假甚至下学期开学前发布，此前暂缓）。
 - **下载素材**（音频/图片/字幕 → 教材素材库）：
   ```bash
   python PEP词库/tools/diandu/diandu_audio.py 下载素材 \
