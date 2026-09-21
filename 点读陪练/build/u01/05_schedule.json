@@ -1,0 +1,103 @@
+{
+  "schema": "schedule@1",
+  "unit": "U01",
+  "weeks": 2,
+  "days": [
+    {
+      "day": 1,
+      "week": 1,
+      "type": "tiantian",
+      "review": "旧词闪卡（记忆曲线调度）",
+      "new": [
+        "S0",
+        "S1"
+      ],
+      "consolidate": [
+        "S0扩展层",
+        "S1扩展层"
+      ],
+      "tutor": true
+    },
+    {
+      "day": 2,
+      "week": 1,
+      "type": "tiantian",
+      "review": "旧词闪卡（记忆曲线调度）",
+      "new": [
+        "S2"
+      ],
+      "consolidate": [
+        "S2扩展层"
+      ],
+      "tutor": true
+    },
+    {
+      "day": 3,
+      "week": 1,
+      "type": "tiantian",
+      "review": "旧词闪卡（记忆曲线调度）",
+      "new": [
+        "S3"
+      ],
+      "consolidate": [
+        "S3扩展层"
+      ],
+      "tutor": true
+    },
+    {
+      "day": "周末1",
+      "week": 1,
+      "type": "pbl_weekend",
+      "segment": "S5",
+      "note": "家长陪做项目，整块时间 30-40 分"
+    },
+    {
+      "day": 4,
+      "week": 2,
+      "type": "tiantian",
+      "review": "前几天句型闪卡",
+      "new": [
+        "S4"
+      ],
+      "consolidate": [
+        "S4扩展层"
+      ],
+      "tutor": true
+    },
+    {
+      "day": 5,
+      "week": 2,
+      "type": "tiantian",
+      "review": "前几天句型闪卡",
+      "new": [
+        "S6",
+        "S7"
+      ],
+      "consolidate": [
+        "S6扩展层",
+        "S7扩展层"
+      ],
+      "tutor": true
+    },
+    {
+      "day": "周末2",
+      "week": 2,
+      "type": "yuebing_weekend",
+      "segments": [
+        "S8"
+      ],
+      "print": "worksheet",
+      "note": "检验站（测）+ 打印小单（练+家长判）"
+    }
+  ],
+  "buffers": [
+    8,
+    9,
+    10
+  ],
+  "buffet": {
+    "songs": "单元点唱机（碎片随时）",
+    "dictation": "单元听写（每周1-2次）",
+    "review_flash": "背单词旧词（每天5分钟记忆曲线）"
+  }
+}

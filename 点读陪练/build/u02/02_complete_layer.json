@@ -1,0 +1,734 @@
+[
+  {
+    "pattern_id": "p1",
+    "frame": "What's your friend's name? {his_her} name is {name}.",
+    "rows": [
+      {
+        "text": "What's your friend's name? His name is Leo.",
+        "bind": {
+          "his_her": "His",
+          "name": "Leo"
+        }
+      },
+      {
+        "text": "What's your friend's name? His name is Mia.",
+        "bind": {
+          "his_her": "His",
+          "name": "Mia"
+        }
+      },
+      {
+        "text": "What's your friend's name? His name is Sam.",
+        "bind": {
+          "his_her": "His",
+          "name": "Sam"
+        }
+      },
+      {
+        "text": "What's your friend's name? His name is Nana.",
+        "bind": {
+          "his_her": "His",
+          "name": "Nana"
+        }
+      },
+      {
+        "text": "What's your friend's name? His name is Kiki.",
+        "bind": {
+          "his_her": "His",
+          "name": "Kiki"
+        }
+      },
+      {
+        "text": "What's your friend's name? His name is Bubu.",
+        "bind": {
+          "his_her": "His",
+          "name": "Bubu"
+        }
+      },
+      {
+        "text": "What's your friend's name? Her name is Leo.",
+        "bind": {
+          "his_her": "Her",
+          "name": "Leo"
+        }
+      },
+      {
+        "text": "What's your friend's name? Her name is Mia.",
+        "bind": {
+          "his_her": "Her",
+          "name": "Mia"
+        }
+      },
+      {
+        "text": "What's your friend's name? Her name is Sam.",
+        "bind": {
+          "his_her": "Her",
+          "name": "Sam"
+        }
+      },
+      {
+        "text": "What's your friend's name? Her name is Nana.",
+        "bind": {
+          "his_her": "Her",
+          "name": "Nana"
+        }
+      },
+      {
+        "text": "What's your friend's name? Her name is Kiki.",
+        "bind": {
+          "his_her": "Her",
+          "name": "Kiki"
+        }
+      },
+      {
+        "text": "What's your friend's name? Her name is Bubu.",
+        "bind": {
+          "his_her": "Her",
+          "name": "Bubu"
+        }
+      }
+    ]
+  },
+  {
+    "pattern_id": "p2",
+    "frame": "{he_she} is {adj}. {he_she} has {feature}.",
+    "rows": [
+      {
+        "text": "He is tall. He has short hair.",
+        "bind": {
+          "he_she": "He",
+          "adj": "tall",
+          "feature": "short hair"
+        }
+      },
+      {
+        "text": "He is tall. He has long hair.",
+        "bind": {
+          "he_she": "He",
+          "adj": "tall",
+          "feature": "long hair"
+        }
+      },
+      {
+        "text": "He is tall. He has big eyes.",
+        "bind": {
+          "he_she": "He",
+          "adj": "tall",
+          "feature": "big eyes"
+        }
+      },
+      {
+        "text": "He is tall. He has small eyes.",
+        "bind": {
+          "he_she": "He",
+          "adj": "tall",
+          "feature": "small eyes"
+        }
+      },
+      {
+        "text": "He is tall. He has big ears.",
+        "bind": {
+          "he_she": "He",
+          "adj": "tall",
+          "feature": "big ears"
+        }
+      },
+      {
+        "text": "He is strong. He has short hair.",
+        "bind": {
+          "he_she": "He",
+          "adj": "strong",
+          "feature": "short hair"
+        }
+      },
+      {
+        "text": "He is strong. He has long hair.",
+        "bind": {
+          "he_she": "He",
+          "adj": "strong",
+          "feature": "long hair"
+        }
+      },
+      {
+        "text": "He is strong. He has big eyes.",
+        "bind": {
+          "he_she": "He",
+          "adj": "strong",
+          "feature": "big eyes"
+        }
+      },
+      {
+        "text": "He is strong. He has small eyes.",
+        "bind": {
+          "he_she": "He",
+          "adj": "strong",
+          "feature": "small eyes"
+        }
+      },
+      {
+        "text": "He is strong. He has big ears.",
+        "bind": {
+          "he_she": "He",
+          "adj": "strong",
+          "feature": "big ears"
+        }
+      },
+      {
+        "text": "He is quiet. He has short hair.",
+        "bind": {
+          "he_she": "He",
+          "adj": "quiet",
+          "feature": "short hair"
+        }
+      },
+      {
+        "text": "He is quiet. He has long hair.",
+        "bind": {
+          "he_she": "He",
+          "adj": "quiet",
+          "feature": "long hair"
+        }
+      },
+      {
+        "text": "He is quiet. He has big eyes.",
+        "bind": {
+          "he_she": "He",
+          "adj": "quiet",
+          "feature": "big eyes"
+        }
+      },
+      {
+        "text": "He is quiet. He has small eyes.",
+        "bind": {
+          "he_she": "He",
+          "adj": "quiet",
+          "feature": "small eyes"
+        }
+      },
+      {
+        "text": "He is quiet. He has big ears.",
+        "bind": {
+          "he_she": "He",
+          "adj": "quiet",
+          "feature": "big ears"
+        }
+      },
+      {
+        "text": "He is kind. He has short hair.",
+        "bind": {
+          "he_she": "He",
+          "adj": "kind",
+          "feature": "short hair"
+        }
+      },
+      {
+        "text": "He is kind. He has long hair.",
+        "bind": {
+          "he_she": "He",
+          "adj": "kind",
+          "feature": "long hair"
+        }
+      },
+      {
+        "text": "He is kind. He has big eyes.",
+        "bind": {
+          "he_she": "He",
+          "adj": "kind",
+          "feature": "big eyes"
+        }
+      },
+      {
+        "text": "He is kind. He has small eyes.",
+        "bind": {
+          "he_she": "He",
+          "adj": "kind",
+          "feature": "small eyes"
+        }
+      },
+      {
+        "text": "He is kind. He has big ears.",
+        "bind": {
+          "he_she": "He",
+          "adj": "kind",
+          "feature": "big ears"
+        }
+      },
+      {
+        "text": "He is funny. He has short hair.",
+        "bind": {
+          "he_she": "He",
+          "adj": "funny",
+          "feature": "short hair"
+        }
+      },
+      {
+        "text": "He is funny. He has long hair.",
+        "bind": {
+          "he_she": "He",
+          "adj": "funny",
+          "feature": "long hair"
+        }
+      },
+      {
+        "text": "He is funny. He has big eyes.",
+        "bind": {
+          "he_she": "He",
+          "adj": "funny",
+          "feature": "big eyes"
+        }
+      },
+      {
+        "text": "He is funny. He has small eyes.",
+        "bind": {
+          "he_she": "He",
+          "adj": "funny",
+          "feature": "small eyes"
+        }
+      },
+      {
+        "text": "He is funny. He has big ears.",
+        "bind": {
+          "he_she": "He",
+          "adj": "funny",
+          "feature": "big ears"
+        }
+      },
+      {
+        "text": "He is short. He has short hair.",
+        "bind": {
+          "he_she": "He",
+          "adj": "short",
+          "feature": "short hair"
+        }
+      },
+      {
+        "text": "He is short. He has long hair.",
+        "bind": {
+          "he_she": "He",
+          "adj": "short",
+          "feature": "long hair"
+        }
+      },
+      {
+        "text": "He is short. He has big eyes.",
+        "bind": {
+          "he_she": "He",
+          "adj": "short",
+          "feature": "big eyes"
+        }
+      },
+      {
+        "text": "He is short. He has small eyes.",
+        "bind": {
+          "he_she": "He",
+          "adj": "short",
+          "feature": "small eyes"
+        }
+      },
+      {
+        "text": "He is short. He has big ears.",
+        "bind": {
+          "he_she": "He",
+          "adj": "short",
+          "feature": "big ears"
+        }
+      },
+      {
+        "text": "He is thin. He has short hair.",
+        "bind": {
+          "he_she": "He",
+          "adj": "thin",
+          "feature": "short hair"
+        }
+      },
+      {
+        "text": "He is thin. He has long hair.",
+        "bind": {
+          "he_she": "He",
+          "adj": "thin",
+          "feature": "long hair"
+        }
+      },
+      {
+        "text": "He is thin. He has big eyes.",
+        "bind": {
+          "he_she": "He",
+          "adj": "thin",
+          "feature": "big eyes"
+        }
+      },
+      {
+        "text": "He is thin. He has small eyes.",
+        "bind": {
+          "he_she": "He",
+          "adj": "thin",
+          "feature": "small eyes"
+        }
+      },
+      {
+        "text": "He is thin. He has big ears.",
+        "bind": {
+          "he_she": "He",
+          "adj": "thin",
+          "feature": "big ears"
+        }
+      },
+      {
+        "text": "She is tall. She has short hair.",
+        "bind": {
+          "he_she": "She",
+          "adj": "tall",
+          "feature": "short hair"
+        }
+      },
+      {
+        "text": "She is tall. She has long hair.",
+        "bind": {
+          "he_she": "She",
+          "adj": "tall",
+          "feature": "long hair"
+        }
+      },
+      {
+        "text": "She is tall. She has big eyes.",
+        "bind": {
+          "he_she": "She",
+          "adj": "tall",
+          "feature": "big eyes"
+        }
+      },
+      {
+        "text": "She is tall. She has small eyes.",
+        "bind": {
+          "he_she": "She",
+          "adj": "tall",
+          "feature": "small eyes"
+        }
+      },
+      {
+        "text": "She is tall. She has big ears.",
+        "bind": {
+          "he_she": "She",
+          "adj": "tall",
+          "feature": "big ears"
+        }
+      },
+      {
+        "text": "She is strong. She has short hair.",
+        "bind": {
+          "he_she": "She",
+          "adj": "strong",
+          "feature": "short hair"
+        }
+      },
+      {
+        "text": "She is strong. She has long hair.",
+        "bind": {
+          "he_she": "She",
+          "adj": "strong",
+          "feature": "long hair"
+        }
+      },
+      {
+        "text": "She is strong. She has big eyes.",
+        "bind": {
+          "he_she": "She",
+          "adj": "strong",
+          "feature": "big eyes"
+        }
+      },
+      {
+        "text": "She is strong. She has small eyes.",
+        "bind": {
+          "he_she": "She",
+          "adj": "strong",
+          "feature": "small eyes"
+        }
+      },
+      {
+        "text": "She is strong. She has big ears.",
+        "bind": {
+          "he_she": "She",
+          "adj": "strong",
+          "feature": "big ears"
+        }
+      },
+      {
+        "text": "She is quiet. She has short hair.",
+        "bind": {
+          "he_she": "She",
+          "adj": "quiet",
+          "feature": "short hair"
+        }
+      },
+      {
+        "text": "She is quiet. She has long hair.",
+        "bind": {
+          "he_she": "She",
+          "adj": "quiet",
+          "feature": "long hair"
+        }
+      },
+      {
+        "text": "She is quiet. She has big eyes.",
+        "bind": {
+          "he_she": "She",
+          "adj": "quiet",
+          "feature": "big eyes"
+        }
+      },
+      {
+        "text": "She is quiet. She has small eyes.",
+        "bind": {
+          "he_she": "She",
+          "adj": "quiet",
+          "feature": "small eyes"
+        }
+      },
+      {
+        "text": "She is quiet. She has big ears.",
+        "bind": {
+          "he_she": "She",
+          "adj": "quiet",
+          "feature": "big ears"
+        }
+      },
+      {
+        "text": "She is kind. She has short hair.",
+        "bind": {
+          "he_she": "She",
+          "adj": "kind",
+          "feature": "short hair"
+        }
+      },
+      {
+        "text": "She is kind. She has long hair.",
+        "bind": {
+          "he_she": "She",
+          "adj": "kind",
+          "feature": "long hair"
+        }
+      },
+      {
+        "text": "She is kind. She has big eyes.",
+        "bind": {
+          "he_she": "She",
+          "adj": "kind",
+          "feature": "big eyes"
+        }
+      },
+      {
+        "text": "She is kind. She has small eyes.",
+        "bind": {
+          "he_she": "She",
+          "adj": "kind",
+          "feature": "small eyes"
+        }
+      },
+      {
+        "text": "She is kind. She has big ears.",
+        "bind": {
+          "he_she": "She",
+          "adj": "kind",
+          "feature": "big ears"
+        }
+      },
+      {
+        "text": "She is funny. She has short hair.",
+        "bind": {
+          "he_she": "She",
+          "adj": "funny",
+          "feature": "short hair"
+        }
+      },
+      {
+        "text": "She is funny. She has long hair.",
+        "bind": {
+          "he_she": "She",
+          "adj": "funny",
+          "feature": "long hair"
+        }
+      },
+      {
+        "text": "She is funny. She has big eyes.",
+        "bind": {
+          "he_she": "She",
+          "adj": "funny",
+          "feature": "big eyes"
+        }
+      },
+      {
+        "text": "She is funny. She has small eyes.",
+        "bind": {
+          "he_she": "She",
+          "adj": "funny",
+          "feature": "small eyes"
+        }
+      },
+      {
+        "text": "She is funny. She has big ears.",
+        "bind": {
+          "he_she": "She",
+          "adj": "funny",
+          "feature": "big ears"
+        }
+      },
+      {
+        "text": "She is short. She has short hair.",
+        "bind": {
+          "he_she": "She",
+          "adj": "short",
+          "feature": "short hair"
+        }
+      },
+      {
+        "text": "She is short. She has long hair.",
+        "bind": {
+          "he_she": "She",
+          "adj": "short",
+          "feature": "long hair"
+        }
+      },
+      {
+        "text": "She is short. She has big eyes.",
+        "bind": {
+          "he_she": "She",
+          "adj": "short",
+          "feature": "big eyes"
+        }
+      },
+      {
+        "text": "She is short. She has small eyes.",
+        "bind": {
+          "he_she": "She",
+          "adj": "short",
+          "feature": "small eyes"
+        }
+      },
+      {
+        "text": "She is short. She has big ears.",
+        "bind": {
+          "he_she": "She",
+          "adj": "short",
+          "feature": "big ears"
+        }
+      },
+      {
+        "text": "She is thin. She has short hair.",
+        "bind": {
+          "he_she": "She",
+          "adj": "thin",
+          "feature": "short hair"
+        }
+      },
+      {
+        "text": "She is thin. She has long hair.",
+        "bind": {
+          "he_she": "She",
+          "adj": "thin",
+          "feature": "long hair"
+        }
+      },
+      {
+        "text": "She is thin. She has big eyes.",
+        "bind": {
+          "he_she": "She",
+          "adj": "thin",
+          "feature": "big eyes"
+        }
+      },
+      {
+        "text": "She is thin. She has small eyes.",
+        "bind": {
+          "he_she": "She",
+          "adj": "thin",
+          "feature": "small eyes"
+        }
+      },
+      {
+        "text": "She is thin. She has big ears.",
+        "bind": {
+          "he_she": "She",
+          "adj": "thin",
+          "feature": "big ears"
+        }
+      }
+    ]
+  },
+  {
+    "pattern_id": "p3",
+    "frame": "{he_she} often {verb_s} with me.",
+    "rows": [
+      {
+        "text": "He often reads books with me.",
+        "bind": {
+          "he_she": "He",
+          "verb_s": "reads books"
+        }
+      },
+      {
+        "text": "He often plays games with me.",
+        "bind": {
+          "he_she": "He",
+          "verb_s": "plays games"
+        }
+      },
+      {
+        "text": "He often helps me with Chinese with me.",
+        "bind": {
+          "he_she": "He",
+          "verb_s": "helps me with Chinese"
+        }
+      },
+      {
+        "text": "He often makes me smile with me.",
+        "bind": {
+          "he_she": "He",
+          "verb_s": "makes me smile"
+        }
+      },
+      {
+        "text": "He often shares books with me.",
+        "bind": {
+          "he_she": "He",
+          "verb_s": "shares books"
+        }
+      },
+      {
+        "text": "She often reads books with me.",
+        "bind": {
+          "he_she": "She",
+          "verb_s": "reads books"
+        }
+      },
+      {
+        "text": "She often plays games with me.",
+        "bind": {
+          "he_she": "She",
+          "verb_s": "plays games"
+        }
+      },
+      {
+        "text": "She often helps me with Chinese with me.",
+        "bind": {
+          "he_she": "She",
+          "verb_s": "helps me with Chinese"
+        }
+      },
+      {
+        "text": "She often makes me smile with me.",
+        "bind": {
+          "he_she": "She",
+          "verb_s": "makes me smile"
+        }
+      },
+      {
+        "text": "She often shares books with me.",
+        "bind": {
+          "he_she": "She",
+          "verb_s": "shares books"
+        }
+      }
+    ]
+  }
+]

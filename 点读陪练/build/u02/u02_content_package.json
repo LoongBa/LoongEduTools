@@ -1,0 +1,216 @@
+{
+  "schema_version": "1.0",
+  "unit": "U2",
+  "grade": "4A",
+  "title": "My friends",
+  "topic": "What makes your friends special?",
+  "grammar_rule": "he_she",
+  "phonics": { "combo": "sh" },
+
+  "abilities": [
+    {
+      "id": "A1", "desc": "I can talk about my friends.",
+      "training_segments": ["S2"],
+      "check": {
+        "type": "oral_produce",
+        "items": ["指着朋友图，用 He's/She's ... 描述外貌性格，至少 2 句."],
+        "pass_rule": ">=2 of 3",
+        "retrain_segment": "S2"
+      }
+    },
+    {
+      "id": "A2", "desc": "I can say what I do with my friends.",
+      "training_segments": ["S4"],
+      "check": {
+        "type": "oral_produce",
+        "items": ["说 We ... together. / He/She often ... with me. 至少 2 句."],
+        "pass_rule": ">=2 of 3",
+        "retrain_segment": "S4"
+      }
+    },
+    {
+      "id": "A3", "desc": "I can tell why someone is my friend.",
+      "training_segments": ["S3"],
+      "check": {
+        "type": "oral_produce",
+        "items": ["说 My best friend is ... He/She often ..."],
+        "pass_rule": "结构完整即可",
+        "retrain_segment": "S3"
+      }
+    },
+    {
+      "id": "A4", "desc": "I can read and spell words with sh.",
+      "training_segments": ["S6"],
+      "check": {
+        "type": "listen_write",
+        "items": ["指认 6 个 sh 词朗读 + 听写 3 个词"],
+        "pass_rule": "听写 >=2 of 3",
+        "retrain_segment": "S6"
+      }
+    }
+  ],
+
+  "segments": [
+    {
+      "id": "S0", "type": "map",
+      "scene": {
+        "image": "u02_s0_main.png",
+        "image_prompt": "扁平卡通暖色调小学教室全景，几个小朋友在课间互相介绍朋友，有的在看书，有的在玩游戏，圆角白底卡图风格，无文字",
+        "hotspots": [
+          { "id": "H1", "text": "I have a new friend.", "zh": "我有一个新朋友。", "audio": "u02_s0_h01.mp3", "image": "u02_s0_h01.png", "image_prompt": "小男孩兴奋地指着旁边的新朋友，暖色调扁平卡通，圆角白底，无文字" },
+          { "id": "H2", "text": "He's tall and strong.", "zh": "他又高又壮。", "audio": "u02_s0_h02.mp3", "image": "u02_s0_h02.png", "image_prompt": "高大强壮的小男孩微笑，暖色调扁平卡通，圆角白底，无文字" },
+          { "id": "H3", "text": "She's quiet and kind.", "zh": "她安静又善良。", "audio": "u02_s0_h03.mp3", "image": "u02_s0_h03.png", "image_prompt": "安静微笑的小女孩，暖色调扁平卡通，圆角白底，无文字" },
+          { "id": "H4", "text": "We play games together.", "zh": "我们一起玩游戏。", "audio": "u02_s0_h04.mp3", "image": "u02_s0_h04.png", "image_prompt": "两个小朋友一起玩游戏，暖色调扁平卡通，圆角白底，无文字" }
+        ],
+        "locate_items": [
+          { "audio": "u02_s0_loc01.mp3", "expect": "H1" },
+          { "audio": "u02_s0_loc02.mp3", "expect": "H3" }
+        ]
+      }
+    },
+
+    {
+      "id": "S1", "type": "vocab",
+      "groups": [
+        { "name": "appearance", "cards": [
+          { "word": "tall and strong", "zh": "又高又壮", "audio": "u02_v_tall_strong.mp3", "image": "u02_v_tall_strong.png", "image_prompt": "高大强壮的小男孩，扁平卡通，圆角白底词卡，无文字" },
+          { "word": "short and thin", "zh": "又矮又瘦", "audio": "u02_v_short_thin.mp3", "image": "u02_v_short_thin.png", "image_prompt": "瘦小的小男孩，扁平卡通，圆角白底词卡，无文字" },
+          { "word": "long hair", "zh": "长头发", "audio": "u02_v_long_hair.mp3", "image": "u02_v_long_hair.png", "image_prompt": "长发小女孩侧面，扁平卡通，圆角白底词卡，无文字" },
+          { "word": "short hair", "zh": "短头发", "audio": "u02_v_short_hair.mp3", "image": "u02_v_short_hair.png", "image_prompt": "短发小女孩侧面，扁平卡通，圆角白底词卡，无文字" }
+        ]},
+        { "name": "personality", "cards": [
+          { "word": "kind", "zh": "善良的", "audio": "u02_v_kind.mp3", "image": "u02_v_kind.png", "image_prompt": "微笑的善良小朋友，扁平卡通，圆角白底词卡，无文字" },
+          { "word": "quiet", "zh": "安静的", "audio": "u02_v_quiet.mp3", "image": "u02_v_quiet.png", "image_prompt": "安静看书的小朋友，扁平卡通，圆角白底词卡，无文字" }
+        ]}
+      ]
+    },
+
+    {
+      "id": "S2", "type": "pattern",
+      "title": "描述朋友外貌性格",
+      "pattern": "He's/She's ___. / He/She has ___ hair.",
+      "layers": {
+        "original": [
+          { "id": "s2_orig01", "text": "He's tall and strong.", "zh": "他又高又壮。", "source": "textbook", "audio": "u02_s2_orig01.mp3" },
+          { "id": "s2_orig02", "text": "He has nice short hair too.", "zh": "他还有好看的短发。", "source": "textbook", "audio": "u02_s2_orig02.mp3" },
+          { "id": "s2_orig03", "text": "He's also kind.", "zh": "他也很善良。", "source": "textbook", "audio": "u02_s2_orig03.mp3" }
+        ],
+        "complete": [
+          { "id": "s2_comp01", "text": "She's short and thin.", "zh": "她又矮又瘦。", "tags": ["replace:adj"], "audio": "u02_s2_comp01.mp3" },
+          { "id": "s2_comp02", "text": "She has long hair.", "zh": "她留着长头发。", "tags": ["replace:hair"], "audio": "u02_s2_comp02.mp3" },
+          { "id": "s2_comp03", "text": "He's quiet.", "zh": "他很安静。", "tags": ["replace:adj"], "audio": "u02_s2_comp03.mp3" },
+          { "id": "s2_comp04", "text": "She's funny.", "zh": "她很有趣。", "tags": ["extend:adj"], "audio": "u02_s2_comp04.mp3" }
+        ],
+        "extend": [
+          { "id": "s2_ext01", "text": "He's tall and thin.", "zh": "他又高又瘦。", "tags": ["extend:adj"], "audio": "u02_s2_ext01.mp3" },
+          { "id": "s2_ext02", "text": "She has big eyes.", "zh": "她有大眼睛。", "tags": ["extend:feature"], "audio": "u02_s2_ext02.mp3" },
+          { "id": "s2_ext03", "text": "He has small ears.", "zh": "他有小耳朵。", "tags": ["extend:feature"], "audio": "u02_s2_ext03.mp3" }
+        ]
+      }
+    },
+
+    {
+      "id": "S3", "type": "pattern",
+      "title": "最好的朋友",
+      "pattern": "Who's your best friend? / My best friend is ___. He/She often ___.",
+      "layers": {
+        "original": [
+          { "id": "s3_orig01", "text": "Who's your best friend?", "zh": "你最好的朋友是谁？", "source": "textbook", "audio": "u02_s3_orig01.mp3" },
+          { "id": "s3_orig02", "text": "Chen Jie. She's funny.", "zh": "陈杰。她很有趣。", "source": "textbook", "audio": "u02_s3_orig02.mp3" },
+          { "id": "s3_orig03", "text": "She often makes me smile.", "zh": "她经常逗我笑。", "source": "textbook", "audio": "u02_s3_orig03.mp3" },
+          { "id": "s3_orig04", "text": "My best friend is John.", "zh": "我最好的朋友是约翰。", "source": "textbook", "audio": "u02_s3_orig04.mp3" }
+        ],
+        "complete": [
+          { "id": "s3_comp01", "text": "He often helps me with English.", "zh": "他经常帮我学英语。", "tags": ["replace:activity"], "audio": "u02_s3_comp01.mp3" },
+          { "id": "s3_comp02", "text": "She often reads books with me.", "zh": "她经常和我一起看书。", "tags": ["replace:activity"], "audio": "u02_s3_comp02.mp3" },
+          { "id": "s3_comp03", "text": "He often plays football with me.", "zh": "他经常和我一起踢足球。", "tags": ["replace:activity"], "audio": "u02_s3_comp03.mp3" }
+        ],
+        "extend": [
+          { "id": "s3_ext01", "text": "She always makes me happy.", "zh": "她总是让我开心。", "tags": ["extend:verb"], "audio": "u02_s3_ext01.mp3" },
+          { "id": "s3_ext02", "text": "He often plays games with me.", "zh": "他经常和我一起玩游戏。", "tags": ["extend:activity"], "audio": "u02_s3_ext02.mp3" },
+          { "id": "s3_ext03", "text": "She helps me with Chinese.", "zh": "她帮我学语文。", "tags": ["extend:subject"], "audio": "u02_s3_ext03.mp3" }
+        ]
+      }
+    },
+
+    {
+      "id": "S4", "type": "vocab",
+      "title": "朋友一起做什么",
+      "groups": [
+        { "name": "activities", "cards": [
+          { "word": "read books", "zh": "看书", "audio": "u02_act_read.mp3", "image": "u02_act_read.png", "image_prompt": "两个小朋友一起看书，扁平卡通，圆角白底词卡，无文字" },
+          { "word": "play games", "zh": "玩游戏", "audio": "u02_act_games.mp3", "image": "u02_act_games.png", "image_prompt": "两个小朋友玩游戏，扁平卡通，圆角白底词卡，无文字" },
+          { "word": "play football", "zh": "踢足球", "audio": "u02_act_football.mp3", "image": "u02_act_football.png", "image_prompt": "两个小朋友踢足球，扁平卡通，圆角白底词卡，无文字" },
+          { "word": "help with English", "zh": "帮学英语", "audio": "u02_act_english.mp3", "image": "u02_act_english.png", "image_prompt": "小朋友帮另一个学英语，扁平卡通，圆角白底词卡，无文字" }
+        ]}
+      ]
+    },
+
+    {
+      "id": "S5", "type": "pbl",
+      "title": "Make a book about your friend",
+      "steps": [
+        { "step": 1, "desc": "Who are the children in the picture?" },
+        { "step": 2, "desc": "Talk about your friends." },
+        { "step": 3, "desc": "Make a book about your friend." },
+        { "step": 4, "desc": "Share your book in class." }
+      ],
+      "slots": [
+        { "id": "P1", "text": "I have a friend. Her name is Lily.", "zh": "我有一个朋友。她叫莉莉。", "image": "u02_p1.png", "audio": "u02_p1.mp3", "image_prompt": "介绍朋友的封面小书，扁平卡通，圆角白底，无文字" },
+        { "id": "P2", "text": "She's tall and thin.", "zh": "她又高又瘦。", "image": "u02_p2.png", "audio": "u02_p2.mp3", "image_prompt": "女孩外貌描述页，扁平卡通，圆角白底，无文字" },
+        { "id": "P3", "text": "She has long hair.", "zh": "她留着长头发。", "image": "u02_p3.png", "audio": "u02_p3.mp3", "image_prompt": "女孩长发页，扁平卡通，圆角白底，无文字" },
+        { "id": "P4", "text": "We read books together.", "zh": "我们一起看书。", "image": "u02_p4.png", "audio": "u02_p4.mp3", "image_prompt": "两个女孩一起看书页，扁平卡通，圆角白底，无文字" }
+      ]
+    },
+
+    {
+      "id": "S6", "type": "phonics",
+      "title": "sh 发音",
+      "combo": "sh",
+      "words": [
+        { "word": "English", "audio": "u02_ph_english.mp3", "image": "u02_ph_english.png" },
+        { "word": "fish", "audio": "u02_ph_fish.mp3", "image": "u02_ph_fish.png" },
+        { "word": "share", "audio": "u02_ph_share.mp3", "image": "u02_ph_share.png" },
+        { "word": "she", "audio": "u02_ph_she.mp3", "image": "u02_ph_she.png" },
+        { "word": "ship", "audio": "u02_ph_ship.mp3", "image": "u02_ph_ship.png" },
+        { "word": "shop", "audio": "u02_ph_shop.mp3", "image": "u02_ph_shop.png" }
+      ],
+      "chant": "I have no shell. Can we share? / You can share my shell!"
+    },
+
+    {
+      "id": "S7", "type": "story",
+      "title": "Tell me about your friend",
+      "lines": [
+        { "id": "s7_01", "text": "Tell me about your good friend.", "zh": "跟我说说你的好朋友。", "audio": "u02_s7_01.mp3" },
+        { "id": "s7_02", "text": "He has small eyes and very big ears.", "zh": "他有小眼睛和大耳朵。", "audio": "u02_s7_02.mp3" },
+        { "id": "s7_03", "text": "He has short legs, but his body is very long.", "zh": "他腿短，但身体很长。", "audio": "u02_s7_03.mp3" },
+        { "id": "s7_04", "text": "We often play games in the park.", "zh": "我们经常在公园玩游戏。", "audio": "u02_s7_04.mp3" },
+        { "id": "s7_05", "text": "Can I meet your friend? Sure. Here he comes.", "zh": "我能见见你的朋友吗？当然，他来了。", "audio": "u02_s7_05.mp3" },
+        { "id": "s7_06", "text": "This is my good friend! Ha! Ha!", "zh": "这是我的好朋友！哈哈！", "audio": "u02_s7_06.mp3" }
+      ]
+    },
+
+    {
+      "id": "S8", "type": "check",
+      "title": "能力检验站",
+      "checks": [
+        { "ability": "A1", "type": "oral_produce", "desc": "指着朋友图，用 He's/She's ... 描述外貌性格，至少 2 句." },
+        { "ability": "A2", "type": "oral_produce", "desc": "说 We ... together. / He/She often ... with me. 至少 2 句." },
+        { "ability": "A3", "type": "oral_produce", "desc": "说 My best friend is ... He/She often ..." },
+        { "ability": "A4", "type": "listen_write", "desc": "指认 6 个 sh 词朗读 + 听写 3 个词" }
+      ]
+    }
+  ],
+
+  "print_version": {
+    "worksheet_title": "四上 U2 天天见 · 练习小单",
+    "parts": [
+      { "name": "Part 1 外貌性格", "instruction": "看图，选词填空：tall and strong / short and thin / long hair / short hair", "items": 4 },
+      { "name": "Part 2 描述朋友", "instruction": "把句子补全：He's/She's ___ .", "items": 4 },
+      { "name": "Part 3 朋友活动", "instruction": "连线：We ... together.", "items": 4 },
+      { "name": "Part 4 sh 发音", "instruction": "圈出 sh 发音的单词", "items": 4 }
+    ],
+    "answer_sheet": true
+  }
+}

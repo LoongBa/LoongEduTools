@@ -1,0 +1,212 @@
+{
+  "schema_version": "1.0",
+  "unit": "U1",
+  "grade": "3A",
+  "title": "Making friends",
+  "topic": "How do we make friends?",
+  "grammar_rule": "be_intro",
+  "phonics": { "level": "letters", "letters": "Aa Bb Cc Dd" },
+
+  "abilities": [
+    {
+      "id": "A1", "desc": "I can greet people and show friendliness.",
+      "training_segments": ["S1"],
+      "check": {
+        "type": "oral_produce",
+        "items": ["指着新人物图，孩子说 Hello! I'm... / Nice to meet you."],
+        "pass_rule": "说对 2 句即可",
+        "retrain_segment": "S1"
+      }
+    },
+    {
+      "id": "A2", "desc": "I can say the names of body parts.",
+      "training_segments": ["S2"],
+      "check": {
+        "type": "listen_point",
+        "items": ["听指令指图：eye / ear / mouth / hand / arm"],
+        "pass_rule": ">=4 of 5",
+        "retrain_segment": "S2"
+      }
+    },
+    {
+      "id": "A3", "desc": "I can say different ways to be a good friend.",
+      "training_segments": ["S3"],
+      "check": {
+        "type": "oral_produce",
+        "items": ["说 I smile. / I listen. / I help. / I share. 至少 2 句."],
+        "pass_rule": ">=2 of 4",
+        "retrain_segment": "S3"
+      }
+    },
+    {
+      "id": "A4", "desc": "I can read, write and say Aa, Bb, Cc and Dd.",
+      "training_segments": ["S5"],
+      "check": {
+        "type": "listen_write",
+        "items": ["指读 4 个字母 + 圈首音（apple/bag/cat/dog）"],
+        "pass_rule": "圈首音 >=3 of 4",
+        "retrain_segment": "S5"
+      }
+    }
+  ],
+
+  "segments": [
+    {
+      "id": "S0", "type": "map",
+      "scene": {
+        "image": "g3u1_s0_main.png",
+        "image_prompt": "扁平卡通暖色调小学教室全景，一群小朋友在课间互相打招呼、微笑、分享玩具，圆角白底卡图风格，无文字",
+        "hotspots": [
+          { "id": "H1", "text": "Hello! I'm Mike.", "zh": "你好！我是迈克。", "audio": "g3u1_s0_h01.mp3", "image": "g3u1_s0_h01.png", "image_prompt": "穿蓝T恤的小男孩微笑着挥手打招呼，暖色调扁平卡通，圆角白底，无文字" },
+          { "id": "H2", "text": "Hi! My name is Sarah.", "zh": "嗨！我叫萨拉。", "audio": "g3u1_s0_h02.mp3", "image": "g3u1_s0_h02.png", "image_prompt": "穿粉裙子的小女孩微笑着挥手打招呼，暖色调扁平卡通，圆角白底，无文字" },
+          { "id": "H3", "text": "Nice to meet you.", "zh": "很高兴认识你。", "audio": "g3u1_s0_h03.mp3", "image": "g3u1_s0_h03.png", "image_prompt": "两个小朋友见面握手微笑，暖色调扁平卡通，圆角白底，无文字" },
+          { "id": "H4", "text": "We are good friends.", "zh": "我们是好朋友。", "audio": "g3u1_s0_h04.mp3", "image": "g3u1_s0_h04.png", "image_prompt": "两个小朋友手拉手微笑，暖色调扁平卡通，圆角白底，无文字" }
+        ],
+        "locate_items": [
+          { "audio": "g3u1_s0_loc01.mp3", "expect": "H1" },
+          { "audio": "g3u1_s0_loc02.mp3", "expect": "H3" }
+        ]
+      }
+    },
+
+    {
+      "id": "S1", "type": "pattern",
+      "title": "打招呼自我介绍",
+      "pattern": "Hello! I'm ___. / Hi! My name is ___. / Nice to meet you.",
+      "layers": {
+        "original": [
+          { "id": "s1_orig01", "text": "Hello! I'm Mike Black.", "zh": "你好！我是迈克·布莱克。", "source": "textbook", "audio": "g3u1_s1_orig01.mp3" },
+          { "id": "s1_orig02", "text": "Hi! My name is Wu Binbin.", "zh": "嗨！我叫吴彬彬。", "source": "textbook", "audio": "g3u1_s1_orig02.mp3" },
+          { "id": "s1_orig03", "text": "Nice to meet you.", "zh": "很高兴认识你。", "source": "textbook", "audio": "g3u1_s1_orig03.mp3" },
+          { "id": "s1_orig04", "text": "Nice to meet you too.", "zh": "我也很高兴认识你。", "source": "textbook", "audio": "g3u1_s1_orig04.mp3" }
+        ],
+        "complete": [
+          { "id": "s1_comp01", "text": "Hello! I'm Chen Jie.", "zh": "你好！我是陈杰。", "tags": ["replace:name"], "audio": "g3u1_s1_comp01.mp3" },
+          { "id": "s1_comp02", "text": "Hello! I'm John.", "zh": "你好！我是约翰。", "tags": ["replace:name"], "audio": "g3u1_s1_comp02.mp3" },
+          { "id": "s1_comp03", "text": "Hello! I'm Sarah.", "zh": "你好！我是萨拉。", "tags": ["replace:name"], "audio": "g3u1_s1_comp03.mp3" },
+          { "id": "s1_comp04", "text": "Hi! My name is Zoom.", "zh": "嗨！我叫祖姆。", "tags": ["replace:name"], "audio": "g3u1_s1_comp04.mp3" },
+          { "id": "s1_comp05", "text": "Hi! My name is Zip.", "zh": "嗨！我叫兹普。", "tags": ["replace:name"], "audio": "g3u1_s1_comp05.mp3" }
+        ],
+        "extend": [
+          { "id": "s1_ext01", "text": "Good morning! I'm Lily.", "zh": "早上好！我是莉莉。", "tags": ["extend:greeting"], "audio": "g3u1_s1_ext01.mp3" },
+          { "id": "s1_ext02", "text": "Good afternoon! I'm Tom.", "zh": "下午好！我是汤姆。", "tags": ["extend:greeting"], "audio": "g3u1_s1_ext02.mp3" },
+          { "id": "s1_ext03", "text": "What's your name?", "zh": "你叫什么名字？", "tags": ["extend:question"], "audio": "g3u1_s1_ext03.mp3" }
+        ]
+      }
+    },
+
+    {
+      "id": "S2", "type": "vocab",
+      "title": "身体部位",
+      "groups": [
+        { "name": "body_parts", "cards": [
+          { "word": "eye", "zh": "眼睛", "audio": "g3u1_v_eye.mp3", "image": "g3u1_v_eye.png", "image_prompt": "一只大眼睛的特写，扁平卡通，圆角白底词卡，无文字" },
+          { "word": "ear", "zh": "耳朵", "audio": "g3u1_v_ear.mp3", "image": "g3u1_v_ear.png", "image_prompt": "一只耳朵的特写，扁平卡通，圆角白底词卡，无文字" },
+          { "word": "mouth", "zh": "嘴巴", "audio": "g3u1_v_mouth.mp3", "image": "g3u1_v_mouth.png", "image_prompt": "一张微笑的嘴巴特写，扁平卡通，圆角白底词卡，无文字" },
+          { "word": "hand", "zh": "手", "audio": "g3u1_v_hand.mp3", "image": "g3u1_v_hand.png", "image_prompt": "一只张开的小手，扁平卡通，圆角白底词卡，无文字" },
+          { "word": "arm", "zh": "手臂", "audio": "g3u1_v_arm.mp3", "image": "g3u1_v_arm.png", "image_prompt": "一条抬起的手臂，扁平卡通，圆角白底词卡，无文字" }
+        ]}
+      ],
+      "action_cards": [
+        { "id": "s2_act01", "text": "Wave your hand.", "zh": "挥挥你的手。", "audio": "g3u1_s2_act01.mp3" },
+        { "id": "s2_act02", "text": "Point to your ear.", "zh": "指指你的耳朵。", "audio": "g3u1_s2_act02.mp3" },
+        { "id": "s2_act03", "text": "Touch your mouth.", "zh": "摸摸你的嘴。", "audio": "g3u1_s2_act03.mp3" },
+        { "id": "s2_act04", "text": "Look into my eyes.", "zh": "看着我的眼睛。", "audio": "g3u1_s2_act04.mp3" },
+        { "id": "s2_act05", "text": "Wave your arm.", "zh": "挥挥你的手臂。", "audio": "g3u1_s2_act05.mp3" }
+      ]
+    },
+
+    {
+      "id": "S3", "type": "pattern",
+      "title": "怎么做好朋友",
+      "pattern": "I ___. (smile / listen / help / share)",
+      "layers": {
+        "original": [
+          { "id": "s3_orig01", "text": "I smile.", "zh": "我微笑。", "source": "textbook", "audio": "g3u1_s3_orig01.mp3" },
+          { "id": "s3_orig02", "text": "I listen.", "zh": "我倾听。", "source": "textbook", "audio": "g3u1_s3_orig02.mp3" },
+          { "id": "s3_orig03", "text": "I help.", "zh": "我帮忙。", "source": "textbook", "audio": "g3u1_s3_orig03.mp3" },
+          { "id": "s3_orig04", "text": "I share.", "zh": "我分享。", "source": "textbook", "audio": "g3u1_s3_orig04.mp3" }
+        ],
+        "complete": [
+          { "id": "s3_comp01", "text": "I say Hi!", "zh": "我说“你好”！", "tags": ["replace:action"], "audio": "g3u1_s3_comp01.mp3" },
+          { "id": "s3_comp02", "text": "I say Bye!", "zh": "我说“再见”！", "tags": ["replace:action"], "audio": "g3u1_s3_comp02.mp3" },
+          { "id": "s3_comp03", "text": "I play fair.", "zh": "我公平玩耍。", "tags": ["replace:action"], "audio": "g3u1_s3_comp03.mp3" },
+          { "id": "s3_comp04", "text": "I am nice.", "zh": "我很友好。", "tags": ["replace:action"], "audio": "g3u1_s3_comp04.mp3" }
+        ],
+        "extend": [
+          { "id": "s3_ext01", "text": "We can share.", "zh": "我们可以分享。", "tags": ["extend:we"], "audio": "g3u1_s3_ext01.mp3" },
+          { "id": "s3_ext02", "text": "We play together.", "zh": "我们一起玩。", "tags": ["extend:we"], "audio": "g3u1_s3_ext02.mp3" },
+          { "id": "s3_ext03", "text": "We help each other.", "zh": "我们互相帮助。", "tags": ["extend:we"], "audio": "g3u1_s3_ext03.mp3" }
+        ]
+      }
+    },
+
+    {
+      "id": "S4", "type": "pbl",
+      "title": "Make a mind map of making friends",
+      "steps": [
+        { "step": 1, "desc": "How can we make friends? 我们怎么交朋友？" },
+        { "step": 2, "desc": "What do you do with your friends? 你和朋友一起做什么？" },
+        { "step": 3, "desc": "Make your mind map. 做你的思维导图。" },
+        { "step": 4, "desc": "Share your ideas. 分享你的想法。" }
+      ],
+      "slots": [
+        { "id": "P1", "text": "I say \"Hi!\"", "zh": "我说“你好！”", "image": "g3u1_p1.png", "audio": "g3u1_p1.mp3", "image_prompt": "小朋友挥手打招呼的图标，扁平卡通，圆角白底，无文字" },
+        { "id": "P2", "text": "I smile.", "zh": "我微笑。", "image": "g3u1_p2.png", "audio": "g3u1_p2.mp3", "image_prompt": "小朋友微笑的图标，扁平卡通，圆角白底，无文字" },
+        { "id": "P3", "text": "I listen.", "zh": "我倾听。", "image": "g3u1_p3.png", "audio": "g3u1_p3.mp3", "image_prompt": "小朋友认真倾听的图标，扁平卡通，圆角白底，无文字" },
+        { "id": "P4", "text": "I help and share.", "zh": "我帮忙和分享。", "image": "g3u1_p4.png", "audio": "g3u1_p4.mp3", "image_prompt": "小朋友分享玩具的图标，扁平卡通，圆角白底，无文字" }
+      ]
+    },
+
+    {
+      "id": "S5", "type": "phonics",
+      "title": "Letters Aa Bb Cc Dd",
+      "level": "letters",
+      "letter_groups": [
+        { "letter": "Aa", "words": [
+          { "word": "apple", "audio": "g3u1_ph_apple.mp3", "image": "g3u1_ph_apple.png" },
+          { "word": "bag", "audio": "g3u1_ph_bag.mp3", "image": "g3u1_ph_bag.png" }
+        ]},
+        { "letter": "Bb", "words": [
+          { "word": "bed", "audio": "g3u1_ph_bed.mp3", "image": "g3u1_ph_bed.png" },
+          { "word": "Bob", "audio": "g3u1_ph_bob.mp3", "image": "g3u1_ph_bob.png" }
+        ]},
+        { "letter": "Cc", "words": [
+          { "word": "cat", "audio": "g3u1_ph_cat.mp3", "image": "g3u1_ph_cat.png" },
+          { "word": "can", "audio": "g3u1_ph_can.mp3", "image": "g3u1_ph_can.png" }
+        ]},
+        { "letter": "Dd", "words": [
+          { "word": "dog", "audio": "g3u1_ph_dog.mp3", "image": "g3u1_ph_dog.png" },
+          { "word": "sad", "audio": "g3u1_ph_sad.mp3", "image": "g3u1_ph_sad.png" }
+        ]}
+      ],
+      "blending": [
+        { "text": "bad", "audio": "g3u1_ph_bad.mp3" },
+        { "text": "cab", "audio": "g3u1_ph_cab.mp3" },
+        { "text": "dad", "audio": "g3u1_ph_dad.mp3" }
+      ]
+    },
+
+    {
+      "id": "S6", "type": "check",
+      "title": "能力检验站",
+      "checks": [
+        { "ability": "A1", "type": "oral_produce", "desc": "给新人物图，孩子说 Hello! I'm... / Nice to meet you." },
+        { "ability": "A2", "type": "listen_point", "desc": "听指令指图：eye / ear / mouth / hand / arm" },
+        { "ability": "A3", "type": "oral_produce", "desc": "说 I smile. / I listen. / I help. / I share. 至少 2 句." },
+        { "ability": "A4", "type": "listen_write", "desc": "指读 4 个字母 + 圈首音（apple/bag/cat/dog）" }
+      ]
+    }
+  ],
+
+  "print_version": {
+    "worksheet_title": "三上 U1 天天见 · 练习小单",
+    "parts": [
+      { "name": "Part 1 打招呼", "instruction": "看图，把句子补全：Hello! I'm ___.", "items": 4 },
+      { "name": "Part 2 身体部位", "instruction": "把单词和图片连起来：eye / ear / mouth / hand / arm", "items": 5 },
+      { "name": "Part 3 好朋友行为", "instruction": "看图，选词填空：smile / listen / help / share", "items": 4 },
+      { "name": "Part 4 字母 Aa-Dd", "instruction": "圈出首字母是 Aa/Bb/Cc/Dd 的单词", "items": 4 }
+    ],
+    "answer_sheet": true
+  }
+}

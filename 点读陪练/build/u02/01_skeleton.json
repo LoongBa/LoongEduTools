@@ -1,0 +1,31 @@
+{
+  "unit": "U02",
+  "title": "My friends",
+  "patterns": [
+    {
+      "id": "p1",
+      "frame": "What's your friend's name? {his_her} name is {name}.",
+      "slot_map": {
+        "his_her": ["His", "Her"],
+        "name": ["Leo", "Mia", "Sam", "Nana", "Kiki", "Bubu"]
+      }
+    },
+    {
+      "id": "p2",
+      "frame": "{he_she} is {adj}. {he_she} has {feature}.",
+      "slot_map": {
+        "he_she": ["He", "She"],
+        "adj": ["tall", "strong", "quiet", "kind", "funny", "short", "thin"],
+        "feature": ["short hair", "long hair", "big eyes", "small eyes", "big ears"]
+      }
+    },
+    {
+      "id": "p3",
+      "frame": "{he_she} often {verb_s} with me.",
+      "slot_map": {
+        "he_she": ["He", "She"],
+        "verb_s": ["reads books", "plays games", "helps me with Chinese", "makes me smile", "shares books"]
+      }
+    }
+  ]
+}

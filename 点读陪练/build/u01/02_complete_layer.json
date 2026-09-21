@@ -1,0 +1,412 @@
+[
+  {
+    "pattern_id": "p1",
+    "frame": "What's your {who}'s job? He's a {job}.",
+    "rows": [
+      {
+        "text": "What's your father's job? He's a farmer.",
+        "bind": {
+          "who": "father",
+          "job": "farmer"
+        }
+      },
+      {
+        "text": "What's your father's job? He's a nurse.",
+        "bind": {
+          "who": "father",
+          "job": "nurse"
+        }
+      },
+      {
+        "text": "What's your father's job? He's a doctor.",
+        "bind": {
+          "who": "father",
+          "job": "doctor"
+        }
+      },
+      {
+        "text": "What's your father's job? He's an office worker.",
+        "bind": {
+          "who": "father",
+          "job": "office worker"
+        }
+      },
+      {
+        "text": "What's your father's job? He's a factory worker.",
+        "bind": {
+          "who": "father",
+          "job": "factory worker"
+        }
+      },
+      {
+        "text": "What's your grandpa's job? He's a farmer.",
+        "bind": {
+          "who": "grandpa",
+          "job": "farmer"
+        }
+      },
+      {
+        "text": "What's your grandpa's job? He's a nurse.",
+        "bind": {
+          "who": "grandpa",
+          "job": "nurse"
+        }
+      },
+      {
+        "text": "What's your grandpa's job? He's a doctor.",
+        "bind": {
+          "who": "grandpa",
+          "job": "doctor"
+        }
+      },
+      {
+        "text": "What's your grandpa's job? He's an office worker.",
+        "bind": {
+          "who": "grandpa",
+          "job": "office worker"
+        }
+      },
+      {
+        "text": "What's your grandpa's job? He's a factory worker.",
+        "bind": {
+          "who": "grandpa",
+          "job": "factory worker"
+        }
+      },
+      {
+        "text": "What's your grandma's job? He's a farmer.",
+        "bind": {
+          "who": "grandma",
+          "job": "farmer"
+        }
+      },
+      {
+        "text": "What's your grandma's job? He's a nurse.",
+        "bind": {
+          "who": "grandma",
+          "job": "nurse"
+        }
+      },
+      {
+        "text": "What's your grandma's job? He's a doctor.",
+        "bind": {
+          "who": "grandma",
+          "job": "doctor"
+        }
+      },
+      {
+        "text": "What's your grandma's job? He's an office worker.",
+        "bind": {
+          "who": "grandma",
+          "job": "office worker"
+        }
+      },
+      {
+        "text": "What's your grandma's job? He's a factory worker.",
+        "bind": {
+          "who": "grandma",
+          "job": "factory worker"
+        }
+      },
+      {
+        "text": "What's your mother's job? He's a farmer.",
+        "bind": {
+          "who": "mother",
+          "job": "farmer"
+        }
+      },
+      {
+        "text": "What's your mother's job? He's a nurse.",
+        "bind": {
+          "who": "mother",
+          "job": "nurse"
+        }
+      },
+      {
+        "text": "What's your mother's job? He's a doctor.",
+        "bind": {
+          "who": "mother",
+          "job": "doctor"
+        }
+      },
+      {
+        "text": "What's your mother's job? He's an office worker.",
+        "bind": {
+          "who": "mother",
+          "job": "office worker"
+        }
+      },
+      {
+        "text": "What's your mother's job? He's a factory worker.",
+        "bind": {
+          "who": "mother",
+          "job": "factory worker"
+        }
+      }
+    ]
+  },
+  {
+    "pattern_id": "p2",
+    "frame": "Can {subject} help? Yes, {subject} can. {subject} can {action}.",
+    "rows": [
+      {
+        "text": "Can I help? Yes, I can. I can clean the room.",
+        "bind": {
+          "subject": "I",
+          "action": "clean the room"
+        }
+      },
+      {
+        "text": "Can I help? Yes, I can. I can sweep the floor.",
+        "bind": {
+          "subject": "I",
+          "action": "sweep the floor"
+        }
+      },
+      {
+        "text": "Can I help? Yes, I can. I can cook.",
+        "bind": {
+          "subject": "I",
+          "action": "cook"
+        }
+      },
+      {
+        "text": "Can I help? Yes, I can. I can do some chores.",
+        "bind": {
+          "subject": "I",
+          "action": "do some chores"
+        }
+      },
+      {
+        "text": "Can you help? Yes, you can. you can clean the room.",
+        "bind": {
+          "subject": "you",
+          "action": "clean the room"
+        }
+      },
+      {
+        "text": "Can you help? Yes, you can. you can sweep the floor.",
+        "bind": {
+          "subject": "you",
+          "action": "sweep the floor"
+        }
+      },
+      {
+        "text": "Can you help? Yes, you can. you can cook.",
+        "bind": {
+          "subject": "you",
+          "action": "cook"
+        }
+      },
+      {
+        "text": "Can you help? Yes, you can. you can do some chores.",
+        "bind": {
+          "subject": "you",
+          "action": "do some chores"
+        }
+      },
+      {
+        "text": "Can she help? Yes, she can. she can clean the room.",
+        "bind": {
+          "subject": "she",
+          "action": "clean the room"
+        }
+      },
+      {
+        "text": "Can she help? Yes, she can. she can sweep the floor.",
+        "bind": {
+          "subject": "she",
+          "action": "sweep the floor"
+        }
+      },
+      {
+        "text": "Can she help? Yes, she can. she can cook.",
+        "bind": {
+          "subject": "she",
+          "action": "cook"
+        }
+      },
+      {
+        "text": "Can she help? Yes, she can. she can do some chores.",
+        "bind": {
+          "subject": "she",
+          "action": "do some chores"
+        }
+      },
+      {
+        "text": "Can he help? Yes, he can. he can clean the room.",
+        "bind": {
+          "subject": "he",
+          "action": "clean the room"
+        }
+      },
+      {
+        "text": "Can he help? Yes, he can. he can sweep the floor.",
+        "bind": {
+          "subject": "he",
+          "action": "sweep the floor"
+        }
+      },
+      {
+        "text": "Can he help? Yes, he can. he can cook.",
+        "bind": {
+          "subject": "he",
+          "action": "cook"
+        }
+      },
+      {
+        "text": "Can he help? Yes, he can. he can do some chores.",
+        "bind": {
+          "subject": "he",
+          "action": "do some chores"
+        }
+      },
+      {
+        "text": "Can we help? Yes, we can. we can clean the room.",
+        "bind": {
+          "subject": "we",
+          "action": "clean the room"
+        }
+      },
+      {
+        "text": "Can we help? Yes, we can. we can sweep the floor.",
+        "bind": {
+          "subject": "we",
+          "action": "sweep the floor"
+        }
+      },
+      {
+        "text": "Can we help? Yes, we can. we can cook.",
+        "bind": {
+          "subject": "we",
+          "action": "cook"
+        }
+      },
+      {
+        "text": "Can we help? Yes, we can. we can do some chores.",
+        "bind": {
+          "subject": "we",
+          "action": "do some chores"
+        }
+      }
+    ]
+  },
+  {
+    "pattern_id": "p3",
+    "frame": "I can {action1} and {action2}.",
+    "rows": [
+      {
+        "text": "I can clean the room and clean the room.",
+        "bind": {
+          "action1": "clean the room",
+          "action2": "clean the room"
+        }
+      },
+      {
+        "text": "I can clean the room and sweep the floor.",
+        "bind": {
+          "action1": "clean the room",
+          "action2": "sweep the floor"
+        }
+      },
+      {
+        "text": "I can clean the room and cook.",
+        "bind": {
+          "action1": "clean the room",
+          "action2": "cook"
+        }
+      },
+      {
+        "text": "I can clean the room and sing.",
+        "bind": {
+          "action1": "clean the room",
+          "action2": "sing"
+        }
+      },
+      {
+        "text": "I can sweep the floor and clean the room.",
+        "bind": {
+          "action1": "sweep the floor",
+          "action2": "clean the room"
+        }
+      },
+      {
+        "text": "I can sweep the floor and sweep the floor.",
+        "bind": {
+          "action1": "sweep the floor",
+          "action2": "sweep the floor"
+        }
+      },
+      {
+        "text": "I can sweep the floor and cook.",
+        "bind": {
+          "action1": "sweep the floor",
+          "action2": "cook"
+        }
+      },
+      {
+        "text": "I can sweep the floor and sing.",
+        "bind": {
+          "action1": "sweep the floor",
+          "action2": "sing"
+        }
+      },
+      {
+        "text": "I can cook and clean the room.",
+        "bind": {
+          "action1": "cook",
+          "action2": "clean the room"
+        }
+      },
+      {
+        "text": "I can cook and sweep the floor.",
+        "bind": {
+          "action1": "cook",
+          "action2": "sweep the floor"
+        }
+      },
+      {
+        "text": "I can cook and cook.",
+        "bind": {
+          "action1": "cook",
+          "action2": "cook"
+        }
+      },
+      {
+        "text": "I can cook and sing.",
+        "bind": {
+          "action1": "cook",
+          "action2": "sing"
+        }
+      },
+      {
+        "text": "I can sing and clean the room.",
+        "bind": {
+          "action1": "sing",
+          "action2": "clean the room"
+        }
+      },
+      {
+        "text": "I can sing and sweep the floor.",
+        "bind": {
+          "action1": "sing",
+          "action2": "sweep the floor"
+        }
+      },
+      {
+        "text": "I can sing and cook.",
+        "bind": {
+          "action1": "sing",
+          "action2": "cook"
+        }
+      },
+      {
+        "text": "I can sing and sing.",
+        "bind": {
+          "action1": "sing",
+          "action2": "sing"
+        }
+      }
+    ]
+  }
+]

@@ -1,0 +1,63 @@
+{
+  "items": [
+    { "name": "u02_s0_h01", "text": "I have a new friend." },
+    { "name": "u02_s0_h02", "text": "He's tall and strong." },
+    { "name": "u02_s0_h03", "text": "She's quiet and kind." },
+    { "name": "u02_s0_h04", "text": "We play games together." },
+    { "name": "u02_s0_loc01", "text": "Where is the new friend?" },
+    { "name": "u02_s0_loc02", "text": "Where is the quiet girl?" },
+
+    { "name": "u02_v_tall_strong", "text": "tall and strong" },
+    { "name": "u02_v_short_thin", "text": "short and thin" },
+    { "name": "u02_v_long_hair", "text": "long hair" },
+    { "name": "u02_v_short_hair", "text": "short hair" },
+    { "name": "u02_v_kind", "text": "kind" },
+    { "name": "u02_v_quiet", "text": "quiet" },
+
+    { "name": "u02_s2_orig01", "text": "He's tall and strong." },
+    { "name": "u02_s2_orig02", "text": "He has nice short hair too." },
+    { "name": "u02_s2_orig03", "text": "He's also kind." },
+    { "name": "u02_s2_comp01", "text": "She's short and thin." },
+    { "name": "u02_s2_comp02", "text": "She has long hair." },
+    { "name": "u02_s2_comp03", "text": "He's quiet." },
+    { "name": "u02_s2_comp04", "text": "She's funny." },
+    { "name": "u02_s2_ext01", "text": "He's tall and thin." },
+    { "name": "u02_s2_ext02", "text": "She has big eyes." },
+    { "name": "u02_s2_ext03", "text": "He has small ears." },
+
+    { "name": "u02_s3_orig01", "text": "Who's your best friend?" },
+    { "name": "u02_s3_orig02", "text": "Chen Jie. She's funny." },
+    { "name": "u02_s3_orig03", "text": "She often makes me smile." },
+    { "name": "u02_s3_orig04", "text": "My best friend is John." },
+    { "name": "u02_s3_comp01", "text": "He often helps me with English." },
+    { "name": "u02_s3_comp02", "text": "She often reads books with me." },
+    { "name": "u02_s3_comp03", "text": "He often plays football with me." },
+    { "name": "u02_s3_ext01", "text": "She always makes me happy." },
+    { "name": "u02_s3_ext02", "text": "He often plays games with me." },
+    { "name": "u02_s3_ext03", "text": "She helps me with Chinese." },
+
+    { "name": "u02_act_read", "text": "read books" },
+    { "name": "u02_act_games", "text": "play games" },
+    { "name": "u02_act_football", "text": "play football" },
+    { "name": "u02_act_english", "text": "help with English" },
+
+    { "name": "u02_p1", "text": "I have a friend. Her name is Lily." },
+    { "name": "u02_p2", "text": "She's tall and thin." },
+    { "name": "u02_p3", "text": "She has long hair." },
+    { "name": "u02_p4", "text": "We read books together." },
+
+    { "name": "u02_ph_english", "text": "English" },
+    { "name": "u02_ph_fish", "text": "fish" },
+    { "name": "u02_ph_share", "text": "share" },
+    { "name": "u02_ph_she", "text": "she" },
+    { "name": "u02_ph_ship", "text": "ship" },
+    { "name": "u02_ph_shop", "text": "shop" },
+
+    { "name": "u02_s7_01", "text": "Tell me about your good friend." },
+    { "name": "u02_s7_02", "text": "He has small eyes and very big ears." },
+    { "name": "u02_s7_03", "text": "He has short legs, but his body is very long." },
+    { "name": "u02_s7_04", "text": "We often play games in the park." },
+    { "name": "u02_s7_05", "text": "Can I meet your friend? Sure. Here he comes." },
+    { "name": "u02_s7_06", "text": "This is my good friend! Ha! Ha!" }
+  ]
+}

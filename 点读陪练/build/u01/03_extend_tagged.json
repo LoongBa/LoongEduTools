@@ -1,0 +1,99 @@
+[
+  {
+    "text": "What's your uncle's job? He's a teacher.",
+    "tags": [
+      "review:g3_u1",
+      "review:g3_u2",
+      "review:g1_u5"
+    ],
+    "advanced": [],
+    "rare": [
+      "what's"
+    ]
+  },
+  {
+    "text": "What's your aunt's job? She's a writer.",
+    "tags": [
+      "review:g3_u1",
+      "review:g3_u2"
+    ],
+    "advanced": [
+      "writer"
+    ],
+    "rare": [
+      "what's"
+    ]
+  },
+  {
+    "text": "My father is a busy doctor.",
+    "tags": [
+      "review:g3_u2"
+    ],
+    "advanced": [],
+    "rare": []
+  },
+  {
+    "text": "Can they help? Yes, they can. They can cook dinner.",
+    "tags": [
+      "review:g2_u3"
+    ],
+    "advanced": [
+      "dinner"
+    ],
+    "rare": []
+  },
+  {
+    "text": "Can Dad help? Yes, he can. He can draw a picture.",
+    "tags": [
+      "review:g3_u2",
+      "review:g3_u5",
+      "review:g1_u5",
+      "review:g2_u3"
+    ],
+    "advanced": [],
+    "rare": []
+  },
+  {
+    "text": "I can cook for my family.",
+    "tags": [
+      "review:g3_u2"
+    ],
+    "advanced": [],
+    "rare": []
+  },
+  {
+    "text": "We can draw pictures with my mum.",
+    "tags": [
+      "review:g3_u5",
+      "review:g1_u5"
+    ],
+    "advanced": [],
+    "rare": [
+      "pictures"
+    ]
+  },
+  {
+    "text": "The teacher teaches children in China.",
+    "tags": [
+      "review:g3_u1",
+      "review:g1_u5"
+    ],
+    "advanced": [
+      "teaches"
+    ],
+    "rare": [
+      "children"
+    ]
+  },
+  {
+    "text": "I want to help her at home.",
+    "tags": [
+      "review:g3_u5",
+      "review:g2_u3"
+    ],
+    "advanced": [
+      "want"
+    ],
+    "rare": []
+  }
+]

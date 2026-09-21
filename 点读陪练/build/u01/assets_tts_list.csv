@@ -1,0 +1,39 @@
+audio_id,text,layer,note
+u01_s3_orig01,"What's your father's job? He's a factory worker.",original,教材原句重读
+u01_s3_comp01,"What's your grandpa's job? He's a farmer.",complete,槽×词表枚举
+u01_s3_comp02,"What's your grandma's job? She's a nurse.",complete,槽×词表枚举
+u01_s3_comp03,"What's your mother's job? She's an office worker.",complete,槽×词表枚举
+u01_s3_ext01,"What's your uncle's job? He's a teacher.",extend,复习词 uncle
+u01_s3_ext02,"What's your aunt's job? She's a writer.",extend,复习词 aunt
+u01_s3_ext03,"My father is a busy doctor.",extend,正文词 busy
+u01_s2_orig01,"Can you help? Yes, I can. I can clean my room.",original,教材原句重读
+u01_s2_comp01,"Can she help? Yes, she can. She can do some chores.",complete,槽×词表枚举
+u01_s2_comp02,"Can he help? Yes, he can. He can sweep the floor.",complete,槽×词表枚举
+u01_s2_ext01,"Can they help? Yes, they can. They can cook dinner.",extend,复习词 they/dinner
+u01_s2_ext02,"Can Dad help? Yes, he can. He can draw a picture.",extend,复习词 Dad/draw
+u01_s4_orig01,"What can we do for them? We can do some chores.",original,教材原句重读
+u01_s4_comp01,"I can cook and clean the room.",complete,动作组合枚举
+u01_s4_comp02,"I can sweep the floor and make a gift.",complete,动作组合枚举
+u01_s4_ext01,"I can cook for my family.",extend,正文词 family
+u01_s4_ext02,"We can draw pictures with my mum.",extend,复习词 draw/mum
+u01_s6_orig01,"My grandpa can teach Chinese.",original,教材原句重读
+u01_s6_orig02,"He can make nice chairs.",original,教材原句重读
+u01_s6_orig03,"My grandma can make good lunches.",original,教材原句重读
+u01_s6_orig04,"Her peaches are great!",original,教材原句重读
+u01_s6_ext01,"The teacher teaches children in China.",extend,原创句
+u01_s6_ext02,"I eat lunch with my grandma in the kitchen.",extend,原创句
+u01_s7_orig01,"My mum is a writer.",original,教材原句重读
+u01_s7_orig02,"Mum is also a great cook.",original,教材原句重读
+u01_s7_orig03,"Mum is very busy.",original,教材原句重读
+u01_s7_orig04,"We can help her at home.",original,教材原句重读
+u01_s7_ext01,"I want to help her at home.",extend,续写
+u01_s7_ext02,"I can sweep the floor and clean the room.",extend,续写
+u01_s7_ext03,"I love my family!",extend,续写
+u01_v_job01,farmer,word,词卡
+u01_v_job02,nurse,word,词卡
+u01_v_job03,doctor,word,词卡
+u01_v_job04,office worker,word,词卡
+u01_v_ch01,clean the room,word,词卡
+u01_v_ch02,sweep the floor,word,词卡
+u01_v_ch03,cook,word,词卡
+u01_v_ch04,do some chores,word,词卡

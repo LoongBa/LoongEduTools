@@ -1,0 +1,88 @@
+[
+  {
+    "text": "What's his name? His name is Leo.",
+    "tags": [
+      "review:g3_u1"
+    ],
+    "advanced": [],
+    "rare": [
+      "leo"
+    ]
+  },
+  {
+    "text": "My friend is tall and kind. He has big eyes.",
+    "tags": [
+      "review:g3_u3",
+      "review:g1_u5",
+      "review:g3_u1"
+    ],
+    "advanced": [],
+    "rare": []
+  },
+  {
+    "text": "We often play football together.",
+    "tags": [
+      "review:g4_u1"
+    ],
+    "advanced": [],
+    "rare": [
+      "often"
+    ]
+  },
+  {
+    "text": "He always reads books with me.",
+    "tags": [
+      "review:g1_u3",
+      "review:g1_u2"
+    ],
+    "advanced": [],
+    "rare": []
+  },
+  {
+    "text": "She shares her fish with me.",
+    "tags": [
+      "review:g1_u4",
+      "review:g3_u1"
+    ],
+    "advanced": [],
+    "rare": []
+  },
+  {
+    "text": "True friends share.",
+    "tags": [
+      "review:g3_u1"
+    ],
+    "advanced": [],
+    "rare": [
+      "true"
+    ]
+  },
+  {
+    "text": "He's kind. He often helps me.",
+    "tags": [
+      "review:g2_u3"
+    ],
+    "advanced": [],
+    "rare": [
+      "often"
+    ]
+  },
+  {
+    "text": "She has long hair and big eyes.",
+    "tags": [
+      "review:g1_u5",
+      "review:g3_u1",
+      "review:g3_u2"
+    ],
+    "advanced": [],
+    "rare": []
+  },
+  {
+    "text": "We are best friends.",
+    "tags": [
+      "review:g3_u1"
+    ],
+    "advanced": [],
+    "rare": []
+  }
+]

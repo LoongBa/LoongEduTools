@@ -1,0 +1,279 @@
+{
+  "schema_version": "1.0",
+  "unit": "U01",
+  "grade": "4A",
+  "title": "Helping at home",
+  "topic": "What can we do to help at home?",
+  "grammar_rule": "a_an",
+  "phonics": { "combo": "ch" },
+
+  "abilities": [
+    {
+      "id": "A1", "desc": "I can ask about people's jobs.",
+      "training_segments": ["S1", "S3"],
+      "check": {
+        "type": "oral_produce",
+        "items": ["指着家庭树 grandpa/mum/uncle 三人，自己问 What's your ___'s job? 并自己答 He's/She's a/an ___."],
+        "pass_rule": ">=2 of 3",
+        "retrain_segment": "S3"
+      }
+    },
+    {
+      "id": "A2", "desc": "I can say what I do with my family.",
+      "training_segments": ["S0", "S2"],
+      "check": {
+        "type": "oral_produce",
+        "items": ["看 3 张家庭活动图，用 We often ___. / I can ___. 说出 3 句."],
+        "pass_rule": ">=2 of 3",
+        "retrain_segment": "S2"
+      }
+    },
+    {
+      "id": "A3", "desc": "I can talk about how to help my family.",
+      "training_segments": ["S4", "S5"],
+      "check": {
+        "type": "oral_produce",
+        "items": ["说出 I can ___ and ___. 至少 2 个组合."],
+        "pass_rule": "结构完整即可",
+        "retrain_segment": "S4"
+      }
+    },
+    {
+      "id": "A4", "desc": "I can read and spell words with ch.",
+      "training_segments": ["S6"],
+      "check": {
+        "type": "listen_write",
+        "items": ["指认 6 个 ch 词朗读 + 听写 3 个词"],
+        "pass_rule": "听写 >=2 of 3",
+        "retrain_segment": "S6"
+      }
+    }
+  ],
+
+  "segments": [
+    {
+      "id": "S0", "type": "map",
+      "scene": {
+        "image": "u01_s0_main.png",
+        "image_prompt": "扁平卡通暖色调家庭客厅全景，共五位家庭成员各在一角做家务：一位白发爷爷拖地、一位奶奶擦桌、一位爸爸端菜、一位妈妈扫地、一个孩子在叠衣，圆角白底卡图风格，无文字",
+        "hotspots": [
+          { "id": "H1", "text": "We often cook together.", "zh": "我们经常一起做饭。", "audio": "u01_s0_h01.mp3", "image": "u01_s0_h01.png", "image_prompt": "妈妈和孩子在厨房一起做饭，暖色调扁平卡通，圆角白底，无文字" },
+          { "id": "H2", "text": "We clean the room together.", "zh": "我们一起打扫房间。", "audio": "u01_s0_h02.mp3", "image": "u01_s0_h02.png", "image_prompt": "孩子和奶奶一起擦桌子，暖色调扁平卡通，圆角白底，无文字" },
+          { "id": "H3", "text": "I can sweep the floor.", "zh": "我会扫地。", "audio": "u01_s0_h03.mp3", "image": "u01_s0_h03.png", "image_prompt": "孩子拿扫帚扫地，暖色调扁平卡通，圆角白底，无文字" },
+          { "id": "H4", "text": "Grandpa can teach Chinese.", "zh": "爷爷会教语文。", "audio": "u01_s0_h04.mp3", "image": "u01_s0_h04.png", "image_prompt": "爷爷戴眼镜拿着语文书教孩子，暖色调扁平卡通，圆角白底，无文字" }
+        ],
+        "locate_items": [
+          { "audio": "u01_s0_loc01.mp3", "expect": "H1" },
+          { "audio": "u01_s0_loc02.mp3", "expect": "H3" }
+        ]
+      }
+    },
+
+    {
+      "id": "S1", "type": "vocab",
+      "groups": [
+        { "name": "jobs", "cards": [
+          { "word": "farmer", "zh": "农民", "audio": "u01_v_job01.mp3", "image": "u01_v_job01.png", "image_prompt": "戴草帽的中国农民伯伯站在金黄田地里微笑，扁平卡通，圆角白底词卡，无文字" },
+          { "word": "nurse", "zh": "护士", "audio": "u01_v_job02.mp3", "image": "u01_v_job02.png", "image_prompt": "穿粉色护士服的护士姐姐微笑，扁平卡通，圆角白底词卡，无文字" },
+          { "word": "doctor", "zh": "医生", "audio": "u01_v_job03.mp3", "image": "u01_v_job03.png", "image_prompt": "穿白大褂的医生微笑，扁平卡通，圆角白底词卡，无文字" },
+          { "word": "office worker", "zh": "办公室职员", "audio": "u01_v_job04.mp3", "image": "u01_v_job04.png", "image_prompt": "穿衬衫的办公室职员坐在电脑前，扁平卡通，圆角白底词卡，无文字" }
+        ]},
+        { "name": "chores", "cards": [
+          { "word": "clean the room", "zh": "打扫房间", "audio": "u01_v_ch01.mp3", "image": "u01_v_ch01.png", "image_prompt": "孩子拿抹布擦桌子，扁平卡通，圆角白底词卡，无文字" },
+          { "word": "sweep the floor", "zh": "扫地", "audio": "u01_v_ch02.mp3", "image": "u01_v_ch02.png", "image_prompt": "孩子拿扫帚扫地，扁平卡通，圆角白底词卡，无文字" },
+          { "word": "cook", "zh": "做饭", "audio": "u01_v_ch03.mp3", "image": "u01_v_ch03.png", "image_prompt": "妈妈在灶台前炒菜，扁平卡通，圆角白底词卡，无文字" },
+          { "word": "do some chores", "zh": "做家务", "audio": "u01_v_ch04.mp3", "image": "u01_v_ch04.png", "image_prompt": "孩子叠衣服做家务，扁平卡通，圆角白底词卡，无文字" }
+        ]}
+      ]
+    },
+
+    {
+      "id": "S2", "type": "pattern",
+      "grammar_rule": null,
+      "layers": {
+        "original": [
+          { "text": "Can you help? Yes, I can. I can clean my room.", "zh": "你能帮忙吗？是的，我能。我能打扫我的房间。", "audio": "u01_s2_orig01.mp3", "source": "textbook" }
+        ],
+        "complete": [
+          { "text": "Can she help? Yes, she can. She can do some chores.", "zh": "她能帮忙吗？是的，她能。她会做家务。", "audio": "u01_s2_comp01.mp3" },
+          { "text": "Can he help? Yes, he can. He can sweep the floor.", "zh": "他能帮忙吗？是的，他能。他会扫地。", "audio": "u01_s2_comp02.mp3" }
+        ],
+        "extend": [
+          { "text": "Can they help? Yes, they can. They can cook dinner.", "zh": "他们能帮忙吗？是的，他们能。他们会做晚饭。", "audio": "u01_s2_ext01.mp3", "tags": ["review:g3_u2"] },
+          { "text": "Can Dad help? Yes, he can. He can draw a picture.", "zh": "爸爸能帮忙吗？是的，他能。他会画画。", "audio": "u01_s2_ext02.mp3", "tags": ["review:g2_u1"] }
+        ]
+      },
+      "quiz": [
+        { "id": "q1", "type": "choose", "image": "u01_s2_q1.png", "image_prompt": "一个小女孩举起右手做提问姿势，表情好奇，身旁有三张家务小图（扫地/擦桌/叠衣），扁平卡通，圆角白底，无文字", "prompt": "Can ___ help? 看图选主语", "answer": { "expect": "she", "bind": ["she", "u01_v_ch03.png"] } }
+      ],
+      "method_card": {
+        "visual": "Can [谁] help? Yes, [谁] can. [谁] can [做什么].",
+        "script": "一个句子 = 三个口袋：谁、能、做什么。换主语（he/she/we）和动作，就是新句子。"
+      },
+      "produce_tasks": [
+        { "image": "u01_s2_prod01.png", "image_prompt": "奶奶在照顾小妹妹（婴儿），神情温柔，扁平卡通，圆角白底，无文字", "expect": "Can Grandma help? Yes, she can. She can look after my sister." }
+      ],
+      "tutor": { "instruction": "现在你来教爸爸：用 Can…help? 问他，再教他回答。" }
+    },
+
+    {
+      "id": "S3", "type": "pattern",
+      "grammar_rule": "a_an",
+      "layers": {
+        "original": [
+          { "text": "What's your father's job? He's a factory worker.", "zh": "你爸爸做什么工作？他是工厂工人。", "audio": "u01_s3_orig01.mp3", "source": "textbook" }
+        ],
+        "complete": [
+          { "text": "What's your grandpa's job? He's a farmer.", "zh": "你爷爷做什么工作？他是农民。", "audio": "u01_s3_comp01.mp3" },
+          { "text": "What's your grandma's job? She's a nurse.", "zh": "你奶奶做什么工作？她是护士。", "audio": "u01_s3_comp02.mp3" },
+          { "text": "What's your mother's job? She's an office worker.", "zh": "你妈妈做什么工作？她是办公室职员。", "audio": "u01_s3_comp03.mp3" }
+        ],
+        "extend": [
+          { "text": "What's your uncle's job? He's a teacher.", "zh": "你叔叔做什么工作？他是老师。", "audio": "u01_s3_ext01.mp3", "tags": ["review:g3_u1"] },
+          { "text": "What's your aunt's job? She's a writer.", "zh": "你阿姨做什么工作？她是作家。", "audio": "u01_s3_ext02.mp3", "tags": ["review:g3_u1"] },
+          { "text": "My father is a busy doctor.", "zh": "我爸爸是一位忙碌的医生。", "audio": "u01_s3_ext03.mp3", "tags": ["extra"] }
+        ]
+      },
+      "quiz": [
+        { "id": "q1", "type": "fill", "image": "u01_s3_q1.png", "image_prompt": "家庭树局部图，爷爷头像，下方配空横线，扁平卡通，圆角白底，无文字", "prompt": "What's your grandpa's job? He's a ___.", "answer": { "expect": "farmer", "bind": ["farmer"] } }
+      ],
+      "method_card": {
+        "visual": "What's your [谁]'s job? He's/She's a/an [职业].",
+        "script": "两个口袋：[谁] 和 [职业]。把爸爸换成爷爷、工厂工人换成农民，就得到新句子。"
+      },
+      "produce_tasks": [
+        { "image": "u01_s3_prod01.png", "image_prompt": "阿姨（年轻女士）坐在书桌前写作，桌上笔记本电脑和稿纸，扁平卡通，圆角白底，无文字", "expect": "What's your aunt's job? She's a writer." }
+      ],
+      "tutor": { "instruction": "现在你来教妈妈：指着家庭树，问一个人的工作，再教她回答。" }
+    },
+
+    {
+      "id": "S4", "type": "pattern",
+      "grammar_rule": null,
+      "layers": {
+        "original": [
+          { "text": "What can we do for them? We can do some chores.", "zh": "我们能为他们做什么？我们可以做家务。", "audio": "u01_s4_orig01.mp3", "source": "textbook" }
+        ],
+        "complete": [
+          { "text": "I can cook and clean the room.", "zh": "我会做饭和打扫房间。", "audio": "u01_s4_comp01.mp3" },
+          { "text": "I can sweep the floor and make a gift.", "zh": "我会扫地和做礼物。", "audio": "u01_s4_comp02.mp3" }
+        ],
+        "extend": [
+          { "text": "I can cook for my family.", "zh": "我会为家人做饭。", "audio": "u01_s4_ext01.mp3", "tags": ["extra"] },
+          { "text": "We can draw pictures with my mum.", "zh": "我们会和妈妈一起画画。", "audio": "u01_s4_ext02.mp3", "tags": ["review:g3_u2"] }
+        ]
+      },
+      "quiz": [
+        { "id": "q1", "type": "fill", "image": "u01_s4_q1.png", "image_prompt": "两个动作卡（炒菜+擦桌子）用加号连接，扁平卡通，圆角白底，无文字", "prompt": "I can ___ and ___.", "answer": { "expect": "cook / clean the room", "bind": ["cook", "clean the room"] } }
+      ],
+      "method_card": {
+        "visual": "I can [动作1] and [动作2].",
+        "script": "两个动作连起来，and 像胶水。选任意两个动作卡，连成新句子。"
+      },
+      "produce_tasks": [
+        { "image": "u01_s4_prod01.png", "image_prompt": "孩子抱着小妹妹轻轻唱歌，旁边有音符装饰，扁平卡通，圆角白底，无文字", "expect": "I can look after my sister and sing." }
+      ],
+      "tutor": { "instruction": "现在你来教爸爸：选两个动作，教他连成一句话。" }
+    },
+
+    {
+      "id": "S5", "type": "pbl",
+      "image": "u01_s5_base.png",
+      "image_prompt": "空白家庭海报模板底图，中间一家人像框，四周留白槽位，扁平卡通，圆角白底，无文字",
+      "scaffold": [
+        { "slot": "who", "candidates": ["My mother is", "My father is", "My grandpa is", "My grandma is"] },
+        { "slot": "job", "candidates": ["a doctor.", "a nurse.", "a farmer.", "a factory worker.", "an office worker."] },
+        { "slot": "activity", "candidates": ["We often cook together.", "We often sing together.", "We often clean together."] }
+      ],
+      "method_card": {
+        "visual": "[人] + [职业/活动] = 海报句",
+        "script": "从每张卡片选一张，连成海报句子。先自己造，再从补全句库对照补足。"
+      },
+      "flow": ["示范", "方法卡", "自己组合 3-4 句", "对照补全句库", "点读跟读", "完整朗读", "家长确认", "打卡"]
+    },
+
+    {
+      "id": "S6", "type": "phonics",
+      "combo": "ch",
+      "words": ["teach", "Chinese", "lunch", "teacher", "chair", "child", "peach", "kitchen"],
+      "layers": {
+        "original": [
+          { "text": "My grandpa can teach Chinese.", "zh": "我爷爷会教语文。", "audio": "u01_s6_orig01.mp3", "source": "textbook" },
+          { "text": "He can make nice chairs.", "zh": "他会做好看的椅子。", "audio": "u01_s6_orig02.mp3", "source": "textbook" },
+          { "text": "My grandma can make good lunches.", "zh": "我奶奶会做好吃的午饭。", "audio": "u01_s6_orig03.mp3", "source": "textbook" },
+          { "text": "Her peaches are great!", "zh": "她的桃子很棒！", "audio": "u01_s6_orig04.mp3", "source": "textbook" }
+        ],
+        "extend": [
+          { "text": "The teacher teaches children in China.", "zh": "老师在中国教孩子们。", "audio": "u01_s6_ext01.mp3", "tags": ["extra"] },
+          { "text": "I eat lunch with my grandma in the kitchen.", "zh": "我和奶奶在厨房吃午饭。", "audio": "u01_s6_ext02.mp3", "tags": ["extra"] }
+        ]
+      },
+      "quiz": [
+        { "id": "q1", "type": "listen_write", "image": "u01_s6_q1.png", "image_prompt": "一盘热腾腾的午饭，扁平卡通，圆角白底词图，无文字", "prompt": "听音填空: l_nch", "answer": { "expect": "lunch", "bind": ["lunch"] } }
+      ]
+    },
+
+    {
+      "id": "S7", "type": "story",
+      "layers": {
+        "original": [
+          { "text": "My mum is a writer.", "zh": "我妈妈是作家。", "audio": "u01_s7_orig01.mp3", "source": "textbook" },
+          { "text": "Mum is also a great cook.", "zh": "妈妈也是很棒的厨师。", "audio": "u01_s7_orig02.mp3", "source": "textbook" },
+          { "text": "Mum is very busy.", "zh": "妈妈很忙。", "audio": "u01_s7_orig03.mp3", "source": "textbook" },
+          { "text": "We can help her at home.", "zh": "我们可以在家里帮她。", "audio": "u01_s7_orig04.mp3", "source": "textbook" }
+        ],
+        "extend": [
+          { "text": "I want to help her at home.", "zh": "我想在家里帮她。", "audio": "u01_s7_ext01.mp3", "tags": ["extra"] },
+          { "text": "I can sweep the floor and clean the room.", "zh": "我会扫地和打扫房间。", "audio": "u01_s7_ext02.mp3", "tags": ["review:g4_u01"] },
+          { "text": "I love my family!", "zh": "我爱我的家人！", "audio": "u01_s7_ext03.mp3", "tags": ["extra"] }
+        ]
+      },
+      "quiz": [
+        { "id": "q1", "type": "choose", "image": "u01_s7_q1.png", "image_prompt": "妈妈坐在书桌前写作，桌上有电脑，扁平卡通，圆角白底插图，无文字", "prompt": "What's my mum?", "answer": { "expect": "writer", "bind": ["writer"] } }
+      ]
+    },
+
+    {
+      "id": "S8", "type": "check",
+      "image": "u01_s8_tree.png",
+      "image_prompt": "三代人家庭树图，正好七位成员头像圆圈连线：第一代爷爷和奶奶（两位老人），第二代爸爸、妈妈、叔叔、阿姨（四位成年人），第三代孩子（一个儿童），每位头像下方用一个空白问号贴纸遮住职业区域，扁平卡通，圆角白底，无文字",
+      "note": "能力检验站：见顶层 abilities 数组，先测后评，未过映射 retrain_segment"
+    }
+  ],
+
+  "sentence_card_library": {
+    "rows": [
+      { "layer": "original", "text": "What's your father's job? He's a factory worker.", "zh": "你爸爸做什么工作？他是工厂工人。", "audio": "u01_s3_orig01.mp3", "source": "textbook" },
+      { "layer": "complete", "text": "What's your grandpa's job? He's a farmer.", "zh": "你爷爷做什么工作？他是农民。", "audio": "u01_s3_comp01.mp3" },
+      { "layer": "extend", "text": "What's your uncle's job? He's a teacher.", "zh": "你叔叔做什么工作？他是老师。", "audio": "u01_s3_ext01.mp3", "tags": ["review:g3_u1"] }
+    ],
+    "note": "本文件为样例（每知识点列 1-3 句代表）；量产时 complete 全量（~98 句）与 extend 全量（~24 句）由脚本/LLM 补全"
+  },
+
+  "print_version": {
+    "cards": "句卡库 A4 三栏页",
+    "pbl_template": "PBL 空槽海报模板 + 候选句库",
+    "check_record": "4 能力 × 三档 + 家长签名栏",
+    "vocab_cards": "16 词卡页",
+    "worksheet": {
+      "parts": [
+        { "title": "Part 1 职业问答", "items": [
+          { "sentence": "What's your ___'s job? He's a ___.", "blank1": "father/grandpa", "blank2": "farmer/doctor", "hint": "家庭树小图" }
+        ]},
+        { "title": "Part 2 Can 句型", "items": [
+          { "sentence": "Can ___ help? Yes, ___ can. ___ can ___.", "blank1": "主语", "blank2": "动作", "hint": "活动小图" }
+        ]},
+        { "title": "Part 3 I can…and…", "items": [
+          { "sentence": "I can ___ and ___.", "blank1": "动作1", "blank2": "动作2", "hint": "动作图" }
+        ]},
+        { "title": "Part 4 ch 词", "items": [
+          { "sentence": "l_ _ ch", "blank": "u n", "hint": "午饭图" }
+        ]}
+      ],
+      "answers": [
+        { "blank": "Part 1", "answer": "grandpa / farmer（示例）" },
+        { "blank": "Part 4", "answer": "lunch" }
+      ]
+    }
+  }
+}

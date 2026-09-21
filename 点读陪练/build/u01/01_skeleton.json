@@ -1,0 +1,30 @@
+{
+  "unit": "U01",
+  "title": "Helping at home",
+  "patterns": [
+    {
+      "id": "p1",
+      "frame": "What's your {who}'s job? He's a {job}.",
+      "slot_map": {
+        "who": ["father", "grandpa", "grandma", "mother"],
+        "job": ["farmer", "nurse", "doctor", "office worker", "factory worker"]
+      }
+    },
+    {
+      "id": "p2",
+      "frame": "Can {subject} help? Yes, {subject} can. {subject} can {action}.",
+      "slot_map": {
+        "subject": ["I", "you", "she", "he", "we"],
+        "action": ["clean the room", "sweep the floor", "cook", "do some chores"]
+      }
+    },
+    {
+      "id": "p3",
+      "frame": "I can {action1} and {action2}.",
+      "slot_map": {
+        "action1": ["clean the room", "sweep the floor", "cook", "sing"],
+        "action2": ["clean the room", "sweep the floor", "cook", "sing"]
+      }
+    }
+  ]
+}
