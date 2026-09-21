@@ -424,6 +424,7 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.0",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="2048",
+        shared_js=False,   # 经典游戏暂缓，index.html 不引用 lx-shared，禁止合并死文件
         default_unit=0,
     ),
     "俄罗斯方块": ToolConfig(
@@ -432,6 +433,7 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.1",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="俄罗斯方块",
+        shared_js=False,   # 经典游戏暂缓，index.html 不引用 lx-shared，禁止合并死文件
         default_unit=0,
     ),
     "扫雷": ToolConfig(
@@ -440,6 +442,7 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.1",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="扫雷",
+        shared_js=False,   # 经典游戏暂缓，index.html 不引用 lx-shared，禁止合并死文件
         default_unit=0,
     ),
     "贪吃蛇": ToolConfig(
@@ -448,6 +451,7 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.0",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="贪吃蛇",
+        shared_js=False,   # 经典游戏暂缓，index.html 不引用 lx-shared，禁止合并死文件
         default_unit=0,
     ),
     # ---------------- 扩展系列（生活常识/财商启蒙等补充款） ----------------
