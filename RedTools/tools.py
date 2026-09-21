@@ -360,6 +360,17 @@ TOOLS: dict[str, ToolConfig] = {
         free_units=2,
         default_unit=0,
     ),
+    "旋转拼图": ToolConfig(
+        series="益智",
+        subgroup="空间感知",     # 子系列目录：series/益智/空间感知/旋转拼图/
+        tool="旋转拼图",
+        version="1.0",
+        datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
+        app_name="旋转拼图",
+        modes=["offline", "online"],
+        free_units=2,
+        default_unit=0,
+    ),
     # ---------------- 益智系列 · 反应力子系列 ----------------
     "点击反应测试": ToolConfig(
         series="益智",
