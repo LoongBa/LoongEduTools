@@ -17,6 +17,8 @@ TOOLS: dict[str, ToolConfig] = {
     "英语点读": ToolConfig(
         series="学科",
         tool="英语点读",
+        modes=["offline", "online"],
+        free_units=None,
         version="1.3.0",
         book=ROOT.parent / "PEP词库" / "data" / "diandu" / "1212001401255_英语（PEP）_四年级_上册.json",
         img_dir=Path(r"F:\_教材素材\人教版（PEP）（主编：吴欣）\四年级\上册\_图片素材"),
@@ -33,6 +35,8 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.1",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="数学口算",
+        modes=["offline", "online"],
+        free_units=3,
         default_unit=0,
     ),
     "24点": ToolConfig(
@@ -41,6 +45,8 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.2",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="24点",
+        modes=["offline", "online"],
+        free_units=None,
         default_unit=0,
     ),
     "乘法口诀练习": ToolConfig(
@@ -49,6 +55,8 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.0",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="乘法口诀练习",
+        modes=["offline", "online"],
+        free_units=2,
         default_unit=0,
     ),
     "打字背单词": ToolConfig(
@@ -58,6 +66,8 @@ TOOLS: dict[str, ToolConfig] = {
         datasource="vocab",    # PEP 词汇表工具：解析 11 册教材词汇表 → data.js（books）
         vocab_dir=Path(r"F:\_教材素材\人教版（PEP）（主编：吴欣）"),
         app_name="打字背单词",
+        modes=["offline", "online"],
+        free_units=200,
         default_unit=0,
     ),
     "单词闪卡": ToolConfig(
@@ -67,6 +77,8 @@ TOOLS: dict[str, ToolConfig] = {
         datasource="vocab",    # PEP 词汇表工具：与打字背单词同管线，词库 data.js（books）
         vocab_dir=Path(r"F:\_教材素材\人教版（PEP）（主编：吴欣）"),
         app_name="单词闪卡",
+        modes=["offline", "online"],
+        free_units=200,
         default_unit=0,
     ),
     # ---------------- 学科系列 · 成语（共享词库 _shared/成语词库/） ----------------
@@ -76,6 +88,8 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.0",
         datasource="chengyu",  # 成语词库工具：复制 src/ + 注入共享词库 data.js
         app_name="看图猜成语",
+        modes=["offline", "online"],
+        free_units=1,
         default_unit=0,
     ),
     "成语接龙": ToolConfig(
@@ -84,6 +98,8 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.1",
         datasource="chengyu",  # 成语词库工具：复制 src/ + 注入共享词库 data.js
         app_name="成语接龙",
+        modes=["offline", "online"],
+        free_units=1,
         default_unit=0,
     ),
     "成语配对": ToolConfig(
@@ -92,6 +108,8 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.0",
         datasource="chengyu",  # 成语词库工具：复制 src/ + 注入共享词库 data.js
         app_name="成语配对",
+        modes=["offline", "online"],
+        free_units=1,
         default_unit=0,
     ),
     # ---- 双模式试点（V0.2 骨架）：新结构 src/core/ + src/adapters/<mode>/ ----
@@ -114,6 +132,8 @@ TOOLS: dict[str, ToolConfig] = {
     version="1.0",
     datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
     app_name="舒尔特方格",
+    modes=["offline", "online"],
+    free_units=2,
     default_unit=0,
 ),
 "找相同": ToolConfig(
@@ -123,6 +143,8 @@ TOOLS: dict[str, ToolConfig] = {
     version="1.0",
     datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
     app_name="找相同",
+    modes=["offline", "online"],
+    free_units=2,
     default_unit=0,
 ),
 "划消训练": ToolConfig(
@@ -132,6 +154,8 @@ TOOLS: dict[str, ToolConfig] = {
     version="1.0",
     datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
     app_name="划消训练",
+    modes=["offline", "online"],
+    free_units=2,
     default_unit=0,
 ),
 "视觉追踪": ToolConfig(
@@ -141,6 +165,8 @@ TOOLS: dict[str, ToolConfig] = {
     version="1.0",
     datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
     app_name="视觉追踪",
+    modes=["offline", "online"],
+    free_units=2,
     default_unit=0,
 ),
     # ---------------- 益智系列 · 观察力子系列 ----------------
@@ -151,6 +177,8 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.0",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="找不同",
+        modes=["offline", "online"],
+        free_units=2,
         default_unit=0,
     ),
     "影子配对": ToolConfig(
@@ -160,6 +188,8 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.0",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="影子配对",
+        modes=["offline", "online"],
+        free_units=2,
         default_unit=0,
     ),
     "细节搜索": ToolConfig(
@@ -169,6 +199,8 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.0",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="细节搜索",
+        modes=["offline", "online"],
+        free_units=2,
         default_unit=0,
     ),
     # ---------------- 益智系列 · 记忆力子系列 ----------------
@@ -179,6 +211,8 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.0",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="翻牌记忆配对",
+        modes=["offline", "online"],
+        free_units=2,
         default_unit=0,
     ),
 "数字记忆": ToolConfig(
@@ -188,6 +222,8 @@ TOOLS: dict[str, ToolConfig] = {
     version="1.0",
     datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
     app_name="数字记忆",
+    modes=["offline", "online"],
+    free_units=2,
     default_unit=0,
 ),
 "图形序列复刻": ToolConfig(
@@ -197,6 +233,8 @@ TOOLS: dict[str, ToolConfig] = {
     version="1.0",
     datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
     app_name="图形序列复刻",
+    modes=["offline", "online"],
+    free_units=2,
     default_unit=0,
 ),
 "位置记忆": ToolConfig(
@@ -206,6 +244,8 @@ TOOLS: dict[str, ToolConfig] = {
     version="1.0",
     datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
     app_name="位置记忆",
+    modes=["offline", "online"],
+    free_units=2,
     default_unit=0,
 ),
     # ---------------- 益智系列 · 逻辑思维子系列 ----------------
@@ -216,6 +256,8 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.0",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="推箱子",
+        modes=["offline", "online"],
+        free_units=20,
         default_unit=0,
     ),
     "迷宫寻路": ToolConfig(
@@ -225,6 +267,8 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.0",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="迷宫寻路",
+        modes=["offline", "online"],
+        free_units=2,
         default_unit=0,
     ),
     "分类整理": ToolConfig(
@@ -234,6 +278,8 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.0",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="分类整理",
+        modes=["offline", "online"],
+        free_units=2,
         default_unit=0,
     ),
     "数独入门": ToolConfig(
@@ -243,6 +289,8 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.0",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="数独入门",
+        modes=["offline", "online"],
+        free_units=1,
         default_unit=0,
     ),
     "因果排序": ToolConfig(
@@ -252,6 +300,8 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.0",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="因果排序",
+        modes=["offline", "online"],
+        free_units=2,
         default_unit=0,
     ),
     "蜡笔物理": ToolConfig(
@@ -261,6 +311,8 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.0",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="蜡笔物理",
+        modes=["offline", "online"],
+        free_units=5,
         default_unit=0,
     ),
     # ---------------- 益智系列 · 空间感知子系列 ----------------
@@ -271,6 +323,8 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.0",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="简单拼图",
+        modes=["offline", "online"],
+        free_units=2,
         default_unit=0,
     ),
     "七巧板": ToolConfig(
@@ -280,6 +334,8 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.0",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="七巧板",
+        modes=["offline", "online"],
+        free_units=4,
         default_unit=0,
     ),
     "华容道": ToolConfig(
@@ -289,6 +345,8 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.1",        # v1.1：角色头像升级为 AI 生成（SenseNova U1.5 + 抠图透明 WebP）
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="华容道",
+        modes=["offline", "online"],
+        free_units=2,
         default_unit=0,
     ),
     # ---------------- 益智系列 · 反应力子系列 ----------------
@@ -299,6 +357,8 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.0",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="点击反应测试",
+        modes=["offline", "online"],
+        free_units=2,
         default_unit=0,
     ),
     "手速挑战": ToolConfig(
@@ -308,6 +368,8 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.0",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="手速挑战",
+        modes=["offline", "online"],
+        free_units=2,
         default_unit=0,
     ),
     "颜色反应": ToolConfig(
@@ -317,6 +379,8 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.0",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="颜色反应",
+        modes=["offline", "online"],
+        free_units=2,
         default_unit=0,
     ),
     # ---------------- 益智系列 · 语言子系列 ----------------
@@ -327,6 +391,8 @@ TOOLS: dict[str, ToolConfig] = {
     version="1.0",
     datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
     app_name="看图说话排序",
+    modes=["offline", "online"],
+    free_units=2,
     default_unit=0,
 ),
 "反义词配对": ToolConfig(
@@ -336,6 +402,8 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.0",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="反义词配对",
+    modes=["offline", "online"],
+    free_units=2,
         default_unit=0,
     ),
     "绕口令节奏": ToolConfig(
@@ -345,6 +413,8 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.0",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="绕口令节奏",
+        modes=["offline", "online"],
+        free_units=2,
         default_unit=0,
     ),
     # ---------------- 经典游戏系列（情怀引流） ----------------
@@ -387,6 +457,8 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.0",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="认识时间",
+        modes=["offline", "online"],
+        free_units=2,
         default_unit=0,
     ),
     "认识钱币": ToolConfig(
@@ -395,6 +467,8 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.0",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="认识钱币",
+        modes=["offline", "online"],
+        free_units=2,
         default_unit=0,
     ),
     "涂色练习": ToolConfig(
@@ -403,6 +477,8 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.0",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="涂色练习",
+        modes=["offline", "online"],
+        free_units=2,
         default_unit=0,
     ),
     "动物配对": ToolConfig(
@@ -411,6 +487,8 @@ TOOLS: dict[str, ToolConfig] = {
         version="1.0",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/（含 elements.js 元素库）
         app_name="动物配对",
+        modes=["offline", "online"],
+        free_units=2,
         default_unit=0,
     ),
     # 已登记工具清单（2026-09-21）：学科 9 款——英语点读/数学口算/24点/打字背单词/单词闪卡/乘法口诀练习/看图猜成语/成语接龙/成语配对（成语三件套全交付）；
