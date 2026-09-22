@@ -393,6 +393,17 @@ TOOLS: dict[str, ToolConfig] = {
         free_units=2,
         default_unit=0,
     ),
+    "循环指令": ToolConfig(
+        series="益智",
+        subgroup="编程教学",     # 子系列目录：series/益智/编程教学/循环指令/
+        tool="循环指令",
+        version="1.0",        # v1.0：反应测速转型——显式循环块「重复N次{组指令}」+ 走廊生成 + 编写量星级
+        datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
+        app_name="循环指令",
+        modes=["offline", "online"],
+        free_units=2,
+        default_unit=0,
+    ),
     "扫雷推理": ToolConfig(
         series="益智",
         subgroup="逻辑思维",     # 子系列目录：series/益智/逻辑思维/扫雷推理/
