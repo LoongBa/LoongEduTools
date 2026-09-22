@@ -382,6 +382,17 @@ TOOLS: dict[str, ToolConfig] = {
         free_units=2,
         default_unit=0,
     ),
+    "合并策略编程": ToolConfig(
+        series="益智",
+        subgroup="编程教学",     # 子系列目录：series/益智/编程教学/合并策略编程/
+        tool="合并策略编程",
+        version="1.0",        # v1.0：2048 转型——确定性合并 + 方向指令序列 + BFS 最短解星级
+        datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
+        app_name="合并策略编程",
+        modes=["offline", "online"],
+        free_units=2,
+        default_unit=0,
+    ),
     "扫雷推理": ToolConfig(
         series="益智",
         subgroup="逻辑思维",     # 子系列目录：series/益智/逻辑思维/扫雷推理/

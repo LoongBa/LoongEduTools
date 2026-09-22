@@ -1,0 +1,402 @@
+/* ============================================================
+   合并策略编程 — 样式（Chrome 61 基线层，2048 米黄风格）
+   约束：无 flex gap / aspect-ratio / clamp / inset / 逻辑属性 / :has
+   主题：编程教学 · 2048 经典米黄
+   ============================================================ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body { height: 100%; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+               "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: #faf8ef;
+  color: #776e65;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-flex-direction: column;
+  flex-direction: column;
+  height: 100vh;
+  height: calc(var(--app-height, 100vh));
+}
+
+/* ---------- 顶栏 ---------- */
+.app-header {
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 0 auto;
+  flex: 0 0 auto;
+  padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  background: #ffffff;
+  border-bottom: 1px solid #ece5da;
+}
+
+.header-brand {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  padding: 10px 16px;
+}
+
+.header-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  margin-right: 8px;
+}
+
+.header-name {
+  font-size: 17px;
+  font-weight: 600;
+  color: #776e65;
+}
+
+.header-streak {
+  position: absolute;
+  right: 12px;
+  top: calc(10px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
+  font-size: 12px;
+  color: #f67c5f;
+}
+
+/* ---------- 主区 ---------- */
+.app-main {
+  -webkit-box-flex: 1;
+  -webkit-flex: 1 1 auto;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  min-height: 0;
+}
+
+.view {
+  padding: 16px;
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ---------- 首页 ---------- */
+.home-wrap { text-align: center; }
+
+.home-title {
+  font-size: 26px;
+  margin: 24px 0 6px;
+  color: #f65e3b;
+}
+
+.home-sub {
+  font-size: 14px;
+  color: #b3aa9b;
+  margin-bottom: 24px;
+}
+
+.level-card {
+  display: block;
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid #ece5da;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.level-card:active { background: #faf8ef; }
+
+.level-name {
+  font-size: 17px;
+  font-weight: 600;
+  color: #776e65;
+}
+
+.level-best {
+  font-size: 13px;
+  color: #b3aa9b;
+  margin-top: 4px;
+}
+
+/* ---------- 按钮 ---------- */
+.btn {
+  display: inline-block;
+  background: #ffffff;
+  border: 1px solid #c9cdd4;
+  border-radius: 24px;
+  padding: 12px 28px;
+  font-size: 15px;
+  color: #1f2329;
+  cursor: pointer;
+  margin: 8px 6px;
+}
+
+.btn-primary {
+  background: #f67c5f;
+  border-color: #f67c5f;
+  color: #ffffff;
+}
+
+.btn-checkin { background: #fff7e6; border-color: #ffd591; color: #d46b08; }
+
+.btn-danger { color: #f5222d; border-color: #ffa39e; }
+
+.hidden-entry {
+  width: 0;
+  height: 0;
+  opacity: 0;
+  border: none;
+  padding: 0;
+}
+
+/* ---------- 练习页 ---------- */
+.game-wrap {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-flex-direction: column;
+  flex-direction: column;
+}
+
+.game-top {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: justify;
+  -webkit-justify-content: space-between;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.game-back {
+  background: none;
+  border: none;
+  font-size: 15px;
+  color: #8f8a80;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.game-prog { font-size: 14px; font-weight: 600; color: #776e65; }
+
+.game-timer { font-size: 14px; color: #b3aa9b; }
+
+.game-hint { font-size: 12px; color: #b3aa9b; }
+
+/* 盘面（2048 米黄） */
+.board {
+  background: #bbada0;
+  border-radius: 14px;
+  padding: 3.5%;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  position: relative;
+}
+
+.board.edge-flash { box-shadow: 0 0 0 4px #f2b179; }
+
+.board .grid {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-flex-wrap: wrap;
+  flex-wrap: wrap;
+}
+
+.board .cell {
+  width: 100%;
+  height: 0;
+  padding-bottom: 100%;
+  position: relative;
+  border-radius: 6px;
+  background: #cdc1b4;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 30px;
+  color: #776e65;
+}
+
+/* 3×3 盘面格子用 padding 间隔（无 gap 兼容） */
+.board.n3 .cell { margin: 3px; width: calc(100% - 6px); }
+
+/* 数字块色板（2048 经典配色） */
+.cell.t2   { background: #eee4da; color: #776e65; }
+.cell.t4   { background: #ede0c8; color: #776e65; }
+.cell.t8   { background: #f2b179; color: #f9f6f2; }
+.cell.t16  { background: #f59563; color: #f9f6f2; }
+.cell.t32  { background: #f67c5f; color: #f9f6f2; }
+.cell.t64  { background: #f65e3b; color: #f9f6f2; }
+.cell.t128 { background: #edcf72; color: #f9f6f2; }
+.cell.t256 { background: #edcc61; color: #f9f6f2; }
+.cell.t512 { background: #edc850; color: #f9f6f2; }
+.cell.t1024{ background: #edc53f; color: #f9f6f2; }
+.cell.t2048{ background: #edc22e; color: #f9f6f2; }
+.cell.t4096{ background: #3c3a32; color: #f9f6f2; }
+.cell.t8192{ background: #2e2a24; color: #f9f6f2; }
+
+/* 字号随位数缩小 */
+.cell.s1 { font-size: 26px; }
+.cell.s2 { font-size: 22px; }
+.cell.s3 { font-size: 18px; }
+.cell.s4 { font-size: 15px; }
+
+/* 指令区 */
+.cmd-bar {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  margin-bottom: 10px;
+  -webkit-flex-wrap: wrap;
+  flex-wrap: wrap;
+}
+
+.cmd-add {
+  background: #eee4da;
+  border: 1px solid #d8cfc0;
+  border-radius: 20px;
+  padding: 10px 16px;
+  font-size: 14px;
+  color: #776e65;
+  cursor: pointer;
+  margin: 3px 4px;
+  font-weight: 600;
+}
+
+.cmd-add:active { background: #e2d5c5; }
+
+.seq-wrap {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.seq-box {
+  -webkit-box-flex: 1;
+  -webkit-flex: 1 1 auto;
+  flex: 1 1 auto;
+  min-height: 44px;
+  background: #ffffff;
+  border: 2px dashed #d8cfc0;
+  border-radius: 12px;
+  padding: 8px 10px;
+  font-size: 14px;
+  color: #b3aa9b;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-flex-wrap: wrap;
+  flex-wrap: wrap;
+}
+
+.seq-box.active { border-color: #f67c5f; color: #776e65; }
+
+.cmd-chip {
+  display: inline-block;
+  background: #f67c5f;
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 14px;
+  margin: 2px 3px;
+  cursor: pointer;
+}
+
+/* 执行高亮 */
+.cmd-chip.exec {
+  background: #ffffff;
+  color: #f67c5f;
+  border: 2px solid #f67c5f;
+  padding: 4px 9px;
+  box-shadow: 0 2px 6px rgba(246, 124, 95, 0.4);
+}
+
+/* 执行锁定灰显 */
+.cmd-add[disabled], .seq-clear[disabled], .cmd-chip[disabled] {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
+
+.seq-clear {
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 0 auto;
+  flex: 0 0 auto;
+  background: none;
+  border: 1px solid #d8cfc0;
+  border-radius: 16px;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: #8f8a80;
+  cursor: pointer;
+  margin-left: 8px;
+}
+
+.ctrl-row { text-align: center; }
+
+.game-feedback {
+  text-align: center;
+  font-size: 15px;
+  min-height: 28px;
+  padding: 12px 0 0;
+  color: #8f8a80;
+}
+
+.game-feedback.ok { color: #52c41a; font-weight: 600; }
+.game-feedback.miss { color: #f5222d; }
+
+/* ---------- 家长面板 ---------- */
+.parent-wrap { text-align: center; }
+
+.parent-title { font-size: 20px; margin: 20px 0 12px; color: #776e65; }
+
+.parent-row { font-size: 14px; color: #8f8a80; margin: 6px 0; }
+.parent-row.small { font-size: 13px; color: #b3aa9b; }
+
+.parent-sub { font-size: 15px; margin: 16px 0 6px; color: #776e65; }
+
+/* ---------- 页脚 ---------- */
+.app-footer {
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 0 auto;
+  flex: 0 0 auto;
+  padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+}
