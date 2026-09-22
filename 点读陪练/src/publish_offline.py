@@ -133,6 +133,81 @@ def compress_ip(webh5: Path):
     log(f'  ✅ IP 头像 {n} 张 {total // 1024}KB -> {dst}')
 
 
+def check_ready(unit_dir: Path) -> tuple[bool, list[str]]:
+    """发布前就绪校验：内容包存在 + audio/image 素材与内容包引用一一对应。
+
+    返回 (是否就绪, 问题清单)。不齐打回，防止缺素材发布。
+    """
+    issues = []
+    # 1. 内容包
+    pkg = unit_dir / f'{unit_dir.name}_content_package.json'
+    if not pkg.exists():
+        pkg = unit_dir / '04_content_package.json'
+    if not pkg.exists():
+        return False, [f'缺内容包: {unit_dir.name}_content_package.json（先完成步骤 2）']
+    with open(pkg, encoding='utf-8') as f:
+        pkg_data = json.load(f)
+
+    # 2. 收集内容包引用的 audio/image
+    auds, imgs = set(), set()
+    def walk(n):
+        if isinstance(n, dict):
+            if n.get('audio'):
+                auds.add(n['audio'])
+            if n.get('image'):
+                imgs.add(n['image'])
+            for v in n.values():
+                walk(v)
+        elif isinstance(n, list):
+            for i in n:
+                walk(i)
+    walk(pkg_data)
+
+    # 3. 素材存在性
+    audio_dir = unit_dir / 'assets' / 'audio'
+    img_dir = unit_dir / 'assets' / 'images'
+    miss_aud = [a for a in auds if not (audio_dir / a).exists()
+                and not (audio_dir / (a + '.mp3')).exists() and not (audio_dir / a.replace('.mp3', '')).exists()]
+    miss_img = [i for i in imgs if not (img_dir / i).exists()]
+    if miss_aud:
+        issues.append(f'缺音频 {len(miss_aud)} 个: {miss_aud[:5]}')
+    if miss_img:
+        issues.append(f'缺图片 {len(miss_img)} 个: {miss_img[:5]}')
+
+    # 4. 素材量级提示（音频非空）
+    empty_aud = []
+    for a in auds:
+        for cand in (audio_dir / a, audio_dir / (a + '.mp3'), audio_dir / a.replace('.mp3', '')):
+            if cand.exists() and cand.stat().st_size > 0:
+                break
+            if cand.exists() and cand.stat().st_size == 0:
+                empty_aud.append(a)
+    if empty_aud:
+        issues.append(f'空音频 {len(empty_aud)} 个: {empty_aud[:5]}')
+
+    return not issues, issues
+
+
+def find_ready_units_from_schedule() -> list[str]:
+    """从 日常工作对齐表.md 读取「交付」列已标 ✅ 的四上单元目录名。
+
+    四上单元行格式: | U<N> <.> | ... | ✅ ...|（交付列=最后一列 ✅）
+    返回如 ['u01','u02']。对齐表不可达时不阻塞（静默返回 []）。
+    """
+    candidates = []
+    table = ROOT / 'docs' / '日常工作对齐表.md'
+    if not table.exists():
+        return candidates
+    try:
+        for line in table.read_text(encoding='utf-8').splitlines():
+            m = re.match(r'\|\s*U(\d+)\b.*\|.*\|\s*✅', line)
+            if m and line.strip().startswith('| U'):
+                candidates.append(f'u{int(m.group(1)):02d}')
+    except Exception:
+        pass
+    return candidates
+
+
 def webh5_build(webh5: Path):
     """pnpm build；失败抛异常"""
     log('  ⏳ pnpm build ...')
@@ -147,26 +222,100 @@ def webh5_build(webh5: Path):
 
 
 def split_offline(webh5: Path, out_root: Path, unit_id: str):
-    """从 dist 拆离线包（壳 + ip/webp + units/uXX）"""
+    """从 dist 拆离线包（壳 + ip/webp + units/uXX）。
+
+    不清空整个 out_root：只替换壳（index/assets/ip）并 upsert 当前单元，
+    保留其他已拆分单元——支持多单元累积（先 -u u01 再 -u u02，最后合并 zip）。
+    """
     dist = webh5 / 'dist'
     if not (dist / 'index.html').exists():
         raise RuntimeError('dist/ 缺 index.html，build 未完成')
-    if out_root.exists():
-        shutil.rmtree(out_root)
-    out_root.mkdir(parents=True)
+    out_root.mkdir(parents=True, exist_ok=True)
+    # 壳：每次用最新构建覆盖
     shutil.copy2(dist / 'index.html', out_root / 'index.html')
+    if (out_root / 'assets').exists():
+        shutil.rmtree(out_root / 'assets')
     shutil.copytree(dist / 'assets', out_root / 'assets')
     ip_webp = dist / 'ip' / 'webp'
+    if ip_webp.is_dir() and (out_root / 'ip' / 'webp').exists():
+        shutil.rmtree(out_root / 'ip' / 'webp')
     if ip_webp.is_dir():
         shutil.copytree(ip_webp, out_root / 'ip' / 'webp')
+    # 当前单元：upsert（覆盖同单元旧目录）
     ud = dist / 'units' / unit_id
     if ud.is_dir():
         dst = out_root / 'units' / unit_id
+        if dst.exists():
+            shutil.rmtree(dst)
+        dst.mkdir(parents=True)
         for sub in ('audio', 'images'):
             s = ud / sub
             if s.is_dir():
                 shutil.copytree(s, dst / sub)
-    log(f'  ✅ 离线拆分 -> {out_root}')
+        # 单元内容 JSON：从构建目录复制（dist/units 只有素材，内容 JSON 在 build/<unit>/）
+        unit_build = ROOT / 'build' / unit_id
+        pkg_candidates = [
+            unit_build / f'{unit_id}_content_package.json',
+            unit_build / '04_content_package.json',
+        ]
+        for cand in pkg_candidates:
+            if cand.exists():
+                shutil.copy2(cand, dst / 'content.json')
+                # 同步到 public（在线版/dev 运行时 fetch 用）
+                pub_dst = webh5 / 'public' / 'units' / unit_id / 'content.json'
+                pub_dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(cand, pub_dst)
+                break
+    log(f'  ✅ 离线拆分 {unit_id} -> {out_root}')
+
+
+def write_manifest(webh5: Path, out_root: Path):
+    """扫描 offline/units/*/content.json，聚合生成 units/manifest.json（册级+单元清单）。
+
+    manifest 结构：
+      { "schema": "manifest@1", "grades": [{ "grade_code", "grade_label",
+          "units": [{ "id", "no", "title", "cn" }] }] }
+    同时写 offline（离线包）与 public（在线/dev 运行时 fetch）——两端自动匹配。
+    """
+    units_root = out_root / 'units'
+    manifest = {"schema": "manifest@1", "grades": []}
+    if units_root.is_dir():
+        by_grade: dict[str, dict] = {}
+        for ud in sorted(units_root.iterdir()):
+            if not ud.is_dir():
+                continue
+            cj = ud / 'content.json'
+            if not cj.exists():
+                continue
+            try:
+                with open(cj, encoding='utf-8') as f:
+                    pkg = json.load(f)
+            except Exception:
+                continue
+            unit = str(pkg.get('unit', ud.name))
+            um = re.match(r'[Uu]?(\d+)', unit)
+            no = int(um.group(1)) if um else 0
+            grade_raw = str(pkg.get('grade', ''))
+            gm = re.match(r'(\d)([AB]?)', grade_raw)
+            year_map = {'1': '一', '2': '二', '3': '三', '4': '四', '5': '五', '6': '六'}
+            term_map = {'A': '上', 'B': '下'}
+            grade_label = f"{year_map.get(gm.group(1), gm.group(1))}年级{term_map.get(gm.group(2), '')}" if gm else grade_raw
+            g = by_grade.setdefault(grade_label, {"grade_code": grade_raw, "grade_label": grade_label, "units": []})
+            g["units"].append({
+                "id": ud.name,
+                "no": no,
+                "title": str(pkg.get('title', '')),
+                "cn": str(pkg.get('topic', '')) or str(pkg.get('title', '')),
+            })
+        manifest["grades"] = [by_grade[k] for k in sorted(by_grade)]
+    # 写 offline + public 两份
+    for target in (units_root, webh5 / 'public' / 'units'):
+        target.mkdir(parents=True, exist_ok=True)
+        with open(target / 'manifest.json', 'w', encoding='utf-8') as f:
+            json.dump(manifest, f, ensure_ascii=False, indent=2)
+    log(f'  ✅ manifest: {len(manifest["grades"])} 册 / {sum(len(g["units"]) for g in manifest["grades"])} 单元'
+        f'（offline + public 已同步）')
+    return manifest
 
 
 def check_compliance(root: Path) -> list[str]:
@@ -213,30 +362,43 @@ def main():
 
     log(f'=== 发布 {label}（{unit_id}）===')
 
-    log('[1/7] 音频准备')
+    # [0/8] 发布前就绪校验（读对齐表确认该单元已标交付，且素材与内容包对齐）
+    ready, issues = check_ready(unit_dir)
+    if not ready:
+        log('❌ 发布前就绪校验未通过（参考 docs/日常工作对齐表.md 交付列）：')
+        for i in issues:
+            log(f'   - {i}')
+        sys.exit(3)
+    sched_ready = find_ready_units_from_schedule()
+    if unit_id in sched_ready:
+        log('  ✅ 对齐表「交付」标记确认')
+    log('  ✅ 素材与内容包引用一一对应')
+
+    log('[1/8] 音频准备')
     prepare_audio(unit_dir, webh5 / 'public' / 'units' / unit_id / 'audio')
 
-    log('[2/7] 配图压缩→public')
+    log('[2/8] 配图压缩→public')
     prepare_images(unit_dir, webh5, unit_id)
 
-    log('[3/7] IP 头像压缩')
+    log('[3/8] IP 头像压缩')
     compress_ip(webh5)
 
-    log('[4/7] WebH5 构建')
+    log('[4/8] WebH5 构建')
     webh5_build(webh5)
 
-    log('[5/7] 离线拆分')
+    log('[5/8] 离线拆分')
     out_root = ROOT / 'build' / 'offline'
     split_offline(webh5, out_root, unit_id)
+    write_manifest(webh5, out_root)
 
-    log('[6/7] 合规校验')
+    log('[6/8] 合规校验')
     over = check_compliance(out_root)
     if over:
         log(f'❌ 超限文件: {over[:5]}')
         sys.exit(2)
     log('  ✅ 全部单文件 ≤ 10MB')
 
-    log('[7/7] zip 打包发布')
+    log('[7/8] zip 打包发布')
     zip_path = zip_package(out_root, publish_dir, zip_label)
     with zipfile.ZipFile(zip_path) as z:
         worst = max(z.infolist(), key=lambda i: i.file_size)
