@@ -11,6 +11,8 @@ export interface WordCard {
   ip: IpKey;
   /** 管线配图的词卡图（public/units/uXX/images/*.webp）；缺省时回退 IP 角色头像 */
   image?: string;
+  /** 管线 TTS 词卡音频（public/units/uXX/audio/*.mp3）；缺省时用浏览器朗读 */
+  mp3?: string;
 }
 
 export interface SentenceCard {
@@ -28,6 +30,8 @@ export interface SentenceCard {
 export interface SongLine {
   en: string;
   cn: string;
+  /** 管线 TTS 音频（public/units/uXX/audio/*.mp3）；缺省时用浏览器朗读 */
+  audio?: string;
 }
 
 export interface Song {
@@ -719,10 +723,11 @@ const EXAMPLE_UNITS: Unit[] = [
   },
 ];
 
-/** 全部单元：前两位为真实 U01/U02（管线产物），其后为示例占位（供 jukebox 选歌等场景使用） */
-export const UNITS: Unit[] = [PIPELINE_U01, PIPELINE_U02, ...EXAMPLE_UNITS.filter((u) => u.id !== "u2")];
+/** 全部单元：运行时目录（catalog）优先；loadCatalog 前用示例占位（dev/离线无 manifest 降级）。
+ *  用 let + 活绑定：main.tsx await loadCatalog() 后，各 import 点自动拿到 catalog 数据。 */
+export let UNITS: Unit[] = [PIPELINE_U01, PIPELINE_U02, ...EXAMPLE_UNITS.filter((u) => u.id !== "u2")];
 
-/** 首页/词卡/打印可选择的真实单元行（当前接入 U01/U02，示例占位不在此列出） */
+/** 首页/词卡/打印可选择的真实单元行（catalog 加载后自动来自 manifest） */
 export interface UnitRow {
   id: string;
   no: number;
@@ -730,17 +735,72 @@ export interface UnitRow {
   cn: string;
 }
 
-export const UNIT_ROWS: UnitRow[] = [
+export let UNIT_ROWS: UnitRow[] = [
   { id: PIPELINE_U01.id, no: PIPELINE_U01.no, title: PIPELINE_U01.title, cn: PIPELINE_U01.cn },
   { id: PIPELINE_U02.id, no: PIPELINE_U02.no, title: PIPELINE_U02.title, cn: PIPELINE_U02.cn },
 ];
 
-export const TOTAL_WORDS = PIPELINE_U01.words.length + PIPELINE_U02.words.length;
+export let TOTAL_WORDS = PIPELINE_U01.words.length + PIPELINE_U02.words.length;
 
 export function unitOf(id: string): Unit {
-  if (id === PIPELINE_U01.id) return PIPELINE_U01;
-  if (id === PIPELINE_U02.id) return PIPELINE_U02;
   return UNITS.find((u) => u.id === id) ?? PIPELINE_U01;
+}
+
+// ---------------------------------------------------------------------------
+// 运行时目录加载（catalog）：消灭单元硬编码
+//  - fetch("units/manifest.json") → 册级+单元清单（离线自动匹配打包内容）
+//  - fetch("units/<id>/content.json") → 内容包 JSON → contentToUnit() → Unit
+//  - manifest/content 缺失（如纯代码 dev）→ 保持内置示例降级
+// ---------------------------------------------------------------------------
+import { contentToUnit, type ContentPackage } from "./fromContent";
+
+export interface ManifestUnit {
+  id: string;
+  no: number;
+  title: string;
+  cn: string;
+}
+
+export interface ManifestGrade {
+  grade_code: string;
+  grade_label: string;
+  units: ManifestUnit[];
+}
+
+export interface Manifest {
+  schema: string;
+  grades: ManifestGrade[];
+}
+
+export let MANIFEST: Manifest | null = null;
+
+async function fetchJson<T>(url: string): Promise<T | null> {
+  try {
+    const r = await fetch(url);
+    return r.ok ? ((await r.json()) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** 预加载目录：manifest → 各单元内容包 → 更新 UNITS/UNIT_ROWS/TOTAL_WORDS。失败静默降级。 */
+export async function loadCatalog(): Promise<void> {
+  const manifest = await fetchJson<Manifest>("units/manifest.json");
+  if (!manifest || manifest.grades.length === 0) return; // 无 manifest：保持示例降级
+
+  const units: Unit[] = [];
+  for (const grade of manifest.grades) {
+    for (const mu of grade.units) {
+      const pkg = await fetchJson<ContentPackage>(`units/${mu.id}/content.json`);
+      if (pkg) units.push(contentToUnit(pkg, mu.id, mu.no));
+    }
+  }
+  if (units.length === 0) return; // 全缺内容包：保持降级
+
+  MANIFEST = manifest;
+  UNITS = units;
+  UNIT_ROWS = units.map((u) => ({ id: u.id, no: u.no, title: u.title, cn: u.cn }));
+  TOTAL_WORDS = units.reduce((n, u) => n + u.words.length, 0);
 }
 
 export function cardsByStage(unit: Unit, stage: Stage): SentenceCard[] {

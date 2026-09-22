@@ -3,9 +3,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { UNITS, unitOf, type Song } from "@/data/content";
 import { useProgress } from "@/lib/store";
-import { speechSupported, speak } from "@/lib/speech";
+import { speechSupported, speakMp3 } from "@/lib/speech";
 import { Btn, PageHead, Panel } from "@/components/ui-kit";
-import { SpeakerIcon, StarIcon } from "@/components/icons";
+import { SpeakerIcon, StarIcon, TurtleIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_layout/jukebox")({
@@ -66,23 +66,24 @@ function JukeboxPage() {
     );
   }
 
-  return <Player song={song} soundOn={p.state.settings.soundOn} slow={p.state.settings.slowRate} onBack={() => setSongId(null)} />;
+  return <Player song={song} soundOn={p.state.settings.soundOn} slowInit={p.state.settings.slowRate} onBack={() => setSongId(null)} />;
 }
 
 function Player({
   song,
   soundOn,
-  slow,
+  slowInit,
   onBack,
 }: {
   song: Song;
   soundOn: boolean;
-  slow: boolean;
+  slowInit: boolean;
   onBack: () => void;
 }) {
   const [active, setActive] = useState<number | null>(null);
   const [singAlong, setSingAlong] = useState(false);
   const [auto, setAuto] = useState(false);
+  const [slow, setSlow] = useState(slowInit); // 初始取全局设置，之后页面内可切换
   const timer = useRef<number | null>(null);
 
   useEffect(() => () => {
@@ -92,7 +93,9 @@ function Player({
   const playLine = (i: number) => {
     if (timer.current) window.clearTimeout(timer.current);
     setActive(i);
-    const ok = soundOn && speak(song.lines[i].en, { slow });
+    const line = song.lines[i];
+    // mp3 优先（含慢速），无则浏览器朗读回退
+    const ok = soundOn && speakMp3(line.audio, line.en, { slow });
     if (!ok) {
       setActive(null);
       return;
@@ -125,6 +128,12 @@ function Player({
 
       <div className="flex gap-1.5">
         <Toggle on={singAlong} onClick={() => setSingAlong((v) => !v)} label="跟唱模式" note="每句留一拍" />
+        <Toggle
+          on={slow}
+          onClick={() => setSlow((v) => !v)}
+          label="慢一点"
+          note="放慢语速跟唱"
+        />
         <Toggle
           on={auto}
           onClick={() => {

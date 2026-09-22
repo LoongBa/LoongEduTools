@@ -155,7 +155,7 @@ function buildCards(): SentenceCard[] {
   ];
 }
 
-/** 词卡：S1 vocab 6 词 + S4 activities 4 词 = 10（全部带管线配图） */
+/** 词卡：S1 vocab 6 词 + S4 activities 4 词 = 10（全部带管线配图+音频） */
 function buildWords(): WordCard[] {
   let seq = 0;
   const ip = (): IpKey => {
@@ -163,23 +163,24 @@ function buildWords(): WordCard[] {
     seq += 1;
     return key;
   };
-  const cards: [string, string, string][] = [
-    ["tall and strong", "又高又壮", "u02_v_tall_strong"],
-    ["short and thin", "又矮又瘦", "u02_v_short_thin"],
-    ["long hair", "长头发", "u02_v_long_hair"],
-    ["short hair", "短头发", "u02_v_short_hair"],
-    ["kind", "善良的", "u02_v_kind"],
-    ["quiet", "安静的", "u02_v_quiet"],
-    ["read books", "看书", "u02_act_read"],
-    ["play games", "玩游戏", "u02_act_games"],
-    ["play football", "踢足球", "u02_act_football"],
-    ["help with English", "帮学英语", "u02_act_english"],
+  const cards: [string, string, string, string][] = [
+    ["tall and strong", "又高又壮", "u02_v_tall_strong", "u02_v_tall_strong"],
+    ["short and thin", "又矮又瘦", "u02_v_short_thin", "u02_v_short_thin"],
+    ["long hair", "长头发", "u02_v_long_hair", "u02_v_long_hair"],
+    ["short hair", "短头发", "u02_v_short_hair", "u02_v_short_hair"],
+    ["kind", "善良的", "u02_v_kind", "u02_v_kind"],
+    ["quiet", "安静的", "u02_v_quiet", "u02_v_quiet"],
+    ["read books", "看书", "u02_act_read", "u02_act_read"],
+    ["play games", "玩游戏", "u02_act_games", "u02_act_games"],
+    ["play football", "踢足球", "u02_act_football", "u02_act_football"],
+    ["help with English", "帮学英语", "u02_act_english", "u02_act_english"],
   ];
-  return cards.map(([word, cn, img]) => ({
+  return cards.map(([word, cn, img, audio]) => ({
     word,
     cn,
     ip: ip(),
     image: `/units/u02/images/${img}.webp`,
+    mp3: `${audio}.mp3`,
   }));
 }
 

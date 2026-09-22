@@ -4,8 +4,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { UNIT_ROWS, unitOf, type WordCard } from "@/data/content";
 import { ipOf } from "@/data/ip";
 import { useProgress } from "@/lib/store";
-import { speechSupported, speak } from "@/lib/speech";
-import { LeafIcon, SpeakerIcon, StarIcon } from "@/components/icons";
+import { speechSupported, speakMp3 } from "@/lib/speech";
+import { LeafIcon, SpeakerIcon, StarIcon, TurtleIcon } from "@/components/icons";
 import { PageHead, Panel } from "@/components/ui-kit";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +21,7 @@ function WordsPage() {
   const [filter, setFilter] = useState<Filter>("all");
   const [flipped, setFlipped] = useState<string | null>(null);
   const [noVoice, setNoVoice] = useState(false);
+  const [slow, setSlow] = useState(p.state.settings.slowRate);
 
   const unit = unitOf(unitId);
   const dueSet = useMemo(() => new Set(p.dueReview), [p.dueReview]);
@@ -35,8 +36,9 @@ function WordsPage() {
 
   const collected = p.stats.collected;
 
-  const play = (word: string) => {
-    const ok = speechSupported() && speak(word, { slow: p.state.settings.slowRate });
+  const play = (word: string, mp3?: string) => {
+    // mp3 优先（含慢速），无则浏览器朗读回退
+    const ok = speechSupported() && speakMp3(mp3, word, { slow });
     setNoVoice(!ok);
   };
 
@@ -111,6 +113,20 @@ function WordsPage() {
             {t}
           </button>
         ))}
+        <button
+          type="button"
+          onClick={() => setSlow((v) => !v)}
+          aria-pressed={slow}
+          className={cn(
+            "inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-[14px] font-bold transition-colors duration-200",
+            slow
+              ? "bg-sky-soft text-[var(--sky)] ring-1 ring-[var(--sky)]/30"
+              : "bg-secondary text-muted-text",
+          )}
+        >
+          <TurtleIcon className="h-4 w-4" />
+          慢一点
+        </button>
       </div>
 
       {noVoice && (
@@ -137,7 +153,7 @@ function WordsPage() {
                 open={flipped === w.word}
                 delay={i}
                 onFlip={() => setFlipped((v) => (v === w.word ? null : w.word))}
-                onPlay={() => play(w.word)}
+                onPlay={() => play(w.word, w.mp3)}
               />
             </li>
           ))}

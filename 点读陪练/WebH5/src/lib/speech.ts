@@ -30,6 +30,10 @@ export interface SpeakOptions {
   onEnd?: () => void;
 }
 
+/** 语速档位：normal 与 slow（slow 明显放慢，便于儿童跟读） */
+export const RATE_NORMAL = 0.85;
+export const RATE_SLOW = 0.55;
+
 /** 朗读一段英文；返回是否真正发声 */
 export function speak(text: string, opts: SpeakOptions = {}): boolean {
   if (!speechSupported() || !text.trim()) return false;
@@ -39,7 +43,7 @@ export function speak(text: string, opts: SpeakOptions = {}): boolean {
     const v = pickVoice();
     if (v) u.voice = v;
     u.lang = v?.lang ?? "en-US";
-    u.rate = opts.slow ? 0.62 : 0.92;
+    u.rate = opts.slow ? RATE_SLOW : RATE_NORMAL;
     u.pitch = 1.05;
     if (opts.onEnd) {
       u.onend = () => opts.onEnd?.();
@@ -54,6 +58,7 @@ export function speak(text: string, opts: SpeakOptions = {}): boolean {
 
 /**
  * mp3 优先的朗读：key 对应管线 TTS 文件 → 播放 mp3；文件缺失/播放失败 → 回退 speak()。
+ * slow 生效：mp3 播放时设 playbackRate（并保持音高不失真）。
  * 返回是否成功发起发声（mp3 的异步失败会自动回退浏览器朗读）。
  */
 export function speakMp3(
@@ -64,6 +69,11 @@ export function speakMp3(
   if (!key) return speak(text, opts);
   try {
     const a = new Audio(audioUrl(key));
+    // slow 档：MP3 变速播放（preservesPitch 保持音高，避免慢速变调）
+    if (opts.slow) {
+      a.playbackRate = RATE_SLOW;
+      if ("preservesPitch" in a) a.preservesPitch = true;
+    }
     let settled = false;
     const settleEnd = () => {
       if (settled) return;
