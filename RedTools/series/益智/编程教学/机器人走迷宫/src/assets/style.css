@@ -286,6 +286,18 @@ body {
   cursor: pointer;
 }
 
+/* V1.5 if 分支块（紫色区分） */
+.cmd-chip.if {
+  background: #8c5bd6;
+  border: 1px solid #7a4ec0;
+}
+
+/* V1.5 分支内小号 chip */
+.cmd-chip.small {
+  font-size: 12px;
+  padding: 4px 8px;
+}
+
 /* V1.4 调试反馈：执行中高亮 / 失败定位 / 锁定灰显 */
 .cmd-chip.exec {
   background: #ffffff;
@@ -332,6 +344,84 @@ body {
 
 .game-feedback.ok { color: #52c41a; font-weight: 600; }
 .game-feedback.miss { color: #f5222d; }
+
+/* ---------- V1.5 if 分支编辑区（editCtx） ---------- */
+.block-edit {
+  background: #faf7ff;
+  border: 2px solid #d3c4ef;
+  border-radius: 12px;
+  padding: 10px;
+  margin-bottom: 12px;
+}
+
+.block-edit-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #6b3fb5;
+  margin-bottom: 8px;
+}
+
+.block-edit-row {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-pack: justify;
+  -webkit-justify-content: space-between;
+  justify-content: space-between;
+}
+
+.block-edit-col {
+  -webkit-box-flex: 0;
+  -webkit-flex: 0 0 48%;
+  flex: 0 0 48%;
+  background: #ffffff;
+  border: 1px solid #e5e6eb;
+  border-radius: 10px;
+  padding: 8px;
+}
+
+.block-edit-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #4e5969;
+  margin-bottom: 6px;
+}
+
+.block-edit-chips {
+  min-height: 30px;
+  margin-bottom: 6px;
+}
+
+.block-edit-add {
+  border-top: 1px dashed #e5e6eb;
+  padding-top: 6px;
+}
+
+.cmd-add-sm {
+  display: inline-block;
+  background: #f2f4f7;
+  border: 1px solid #c9cdd4;
+  border-radius: 14px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: #4e5969;
+  cursor: pointer;
+  margin: 2px 3px 2px 0;
+}
+
+.cmd-add-sm:active { background: #e5e6eb; }
+
+.btn-close-edit {
+  display: block;
+  margin: 8px auto 0;
+  background: #ffffff;
+  border: 1px solid #c9cdd4;
+  border-radius: 16px;
+  padding: 6px 20px;
+  font-size: 13px;
+  color: #4e5969;
+  cursor: pointer;
+}
 
 /* ---------- 结算 ---------- */
 .result-wrap { text-align: center; }
