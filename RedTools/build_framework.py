@@ -952,8 +952,9 @@ def build_tool(cfg: ToolConfig, unit_index: int, pages: str | None = None,
             write_vocab_data_js(cfg, dist_dir, unit_index, app_name, mode=mode_dir)
         else:
             write_static_data_js(cfg, dist_dir, unit_index, app_name, mode=mode_dir)
-        if publish and mode_dir == 'offline':
-            make_static_icon(cfg, dist_dir, pub_dir, app_name)
+        # 图标：offline 生成（zip+发布图）；online 也生成 128px 页面 icon.png（防资源 404）
+        #（修正：icon.png 生成原先仅 offline 分支，online 部署目录缺 icon → index.html 引用 404）
+        make_static_icon(cfg, dist_dir, pub_dir if publish and mode_dir == 'offline' else None, app_name)
     else:
         if not cfg.book.exists():
             raise SystemExit(f"book.json 不存在: {cfg.book}")

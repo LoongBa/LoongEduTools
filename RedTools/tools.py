@@ -371,6 +371,17 @@ TOOLS: dict[str, ToolConfig] = {
         free_units=2,
         default_unit=0,
     ),
+    "方块排列指令": ToolConfig(
+        series="益智",
+        subgroup="编程教学",     # 子系列目录：series/益智/编程教学/方块排列指令/
+        tool="方块排列指令",
+        version="1.0",        # v1.0：俄罗斯方块转型——目标布局 + 旋转/移动/落下指令编排 + 布局比对判定
+        datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
+        app_name="方块排列指令",
+        modes=["offline", "online"],
+        free_units=2,
+        default_unit=0,
+    ),
     "扫雷推理": ToolConfig(
         series="益智",
         subgroup="逻辑思维",     # 子系列目录：series/益智/逻辑思维/扫雷推理/
