@@ -3,7 +3,7 @@
 // WebH5 可消费的 Unit，单元列表由 manifest.json 自动发现。
 // 映射规则继承自原 u01Content.ts 的手工快照模式（IP 循环、stage 映射、词拆分）。
 import type { IpKey } from "./ip";
-import type { SentenceCard, SkillCheck, Song, Unit, WordCard } from "./content";
+import type { SentenceCard, SkillCheck, Song, SongJson, Unit, WordCard } from "./content";
 
 const IP_KEYS: IpKey[] = ["leo", "mia", "sam", "nana", "kiki", "bubu"];
 
@@ -34,7 +34,7 @@ export interface ContentPackage {
     id?: string;
     type?: string;
     scene?: { hotspots?: { text?: string; zh?: string; audio?: string }[] };
-    groups?: { name?: string; cards?: { word?: string; zh?: string; audio?: string }[] }[];
+    groups?: { name?: string; cards?: { word?: string; zh?: string; audio?: string; image?: string; image_prompt?: string }[] }[];
     layers?: { original?: RawSentence[]; complete?: RawSentence[]; extend?: RawSentence[] };
     lines?: RawSentence[];
   }[];
@@ -81,15 +81,26 @@ function stageForLayer(layer: string): SentenceCard["stage"] {
   return "drill";
 }
 
-/** 词卡工厂（IP 循环） */
-function wordFactory() {
+/** 词卡工厂（IP 循环；image/mp3 为管线素材，缺省回退 IP 与浏览器朗读） */
+function wordFactory(imageBase: string) {
   let seq = 0;
   const ip = (): IpKey => {
     const key = IP_KEYS[seq % IP_KEYS.length];
     seq += 1;
     return key;
   };
-  return (word: string, cn: string): WordCard => ({ word, cn, ip: ip() });
+  const asWebp = (f: string | undefined): string | undefined => {
+    if (!f) return undefined;
+    const base = f.replace(/\.(png|jpg|jpeg|webp)$/i, "");
+    return `${imageBase}${base}.webp`;
+  };
+  return (word: string, cn: string, image?: string, mp3?: string): WordCard => ({
+    word,
+    cn,
+    ip: ip(),
+    ...(asWebp(image) ? { image: asWebp(image) } : {}),
+    ...(mp3 ? { mp3 } : {}),
+  });
 }
 
 /**
@@ -103,7 +114,7 @@ export function contentToUnit(pkg: ContentPackage, unitDir: string, no: number):
   const audioBase = `/units/${unitDir}/audio/`;
   const imageBase = `/units/${unitDir}/images/`;
   const s = sentenceFactory();
-  const wf = wordFactory();
+  const wf = wordFactory(imageBase);
 
   const cards: SentenceCard[] = [];
   const words: WordCard[] = [];
@@ -126,7 +137,7 @@ export function contentToUnit(pkg: ContentPackage, unitDir: string, no: number):
       for (const g of seg.groups ?? []) {
         for (const c of g.cards ?? []) {
           if (!c.word) continue;
-          words.push(wf(c.word, c.zh ?? ""));
+          words.push(wf(c.word, c.zh ?? "", c.image, c.audio));
         }
       }
     }
@@ -190,6 +201,7 @@ export function contentToUnit(pkg: ContentPackage, unitDir: string, no: number):
     id: `${unitId}-song`,
     title: pkg.title ?? unitDir,
     cn: pkg.topic ?? pkg.title ?? unitDir,
+    kind: "lines",
     lines: songLines,
   };
   // 能力：abilities → SkillCheck
@@ -223,6 +235,50 @@ export function contentToUnit(pkg: ContentPackage, unitDir: string, no: number):
     words,
     song,
     skills,
+  };
+}
+
+/**
+ * song.json（点唱台整曲数据）→ 前端 Song。
+ * 兼容两种 schema：
+ *  - 需求文档 v1.1：lyrics[{en,zh,start,end}]（原创儿歌）
+ *  - 并行任务实际产出：lines[{en,zh,audio,chant_id}] + chants[]（教材歌词跟读）
+ * 缺 type 时按 original_song 处理（process_song.py 产物）。
+ */
+export function songJsonToSong(j: SongJson, unitDir: string): Song {
+  const audioBase = `/units/${unitDir}/song/`;
+  const isTextbook = j.type === "textbook_lyrics" || j.audio_type === "tts_sentences";
+  const raw = (j.lyrics ?? j.lines ?? []) as { en?: string; zh?: string; start?: number; end?: number; audio?: string }[];
+  const absAudio = (a: string | undefined) => (a && !a.startsWith("/") ? `${audioBase}${a}` : a);
+  const lines: Song["lines"] = raw.map((l) => ({
+    en: l.en ?? "",
+    cn: l.zh ?? "",
+    ...(l.audio ? { audio: absAudio(l.audio) } : {}),
+  }));
+  if (isTextbook) {
+    // 教材歌词跟读：逐句 TTS，无整曲（id 与原创区分，避免点唱台选歌错位）
+    return {
+      id: `${unitDir}-tb-song`,
+      title: j.title ?? unitDir,
+      cn: unitDir,
+      kind: "textbook_lyrics",
+      lines,
+    };
+  }
+  // 原创儿歌整曲（缺 type 时按此处理）
+  const timeline = raw
+    .map((l) => ({ start: l.start ?? 0, end: l.end ?? 0 }))
+    .filter((t) => t.end > t.start);
+  return {
+    id: `${unitDir}-song`,
+    title: j.title ?? unitDir,
+    cn: unitDir,
+    kind: "original_song",
+    audio: absAudio(j.audio),
+    instrumental: absAudio(j.instrumental),
+    duration: j.duration,
+    lines, // audio 已在上方 absAudio 拼成绝对路径（/units/uXX/song/...）
+    timeline: timeline.length === lines.length ? timeline : undefined,
   };
 }
 

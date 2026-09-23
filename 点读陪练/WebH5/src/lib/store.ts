@@ -411,6 +411,16 @@ export function useProgress() {
     setState((s) => ({ ...s, unitId }));
   }, []);
 
+  /** 标记一组词刚被接触（听写/复习后重置「该复习啦」计时） */
+  const touchWords = useCallback((words: string[]) => {
+    setState((s) => {
+      const now = Date.now();
+      const touched = { ...s.touched };
+      words.forEach((w) => { touched[w] = now; });
+      return { ...s, touched };
+    });
+  }, []);
+
   const patchSettings = useCallback((patch: Partial<Settings>) => {
     setState((s) => ({ ...s, settings: { ...s.settings, ...patch } }));
   }, []);
@@ -462,6 +472,7 @@ export function useProgress() {
     skillRating,
     reviewSkills,
     setUnit,
+    touchWords,
     patchSettings,
     resetAll,
     stats,

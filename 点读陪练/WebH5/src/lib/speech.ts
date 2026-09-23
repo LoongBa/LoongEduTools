@@ -8,14 +8,17 @@ export function speechSupported(): boolean {
   return typeof window !== "undefined" && "speechSynthesis" in window;
 }
 
-function pickVoice(): SpeechSynthesisVoice | null {
+function pickVoice(lang: string): SpeechSynthesisVoice | null {
   if (!speechSupported()) return null;
   if (!cachedVoices.length) cachedVoices = window.speechSynthesis.getVoices();
-  const en = cachedVoices.filter((v) => /^en/i.test(v.lang));
-  if (!en.length) return null;
-  // 优先美音，其次任意英文语音
-  return en.find((v) => /en[-_]US/i.test(v.lang)) ?? en[0];
+  const vs = cachedVoices.filter((v) => new RegExp(`^${lang}`, "i").test(v.lang));
+  if (!vs.length) return null;
+  // 美/中优先，其次任意
+  return vs.find((v) => new RegExp(`${lang}[-_](US|CN)`, "i").test(v.lang)) ?? vs[0];
 }
+
+/** 文本是否含中文（用于中文听写/词义朗读选中文语音） */
+const CJK_RE = /[\u4e00-\u9fff]/;
 
 if (speechSupported()) {
   const refresh = () => {
@@ -27,23 +30,28 @@ if (speechSupported()) {
 
 export interface SpeakOptions {
   slow?: boolean;
-  onEnd?: () => void;
+  /** 直接指定倍率（如 0.75 / 1.25），优先于 slow */
+  rate?: number;
+  /** 播放结束回调；参数为该句 mp3 实际时长（ms），浏览器朗读回退时为 undefined */
+  onEnd?: (durationMs?: number) => void;
 }
 
 /** 语速档位：normal 与 slow（slow 明显放慢，便于儿童跟读） */
 export const RATE_NORMAL = 0.85;
 export const RATE_SLOW = 0.55;
 
-/** 朗读一段英文；返回是否真正发声 */
+/** 朗读一段文字（英文/中文自动选语音）；返回是否真正发声 */
 export function speak(text: string, opts: SpeakOptions = {}): boolean {
   if (!speechSupported() || !text.trim()) return false;
   try {
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    const v = pickVoice();
+    const isZh = CJK_RE.test(text);
+    const lang = isZh ? "zh" : "en";
+    const v = pickVoice(lang);
     if (v) u.voice = v;
-    u.lang = v?.lang ?? "en-US";
-    u.rate = opts.slow ? RATE_SLOW : RATE_NORMAL;
+    u.lang = v?.lang ?? (isZh ? "zh-CN" : "en-US");
+    u.rate = opts.rate ?? (opts.slow ? RATE_SLOW : RATE_NORMAL);
     u.pitch = 1.05;
     if (opts.onEnd) {
       u.onend = () => opts.onEnd?.();
@@ -61,30 +69,71 @@ export function speak(text: string, opts: SpeakOptions = {}): boolean {
  * slow 生效：mp3 播放时设 playbackRate（并保持音高不失真）。
  * 返回是否成功发起发声（mp3 的异步失败会自动回退浏览器朗读）。
  */
+let currentAudio: HTMLAudioElement | null = null;
+
+/** 停止当前发声（mp3 暂停 + 浏览器朗读取消）。用于播放控制（暂停/上/下一句打断）。 */
+export function stopAudio(): void {
+  if (currentAudio) {
+    try {
+      currentAudio.pause();
+    } catch {
+      /* ignore */
+    }
+    currentAudio = null;
+  }
+  if (speechSupported()) window.speechSynthesis.cancel();
+}
+
+/** 当前正在播放的 mp3 立即变速（不打断）。用于播放中切换倍率即时生效。 */
+export function setAudioRate(r: number): void {
+  if (!currentAudio || !r || r <= 0) return;
+  try {
+    currentAudio.playbackRate = r;
+    if ("preservesPitch" in currentAudio) currentAudio.preservesPitch = true;
+  } catch {
+    /* ignore */
+  }
+}
+
 export function speakMp3(
   key: string | undefined,
   text: string,
   opts: SpeakOptions = {},
 ): boolean {
   if (!key) return speak(text, opts);
+  stopAudio();
   try {
     const a = new Audio(audioUrl(key));
-    // slow 档：MP3 变速播放（preservesPitch 保持音高，避免慢速变调）
-    if (opts.slow) {
-      a.playbackRate = RATE_SLOW;
+    // 倍率：rate 优先，slow 档回落 RATE_SLOW（preservesPitch 保持音高，避免变调）
+    const r = opts.rate ?? (opts.slow ? RATE_SLOW : undefined);
+    if (r && r !== 1) {
+      a.playbackRate = r;
       if ("preservesPitch" in a) a.preservesPitch = true;
     }
+    currentAudio = a;
     let settled = false;
+    // 实际播放耗时（ms）：mp3 原始时长 ÷ 倍速（叠加加速效果后的真实时长）
+    const actualMs = () => {
+      if (Number.isFinite(a.duration) && a.duration > 0) {
+        const r = a.playbackRate || 1;
+        return (a.duration / r) * 1000;
+      }
+      return undefined;
+    };
     const settleEnd = () => {
       if (settled) return;
       settled = true;
-      opts.onEnd?.();
+      if (currentAudio === a) currentAudio = null;
+      opts.onEnd?.(actualMs());
     };
     const fallback = () => {
       if (settled) return;
       settled = true;
-      opts.onEnd?.();
-      speak(text, opts);
+      if (currentAudio === a) currentAudio = null;
+      // 交给 speak 的 onend 统一回调（不在此处调，避免双 onEnd）；
+      // speak 本身也失败时才兜底一次
+      const spoke = speak(text, opts);
+      if (!spoke) opts.onEnd?.(actualMs());
     };
     a.addEventListener("ended", settleEnd, { once: true });
     a.addEventListener("error", fallback, { once: true });

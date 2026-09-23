@@ -34,11 +34,51 @@ export interface SongLine {
   audio?: string;
 }
 
+/** 歌曲形态：lines=逐句 TTS（旧模式）；original_song=原创儿歌整曲；textbook_lyrics=教材歌词逐句 */
+export type SongKind = "lines" | "original_song" | "textbook_lyrics";
+
 export interface Song {
   id: string;
   title: string;
   cn: string;
+  /** 歌曲形态（默认 "lines"：逐句 TTS） */
+  kind?: SongKind;
+  /** 逐句歌词（所有形态都有；整曲模式下用于歌词展示） */
   lines: SongLine[];
+  /** original_song：整曲人声 mp3（public/units/uXX/song/*.mp3） */
+  audio?: string;
+  /** original_song：卡拉OK伴奏 mp3 */
+  instrumental?: string;
+  /** 整曲时长（秒） */
+  duration?: number;
+  /** original_song：每句时间戳（与 lines 对齐；无则退化为逐句播放） */
+  timeline?: { start: number; end: number }[];
+}
+
+/** public/units/uXX/song/song.json 原始结构（与歌曲生产 SOP 对齐） */
+export interface SongJson {
+  title?: string;
+  unit?: string;
+  type?: "original_song" | "textbook_lyrics";
+  audio_type?: string;
+  audio?: string;
+  instrumental?: string;
+  duration?: number;
+  lyrics?: {
+    en?: string;
+    zh?: string;
+    start?: number;
+    end?: number;
+    audio?: string;
+  }[];
+  /** 教材歌词跟读（并行任务产出）：逐句 TTS，audio 为 textbook/ 下相对路径 */
+  lines?: {
+    en?: string;
+    zh?: string;
+    audio?: string;
+    chant_id?: string;
+  }[];
+  chants?: { id?: string; name?: string; line_count?: number }[];
 }
 
 export interface SkillCheck {
@@ -59,7 +99,10 @@ export interface Unit {
   theme: string;
   cards: SentenceCard[];
   words: WordCard[];
+  /** 主歌（原创儿歌优先；无则教材跟读）。点唱台列表请用 songs ?? [song] */
   song: Song;
+  /** 完整歌曲列表（原创儿歌 + 教材跟读，并行任务的点唱台产物） */
+  songs?: Song[];
   skills: SkillCheck[];
 }
 
@@ -81,27 +124,36 @@ export interface SentencePart {
   text: string;
   clickable: boolean;
   cn?: string;
+  /** 单词点读走管线 mp3（public/units/uXX/audio/*.mp3）；缺省时回退设备朗读 */
+  mp3?: string;
 }
 
-/** 把英文句子切成可逐词点读的片段；命中 words[] 的片段会带上中文释义 */
+/** 句中可单独点读的单词（含可选 mp3） */
+export interface SentenceWord {
+  text: string;
+  cn: string;
+  mp3?: string;
+}
+
+/** 把英文句子切成可逐词点读的片段；命中 words[] 的片段会带上中文释义与 mp3 */
 export function splitSentence(
   en: string,
-  words: { text: string; cn: string }[] = [],
+  words: SentenceWord[] = [],
 ): SentencePart[] {
   // 词组（如 each other / pencil case）以空格连接，取首词做索引；
   // 含空格的键不参与回填，避免把 other 这类碎片标成词组释义
-  const dict = new Map<string, string>();
+  const dict = new Map<string, { cn?: string; mp3?: string }>();
   words.forEach((w) => {
     const head = w.text.toLowerCase().split(" ")[0];
-    if (!w.text.includes(" ") && !dict.has(head)) dict.set(head, w.cn);
+    if (!w.text.includes(" ") && !dict.has(head)) dict.set(head, { cn: w.cn, mp3: w.mp3 });
   });
 
   return en.split(/(\s+)/).flatMap<SentencePart>((piece) => {
     if (/^\s+$/.test(piece)) return [{ text: piece, clickable: false }];
     const bare = piece.replace(/[.,!?;:]/g, "");
     if (!bare) return [{ text: piece, clickable: false }];
-    const cn = dict.get(bare.toLowerCase());
-    return [{ text: piece, clickable: true, ...(cn ? { cn } : {}) }];
+    const hit = dict.get(bare.toLowerCase());
+    return [{ text: piece, clickable: true, ...(hit?.cn ? { cn: hit.cn } : {}), ...(hit?.mp3 ? { mp3: hit.mp3 } : {}) }];
   });
 }
 
@@ -725,7 +777,7 @@ const EXAMPLE_UNITS: Unit[] = [
 
 /** 全部单元：运行时目录（catalog）优先；loadCatalog 前用示例占位（dev/离线无 manifest 降级）。
  *  用 let + 活绑定：main.tsx await loadCatalog() 后，各 import 点自动拿到 catalog 数据。 */
-export let UNITS: Unit[] = [PIPELINE_U01, PIPELINE_U02, ...EXAMPLE_UNITS.filter((u) => u.id !== "u2")];
+export let UNITS: Unit[] = [PIPELINE_U01, PIPELINE_U02, ...EXAMPLE_UNITS.filter((u) => u.id !== "u1" && u.id !== "u2")];
 
 /** 首页/词卡/打印可选择的真实单元行（catalog 加载后自动来自 manifest） */
 export interface UnitRow {
@@ -752,7 +804,7 @@ export function unitOf(id: string): Unit {
 //  - fetch("units/<id>/content.json") → 内容包 JSON → contentToUnit() → Unit
 //  - manifest/content 缺失（如纯代码 dev）→ 保持内置示例降级
 // ---------------------------------------------------------------------------
-import { contentToUnit, type ContentPackage } from "./fromContent";
+import { contentToUnit, songJsonToSong, type ContentPackage } from "./fromContent";
 
 export interface ManifestUnit {
   id: string;
@@ -792,7 +844,25 @@ export async function loadCatalog(): Promise<void> {
   for (const grade of manifest.grades) {
     for (const mu of grade.units) {
       const pkg = await fetchJson<ContentPackage>(`units/${mu.id}/content.json`);
-      if (pkg) units.push(contentToUnit(pkg, mu.id, mu.no));
+      if (!pkg) continue;
+      const unit = contentToUnit(pkg, mu.id, mu.no);
+      // 点唱台歌曲：song.json（原创儿歌）+ textbook_lyrics.json（教材跟读）
+      const [songJson, tbJson] = await Promise.all([
+        fetchJson<SongJson>(`units/${mu.id}/song/song.json`),
+        fetchJson<SongJson>(`units/${mu.id}/song/textbook_lyrics.json`),
+      ]);
+      const songs: Song[] = [];
+      if (songJson && (songJson.audio || (songJson.lyrics?.length ?? 0) > 0)) {
+        songs.push(songJsonToSong(songJson, mu.id));
+      }
+      if (tbJson && (tbJson.lines?.length ?? 0) > 0) {
+        songs.push(songJsonToSong(tbJson, mu.id));
+      }
+      if (songs.length > 0) {
+        unit.songs = songs;
+        unit.song = songs.find((s) => s.kind === "original_song") ?? songs[0];
+      }
+      units.push(unit);
     }
   }
   if (units.length === 0) return; // 全缺内容包：保持降级
@@ -805,6 +875,14 @@ export async function loadCatalog(): Promise<void> {
 
 export function cardsByStage(unit: Unit, stage: Stage): SentenceCard[] {
   return unit.cards.filter((c) => c.stage === stage);
+}
+
+/** 当前册标签（如 "四年级上册"）。无 manifest 时降级默认册（四上）。 */
+export function gradeLabelFor(): string {
+  const label = MANIFEST?.grades?.[0]?.grade_label;
+  if (!label) return "四年级上册";
+  // manifest 存 "四年级上"，展示补 "册" 字
+  return /上|下$/.test(label) ? `${label}册` : label;
 }
 
 /** 本册 5 个陪练日的主题（U01 两周制日程，读 05_schedule.json 含义） */
