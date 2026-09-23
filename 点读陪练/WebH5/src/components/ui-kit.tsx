@@ -74,27 +74,40 @@ export function Panel({ className, children, as = "div", ref }: PanelProps) {
 /* ----------------------------- Page header ---------------------------- */
 export function PageHead({
   eyebrow,
+  eyebrowBadge,
   title,
+  titleBadge,
   desc,
   right,
 }: {
   eyebrow?: string;
+  /** eyebrow 行右侧的小标签（如歌曲类型"教材跟读"，避免塞进标题被长歌名挤掉） */
+  eyebrowBadge?: ReactNode;
   title: string;
-  desc?: string;
+  /** 标题右侧的小标签 */
+  titleBadge?: ReactNode;
+  /** 描述；string 时 \n 生效（whitespace-pre-line），也可传 JSX 多行 */
+  desc?: string | ReactNode;
   right?: ReactNode;
 }) {
   return (
     <header className="flex items-end justify-between gap-4 px-1 pb-5">
       <div className="min-w-0">
         {eyebrow && (
-          <p className="text-[13px] font-semibold tracking-[0.16em] uppercase text-primary-deep">
-            {eyebrow}
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] font-semibold tracking-[0.16em] uppercase text-primary-deep">
+            <span>{eyebrow}</span>
+            {eyebrowBadge}
           </p>
         )}
-        <h1 className="mt-1 text-[26px] leading-tight font-bold text-foreground">
-          {title}
+        <h1 className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[26px] leading-tight font-bold text-foreground">
+          <span>{title}</span>
+          {titleBadge}
         </h1>
-        {desc && <p className="mt-1.5 text-[15px] leading-relaxed text-muted-text">{desc}</p>}
+        {desc && (
+          <div className="mt-1.5 text-[15px] leading-relaxed whitespace-pre-line text-muted-text">
+            {desc}
+          </div>
+        )}
       </div>
       {right}
     </header>
@@ -272,5 +285,51 @@ export function PrintIcon({ className }: { className?: string }) {
       <path d="M7 9V4h10v5M7 18H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2" />
       <rect x="7" y="14" width="10" height="6" rx="1" />
     </svg>
+  );
+}
+
+export function GearIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
+      <circle cx="12" cy="12" r="3.2" />
+      <path d="M12 3.2v2.2M12 18.6v2.2M3.2 12h2.2M18.6 12h2.2M6 6l1.6 1.6M16.4 16.4 18 18M18 6l-1.6 1.6M7.6 16.4 6 18" />
+    </svg>
+  );
+}
+
+export function PauseIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+      <rect x="6" y="4" width="4.5" height="16" rx="1.4" />
+      <rect x="13.5" y="4" width="4.5" height="16" rx="1.4" />
+    </svg>
+  );
+}
+
+export function PrevIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+      <path d="M6 5.5h2.4v13H6z" />
+      <path d="M18.5 6.2v11.6L9.6 12z" />
+    </svg>
+  );
+}
+
+export function NextIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+      <path d="M15.6 5.5H18v13h-2.4z" />
+      <path d="M5.5 6.2v11.6l8.9-5.8z" />
+    </svg>
+  );
+}
+
+/** 册次标签（如 "四年级上册"）：暖色色块 + 圆点，用于单元选择区标注当前册 */
+export function GradeBadge({ label }: { label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-warm-soft px-3 py-1 text-[13px] font-bold text-[var(--warm)] ring-1 ring-[var(--warm)]/30">
+      <span className="h-2.5 w-2.5 rounded-full bg-[var(--warm)]" aria-hidden />
+      {label}
+    </span>
   );
 }

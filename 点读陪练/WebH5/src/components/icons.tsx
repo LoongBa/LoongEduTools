@@ -9,4 +9,5 @@ export {
   RepeatIcon,
   LeafIcon,
 } from "./nav-icons";
-export { SpeakerIcon, StarIcon, MicIcon, TurtleIcon, CheckIcon, ArrowIcon, PrintIcon } from "./ui-kit";
+export { SpeakerIcon, StarIcon, MicIcon, TurtleIcon, CheckIcon, ArrowIcon, PrintIcon, PauseIcon, PrevIcon, NextIcon, GearIcon } from "./ui-kit";
+export { GradeBadge } from "./ui-kit";
