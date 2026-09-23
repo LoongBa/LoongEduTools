@@ -497,13 +497,11 @@ function DictationPage() {
                         {played ? (
                           <span className="block">
                             <span className="block truncate text-[15px] font-bold leading-tight text-foreground">
-                              {mode === "zh" ? (w.cn || w.word) : w.word}
+                              {w.word}
                             </span>
-                            {(mode === "both" || mode === "zh") && (
-                              <span className="block truncate text-[12px] leading-tight text-muted-text">
-                                {mode === "both" ? w.cn : w.word}
-                              </span>
-                            )}
+                            <span className="block truncate text-[12px] leading-tight text-muted-text">
+                              {w.cn}
+                            </span>
                           </span>
                         ) : (
                           <span className="block text-[15px] font-bold leading-tight tracking-[0.3em] text-muted-text/70">────</span>
