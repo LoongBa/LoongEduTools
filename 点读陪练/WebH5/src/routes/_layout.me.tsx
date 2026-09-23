@@ -276,21 +276,24 @@ function MePage() {
         </>
       )}
 
-      {/* 关于：Logo | 版本徽章 + 作者（一行两栏；透明底 Logo 浅色融卡片，深色靠 ip-plate 垫板） */}
+      {/* 关于：Logo | 版本徽章 + 作者（一行两栏；透明底 Logo 全主题自然融入，无需 ip-plate 垫板） */}
       <Section title="关于">
         <div className="flex items-center gap-4">
-          <div className="ip-plate shrink-0 rounded-xl p-1.5">
+          <div className="shrink-0 rounded-xl">
             <img src="./logo/logo_full.webp" alt="英语陪练 · 天天见" className="h-24 w-auto" />
           </div>
           <div className="min-w-0">
-            <p className="flex flex-wrap items-center gap-2 text-[14px] font-bold leading-tight">
+            <p className="text-base font-bold leading-tight">英语陪练 · 天天见</p>
+            <p className="mt-1 flex flex-wrap items-center gap-2 text-[14px] font-bold leading-tight">
               Ver {APP_VERSION}
               <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-bold text-muted-text">
                 数据更新 {DATA_STAMP}
               </span>
             </p>
-            <p className="mt-1.5 text-[15px] font-bold leading-tight">爱学习的龙爸</p>
-            <p className="text-[13px] leading-snug text-muted-text">LoongBa.cn</p>
+            <p className="mt-1.5 flex flex-wrap items-baseline gap-x-2 text-[15px] font-bold leading-tight">
+              爱学习的龙爸
+              <span className="text-[13px] font-normal text-muted-text">LoongBa.cn</span>
+            </p>
           </div>
         </div>
       </Section>
