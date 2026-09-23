@@ -274,7 +274,7 @@ Start-Process python -ArgumentList "src\publish_offline.py","-u","u01" `
     -RedirectStandardOutput publish.log -RedirectStandardError publish.err
 ```
 
-**脚本 9 个环节**（`src/publish_offline.py`）：
+**脚本 11 个环节**（`src/publish_offline.py`）：
 | # | 环节 | 说明 |
 |---|---|---|
 | 1 | 就绪校验 | 内容包 + audio/image 与引用一一对应 + 对齐表「交付」标记（不齐 exit 3） |
@@ -283,9 +283,11 @@ Start-Process python -ArgumentList "src\publish_offline.py","-u","u01" `
 | 4 | IP 头像压缩 | `public/ip/*.png` → `public/ip/webp/`（512px） |
 | 5 | WebH5 构建 | `pnpm build`，env `CATALOG_UNITS=u01,u02` 指定本次嵌入单元 |
 | 6 | 离线拆分 | dist → `build/offline/` **全量重建**（壳 index/assets/**theme-boot.js**/**logo/**/ip/webp + 仅选中单元） |
-| 7 | 门禁 + audit(目录) | ≤10MB / 无双后缀 / 相对路径 / 经典脚本 / 无 `a[download]` / theme-boot+logo 必在 + skill `audit_artifact.py`（FAIL exit 4） |
-| 8 | zip 打包 | → `RedTools/publish/学科/点读陪练_<标签>_离线版.zip`（超 10MB 抛错） |
-| 9 | audit(zip) | skill audit 对 zip 终审 |
+| 7 | **音频 base64 编码** | **平台白名单不含音频扩展名**：全部 mp3 → **聚合 js**（`audio/<uid>-audio|song|textbook.js`，`window.AUDIO_DATA[key]=base64`）+ 删除原 mp3（`src/encode_audio_b64.py`） |
+| 8 | 门禁 + audit(目录) | ≤10MB / 无双后缀 / 相对路径 / 经典脚本 / 无 `a[download]` / **无音频文件残留** / theme-boot+logo 必在 + skill `audit_artifact.py`（FAIL exit 4） |
+| 9 | zip 打包 | → `RedTools/publish/学科/点读陪练_<标签>_离线版.zip`（超 10MB 抛错） |
+| 10 | **自动解压一份** | zip 旁同名目录（供 file:// 直接打开 `index.html` 测试；每次发布重建） |
+| 11 | audit(zip) | skill audit 对 zip 终审 |
 
 **参数**：
 | 参数 | 说明 |
@@ -302,23 +304,32 @@ Start-Process python -ArgumentList "src\publish_offline.py","-u","u01" `
 
 ### 步骤 10：多单元合并打包 + 合规红线
 
-**背景**：小红书要求单文件 ≤10MB。**交付策略：只要合并包 ≤10MB，只发合并包**（不要拆单单元包）；实测 u01+02 合并 8.41MB，一次 `-u u01,u02` 构建产出。
+**背景**：小红书要求单文件 ≤10MB；**平台代码包文件类型白名单不含音频**（html/css/js/png/jpg/jpeg/gif/webp/svg/woff/woff2/json），zip 内出现 `.mp3/.wav/.ogg` 会被上传校验打回——音频必须经 **base64 编码**为 `.js`（`encode_audio_b64.py`）。**交付策略：只要合并包 ≤10MB，只发合并包**（不要拆单单元包）；实测 u01+02 合并 8.47MB，一次 `-u u01,u02` 构建产出。
 
 | 打包策略 | 命令 | 实测 |
 |---|---|---|
-| **合并包（默认交付）** | `-u u01,u02` | `点读逼练_四年级上Unit01-02_离线版.zip` **8.41MB**（254 项，audit PASS） |
-| 单单元包（仅合并超 10MB 时拆） | `-u u01` | `点读逼练_四年级上Unit01_离线版.zip` **5.61MB**（157 项，audit PASS，**不默认交付**） |
+| **合并包（默认交付）** | `-u u01,u02` | `点读陪练_四年级上Unit01-02_离线版.zip` **8.47MB**（254 项，含 186 个 base64 音频 js，audit PASS） |
+| 单单元包（仅合并超 10MB 时拆） | `-u u01` | `点读陪练_四年级上Unit01_离线版.zip` **5.61MB**（157 项，audit PASS，**不默认交付**） |
 
 > offline/ 每次运行**按本次 `-u` 单元集全量重建**（不做跨运行累积）；合并包须一次跑齐全部单元。  
 > 合并超 10MB 时才回退拆分；拆分包仅供内测，对外只交合并包路径。
 
+**音频 base64 编码约定**（`src/encode_audio_b64.py`）：
+- 扫描 `build/offline/units/<uid>/` 下全部 mp3（audio/ + song/ + song/textbook/）→ **按单元×类型聚合为 6 个 js**（每单元 3 组：`audio/<uid>-audio.js`、`audio/<uid>-song.js`、`audio/<uid>-textbook.js`），组内 `window.AUDIO_DATA[key] = "<base64>"`；key = 相对 units/ 根的路径去扩展名（如 `u01/audio/u01_s0_h01`、`u01/song/song_vocal`）
+- 编码后**删除原 mp3**（zip 内不得含音频文件）
+- **聚合原因：平台文件数量上限 200**——每音频一 js 时 u01+02 共 254 项超限，聚合后 **74 项**
+- 前端运行时按 key 推导 group，动态 `<script src="./audio/<group>.js">` 注入 → base64 → **Web Audio `decodeAudioData` 纯内存播放**（不经过 `<audio>`/data:/blob:，符合容器 CSP；参考已验证方案 `RedTools/publish/学科/新英语四上点读1单元.zip`）
+- 体积：mp3 6.64MB → base64 8.85MB（文本，zip deflate 后增量极小，实测合并包 8.43MB）；单个聚合 js ≤2.8MB（u01-audio）触发 audit 文本 >2MiB WARN（base64 合理代价，不阻塞）
+
 **合规红线**（不可违反）：
 - ✅ 离线包内**每个单文件** ≤10MB（脚本步骤 7 自动校验，超限 exit 2）
 - ✅ zip 本体 ≤10MiB（超限抛错）；skill audit 对 >2MiB 报 WARN 不阻塞
+- ✅ **平台文件数量上限 200**：zip 总文件数 ≤200（实测聚合后 74 项；音频必须聚合 js，不得每音频一文件）
+- ✅ **平台文件类型白名单**：zip 内**不得出现音频文件**（mp3/wav/ogg 等）——全部音频须 base64 编码为聚合 `audio/<uid>-*.js`（步骤 7 自动执行，步骤 8 门禁复查，残留即 exit 2）
 - ✅ 无 `.mp3.mp3` 双后缀、无 `a[download]`、index.html 全相对路径 + 经典脚本
 - ✅ 壳必含 `theme-boot.js` + `logo/`（缺一 exit）
 - ⚠️ 素材需压缩：源图 PNG 2048² 必须经 WebP 压缩后才可发布
-- ⚠️ 音频 mp3 管线产出时已压缩（edge TTS 默认）
+- ⚠️ 音频 mp3 管线产出时已压缩（edge TTS 默认）；编码脚本不再二次压缩
 
 **发布位置汇总**：
 | 产物 | 位置 |
