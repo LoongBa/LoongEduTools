@@ -1,0 +1,51 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "TeacherClient",
+  "version": "0.1.0",
+  "identifier": "com.loongba.teacherclient",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "龙爸乐学 · 教师客户端",
+        "width": 1024,
+        "height": 720,
+        "minWidth": 800,
+        "minHeight": 600,
+        "fullscreen": false,
+        "resizable": true
+      },
+      {
+        "label": "content",
+        "url": "about:blank",
+        "visible": false,
+        "fullscreen": true,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "webviewInstallMode": { "type": "skip" },
+      "minimumWebview2Version": "108.0.1462.46"
+    }
+  }
+}

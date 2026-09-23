@@ -1,0 +1,15 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "教师客户端主窗口与内容窗口能力",
+  "windows": ["main", "content"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-is-fullscreen",
+    "core:window:allow-set-fullscreen",
+    "core:event:allow-emit",
+    "core:event:allow-listen",
+    "store:default",
+    "dialog:default"
+  ]
+}
