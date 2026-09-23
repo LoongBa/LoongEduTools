@@ -626,8 +626,10 @@
     if (branch.length > 0) {
       // 分支指令插入队首（queueIdx 已指向下一条，插在此处即"接下来执行分支"）
       // 分支指令继承父级 if 的顶层下标（高亮/失败定位用）
+      // F1 修复（oracle 审核）：无条件覆盖——防跨轮残留旧 _execTop（resetLoopLeft 不清 _execTop，
+      // 若 execRun 后用户编辑指令改变 if 顶层索引，残留值会导致 findCmdIndex 定位错位）
       for (var i = 0; i < branch.length; i++) {
-        if (branch[i]._execTop === undefined) { branch[i]._execTop = cmd._execTop; }
+        branch[i]._execTop = cmd._execTop;
       }
       state.execQueue.splice.apply(state.execQueue,
         [state.queueIdx, 0].concat(branch));
@@ -659,6 +661,7 @@
       var fbO = document.getElementById('game-feedback');
       if (fbO) { fbO.textContent = '⚠ 指令展开超过 ' + state.MAX_QUEUE + ' 步，自动终止'; fbO.className = 'game-feedback miss'; }
       state.execLock = false;
+      stopTimer();
       clearExecHighlight();
       return;
     }
