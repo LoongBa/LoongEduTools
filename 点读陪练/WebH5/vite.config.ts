@@ -257,65 +257,79 @@ function appendGapFallbacks(css: string): string {
 /**
  * React + Vite 构建配置
  *
+ * 两种构建形态（同一套 src/，构建期区分）：
+ * - offline（默认 `pnpm build`）：minitool 离线包——全相对路径 + 经典脚本(iife→es)
+ *   + Chrome 61 JS/CSS 基线 + 数据构建期内联（gen_catalog.mjs）+ 禁网络（在线模块被
+ *   `VITE_BUILD_TARGET === "offline"` 常量折叠 tree-shake 掉）
+ * - online（`pnpm build:online`，`--mode online`）：Web 部署——根路径 + 现代浏览器
+ *   target + 保留 Chrome 61 CSS 降级之外的现代特性；运行时注册 RemoteProvider（在线
+ *   内容更新，见 src/data/remote-provider.ts）与 AuthProvider
+ *
  * 硬约束：
  * - dev server 必须监听 3015 + strictPort（沙箱只开放一个代理端口）
  * - outDir 'dist' / assetsDir 'assets' — 归一化产物目录
  * - 离线包（minitool-zip-builder 规范）：build 产物全相对路径 + 经典脚本(iife)
  *   + Chrome 61 JS/CSS 基线 + 数据构建期内联（gen_catalog.mjs，见 package.json）
  */
-export default defineConfig(({ command }) => ({
-  // 离线包：构建期 base './'（index.html 内资源引用全相对）；dev 保持根路径
-  base: command === "serve" ? "/" : "./",
-  plugins: [
-    tailwindcss(),
-    TanStackRouterVite(),
-    viteReact({
-      babel: {
-        plugins: SOURCE_LOCATION_PLUGIN_PATH
-          ? [[SOURCE_LOCATION_PLUGIN_PATH, { projectRoot: process.cwd() }]]
-          : [],
-      },
-    }),
-    tsConfigPaths(),
-    offlineHtmlPlugin(),
-    offlineCssPlugin(),
-  ],
-  server: {
-    host: "0.0.0.0",
-    port: 3015,
-    strictPort: true,
-    allowedHosts: true,
-    // HMR 默认关闭：沙箱预览 iframe 下 HMR 的整页 reload 会放大任何 transform error
-    // 如需热更，改为: hmr: { clientPort: 443, protocol: 'wss' }
-    hmr: false,
-  },
-  css: {
-    // Chrome 61 CSS 基线：@layer 展平、oklch/color-mix → rgb/hex、inset → 物理属性
-    // targets 为 lightningcss 编码版本号（major << 16 | minor << 8 | patch）
-    transformer: "lightningcss",
-    lightningcss: {
-      targets: { chrome: 61 << 16, safari: 12 << 16 },
+export default defineConfig(({ command, mode }) => {
+  const online = mode === "online";
+  return {
+    // 离线包：构建期 base './'（index.html 内资源引用全相对）；dev 保持根路径；在线部署根路径
+    base: online ? "/" : command === "serve" ? "/" : "./",
+    define: {
+      // 构建形态常量：offline 构建折叠为 false → 在线模块（RemoteProvider/AuthProvider）被 tree-shake
+      "import.meta.env.VITE_BUILD_TARGET": JSON.stringify(online ? "online" : "offline"),
     },
-  },
-  build: {
-    outDir: "dist",
-    assetsDir: "assets",
-    emptyOutDir: true,
-    // Chrome 61 JS 基线（es2017 兜底 + chrome61 更严）
-    target: ["es2017", "chrome61"],
-    // 禁 modulepreload 注入（离线无动态 import）
-    modulePreload: false,
-    rollupOptions: {
-      output: {
-        // 经典脚本：es 格式产出独立 CSS + 无模块语法 JS（实测 0 import/export）；
-        // offlineHtmlPlugin 剥 type=module 后即为合规经典脚本。
-        // iife 格式会把 CSS 内联进 JS 导致 CSS 不独立落盘（已踩坑）。
-        format: "es",
-        inlineDynamicImports: true,
-        entryFileNames: "assets/[name]-[hash].js",
-        chunkFileNames: "assets/[name]-[hash].js",
-        assetFileNames: "assets/[name]-[hash][extname]",
+    plugins: [
+      tailwindcss(),
+      TanStackRouterVite(),
+      viteReact({
+        babel: {
+          plugins: SOURCE_LOCATION_PLUGIN_PATH
+            ? [[SOURCE_LOCATION_PLUGIN_PATH, { projectRoot: process.cwd() }]]
+            : [],
+        },
+      }),
+      tsConfigPaths(),
+      ...(online ? [] : [offlineHtmlPlugin(), offlineCssPlugin()]),
+    ],
+    server: {
+      host: "0.0.0.0",
+      port: 3015,
+      strictPort: true,
+      allowedHosts: true,
+      // HMR 默认关闭：沙箱预览 iframe 下 HMR 的整页 reload 会放大任何 transform error
+      // 如需热更，改为: hmr: { clientPort: 443, protocol: 'wss' }
+      hmr: false,
+    },
+    css: {
+      // Chrome 61 CSS 基线（offline）：@layer 展平、oklch/color-mix → rgb/hex、inset → 物理属性
+      // online：现代浏览器，不降级
+      transformer: "lightningcss",
+      lightningcss: {
+        targets: online ? undefined : { chrome: 61 << 16, safari: 12 << 16 },
       },
     },
-  },
-}));
+    build: {
+      outDir: "dist",
+      assetsDir: "assets",
+      emptyOutDir: true,
+      // offline：Chrome 61 JS 基线（es2017 兜底）；online：Chrome 90+/Safari 14+
+      target: online ? ["chrome90", "safari14"] : ["es2017", "chrome61"],
+      // 禁 modulepreload 注入（离线无动态 import）
+      modulePreload: false,
+      rollupOptions: {
+        output: {
+          // 经典脚本：es 格式产出独立 CSS + 无模块语法 JS（实测 0 import/export）；
+          // offlineHtmlPlugin 剥 type=module 后即为合规经典脚本。
+          // iife 格式会把 CSS 内联进 JS 导致 CSS 不独立落盘（已踩坑）。
+          format: "es",
+          inlineDynamicImports: true,
+          entryFileNames: "assets/[name]-[hash].js",
+          chunkFileNames: "assets/[name]-[hash].js",
+          assetFileNames: "assets/[name]-[hash][extname]",
+        },
+      },
+    },
+  };
+});

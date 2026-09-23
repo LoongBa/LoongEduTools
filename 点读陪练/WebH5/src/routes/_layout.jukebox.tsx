@@ -4,7 +4,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { UNITS, unitOf, type Song } from "@/data/content";
 import { useProgress } from "@/lib/store";
 import { speechSupported, speakMp3, stopAudio, setAudioRate } from "@/lib/speech";
-import { ensureAudioCtx, getAudioBuffer, normalizeKey } from "@/lib/audio";
+import { ensureAudioCtx, getAudioBuffer, isRemoteUrl, normalizeKey } from "@/lib/audio";
 import { Btn, PageHead, Panel } from "@/components/ui-kit";
 import { SpeakerIcon, StarIcon, TurtleIcon, PlayIcon, PauseIcon, PrevIcon, NextIcon, MusicIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
@@ -138,7 +138,7 @@ function Player({
   const [trackMode, setTrackMode] = useState<"original" | "instrumental" | "vocal">("original"); // 整曲：原曲/伴奏/清唱
   const [rate, setRate] = useState<number>(slowInit ? 0.85 : 1); // 倍率：0.75/0.85/1/1.25/1.5
   const timer = useRef<number | null>(null);
-  // 整曲双轨（Web Audio：base64 → decodeAudioData → BufferSource + Gain 控制三态）
+  // 整曲双轨（本地 base64：Web Audio decodeAudioData → BufferSource + Gain 三态）
   const vocalBufRef = useRef<AudioBuffer | null>(null);
   const instBufRef = useRef<AudioBuffer | null>(null);
   const vocalSrcRef = useRef<AudioBufferSourceNode | null>(null);
@@ -149,6 +149,9 @@ function Player({
   const pausePosRef = useRef(0); // 暂停位置（秒；seek/续播用）
   const playingRef = useRef(false);
   const curTimerRef = useRef<number | null>(null);
+  // 整曲双轨（远程 URL：在线形态，<audio> 元素原生 timeupdate/seek/变速）
+  const vocalElRef = useRef<HTMLAudioElement | null>(null);
+  const instElRef = useRef<HTMLAudioElement | null>(null);
 
   // 倍率档位（"慢一点"选择器）
   const RATES = [0.75, 0.85, 1, 1.25, 1.5];
@@ -163,9 +166,9 @@ function Player({
     stopTrack();
   }, []);
 
-  // 预解码整曲双轨（进入整曲模式即加载；解码完成前 syncPlay 自动等待）
+  // 预解码整曲双轨（本地 base64；进入整曲模式即加载，解码完成前 syncPlay 自动等待）
   useEffect(() => {
-    if (!isTrack || !song.audio) return;
+    if (!isTrack || !song.audio || isRemoteUrl(song.audio)) return;
     let alive = true;
     getAudioBuffer(normalizeKey(song.audio), (buf) => {
       if (alive && buf) vocalBufRef.current = buf;
@@ -184,9 +187,49 @@ function Player({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTrack, song.audio]);
 
-  // 倍率：双轨同步（0.75/0.85/1/1.25/1.5）
+  // 整曲双轨（远程 URL：Audio 元素原生 timeupdate 驱动高亮/进度 → 清理）
+  useEffect(() => {
+    if (!isTrack || !song.audio || !isRemoteUrl(song.audio)) return;
+    const v = new Audio(song.audio);
+    const it = song.instrumental ? new Audio(song.instrumental) : null;
+    vocalElRef.current = v;
+    instElRef.current = it;
+    v.preload = "metadata";
+    if (it) it.preload = "metadata";
+    v.muted = trackMode === "instrumental";
+    if (it) it.muted = trackMode === "vocal";
+    const tl = song.timeline!;
+    const onTime = () => {
+      setCur(v.currentTime);
+      const idx = tl.findIndex((t) => v.currentTime >= t.start && v.currentTime < t.end);
+      if (idx >= 0) setActive(idx);
+      else if (tl.length > 0 && v.currentTime >= tl[tl.length - 1].end) setActive(null);
+    };
+    const onEnd = () => {
+      setPlaying(false);
+      setActive(null);
+      setCur(0);
+      v.currentTime = 0;
+      if (it) it.currentTime = 0;
+    };
+    v.addEventListener("timeupdate", onTime);
+    v.addEventListener("ended", onEnd);
+    return () => {
+      v.pause();
+      it?.pause();
+      v.removeEventListener("timeupdate", onTime);
+      v.removeEventListener("ended", onEnd);
+      vocalElRef.current = null;
+      instElRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTrack, song.audio]);
+
+  // 倍率：双轨同步（本地 BufferSource + 远程 Audio 元素）
   useEffect(() => {
     if (!isTrack) return;
+    if (vocalElRef.current) vocalElRef.current.playbackRate = rate;
+    if (instElRef.current) instElRef.current.playbackRate = rate;
     if (vocalSrcRef.current) vocalSrcRef.current.playbackRate.value = rate;
     if (instSrcRef.current) instSrcRef.current.playbackRate.value = rate;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -272,8 +315,17 @@ function Player({
     return true;
   };
 
-  /** 双轨同步播放：从 pausePos 起播 + 进度轮询（驱动进度条/歌词高亮） */
+  /** 双轨同步播放：远程=原生元素；本地=从 pausePos 起播 + 进度轮询 */
   const syncPlay = () => {
+    if (vocalElRef.current) {
+      const v = vocalElRef.current;
+      if (v.paused) {
+        void v.play();
+        void instElRef.current?.play();
+        setPlaying(true);
+      }
+      return;
+    }
     const ctx = ensureAudioCtx();
     if (!ctx || !vocalBufRef.current) return;
     if (ctx.state === "suspended" && ctx.resume) void ctx.resume();
@@ -301,8 +353,14 @@ function Player({
     }, 100);
   };
 
-  /** 双轨同步暂停：记住暂停位置 */
+  /** 双轨同步暂停：远程=原生元素；本地=记住暂停位置 */
   const syncPause = () => {
+    if (vocalElRef.current) {
+      vocalElRef.current.pause();
+      instElRef.current?.pause();
+      setPlaying(false);
+      return;
+    }
     const ctx = ensureAudioCtx();
     if (ctx && playingRef.current) {
       pausePosRef.current = Math.max(0, ctx.currentTime - startAtRef.current);
@@ -311,16 +369,26 @@ function Player({
     setPlaying(false);
   };
 
-  /** 双轨同步跳转：播放中重建源续播；暂停中仅改位置 */
+  /** 双轨同步跳转：远程=元素 currentTime；本地=播放中重建源续播、暂停中仅改位置 */
   const syncSeek = (t: number) => {
+    if (vocalElRef.current) {
+      vocalElRef.current.currentTime = t;
+      if (instElRef.current) instElRef.current.currentTime = t;
+      return;
+    }
     pausePosRef.current = Math.max(0, t);
     setCur(t);
     if (playingRef.current) syncPlay();
   };
 
-  /** 三态切换：原曲/伴奏/清唱（播放中即时生效 gain） */
+  /** 三态切换：原曲/伴奏/清唱（播放中即时生效：远程 muted / 本地 gain） */
   const setTrackModeVal = (m: "original" | "instrumental" | "vocal") => {
     setTrackMode(m);
+    if (vocalElRef.current) {
+      vocalElRef.current.muted = m === "instrumental";
+      if (instElRef.current) instElRef.current.muted = m === "vocal";
+      return;
+    }
     applyTrackMode(m);
   };
 
@@ -370,7 +438,7 @@ function Player({
     setPlaying(true);
   };
 
-  /** 句长（ms）：base64 时代无 <audio> metadata 预取——异步解码后更新真实时长，未完成先用默认 */
+  /** 句长（ms）：本地 base64 异步解码更新；远程 URL 用 metadata 预取。未完成先用默认 */
   const durCache = useRef<Record<number, number>>({});
   const lineDur = (i: number): number => {
     const c = durCache.current;
@@ -378,6 +446,21 @@ function Player({
     const line = song.lines[i];
     if (!line.audio) {
       c[i] = 2800;
+      return c[i];
+    }
+    if (/^https?:/i.test(line.audio)) {
+      const a = new Audio(line.audio);
+      a.preload = "metadata";
+      a.addEventListener(
+        "loadedmetadata",
+        () => {
+          if (Number.isFinite(a.duration) && a.duration > 0) {
+            c[i] = a.duration * 1000;
+          }
+        },
+        { once: true },
+      );
+      c[i] = 2800; // 未加载完先用默认；加载后后续查询命中真实值
       return c[i];
     }
     getAudioBuffer(normalizeKey(line.audio), (buf) => {
@@ -396,12 +479,24 @@ function Player({
     const t = tl[i].start;
     syncSeek(t);
     setActive(i);
+    if (vocalElRef.current) {
+      if (vocalElRef.current.paused) syncPlay();
+      return;
+    }
     if (!playingRef.current) syncPlay();
   };
 
   /** 暂停：停住当前句；继续：当前句从头重播（逐句 mp3 无时间戳，断点续播不可行） */
   const togglePlay = () => {
     if (isTrack) {
+      if (vocalElRef.current) {
+        if (vocalElRef.current.paused) {
+          syncPlay();
+        } else {
+          syncPause();
+        }
+        return;
+      }
       if (playingRef.current) {
         syncPause();
       } else {

@@ -8,6 +8,7 @@ import { StarIcon, GearIcon } from "@/components/icons";
 import { UnitScope } from "@/components/unit-scope";
 import { cn } from "@/lib/utils";
 import { APP_VERSION, DATA_STAMP } from "@/lib/version";
+import { currentDataStamp } from "@/data/content-provider";
 
 export const Route = createFileRoute("/_layout/me")({
   component: MePage,
@@ -287,7 +288,7 @@ function MePage() {
             <p className="mt-1 flex flex-wrap items-center gap-2 text-[14px] font-bold leading-tight">
               Ver {APP_VERSION}
               <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-bold text-muted-text">
-                数据更新 {DATA_STAMP}
+                数据更新 {currentDataStamp() ?? DATA_STAMP}
               </span>
             </p>
             <p className="mt-1.5 flex flex-wrap items-baseline gap-x-2 text-[15px] font-bold leading-tight">

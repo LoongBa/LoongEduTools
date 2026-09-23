@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node scripts/gen_catalog.mjs && vite --port 3015 --host 0.0.0.0 --strictPort",
     "build": "node scripts/gen_catalog.mjs && vite build",
+    "build:online": "node scripts/gen_catalog.mjs && vite build --mode online",
     "preview": "vite preview --port 3015 --host 0.0.0.0",
     "typecheck": "tsc --noEmit",
     "gen:catalog": "node scripts/gen_catalog.mjs"

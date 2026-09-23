@@ -5,6 +5,8 @@ import { RouterProvider } from "@tanstack/react-router";
 import { getRouter } from "./router";
 import { initRevealEngine } from "./lib/reveal-engine";
 import { loadCatalog } from "./data/content";
+import { registerContentProvider } from "./data/content-provider";
+import { RemoteProvider } from "./data/remote-provider";
 import "./styles.css";
 
 // 全局滚动渐入引擎：业务元素只需加 class="reveal"（详见 lib/reveal-engine.ts），勿删
@@ -49,6 +51,11 @@ function whenDomReady(): Promise<void> {
 async function bootstrap() {
   await whenDomReady();
   detectFlexGap();
+  // 在线形态（pnpm build:online）：注册远程内容 Provider（增量更新 + IndexedDB 缓存）；
+  // offline 构建时此分支被 VITE_BUILD_TARGET 常量折叠 tree-shake（离线包不含在线代码）
+  if (import.meta.env.VITE_BUILD_TARGET === "online") {
+    registerContentProvider(new RemoteProvider());
+  }
   await loadCatalog();
   const root = document.getElementById("root");
   if (!root) {

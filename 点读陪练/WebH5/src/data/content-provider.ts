@@ -36,3 +36,7 @@ export function registerContentProvider(p: ContentProvider): void {
 export function resolveProvider(): ContentProvider {
   return registered ?? new InlineProvider();
 }
+/** 内容数据更新时间戳：远程 Provider 的 manifest updated_at（在线形态）；离线/未拉取为 null。 */
+export function currentDataStamp(): string | null {
+  return registered?.dataStamp?.() ?? null;
+}

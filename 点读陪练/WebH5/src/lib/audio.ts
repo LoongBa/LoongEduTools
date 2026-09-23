@@ -109,6 +109,8 @@ export function getAudioBuffer(key: string, cb: (buf: AudioBuffer | null) => voi
 
 /** 当前播放的 BufferSource（供 stopAudio / setAudioRate 控制）。 */
 let currentSource: AudioBufferSourceNode | null = null;
+/** 当前播放的远程 Audio 元素（在线形态 URL 播放；供 stopAudio / setAudioRate 控制）。 */
+let currentElement: HTMLAudioElement | null = null;
 /** 播放代际：每次发起/停止 +1，异步解码回调校验代际，旧请求不再开播（防快速连点竞态）。 */
 let playSeq = 0;
 
@@ -121,9 +123,16 @@ export interface PlayMp3Opts {
   onError?: () => void;
 }
 
-/** 播放一个音频（base64 → decodeAudioData → BufferSource）。返回是否成功发起（异步失败走 onError）。 */
+/** 是否为远程 URL 音频（在线形态素材直引；非 base64 路径）。 */
+export function isRemoteUrl(key: string): boolean {
+  return /^https?:/i.test(key);
+}
+
+/** 播放一个音频（base64 → decodeAudioData → BufferSource；https URL → <audio> 直播）。
+ * 返回是否成功发起（异步失败走 onError）。 */
 export function playMp3Buffer(key: string, opts: PlayMp3Opts = {}): boolean {
   if (!key) return false;
+  if (isRemoteUrl(key)) return playRemoteUrl(key, opts);
   const k = normalizeKey(key);
   const mySeq = ++playSeq;
   getAudioBuffer(k, (buf) => {
@@ -166,9 +175,44 @@ export function playMp3Buffer(key: string, opts: PlayMp3Opts = {}): boolean {
   return true;
 }
 
-/** 立即停止当前 buffer 播放（并使进行中的异步加载/解码失效）。 */
+/** 远程 URL 播放（在线形态；现代浏览器支持 preservesPitch 保音高）。 */
+function playRemoteUrl(url: string, opts: PlayMp3Opts = {}): boolean {
+  const mySeq = ++playSeq;
+  try {
+    const a = new Audio(url);
+    const r = opts.rate && opts.rate > 0 ? opts.rate : 1;
+    a.playbackRate = r;
+    if ("preservesPitch" in a) a.preservesPitch = true;
+    const durMs = () =>
+      Number.isFinite(a.duration) && a.duration > 0 ? (a.duration / (a.playbackRate || 1)) * 1000 : undefined;
+    const settle = (failed: boolean) => {
+      if (mySeq !== playSeq || currentElement !== a) return;
+      currentElement = null;
+      if (failed) opts.onError?.();
+      else opts.onEnd?.(durMs());
+    };
+    a.onended = () => settle(false);
+    a.onerror = () => settle(true);
+    currentElement = a;
+    const p = a.play();
+    if (p) p.catch(() => settle(true));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** 立即停止当前播放（远程元素 + base64 buffer，并使进行中的异步加载/解码失效）。 */
 export function stopCurrentAudio(): void {
   playSeq += 1;
+  if (currentElement) {
+    try {
+      currentElement.pause();
+    } catch {
+      /* ignore */
+    }
+    currentElement = null;
+  }
   if (currentSource) {
     try {
       currentSource.stop();
@@ -179,9 +223,11 @@ export function stopCurrentAudio(): void {
   }
 }
 
-/** 当前播放中的 BufferSource 立即变速（不打断）。 */
+/** 当前正在播放的音频立即变速（不打断；远程元素 + buffer source 双态）。 */
 export function setCurrentAudioRate(r: number): void {
-  if (currentSource && r > 0) currentSource.playbackRate.value = r;
+  if (r <= 0) return;
+  if (currentElement) currentElement.playbackRate = r;
+  if (currentSource) currentSource.playbackRate.value = r;
 }
 
 /** 调试/兼容：原「路径化」函数（句子/词卡 mp3 时代遗留；base64 时代不再用于播放）。 */
