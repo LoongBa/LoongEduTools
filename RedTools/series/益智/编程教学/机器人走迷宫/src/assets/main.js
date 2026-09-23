@@ -45,7 +45,7 @@
   var LEVELS_CFG = {
     easy:   { key: 'easy',   label: '简单', from: 0, to: 30 },    // 1-30 关（入门渐进）
     normal: { key: 'normal', label: '普通', from: 30, to: 80 },   // 31-80 关（进阶推理）
-    hard:   { key: 'hard',   label: '挑战', from: 80, to: 195 }   // 81-195 关（全量挑战 + v1.7 循环块 186-195）
+    hard:   { key: 'hard',   label: '挑战', from: 80, to: 205 }   // 81-205 关（全量挑战 + v1.8 嵌套循环 196-205）
   };
   var LEVEL_ORDER = ['easy', 'normal', 'hard'];
 
@@ -568,13 +568,16 @@
     (loopCmd.body || []).forEach(function (bc, bi) {
       var isIf = bc.id === 'if';
       var isSteps = bc.id === 'steps';
-      var lbl = bc.id === 'fwd' ? '↑' : (bc.id === 'left' ? '↰' : (bc.id === 'right' ? '↱' : (bc.id === 'block' ? '🧱' : (bc.id === 'steps' ? '➡走' + (bc.steps || 1) + '步' : (bc.id === 'if' ? '❓if' : '?')))));
-      var repTxt = (!isIf && !isSteps && bc.rep && bc.rep > 1) ? ('×' + bc.rep) : '';
-      var chip = makeEl('span', 'cmd-chip small' + (isIf ? ' if' : ''), (bi + 1) + '.' + lbl + repTxt);
+      var isLoop = bc.id === 'loop';
+      var lbl = bc.id === 'fwd' ? '↑' : (bc.id === 'left' ? '↰' : (bc.id === 'right' ? '↱' : (bc.id === 'block' ? '🧱' : (bc.id === 'steps' ? '➡走' + (bc.steps || 1) + '步' : (bc.id === 'loop' ? '🔁×' + (bc.rep || 2) : (bc.id === 'if' ? '❓if' : '?'))))));
+      var repTxt = (!isIf && !isSteps && !isLoop && bc.rep && bc.rep > 1) ? ('×' + bc.rep) : '';
+      var chip = makeEl('span', 'cmd-chip small' + (isIf ? ' if' : '') + (isLoop ? ' loopb' : ''), (bi + 1) + '.' + lbl + repTxt);
       chip.addEventListener('click', function (ev) {
         ev.stopPropagation();
         if (state.execLock) { return; }
+        // v1.8：内层 loop chip 打开嵌套编辑区（同 if）
         if (isIf) { openNestedEditCtx(bc); }
+        else if (isLoop) { openNestedEditCtx(bc); }
         else if (isSteps) {
           bc.steps = ((bc.steps || 1) % 9) + 1;
           renderEditCtx();
@@ -590,6 +593,7 @@
         ev.stopPropagation();
         if (state.execLock) { return; }
         if (isIf && !window.confirm('删除内层 if 分支块？')) { return; }
+        if (isLoop && !window.confirm('删除内层循环块？')) { return; }
         loopCmd.body.splice(bi, 1);
         renderEditCtx();
       });
@@ -597,9 +601,9 @@
       chipsWrap.appendChild(chip);
     });
     wrap.appendChild(chipsWrap);
-    // 添加按钮（body 内禁 loop：不提供 🔁 添加——MVP 单层）
+    // 添加按钮（v1.8：body 可嵌 loop，loopDepth 守卫 ≤2；if 分支内禁 loop 见 renderBranchCol）
     var addWrap = makeEl('div', 'block-edit-add');
-    var addBtns = [CMD_FWD, CMD_L, CMD_R, CMD_BLOCK, CMD_STEPS, CMD_IF];
+    var addBtns = [CMD_FWD, CMD_L, CMD_R, CMD_BLOCK, CMD_STEPS, CMD_IF, CMD_LOOP];
     addBtns.forEach(function (a) {
       var btn = makeEl('button', 'cmd-add-sm', '+ ' + a.label);
       btn.addEventListener('click', function () {
@@ -613,6 +617,14 @@
           loopCmd.body.push({ id: 'if', then: [], else: [] });
         } else if (a.id === 'steps') {
           loopCmd.body.push({ id: 'steps', steps: 1 });
+        } else if (a.id === 'loop') {
+          // v1.8 嵌套循环：loopDepth 守卫 ≤2（loop→loop→loop 第 3 层拦）
+          if (loopDepth() >= 2) {
+            var fb2 = document.getElementById('game-feedback');
+            if (fb2) { fb2.textContent = '⚠ 循环嵌套最多 2 层'; fb2.className = 'game-feedback miss'; }
+            return;
+          }
+          loopCmd.body.push({ id: 'loop', rep: 2, body: [] });
         } else {
           loopCmd.body.push({ id: a.id, rep: 1 });
         }
@@ -622,6 +634,15 @@
     });
     wrap.appendChild(addWrap);
     return wrap;
+  }
+
+  /* v1.8：编辑栈中 loop 类型帧数（嵌套循环深度，loop 帧计数；if 帧不计） */
+  function loopDepth() {
+    var n = 0;
+    for (var i = 0; i < editStack.length; i++) {
+      if (editStack[i].cmd && editStack[i].cmd.id === 'loop') { n += 1; }
+    }
+    return n;
   }
 
   function renderBranchCol(type, label, arr) {
