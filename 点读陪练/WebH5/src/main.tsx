@@ -35,12 +35,28 @@ function detectFlexGap(): void {
   }
 }
 
+/** 等 DOM 就绪：经典脚本若无 defer（或被容器注入到 head 同步跑），#root 可能尚未解析。 */
+function whenDomReady(): Promise<void> {
+  if (document.readyState === "loading") {
+    return new Promise((resolve) => {
+      document.addEventListener("DOMContentLoaded", () => resolve(), { once: true });
+    });
+  }
+  return Promise.resolve();
+}
+
 // 预加载运行时目录（manifest + 单元内容包）→ 自动匹配打包内容；缺失降级示例数据
 async function bootstrap() {
+  await whenDomReady();
   detectFlexGap();
   await loadCatalog();
+  const root = document.getElementById("root");
+  if (!root) {
+    console.error("[bootstrap] #root 不存在，无法挂载（index.html 缺 <div id=\"root\">）");
+    return;
+  }
   const router = getRouter();
-  ReactDOM.createRoot(document.getElementById("root")!).render(
+  ReactDOM.createRoot(root).render(
     <React.StrictMode>
       <RouterProvider router={router} />
     </React.StrictMode>

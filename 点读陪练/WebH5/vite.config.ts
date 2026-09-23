@@ -23,8 +23,11 @@ function offlineHtmlPlugin(): Plugin {
     transformIndexHtml: {
       order: "post",
       handler(html) {
+        // 剥 type=module 后必须补 defer：module 默认 defer，经典脚本在 head 同步执行
+        // 会在 body/#root 解析前 createRoot → React #299 白屏（踩坑：V0.9.3 离线包）。
+        // theme-boot.js 保持同步（主题预置需在首帧前）；仅入口 bundle 变 defer。
         return html
-          .replace(/\s+type="module"/g, "")
+          .replace(/\s+type="module"/g, " defer")
           .replace(/\s+crossorigin(?:="[^"]*")?/g, "");
       },
     },
