@@ -229,6 +229,13 @@ function MePage() {
                 </div>
               </Section>
 
+              {/* 中文语音提示（听写/词义朗读用系统 TTS） */}
+              <div className="rounded-xl bg-secondary/60 px-3.5 py-3 text-[13px] leading-relaxed text-muted-text">
+                中文朗读使用手机系统自带语音，音色与语速跟着系统设置走：
+                安卓「设置 → 无障碍 → 文字转语音输出」、iPhone「设置 → 辅助功能
+                → 朗读内容 → 语音」，可在那里更换默认语音、调快慢。
+              </div>
+
               {/* 朋友墙：暂隐藏，下一步处理 */}
             </>
           ) : (
