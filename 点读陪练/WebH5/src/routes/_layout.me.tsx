@@ -19,6 +19,7 @@ function MePage() {
   const [confirmReset, setConfirmReset] = useState(false);
   const [tab, setTab] = useState<"learn" | "guide">("learn");
   const [showSettings, setShowSettings] = useState(false); // 齿轮 → 设置面板
+  const [exportedText, setExportedText] = useState<string | null>(null); // 进度文本（页内展示，禁 a[download]）
 
   return (
     <div className="flex flex-col gap-5">
@@ -136,9 +137,19 @@ function MePage() {
           {/* 本机数据 */}
           <Section title="本机数据" note="导出为文本自行保管，清空后无法恢复">
             <div className="flex flex-col gap-2">
-              <Btn variant="soft" onClick={exportText}>
+              <Btn variant="soft" onClick={() => setExportedText(exportText())}>
                 导出进度为文本
               </Btn>
+              {exportedText && (
+                <Panel className="px-3 py-2">
+                  <pre className="max-h-48 overflow-auto whitespace-pre-wrap text-[12px] leading-relaxed text-muted-text">
+                    {exportedText}
+                  </pre>
+                  <Btn size="sm" variant="ghost" className="mt-2" onClick={() => setExportedText(null)}>
+                    收起
+                  </Btn>
+                </Panel>
+              )}
               {confirmReset ? (
                 <Panel className="border border-warm/45 bg-warm-soft/50 px-4 py-3">
                   <p className="text-[15px] font-bold">确定清空全部本机进度吗？</p>
@@ -269,7 +280,7 @@ function MePage() {
       <Section title="关于">
         <div className="flex items-center gap-4">
           <div className="ip-plate shrink-0 rounded-xl p-1.5">
-            <img src="/logo/logo_full.webp" alt="英语陪练 · 天天见" className="h-24 w-auto" />
+            <img src="./logo/logo_full.webp" alt="英语陪练 · 天天见" className="h-24 w-auto" />
           </div>
           <div className="min-w-0">
             <p className="flex flex-wrap items-center gap-2 text-[14px] font-bold leading-tight">
@@ -290,7 +301,7 @@ function MePage() {
     </div>
   );
 
-  function exportText() {
+  function exportText(): string {
     const lines = [
       `英语点读陪练 · 进度导出`,
       `当前单元：Unit ${p.unit.no} ${p.unit.title}`,
@@ -309,13 +320,8 @@ function MePage() {
         return `  ${sk.no}) ${sk.name} — ${r === "can" ? "我能做到" : r === "almost" ? "基本可以" : r === "help" ? "需要帮助" : "未评"}`;
       }),
     ];
-    const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "progress.txt";
-    a.click();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    // minitool 禁 a[download] — 返回文本由调用方页内展示
+    return lines.join("\n");
   }
 }
 

@@ -16,6 +16,7 @@ function CardPage() {
   const p = useProgress();
   const { unit, week, litDays, skillRating, stats } = p;
   const [saved, setSaved] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const sheetRef = useRef<HTMLElement>(null);
 
   const results = unit.skills.map((s) => ({
@@ -36,15 +37,21 @@ function CardPage() {
     if (!node) return;
     try {
       const { canvas, w, h } = await drawCard(node);
-      const url = canvas.toDataURL("image/png");
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `growth-card-week${week}.png`;
-      a.click();
+      const dataUrl = canvas.toDataURL("image/png");
       void w;
       void h;
-      setSaved(true);
-      window.setTimeout(() => setSaved(false), 2600);
+      // minitool 禁 a[download]/blob 下载 — 走小红书 JSBridge 存相册
+      const bridge = (window as unknown as {
+        xhs?: { miniTool?: { saveImageToPhotosAlbum?: (o: { filePath: string }) => void } };
+      }).xhs?.miniTool;
+      if (bridge?.saveImageToPhotosAlbum) {
+        bridge.saveImageToPhotosAlbum({ filePath: dataUrl });
+        setSaved(true);
+        window.setTimeout(() => setSaved(false), 2600);
+      } else {
+        // 无 bridge（纯浏览器调试）：降级展示图 + 提示，不触发下载
+        setPreviewUrl(dataUrl);
+      }
     } catch (err) {
       // 导出失败时留下可排查的现场信息，避免静默失败
       console.error("[growth-card] 分享图导出失败", err);
@@ -242,8 +249,18 @@ function CardPage() {
       </div>
       {saved && (
         <p className="text-center text-[14px] font-semibold text-[var(--lit)]">
-          卡片已保存到下载文件夹，只包含本周学习情况。
+          卡片已保存到相册，只包含本周学习情况。
         </p>
+      )}
+      {previewUrl && (
+        <div className="rounded-2xl border border-border bg-card px-4 py-3">
+          <p className="text-[14px] font-semibold">分享卡片已生成</p>
+          <p className="mt-0.5 text-[13px] text-muted-text">当前环境不支持保存到相册，可长按下方图片保存。</p>
+          <img src={previewUrl} alt="本周成长卡" className="mt-2 w-full rounded-xl border border-border/60" />
+          <Btn size="sm" variant="ghost" className="mt-2" onClick={() => setPreviewUrl(null)}>
+            关闭
+          </Btn>
+        </div>
       )}
 
       {isDraft && (

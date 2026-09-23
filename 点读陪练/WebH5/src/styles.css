@@ -1,6 +1,9 @@
 @import "tailwindcss" source(none);
-@source "../src";
 @import "tw-animate-css";
+@source "../src";
+/* 死代码：routes 全走 @/components/ui-kit，本目录 shadcn 组件无任何外部引用，
+   排除扫描可去掉其 has-前缀类、现代关系选择器等 Chrome61 不兼容类名的生成 */
+@source not "./components/ui";
 
 /* ============================================================
    英语点读陪练 · 设计系统

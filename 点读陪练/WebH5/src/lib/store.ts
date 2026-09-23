@@ -162,14 +162,15 @@ export function resolveTheme(pref: ThemeKey, followSystem: boolean): ThemeKey {
 }
 
 /** bgTone = standard 时的底色覆盖：浅色主题提亮，深色主题略微提亮但仍为深底 */
+// Chrome 61 不支持 oklch — 用 lightningcss 转好的 hex（见 tmp-convert-oklch.mjs）
 const STANDARD_BG: Record<ThemeKey, string> = {
-  sprout: "oklch(0.985 0.014 122)",
-  matcha: "oklch(0.965 0.028 155)",
-  warm: "oklch(0.985 0.008 90)",
-  sky: "oklch(0.985 0.008 225)",
-  moss: "oklch(0.275 0.028 128)",
-  forest: "oklch(0.275 0.028 158)",
-  night: "oklch(0.255 0.015 240)",
+  sprout: "#f8fcf2",
+  matcha: "#e6f9eb",
+  warm: "#fcfaf4",
+  sky: "#f5fbfe",
+  moss: "#242a1b",
+  forest: "#1c2c22",
+  night: "#1c2429",
 };
 
 /** bgTone = soft 时各主题的底色（深色主题下「柔和」= 更暗一档） */
@@ -178,9 +179,9 @@ const SOFT_BG: Record<ThemeKey, string> = {
   matcha: "",
   warm: "",
   sky: "",
-  moss: "oklch(0.215 0.028 128)",
-  forest: "oklch(0.215 0.03 158)",
-  night: "oklch(0.195 0.017 240)",
+  moss: "#161c0e",
+  forest: "#0d1e14",
+  night: "#0e161c",
 };
 
 function emptyState(): ProgressState {
@@ -200,7 +201,11 @@ let storageOk = true;
  *  供「先看图再决定要不要用这套配色」这类预览场景使用，退出页面即恢复用户自己的设置。 */
 function previewThemeFromUrl(): ThemeKey | null {
   try {
-    const q = new URLSearchParams(window.location.search).get("theme");
+    // 兼容两种位置：常规 search（?theme=x）与 hash 路由内查询（#/me?theme=x）
+    let q = new URLSearchParams(window.location.search).get("theme");
+    if (!q && window.location.hash.includes("?")) {
+      q = new URLSearchParams(window.location.hash.split("?")[1]).get("theme");
+    }
     return q && THEME_KEYS.includes(q as ThemeKey) ? (q as ThemeKey) : null;
   } catch {
     return null;

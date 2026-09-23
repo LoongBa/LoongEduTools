@@ -1,9 +1,8 @@
 // 根布局：Provider 放这里；页面路由在 src/routes/ 下单独建文件，勿堆进 index.tsx
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   Outlet,
   Navigate,
-  createRootRouteWithContext,
+  createRootRoute,
   useRouterState,
   type ErrorComponentProps,
 } from '@tanstack/react-router';
@@ -23,18 +22,12 @@ function ErrorComponent({ error }: ErrorComponentProps) {
   return <Navigate to="/" replace />;
 }
 
-export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+export const Route = createRootRoute({
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponent,
 });
 
 function RootComponent() {
-  const { queryClient } = Route.useRouteContext();
-
-  return (
-    <QueryClientProvider client={queryClient}>
-      <Outlet />
-    </QueryClientProvider>
-  );
+  return <Outlet />;
 }

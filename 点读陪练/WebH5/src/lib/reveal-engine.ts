@@ -16,22 +16,29 @@ const STYLE_ID = "reveal-engine-style";
 
 // 隐藏/显示规则全部由引擎注入，且以 html.reveal-ready 作用域门控：
 // styles.css 被整文件重写也不影响；引擎不运行则没有任何元素被隐藏。
+// Chrome 61 不支持 :is() — 选择器展开为逗号列表（每项带 html.reveal-ready 前缀）。
+const scoped = (sel: string): string =>
+  sel
+    .split(",")
+    .map((s) => `html.${READY_CLASS} ${s.trim()}`)
+    .join(", ");
+
 const ENGINE_CSS = `
-html.${READY_CLASS} :is(${REVEAL_SELECTOR}) {
+${scoped(REVEAL_SELECTOR)} {
   opacity: 0;
   transition: opacity 0.6s ease-out, transform 0.6s ease-out;
   transition-delay: var(--reveal-delay, 0ms);
 }
-html.${READY_CLASS} :is(.reveal, .reveal-up, .animate-on-scroll, [data-reveal]:not([class*="reveal-"])) { transform: translateY(24px); }
+${scoped(".reveal, .reveal-up, .animate-on-scroll, [data-reveal]:not([class*='reveal-'])")} { transform: translateY(24px); }
 html.${READY_CLASS} .reveal-left { transform: translateX(-32px); }
 html.${READY_CLASS} .reveal-right { transform: translateX(32px); }
 html.${READY_CLASS} .reveal-zoom { transform: scale(0.94); }
-html.${READY_CLASS} :is(${REVEAL_SELECTOR}).${VISIBLE_CLASS} {
+${scoped(REVEAL_SELECTOR)}.${VISIBLE_CLASS} {
   opacity: 1;
   transform: none;
 }
 @media (prefers-reduced-motion: reduce) {
-  html.${READY_CLASS} :is(${REVEAL_SELECTOR}) {
+  ${scoped(REVEAL_SELECTOR)} {
     opacity: 1;
     transform: none;
     transition: none;

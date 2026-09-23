@@ -2,7 +2,7 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>小学英语点读陪练</title>
     <link rel="icon" type="image/png" href="/logo/app_icon.png" />
     <link rel="apple-touch-icon" href="/logo/app_icon.png" />
@@ -23,33 +23,7 @@
         color: #ffffff;
       }
     </style>
-    <script>
-      // 在 React 加载前立即设置主题，避免闪烁
-      (function() {
-        const isInIframe = window.self !== window.top;
-
-        function applyThemeToDOM(theme) {
-          document.documentElement.classList.remove('light', 'dark');
-          document.documentElement.classList.add(theme);
-          document.documentElement.setAttribute('data-theme', theme);
-        }
-
-        if (isInIframe) {
-          // 监听父窗口主动推送的主题消息
-          window.addEventListener('message', function(event) {
-            if (event.data && typeof event.data.theme === 'string') {
-              var theme = event.data.theme;
-              if (theme === 'light' || theme === 'dark') {
-                applyThemeToDOM(theme);
-              }
-            }
-          });
-        } else {
-          // 非 iframe 环境，使用默认 light 主题
-          applyThemeToDOM('light');
-        }
-      })();
-    </script>
+    <script src="/theme-boot.js"></script>
   </head>
   <body>
     <div id="root"></div>

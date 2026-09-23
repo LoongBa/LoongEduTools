@@ -111,8 +111,8 @@ function wordFactory(imageBase: string) {
  */
 export function contentToUnit(pkg: ContentPackage, unitDir: string, no: number): Unit {
   const unitId = unitDir; // "u01"
-  const audioBase = `/units/${unitDir}/audio/`;
-  const imageBase = `/units/${unitDir}/images/`;
+  const audioBase = `./units/${unitDir}/audio/`;
+  const imageBase = `./units/${unitDir}/images/`;
   const s = sentenceFactory();
   const wf = wordFactory(imageBase);
 
@@ -246,10 +246,16 @@ export function contentToUnit(pkg: ContentPackage, unitDir: string, no: number):
  * 缺 type 时按 original_song 处理（process_song.py 产物）。
  */
 export function songJsonToSong(j: SongJson, unitDir: string): Song {
-  const audioBase = `/units/${unitDir}/song/`;
+  const audioBase = `./units/${unitDir}/song/`;
   const isTextbook = j.type === "textbook_lyrics" || j.audio_type === "tts_sentences";
   const raw = (j.lyrics ?? j.lines ?? []) as { en?: string; zh?: string; start?: number; end?: number; audio?: string }[];
-  const absAudio = (a: string | undefined) => (a && !a.startsWith("/") ? `${audioBase}${a}` : a);
+  // 相对化拼接（minitool 离线规范：禁绝对路径）：协议/已相对原样、/绝对转 ./、裸文件名接 base
+  const absAudio = (a: string | undefined) => {
+    if (!a) return a;
+    if (/^(https?:|data:|blob:)/i.test(a) || a.startsWith("./") || a.startsWith("../")) return a;
+    if (a.startsWith("/")) return `.${a}`;
+    return `${audioBase}${a}`;
+  };
   const lines: Song["lines"] = raw.map((l) => ({
     en: l.en ?? "",
     cn: l.zh ?? "",
@@ -277,12 +283,12 @@ export function songJsonToSong(j: SongJson, unitDir: string): Song {
     audio: absAudio(j.audio),
     instrumental: absAudio(j.instrumental),
     duration: j.duration,
-    lines, // audio 已在上方 absAudio 拼成绝对路径（/units/uXX/song/...）
+    lines, // audio 已在上方拼成入口相对路径（./units/uXX/song/...）
     timeline: timeline.length === lines.length ? timeline : undefined,
   };
 }
 
 /** 让未用到的路径常量被树摇掉前保留引用（音频/图路径拼接入 cards 用） */
 export function assetPaths(unitDir: string) {
-  return { audioBase: `/units/${unitDir}/audio/`, imageBase: `/units/${unitDir}/images/` };
+  return { audioBase: `./units/${unitDir}/audio/`, imageBase: `./units/${unitDir}/images/` };
 }

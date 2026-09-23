@@ -218,7 +218,7 @@ function buildWords(): WordCard[] {
     word,
     cn,
     ip: ip(),
-    ...(img ? { image: `/units/u01/images/${img}.webp` } : {}),
+    ...(img ? { image: `./units/u01/images/${img}.webp` } : {}),
     ...(audio ? { mp3: `${audio}.mp3` } : {}),
   }));
 }

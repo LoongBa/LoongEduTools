@@ -274,50 +274,57 @@ Start-Process python -ArgumentList "src\publish_offline.py","-u","u01" `
     -RedirectStandardOutput publish.log -RedirectStandardError publish.err
 ```
 
-**脚本 7 个环节**（`src/publish_offline.py`）：
+**脚本 9 个环节**（`src/publish_offline.py`）：
 | # | 环节 | 说明 |
 |---|---|---|
-| 1 | 音频准备 | `build/u01/assets/audio` → `WebH5/public/units/u01/audio`（含 `.mp3.mp3` 双后缀别名处理） |
-| 2 | 配图压缩 | PNG 2048² → WebP ≤500KB → `public/units/u01/images` |
-| 3 | IP 头像压缩 | `public/ip/*.png` → `public/ip/webp/`（512px） |
-| 4 | WebH5 构建 | `pnpm build`（产出 dist/） |
-| 5 | 离线拆分 | dist → `build/offline/`（壳 + units/ 单元素材） |
-| 6 | 合规校验 | 递归检查单文件 ≤10MB |
-| 7 | zip 打包 | → `RedTools/publish/学科/点读陪练_<标签>_离线版.zip` |
+| 1 | 就绪校验 | 内容包 + audio/image 与引用一一对应 + 对齐表「交付」标记（不齐 exit 3） |
+| 2 | 素材入 public | audio `.mp3.mp3` 双后缀**归一为单后缀**；配图 PNG→WebP；content.json；点唱台 wav→mp3 |
+| 3 | manifest → public | 扫 `public/units/*/content.json`（`gen_catalog` 构建期读取；`CATALOG_UNITS` 过滤内联） |
+| 4 | IP 头像压缩 | `public/ip/*.png` → `public/ip/webp/`（512px） |
+| 5 | WebH5 构建 | `pnpm build`，env `CATALOG_UNITS=u01,u02` 指定本次嵌入单元 |
+| 6 | 离线拆分 | dist → `build/offline/` **全量重建**（壳 index/assets/**theme-boot.js**/**logo/**/ip/webp + 仅选中单元） |
+| 7 | 门禁 + audit(目录) | ≤10MB / 无双后缀 / 相对路径 / 经典脚本 / 无 `a[download]` / theme-boot+logo 必在 + skill `audit_artifact.py`（FAIL exit 4） |
+| 8 | zip 打包 | → `RedTools/publish/学科/点读陪练_<标签>_离线版.zip`（超 10MB 抛错） |
+| 9 | audit(zip) | skill audit 对 zip 终审 |
 
 **参数**：
 | 参数 | 说明 |
 |---|---|
-| `-u, --unit` | 单元目录名（默认 u01） |
-| `-b, --build` | 单元构建目录（默认 build/<unit>） |
+| `-u, --unit` | 单元目录名，**逗号分隔多单元**（默认 u01；`-b` 仅单单元可用） |
+| `-b, --build` | 单元构建目录（默认 build/<unit>，仅单单元） |
 | `-w, --webh5` | WebH5 目录（默认 点读陪练/WebH5） |
 | `-p, --publish` | 发布目录（默认 RedTools/publish/学科） |
-| `--zip-name` | zip 名自定义（用于合并打包） |
+| `--zip-name` | zip 名自定义（覆盖自动标签） |
 
-**发布标签**：zip 名自动从内容包 grade/unit 生成（如 `四年级上Unit01`）。
+**发布标签**：单单元按内容包 grade/unit（如 `四年级上Unit01`）；多单元同册自动合并（如 `四年级上Unit01-02`）。
 
 ---
 
-### 步骤 10：合并打包 + 合规红线
+### 步骤 10：多单元合并打包 + 合规红线
 
-**背景**：小红书要求单文件 ≤10MB。实测每单元离线包约 3-4MB，可合并打包减少包数量。
+**背景**：小红书要求单文件 ≤10MB。实测 u01 单包 5.61MB、u01+02 合并 8.41MB，同一次 `-u u01,u02` 构建产出合并包。
 
-| 打包策略 | 说明 |
-|---|---|
-| 单单元包 | `-u u01` → `点读陪练_四年级上Unit01_离线版.zip`（~4MB） |
-| 多单元合并 | `-u u01 --zip-name "四年级上Unit01-02"` → 聚合 `units/` 多单元到一包（2 单元 ~9MB 安全） |
+| 打包策略 | 命令 | 实测 |
+|---|---|---|
+| 单单元包 | `-u u01` | `点读陪练_四年级上Unit01_离线版.zip` **5.61MB**（157 项，audit PASS） |
+| 多单元合并 | `-u u01,u02` | `点读陪练_四年级上Unit01-02_离线版.zip` **8.41MB**（254 项，audit PASS） |
+
+> offline/ 每次运行**按本次 `-u` 单元集全量重建**（不做跨运行累积）；合并包须一次跑齐全部单元。
 
 **合规红线**（不可违反）：
-- ✅ 离线包内**每个单文件** ≤10MB（脚本步骤 6 自动校验，超限 exit 2）
-- ✅ 单元级 ≤10MB（检查每个 units/<单元> 合计）
-- ⚠️ 素材需压缩：源图 PNG 2048²（~5MB/张）必须经 WebP 压缩（≤500KB）后才可发布
-- ⚠️ 音频 mp3 已在管线产出时压缩（edge TTS 默认，~21KB/条）
+- ✅ 离线包内**每个单文件** ≤10MB（脚本步骤 7 自动校验，超限 exit 2）
+- ✅ zip 本体 ≤10MiB（超限抛错）；skill audit 对 >2MiB 报 WARN 不阻塞
+- ✅ 无 `.mp3.mp3` 双后缀、无 `a[download]`、index.html 全相对路径 + 经典脚本
+- ✅ 壳必含 `theme-boot.js` + `logo/`（缺一 exit）
+- ⚠️ 素材需压缩：源图 PNG 2048² 必须经 WebP 压缩后才可发布
+- ⚠️ 音频 mp3 管线产出时已压缩（edge TTS 默认）
 
 **发布位置汇总**：
 | 产物 | 位置 |
 |---|---|
 | 离线 zip | `RedTools/publish/学科/点读陪练_<标签>_离线版.zip` |
-| 离线包源目录 | `点读陪练/build/offline/`（可再构建） |
+| 离线包源目录 | `点读陪练/build/offline/`（每次发布全量重建，可再构建） |
+| skill audit 脚本 | 解包至 `点读陪练/build/_audit/audit_artifact.py`（读 skill zip，自动刷新） |
 | 在线版 dist | `WebH5/dist/`（部署到 Web 服务器即可） |
 
 ---

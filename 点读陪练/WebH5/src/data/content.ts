@@ -799,12 +799,12 @@ export function unitOf(id: string): Unit {
 }
 
 // ---------------------------------------------------------------------------
-// 运行时目录加载（catalog）：消灭单元硬编码
-//  - fetch("units/manifest.json") → 册级+单元清单（离线自动匹配打包内容）
-//  - fetch("units/<id>/content.json") → 内容包 JSON → contentToUnit() → Unit
-//  - manifest/content 缺失（如纯代码 dev）→ 保持内置示例降级
+// 目录加载（catalog）：构建期把 public/units 数据内联进 JS（minitool：运行时禁 fetch）
+//  - scripts/gen_catalog.mjs 生成 catalog.generated.ts（dev/build 前缀自动跑）
+//  - manifest/content/song 缺失（如纯代码 dev）→ 保持内置示例降级
 // ---------------------------------------------------------------------------
 import { contentToUnit, songJsonToSong, type ContentPackage } from "./fromContent";
+import { EMBEDDED_CATALOG } from "./catalog.generated";
 
 export interface ManifestUnit {
   id: string;
@@ -826,31 +826,24 @@ export interface Manifest {
 
 export let MANIFEST: Manifest | null = null;
 
-async function fetchJson<T>(url: string): Promise<T | null> {
-  try {
-    const r = await fetch(url);
-    return r.ok ? ((await r.json()) as T) : null;
-  } catch {
-    return null;
-  }
-}
-
-/** 预加载目录：manifest → 各单元内容包 → 更新 UNITS/UNIT_ROWS/TOTAL_WORDS。失败静默降级。 */
+/** 从构建期内联数据加载目录：manifest → 各单元内容包 → 更新 UNITS/UNIT_ROWS/TOTAL_WORDS。
+ *  数据缺失时静默降级（保持内置示例）。签名保持 async 以兼容既有调用点。 */
 export async function loadCatalog(): Promise<void> {
-  const manifest = await fetchJson<Manifest>("units/manifest.json");
-  if (!manifest || manifest.grades.length === 0) return; // 无 manifest：保持示例降级
+  const embedded = EMBEDDED_CATALOG;
+  if (!embedded || !embedded.manifest) return; // 无内联数据：保持示例降级
+  const manifest = embedded.manifest as unknown as Manifest;
+  if (manifest.grades.length === 0) return;
 
   const units: Unit[] = [];
   for (const grade of manifest.grades) {
     for (const mu of grade.units) {
-      const pkg = await fetchJson<ContentPackage>(`units/${mu.id}/content.json`);
-      if (!pkg) continue;
+      const entry = embedded.units[mu.id];
+      if (!entry || !entry.content) continue;
+      const pkg = entry.content as unknown as ContentPackage;
       const unit = contentToUnit(pkg, mu.id, mu.no);
       // 点唱台歌曲：song.json（原创儿歌）+ textbook_lyrics.json（教材跟读）
-      const [songJson, tbJson] = await Promise.all([
-        fetchJson<SongJson>(`units/${mu.id}/song/song.json`),
-        fetchJson<SongJson>(`units/${mu.id}/song/textbook_lyrics.json`),
-      ]);
+      const songJson = (entry.song ?? null) as unknown as SongJson | null;
+      const tbJson = (entry.textbook ?? null) as unknown as SongJson | null;
       const songs: Song[] = [];
       if (songJson && (songJson.audio || (songJson.lyrics?.length ?? 0) > 0)) {
         songs.push(songJsonToSong(songJson, mu.id));

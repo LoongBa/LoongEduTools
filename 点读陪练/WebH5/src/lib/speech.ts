@@ -145,25 +145,48 @@ export function speakMp3(
   }
 }
 
-/** 录音跟读：只在内存中回放，不写存储、不外传 */
+/** 录音跟读：只在内存中回放，不写存储、不外传。
+ * minitool 禁音视频 blob:/data: src — 回放走 Web Audio（decodeAudioData → BufferSource），
+ * 不再 URL.createObjectURL + new Audio(blobUrl)。Chrome 61 用回调式 decodeAudioData。
+ */
 export function useRecorder() {
   const [supported] = useState(() =>
     typeof navigator !== "undefined" && !!navigator.mediaDevices?.getUserMedia && typeof window !== "undefined" && "MediaRecorder" in window,
   );
   const [state, setState] = useState<"idle" | "recording" | "ready" | "denied">("idle");
   const [error, setError] = useState<string | null>(null);
-  const urlRef = useRef<string | null>(null);
+  const bufferRef = useRef<AudioBuffer | null>(null);
+  const sourceRef = useRef<AudioBufferSourceNode | null>(null);
   const recRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const ctxRef = useRef<AudioContext | null>(null);
 
-  const cleanup = useCallback(() => {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-    if (urlRef.current) {
-      URL.revokeObjectURL(urlRef.current);
-      urlRef.current = null;
+  const getCtx = useCallback(() => {
+    if (!ctxRef.current) {
+      const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AC) return null;
+      ctxRef.current = new AC();
+    }
+    return ctxRef.current;
+  }, []);
+
+  const stopPlayback = useCallback(() => {
+    if (sourceRef.current) {
+      try {
+        sourceRef.current.stop();
+      } catch {
+        /* ignore */
+      }
+      sourceRef.current = null;
     }
   }, []);
+
+  const cleanup = useCallback(() => {
+    stopPlayback();
+    bufferRef.current = null;
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+  }, [stopPlayback]);
 
   useEffect(() => cleanup, [cleanup]);
 
@@ -192,6 +215,8 @@ export function useRecorder() {
   const start = useCallback(async () => {
     if (!supported) return;
     setError(null);
+    stopPlayback();
+    bufferRef.current = null;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -205,9 +230,29 @@ export function useRecorder() {
         streamRef.current?.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
         const blob = new Blob(chunks, { type: rec.mimeType || "audio/webm" });
-        if (blob.size > 1000 && urlRef.current === null) {
-          urlRef.current = URL.createObjectURL(blob);
-          setState("ready");
+        if (blob.size > 1000) {
+          // Blob → ArrayBuffer → decodeAudioData（Chrome 61 回调式；不生成 blob: URL）
+          const reader = new FileReader();
+          reader.onload = () => {
+            const ctx = getCtx();
+            const buf = reader.result;
+            if (!ctx || !(buf instanceof ArrayBuffer)) {
+              setState("idle");
+              return;
+            }
+            const onOk = (audioBuf: AudioBuffer) => {
+              bufferRef.current = audioBuf;
+              setState("ready");
+            };
+            const onErr = () => setState("idle");
+            const p = ctx.decodeAudioData(buf, onOk, onErr);
+            // 新浏览器返回 Promise；老浏览器只认回调（双路径兼容）
+            if (p && typeof p.then === "function") {
+              p.then(onOk).catch(onErr);
+            }
+          };
+          reader.onerror = () => setState("idle");
+          reader.readAsArrayBuffer(blob);
         } else {
           setState("idle");
         }
@@ -218,17 +263,24 @@ export function useRecorder() {
       setState("denied");
       setError("没有拿到麦克风权限");
     }
-  }, [supported]);
+  }, [supported, stopPlayback, getCtx]);
 
   const stop = useCallback(() => {
     if (recRef.current?.state === "recording") recRef.current.stop();
   }, []);
 
   const play = useCallback(() => {
-    if (!urlRef.current) return;
-    const a = new Audio(urlRef.current);
-    void a.play();
-  }, []);
+    const buf = bufferRef.current;
+    const ctx = getCtx();
+    if (!buf || !ctx) return;
+    stopPlayback();
+    if (ctx.state === "suspended") void ctx.resume();
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    src.start(0);
+    sourceRef.current = src;
+  }, [getCtx, stopPlayback]);
 
   const discard = useCallback(() => {
     cleanup();

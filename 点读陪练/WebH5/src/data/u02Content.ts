@@ -179,7 +179,7 @@ function buildWords(): WordCard[] {
     word,
     cn,
     ip: ip(),
-    image: `/units/u02/images/${img}.webp`,
+    image: `./units/u02/images/${img}.webp`,
     mp3: `${audio}.mp3`,
   }));
 }
