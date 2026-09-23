@@ -265,19 +265,23 @@ function MePage() {
         </>
       )}
 
-      {/* 关于：Logo + 版本徽章 + 作者 */}
+      {/* 关于：Logo | 版本徽章 + 作者（一行两栏；透明底 Logo 浅色融卡片，深色靠 ip-plate 垫板） */}
       <Section title="关于">
-        <div className="ip-plate w-fit rounded-xl">
-          <img src="/logo/logo_full.webp" alt="英语陪练 · 天天见" className="h-24 w-auto rounded-xl" />
+        <div className="flex items-center gap-4">
+          <div className="ip-plate shrink-0 rounded-xl p-1.5">
+            <img src="/logo/logo_full.webp" alt="英语陪练 · 天天见" className="h-24 w-auto" />
+          </div>
+          <div className="min-w-0">
+            <p className="flex flex-wrap items-center gap-2 text-[14px] font-bold leading-tight">
+              Ver {APP_VERSION}
+              <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-bold text-muted-text">
+                数据更新 {DATA_STAMP}
+              </span>
+            </p>
+            <p className="mt-1.5 text-[15px] font-bold leading-tight">爱学习的龙爸</p>
+            <p className="text-[13px] leading-snug text-muted-text">LoongBa.cn</p>
+          </div>
         </div>
-        <p className="mt-3 flex flex-wrap items-center gap-2 text-[14px] font-bold leading-tight">
-          Ver {APP_VERSION}
-          <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-bold text-muted-text">
-            数据更新 {DATA_STAMP}
-          </span>
-        </p>
-        <p className="mt-1.5 text-[15px] font-bold leading-tight">爱学习的龙爸</p>
-        <p className="text-[13px] leading-snug text-muted-text">LoongBa.cn</p>
       </Section>
 
       <p className="px-2 pb-2 text-center text-[13px] leading-relaxed text-muted-text">
