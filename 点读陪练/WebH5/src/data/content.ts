@@ -804,7 +804,7 @@ export function unitOf(id: string): Unit {
 //  - manifest/content/song 缺失（如纯代码 dev）→ 保持内置示例降级
 // ---------------------------------------------------------------------------
 import { contentToUnit, songJsonToSong, type ContentPackage } from "./fromContent";
-import { EMBEDDED_CATALOG } from "./catalog.generated";
+import { resolveProvider } from "./content-provider";
 
 export interface ManifestUnit {
   id: string;
@@ -826,18 +826,19 @@ export interface Manifest {
 
 export let MANIFEST: Manifest | null = null;
 
-/** 从构建期内联数据加载目录：manifest → 各单元内容包 → 更新 UNITS/UNIT_ROWS/TOTAL_WORDS。
+/** 从内容 Provider（离线=构建期内联；在线=远程+缓存，见 content-provider.ts）加载目录：
+ *  manifest → 各单元内容包 → 更新 UNITS/UNIT_ROWS/TOTAL_WORDS。
  *  数据缺失时静默降级（保持内置示例）。签名保持 async 以兼容既有调用点。 */
 export async function loadCatalog(): Promise<void> {
-  const embedded = EMBEDDED_CATALOG;
-  if (!embedded || !embedded.manifest) return; // 无内联数据：保持示例降级
-  const manifest = embedded.manifest as unknown as Manifest;
+  const snap = await resolveProvider().resolve();
+  if (!snap || !snap.manifest) return; // 无数据：保持示例降级
+  const manifest = snap.manifest;
   if (manifest.grades.length === 0) return;
 
   const units: Unit[] = [];
   for (const grade of manifest.grades) {
     for (const mu of grade.units) {
-      const entry = embedded.units[mu.id];
+      const entry = snap.units[mu.id];
       if (!entry || !entry.content) continue;
       const pkg = entry.content as unknown as ContentPackage;
       const unit = contentToUnit(pkg, mu.id, mu.no);
