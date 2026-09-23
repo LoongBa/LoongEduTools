@@ -7,6 +7,7 @@ import { Btn, PageHead, Panel } from "@/components/ui-kit";
 import { StarIcon, GearIcon } from "@/components/icons";
 import { UnitScope } from "@/components/unit-scope";
 import { cn } from "@/lib/utils";
+import { APP_VERSION, DATA_STAMP } from "@/lib/version";
 
 export const Route = createFileRoute("/_layout/me")({
   component: MePage,
@@ -251,7 +252,7 @@ function MePage() {
                   "小阅兵的三档自评由孩子自己选，「需要帮助」不是失败，只是回哪几张卡再练。",
                   "周末可以打印一份练习小单，作为无屏补充，不必每天都做。",
                 ].map((t, i) => (
-                  <li key={i} className="flex gap-2.5">
+                  <li key={t} className="flex gap-2.5">
                     <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent text-[13px] font-bold text-primary-deep">
                       {i + 1}
                     </span>
@@ -263,6 +264,21 @@ function MePage() {
           )}
         </>
       )}
+
+      {/* 关于：Logo + 版本徽章 + 作者 */}
+      <Section title="关于">
+        <div className="ip-plate w-fit rounded-xl">
+          <img src="/logo/logo_full.webp" alt="英语陪练 · 天天见" className="h-24 w-auto rounded-xl" />
+        </div>
+        <p className="mt-3 flex flex-wrap items-center gap-2 text-[14px] font-bold leading-tight">
+          Ver {APP_VERSION}
+          <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-bold text-muted-text">
+            数据更新 {DATA_STAMP}
+          </span>
+        </p>
+        <p className="mt-1.5 text-[15px] font-bold leading-tight">爱学习的龙爸</p>
+        <p className="text-[13px] leading-snug text-muted-text">LoongBa.cn</p>
+      </Section>
 
       <p className="px-2 pb-2 text-center text-[13px] leading-relaxed text-muted-text">
         英语陪练 · 天天见 ｜ 内容依据 PEP 教材同步拓展改写，原创角色与文本
