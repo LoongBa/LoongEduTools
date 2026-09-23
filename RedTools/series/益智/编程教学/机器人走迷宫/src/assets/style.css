@@ -232,8 +232,8 @@ body {
 
 .cmd-add {
   -webkit-box-flex: 1;
-  -webkit-flex: 1 1 30%;
-  flex: 1 1 30%;
+  -webkit-flex: 1 1 22%;
+  flex: 1 1 22%;
   min-width: 0;
   background: #e6f0fd;
   border: 1px solid #9cc3f2;
@@ -296,6 +296,12 @@ body {
 .cmd-chip.if {
   background: #8c5bd6;
   border: 1px solid #7a4ec0;
+}
+
+/* V1.7 循环块 chip（绿色区分） */
+.cmd-chip.loopb {
+  background: #2f9e62;
+  border: 1px solid #23824c;
 }
 
 /* V1.5 分支内小号 chip */

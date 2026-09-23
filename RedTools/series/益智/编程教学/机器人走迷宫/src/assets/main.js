@@ -45,7 +45,7 @@
   var LEVELS_CFG = {
     easy:   { key: 'easy',   label: '简单', from: 0, to: 30 },    // 1-30 关（入门渐进）
     normal: { key: 'normal', label: '普通', from: 30, to: 80 },   // 31-80 关（进阶推理）
-    hard:   { key: 'hard',   label: '挑战', from: 80, to: 185 }   // 81-185 关（全量挑战 + v1.6 参数化 176-185）
+    hard:   { key: 'hard',   label: '挑战', from: 80, to: 195 }   // 81-195 关（全量挑战 + v1.7 循环块 186-195）
   };
   var LEVEL_ORDER = ['easy', 'normal', 'hard'];
 
@@ -56,6 +56,7 @@
   var CMD_BLOCK = { id: 'block', label: '🧱探测' };   // v1.3 条件指令：前方有墙/边界则不走
   var CMD_IF = { id: 'if', label: '❓if墙' };       // v1.5 条件分支：有墙→then / 无墙→else
   var CMD_STEPS = { id: 'steps', label: '➡N步' };      // v1.6 参数化移动：直线移动 N 格（参数=距离）
+  var CMD_LOOP = { id: 'loop', label: '🔁循环' };      // v1.7 显式循环块：一组指令重复 N 次（循环=自动化）
   var DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]]; // 右/下/左/上
 
   /* ---------- 状态 ---------- */
@@ -332,7 +333,7 @@
     // 指令区
     var cmdBar = makeEl('div', 'cmd-bar');
     cmdBar.id = 'cmd-bar';
-    [CMD_FWD, CMD_L, CMD_R, CMD_BLOCK, CMD_STEPS, CMD_IF].forEach(function (cmd) {
+    [CMD_FWD, CMD_L, CMD_R, CMD_BLOCK, CMD_STEPS, CMD_IF, CMD_LOOP].forEach(function (cmd) {
       var btn = makeEl('button', 'cmd-add', cmd.label);
       btn.addEventListener('click', function () { addCmd(cmd.id); });
       cmdBar.appendChild(btn);
@@ -402,13 +403,14 @@
     state.cmds.forEach(function (cmd, i) {
       var isIf = cmd.id === 'if';
       var isSteps = cmd.id === 'steps';
-      var lbl = cmd.id === 'fwd' ? '↑' : (cmd.id === 'left' ? '↰' : (cmd.id === 'right' ? '↱' : (cmd.id === 'block' ? '🧱' : (cmd.id === 'steps' ? '➡走' + (cmd.steps || 1) + '步' : '❓if'))));
-      var repTxt = (!isIf && !isSteps && cmd.rep && cmd.rep > 1) ? ('×' + cmd.rep) : '';
-      // 指令 chip：单击循环次数/参数递增/打开 if 编辑区；✕ 角标删除
-      var chip = makeEl('span', 'cmd-chip' + (repTxt ? ' loop' : '') + (isIf ? ' if' : ''), (i + 1) + '.' + lbl + repTxt);
+      var isLoop = cmd.id === 'loop';
+      var lbl = cmd.id === 'fwd' ? '↑' : (cmd.id === 'left' ? '↰' : (cmd.id === 'right' ? '↱' : (cmd.id === 'block' ? '🧱' : (cmd.id === 'steps' ? '➡走' + (cmd.steps || 1) + '步' : (cmd.id === 'loop' ? '🔁×' + (cmd.rep || 2) : '❓if')))));
+      var repTxt = (!isIf && !isSteps && !isLoop && cmd.rep && cmd.rep > 1) ? ('×' + cmd.rep) : '';
+      // 指令 chip：单击循环次数/参数递增/打开编辑区（if 分支 or 循环块）；✕ 角标删除
+      var chip = makeEl('span', 'cmd-chip' + (repTxt ? ' loop' : '') + (isIf ? ' if' : '') + (isLoop ? ' loopb' : ''), (i + 1) + '.' + lbl + repTxt);
       chip.addEventListener('click', function (ev) {
         ev.stopPropagation();
-        if (isIf) { openEditCtx(i, cmd); }
+        if (isIf || isLoop) { openEditCtx(i, cmd); }
         else if (isSteps) { cycleSteps(i); }
         else { cycleRep(i); }
       });
@@ -422,11 +424,11 @@
     });
   }
 
-  // 循环次数递增：1→2→3→4→1（循环指令启蒙；if 块跳过）
+  // 循环次数递增：1→2→3→4→1（循环指令启蒙；if/steps/loop 块跳过——loop 在编辑区调次数）
   function cycleRep(i) {
     if (state.execLock) { return; }
     var cmd = state.cmds[i];
-    if (!cmd || cmd.id === 'if' || cmd.id === 'steps') { return; }
+    if (!cmd || cmd.id === 'if' || cmd.id === 'steps' || cmd.id === 'loop') { return; }
     var next = ((cmd.rep || 1) % 4) + 1;
     cmd.rep = next;
     renderSeq();
@@ -453,6 +455,7 @@
     if (state.execLock) { return; }
     if (id === 'if') { state.cmds.push({ id: id, then: [], else: [] }); }
     else if (id === 'steps') { state.cmds.push({ id: id, steps: 1 }); }
+    else if (id === 'loop') { state.cmds.push({ id: id, rep: 2, body: [] }); }
     else { state.cmds.push({ id: id, rep: 1 }); }
     renderSeq();
   }
@@ -460,13 +463,14 @@
     if (state.execLock) { return; }
     var cmd = state.cmds[i];
     if (cmd && cmd.id === 'if' && !window.confirm('删除 if 分支块？')) { return; }
+    if (cmd && cmd.id === 'loop' && !window.confirm('删除循环块？')) { return; }
     state.cmds.splice(i, 1);
     if (editStack.length) { closeEditCtx(); }
     renderSeq();
   }
 
-  /* ---------- V1.5 editCtx：if 块分支编辑区 ---------- */
-  // 编辑栈：支持嵌套 if（最多 2 层），每层 {topIdx, cmd}
+  /* ---------- V1.5/V1.7 editCtx：if 分支 / 循环块编辑区 ---------- */
+  // 编辑栈：支持嵌套 if（≤2 层）+ 循环块（单层），每层 {topIdx, cmd}
   var editStack = [];
 
   function openEditCtx(idx, cmd) {
@@ -476,7 +480,8 @@
   }
   function openNestedEditCtx(cmd) {
     if (state.execLock) { return; }
-    if (editStack.length >= 2) {
+    // v1.7：ifDepth 按 if 类型计数（loop 帧不计 if 深度）——loop(0)→if(1)→if(2) 才拦
+    if (ifDepth() >= 2) {
       var fb = document.getElementById('game-feedback');
       if (fb) { fb.textContent = '⚠ 分支嵌套最多 2 层'; fb.className = 'game-feedback miss'; }
       return;
@@ -495,6 +500,14 @@
     if (!editStack.length) { closeEditCtx(); return; }
     renderEditCtx();
   }
+  // v1.7：当前编辑栈中 if 类型帧数（loop 不计）
+  function ifDepth() {
+    var n = 0;
+    for (var i = 0; i < editStack.length; i++) {
+      if (editStack[i].cmd && editStack[i].cmd.id === 'if') { n += 1; }
+    }
+    return n;
+  }
 
   function renderEditCtx() {
     var be = document.getElementById('block-edit');
@@ -502,23 +515,113 @@
     var cur = editStack[editStack.length - 1];
     var cmd = cur.cmd;
     clearNode(be);
+    var isLoop = cmd.id === 'loop';
     var title = makeEl('div', 'block-edit-title',
-      '❓ if前方有墙 — ' + (editStack.length > 1 ? '内层分支' : '分支') + '编辑');
+      isLoop ? ('🔁 循环 ×' + (cmd.rep || 2) + ' — 循环编辑') :
+      ('❓ if前方有墙 — ' + (editStack.length > 1 ? '内层分支' : '分支') + '编辑'));
     be.appendChild(title);
     if (editStack.length > 1) {
       var backBtn = makeEl('button', 'cmd-add-sm', '‹ 返回上层');
       backBtn.addEventListener('click', goBackEditCtx);
       be.appendChild(backBtn);
     }
-    var row = makeEl('div', 'block-edit-row');
-    row.appendChild(renderBranchCol('then', '✅ then（有墙）', cmd.then));
-    row.appendChild(renderBranchCol('else', '❌ else（无墙）', cmd.else));
-    be.appendChild(row);
+    if (isLoop) {
+      // v1.7 loop 编辑区：单栏 body + 次数调参
+      be.appendChild(renderLoopBody(cmd));
+    } else {
+      var row = makeEl('div', 'block-edit-row');
+      row.appendChild(renderBranchCol('then', '✅ then（有墙）', cmd.then));
+      row.appendChild(renderBranchCol('else', '❌ else（无墙）', cmd.else));
+      be.appendChild(row);
+    }
     var closeBtn = makeEl('button', 'btn btn-close-edit', '关闭');
     closeBtn.addEventListener('click', closeEditCtx);
     be.appendChild(closeBtn);
     be.style.display = 'block';
     renderSeq();
+  }
+
+  /* v1.7 循环块 body 编辑区（单栏） */
+  function renderLoopBody(loopCmd) {
+    var wrap = makeEl('div', 'block-edit-col');
+    wrap.appendChild(makeEl('div', 'block-edit-label', '🔁 重复 ' + (loopCmd.rep || 2) + ' 次'));
+    // 次数调参按钮
+    var repRow = makeEl('div', 'block-edit-add');
+    var repMinus = makeEl('button', 'cmd-add-sm', '− 次数');
+    repMinus.addEventListener('click', function () {
+      if (state.execLock) { return; }
+      loopCmd.rep = Math.max(2, ((loopCmd.rep || 2) - 1));
+      renderEditCtx();
+    });
+    repRow.appendChild(repMinus);
+    var repPlus = makeEl('button', 'cmd-add-sm', '+ 次数');
+    repPlus.addEventListener('click', function () {
+      if (state.execLock) { return; }
+      loopCmd.rep = Math.min(9, ((loopCmd.rep || 2) + 1));
+      renderEditCtx();
+    });
+    repRow.appendChild(repPlus);
+    wrap.appendChild(repRow);
+    // body 指令 chips
+    var chipsWrap = makeEl('div', 'block-edit-chips');
+    chipsWrap.id = 'loop-body-chips';
+    (loopCmd.body || []).forEach(function (bc, bi) {
+      var isIf = bc.id === 'if';
+      var isSteps = bc.id === 'steps';
+      var lbl = bc.id === 'fwd' ? '↑' : (bc.id === 'left' ? '↰' : (bc.id === 'right' ? '↱' : (bc.id === 'block' ? '🧱' : (bc.id === 'steps' ? '➡走' + (bc.steps || 1) + '步' : (bc.id === 'if' ? '❓if' : '?')))));
+      var repTxt = (!isIf && !isSteps && bc.rep && bc.rep > 1) ? ('×' + bc.rep) : '';
+      var chip = makeEl('span', 'cmd-chip small' + (isIf ? ' if' : ''), (bi + 1) + '.' + lbl + repTxt);
+      chip.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        if (state.execLock) { return; }
+        if (isIf) { openNestedEditCtx(bc); }
+        else if (isSteps) {
+          bc.steps = ((bc.steps || 1) % 9) + 1;
+          renderEditCtx();
+        }
+        else {
+          var next = ((bc.rep || 1) % 4) + 1;
+          bc.rep = next;
+          renderEditCtx();
+        }
+      });
+      var x = makeEl('span', 'chip-x', '✕');
+      x.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        if (state.execLock) { return; }
+        if (isIf && !window.confirm('删除内层 if 分支块？')) { return; }
+        loopCmd.body.splice(bi, 1);
+        renderEditCtx();
+      });
+      chip.appendChild(x);
+      chipsWrap.appendChild(chip);
+    });
+    wrap.appendChild(chipsWrap);
+    // 添加按钮（body 内禁 loop：不提供 🔁 添加——MVP 单层）
+    var addWrap = makeEl('div', 'block-edit-add');
+    var addBtns = [CMD_FWD, CMD_L, CMD_R, CMD_BLOCK, CMD_STEPS, CMD_IF];
+    addBtns.forEach(function (a) {
+      var btn = makeEl('button', 'cmd-add-sm', '+ ' + a.label);
+      btn.addEventListener('click', function () {
+        if (state.execLock) { return; }
+        if (a.id === 'if') {
+          if (ifDepth() >= 2) {
+            var fb = document.getElementById('game-feedback');
+            if (fb) { fb.textContent = '⚠ 分支嵌套最多 2 层'; fb.className = 'game-feedback miss'; }
+            return;
+          }
+          loopCmd.body.push({ id: 'if', then: [], else: [] });
+        } else if (a.id === 'steps') {
+          loopCmd.body.push({ id: 'steps', steps: 1 });
+        } else {
+          loopCmd.body.push({ id: a.id, rep: 1 });
+        }
+        renderEditCtx();
+      });
+      addWrap.appendChild(btn);
+    });
+    wrap.appendChild(addWrap);
+    return wrap;
   }
 
   function renderBranchCol(type, label, arr) {
@@ -565,7 +668,7 @@
       btn.addEventListener('click', function () {
         if (state.execLock) { return; }
         if (a.id === 'if') {
-          if (editStack.length >= 2) {
+          if (ifDepth() >= 2) {
             var fb = document.getElementById('game-feedback');
             if (fb) { fb.textContent = '⚠ 分支嵌套最多 2 层'; fb.className = 'game-feedback miss'; }
             return;
@@ -655,7 +758,7 @@
     }
   }
 
-  /* 递归重置执行期计数（_loopLeft + v1.6 _stepsLeft/_stepsMoved，含 if 分支内指令），防二次执行残留 */
+  /* 递归重置执行期计数（_loopLeft + v1.6 _stepsLeft/_stepsMoved，含 if 分支/循环块 body），防二次执行残留 */
   function resetLoopLeft(cmds) {
     for (var i = 0; i < cmds.length; i++) {
       var c = cmds[i];
@@ -665,8 +768,25 @@
       if (c.id === 'if') {
         if (c.then && c.then.length) { resetLoopLeft(c.then); }
         if (c.else && c.else.length) { resetLoopLeft(c.else); }
+      } else if (c.id === 'loop' && c.body) {
+        resetLoopLeft(c.body);   // v1.7：递归 loop.body
       }
     }
+  }
+
+  /* v1.7 显式循环块：body 指令插入队首（轮数由 rep-on-cmd 处理，execLoop 不碰 _loopLeft） */
+  function execLoop(cmd) {
+    if (!cmd.body || !cmd.body.length) { return; }
+    // B1 修复（oracle 审核）：轮间重置 body 执行期状态（共享引用反复入队会残留 _loopLeft/_stepsLeft，
+    // 若不清除，第 2 轮起 body 内 rep>1 的 fwd 只走 1 次、steps 只走 1 格）
+    resetLoopLeft(cmd.body);
+    // body 指令继承父级 loop 的顶层下标（高亮/失败定位）
+    // I-new 修复（oracle 复核）：无条件覆盖（与 execIf F1 一致）——防跨轮残留旧 _execTop
+    for (var i = 0; i < cmd.body.length; i++) {
+      cmd.body[i]._execTop = cmd._execTop;
+    }
+    state.execQueue.splice.apply(state.execQueue,
+      [state.queueIdx, 0].concat(cmd.body));
   }
 
   /* v1.6 共享前进一格逻辑：fwd/steps/block 三指令共用，返回 {moved, reason} */
@@ -730,6 +850,9 @@
     } else if (cmd.id === 'if') {
       // V1.5 条件分支：求值 → 选中分支指令插入队首（if 块自身不移动）
       execIf(cmd);
+    } else if (cmd.id === 'loop') {
+      // v1.7 显式循环块：轮数已由 rep-on-cmd 处理（loop.rep），此处只插入 body
+      execLoop(cmd);
     } else if (cmd.id === 'steps') {
       // v1.6 参数化移动：逐格动画（工作队列复用，撞墙即停不记失败，除非第一步）
       if (cmd._stepsLeft === undefined) { cmd._stepsLeft = cmd.steps || 1; cmd._stepsMoved = 0; }
@@ -847,7 +970,10 @@
     cmds.forEach(function (c) {
       if (c.id === 'if') {
         n += 1;
-        n += (c.then ? c.then.length : 0) + (c.else ? c.else.length : 0);
+        // v1.7 递归口径（body 内 if/loop 同口径）；v1.5 旧关 then/else 无嵌套时与 length 等价
+        n += (c.then ? totalSteps(c.then) : 0) + (c.else ? totalSteps(c.else) : 0);
+      } else if (c.id === 'loop') {
+        n += 1 + (c.body ? totalSteps(c.body) : 0);   // 循环块计 1 + body 递归（不乘 rep）
       } else {
         n += (c.rep || 1);
       }
