@@ -72,6 +72,8 @@ export interface ProgressState {
   touched: Record<string, number>;
   litWords: string[];
   settings: Settings;
+  /** 在线形态：最后一次成功提交时间戳（epoch ms，增量提交游标）；离线形态恒缺省 */
+  lastSubmittedAt?: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -432,6 +434,11 @@ export function useProgress() {
 
   const resetAll = useCallback(() => setState(emptyState()), []);
 
+  /** 在线形态：记录最近一次成功提交时间（增量提交游标；离线形态不调用）。 */
+  const markSubmitted = useCallback((ts: number) => {
+    setState((s) => (s.lastSubmittedAt === ts ? s : { ...s, lastSubmittedAt: ts }));
+  }, []);
+
   const stats = useMemo(() => {
     const finished = state.days.filter((d) => d.finished);
     const dates = Array.from(new Set(finished.map((d) => d.date))).sort();
@@ -480,6 +487,7 @@ export function useProgress() {
     touchWords,
     patchSettings,
     resetAll,
+    markSubmitted,
     stats,
     dueReview,
     storageOk,

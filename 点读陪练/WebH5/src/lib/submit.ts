@@ -63,6 +63,26 @@ export function buildSubmitEnvelope(input: {
 
 const CLIENT_ID_KEY = "dianedu.clientId";
 
+/**
+ * 提交学习数据（在线形态）。同域 POST /api/progress；成功返回服务端回写的 lastSubmittedAt（epoch ms），
+ * 失败返回 null（调用方提示/静默）。端点实现见 docs 在线服务端接口草案（SCF）。离线形态不调用。
+ */
+export async function submitProgress(envelope: SubmitEnvelope): Promise<number | null> {
+  try {
+    const r = await fetch("/api/progress", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(envelope),
+      cache: "no-store",
+    });
+    if (!r.ok) return null;
+    const j = (await r.json()) as { ok?: boolean; lastSubmittedAt?: number };
+    return j.ok ? (j.lastSubmittedAt ?? Date.now()) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** 匿名客户端标识：localStorage 随机生成（非标识真人）。读取不存在时创建。 */
 export function getClientId(): string {
   try {

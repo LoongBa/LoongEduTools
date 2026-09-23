@@ -9,6 +9,8 @@ import { UnitScope } from "@/components/unit-scope";
 import { cn } from "@/lib/utils";
 import { APP_VERSION, DATA_STAMP } from "@/lib/version";
 import { currentDataStamp } from "@/data/content-provider";
+import { buildSubmitEnvelope, clearClientId, getClientId, submitProgress } from "@/lib/submit";
+import { idbClear } from "@/data/content-cache";
 
 export const Route = createFileRoute("/_layout/me")({
   component: MePage,
@@ -21,6 +23,30 @@ function MePage() {
   const [tab, setTab] = useState<"learn" | "guide">("learn");
   const [showSettings, setShowSettings] = useState(false); // 齿轮 → 设置面板
   const [exportedText, setExportedText] = useState<string | null>(null); // 进度文本（页内展示，禁 a[download]）
+  // 在线形态：进度同步（离线 zip 折叠不打包）
+  const [submitting, setSubmitting] = useState(false);
+  const [submitState, setSubmitState] = useState<"idle" | "ok" | "fail">("idle");
+
+  const handleSubmit = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    setSubmitState("idle");
+    const env = buildSubmitEnvelope({
+      state: p.state,
+      stats: p.stats,
+      clientId: getClientId(),
+      appVersion: APP_VERSION,
+      dataStamp: currentDataStamp() ?? DATA_STAMP,
+    });
+    const ts = await submitProgress(env);
+    setSubmitting(false);
+    if (ts !== null) {
+      p.markSubmitted(ts);
+      setSubmitState("ok");
+    } else {
+      setSubmitState("fail");
+    }
+  };
 
   return (
     <div className="flex flex-col gap-5">
@@ -138,6 +164,28 @@ function MePage() {
           {/* 本机数据 */}
           <Section title="本机数据" note="导出为文本自行保管，清空后无法恢复">
             <div className="flex flex-col gap-2">
+              {/* 在线形态：学习统计同步（匿名、无身份字段；离线 zip 不渲染此按钮） */}
+              {import.meta.env.VITE_BUILD_TARGET === "online" && (
+                <>
+                  <Btn
+                    variant="soft"
+                    disabled={submitting}
+                    onClick={handleSubmit}
+                  >
+                    {submitting ? "同步中…" : submitState === "ok" ? "✓ 已同步" : "同步进度到云端"}
+                  </Btn>
+                  {submitState === "ok" && (
+                    <p className="text-[12px] leading-relaxed text-muted-text">
+                      仅上传学习统计（打卡/自评/词数），不含任何个人信息。
+                    </p>
+                  )}
+                  {submitState === "fail" && (
+                    <p className="text-[12px] leading-relaxed text-muted-text">
+                      同步失败，稍后再试（数据仍在本机，未丢失）。
+                    </p>
+                  )}
+                </>
+              )}
               <Btn variant="soft" onClick={() => setExportedText(exportText())}>
                 导出进度为文本
               </Btn>
@@ -165,6 +213,8 @@ function MePage() {
                       size="sm"
                       onClick={() => {
                         p.resetAll();
+                        clearClientId(); // 匿名标识一并删除（最小化可退出）
+                        void idbClear(); // 在线内容缓存一并清空
                         setConfirmReset(false);
                       }}
                     >
