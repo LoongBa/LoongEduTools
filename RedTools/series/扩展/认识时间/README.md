@@ -2,7 +2,7 @@
 
 > 状态：**✅ v1.0 已构建（2026-09-19，审计 PASS + smoke 18/18 + 视觉质检通过）**。
 > 定位：教育工具产品矩阵规划 §6 扩展品类 P2「认识时间」（拨钟表，认识整点半点）；扩展系列首个工具。
-> 需求与设计：`docs/工具文档/扩展/认识时间-设计文档.md`；用户操作指南：`docs/工具文档/扩展/认识时间-使用文档.md`。
+> 需求与设计：`docs/教育小程序/扩展/认识时间-设计文档.md`；用户操作指南：`docs/教育小程序/扩展/认识时间-使用文档.md`。
 
 ## 需求摘要（草案）
 
@@ -38,7 +38,7 @@ python build_all.py --tool 认识时间
 - [x] tools.py 登记 ToolConfig（series=扩展，datasource="static"）
 - [x] src/：index.html + assets/（main.js 视图层 / quiz.js 练习引擎 / style.css / icon_base.png）
 - [x] 构建 → 审计 PASS（6 files 0 warning）→ 合规自查 → smoke-time 13/13 + smoke-time2 5/5 + 视觉质检
-- [x] docs/工具文档/扩展/认识时间-{设计,使用}文档.md
+- [x] docs/教育小程序/扩展/认识时间-{设计,使用}文档.md
 - [x] 更新进度清单（README + 系列 README + 产品矩阵 §8）
 
 ## 交付记录

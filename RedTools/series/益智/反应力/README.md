@@ -24,9 +24,9 @@
 
 ## 工具文档
 
-- `RedTools/docs/工具文档/益智/反应力/点击反应测试-设计文档.md`
-- `RedTools/docs/工具文档/益智/反应力/点击反应测试-使用文档.md`
-- `RedTools/docs/工具文档/益智/反应力/手速挑战-设计文档.md`
-- `RedTools/docs/工具文档/益智/反应力/手速挑战-使用文档.md`
-- `RedTools/docs/工具文档/益智/反应力/颜色反应-设计文档.md`
-- `RedTools/docs/工具文档/益智/反应力/颜色反应-使用文档.md`
+- `RedTools/docs/教育小程序/益智/反应力/点击反应测试-设计文档.md`
+- `RedTools/docs/教育小程序/益智/反应力/点击反应测试-使用文档.md`
+- `RedTools/docs/教育小程序/益智/反应力/手速挑战-设计文档.md`
+- `RedTools/docs/教育小程序/益智/反应力/手速挑战-使用文档.md`
+- `RedTools/docs/教育小程序/益智/反应力/颜色反应-设计文档.md`
+- `RedTools/docs/教育小程序/益智/反应力/颜色反应-使用文档.md`

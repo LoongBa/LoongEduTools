@@ -35,19 +35,19 @@ series/经典游戏/
 ├── 2048/                # 工具：2048（系列首款）
 │   ├── src/             #   index.html + assets/
 │   └── README.md        #   工具说明 + 需求摘要
-│                       #   （工具文档见 RedTools/docs/工具文档/经典游戏/）
+│                       #   （工具文档见 RedTools/docs/教育小程序/经典游戏/）
 ├── 俄罗斯方块/           # 工具：俄罗斯方块（v1.1）
 │   ├── src/             #   index.html + assets/
 │   └── README.md        #   工具说明 + 需求摘要
-│                       #   （工具文档见 RedTools/docs/工具文档/经典游戏/）
+│                       #   （工具文档见 RedTools/docs/教育小程序/经典游戏/）
 ├── 贪吃蛇/              # 工具：贪吃蛇（v1.0，首款多模块拆分）
 │   ├── src/             #   index.html + assets/（core/audio/game/guard/share/ui/main 7 模块）
 │   └── README.md        #   工具说明 + 需求摘要
-│                       #   （工具文档见 RedTools/docs/工具文档/经典游戏/）
+│                       #   （工具文档见 RedTools/docs/教育小程序/经典游戏/）
 └── 扫雷/                # 工具：扫雷（v1.1）
     ├── src/             #   index.html + assets/
     └── README.md        #   工具说明 + 需求摘要
-                        #   （工具文档见 RedTools/docs/工具文档/经典游戏/）
+                        #   （工具文档见 RedTools/docs/教育小程序/经典游戏/）
 ```
 
 ## 构建命令

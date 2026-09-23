@@ -2,7 +2,7 @@
 
 > 状态：**✅ v1.0 已构建（2026-09-19，审计 PASS + smoke 22/22 + 视觉质检通过）**。
 > 定位：教育工具产品矩阵规划 §3 学科类 P1「单词闪卡记忆」（翻转卡片，本地记忆曲线复习）；对标洪恩识字/百词斩卡片模式。
-> 需求与设计：`docs/工具文档/学科/单词闪卡-设计文档.md`；用户操作指南：`docs/工具文档/学科/单词闪卡-使用文档.md`。
+> 需求与设计：`docs/教育小程序/学科/单词闪卡-设计文档.md`；用户操作指南：`docs/教育小程序/学科/单词闪卡-使用文档.md`。
 
 ## 需求摘要（草案）
 
@@ -33,7 +33,7 @@ python build_all.py --tool 单词闪卡
 - [x] tools.py 登记 ToolConfig（datasource=vocab + vocab_dir，复用打字背单词管线）
 - [x] src/：index.html + assets/（main.js 视图 / flashcards.js 卡片引擎 / style.css / icon_base.png）
 - [x] 构建（0.04 MiB 含 978 词 data.js）→ 审计 PASS → 合规自查 → smoke-flash 18/18 + smoke-flash2 4/4 + 视觉质检
-- [x] docs/工具文档/学科/单词闪卡-{设计,使用}文档.md
+- [x] docs/教育小程序/学科/单词闪卡-{设计,使用}文档.md
 - [x] 更新进度清单（README + 系列 README + 产品矩阵状态）
 
 ## 交付记录

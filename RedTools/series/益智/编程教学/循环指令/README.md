@@ -91,5 +91,5 @@ series/益智/编程教学/循环指令/
 └── README.md                        # 本文件
 tools.py 登记 ToolConfig（series=益智, subgroup=编程教学, static, offline+online）
 docs/循环指令/V1.0-开发方案.md         # 迭代文档
-docs/工具文档/益智/编程教学/循环指令-{设计,使用}文档.md
+docs/教育小程序/益智/编程教学/循环指令-{设计,使用}文档.md
 ```

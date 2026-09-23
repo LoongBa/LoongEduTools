@@ -69,19 +69,19 @@ series/益智/
 │   └── 舒尔特方格/       #   工具：舒尔特方格
 │       ├── src/         #     index.html + assets/
 │       └── README.md    #     工具说明 + 需求草案
-│                       #   （工具文档见 RedTools/docs/工具文档/益智/专注力/）
+│                       #   （工具文档见 RedTools/docs/教育小程序/益智/专注力/）
 └── 观察力/              # 子系列：观察力训练
     ├── README.md        #   子系列说明 + 工具清单
     └── 找不同/           #   工具：找不同
         ├── src/         #     index.html + assets/（main.js/scenes.js/style.css/icon_base.png）
         └── README.md    #     工具说明 + 变更记录（程序化关卡生成，无图方案）
-                        #   （工具文档见 RedTools/docs/工具文档/益智/观察力/）
+                        #   （工具文档见 RedTools/docs/教育小程序/益智/观察力/）
 └── 记忆力/              # 子系列：记忆力训练
     ├── README.md        #   子系列说明 + 工具清单
     └── 翻牌记忆配对/     #   工具：翻牌记忆配对
         ├── src/         #     index.html + assets/（main.js/icons.js/style.css/icon_base.png）
         └── README.md    #     工具说明 + 变更记录（程序化 SVG 图标，无图方案）
-                        #   （工具文档见 RedTools/docs/工具文档/益智/记忆力/）
+                        #   （工具文档见 RedTools/docs/教育小程序/益智/记忆力/）
 └── 逻辑思维/            # 子系列：逻辑思维训练
     ├── README.md        #   子系列说明 + 工具清单
     ├── 推箱子/           #   工具：推箱子
@@ -103,13 +103,13 @@ series/益智/
     └── 蜡笔物理/         #   工具：蜡笔物理
         ├── src/         #     index.html + assets/（levels.js/physics.js/render.js/main.js/matter.min.js/poly-decomp.min.js/style.css/icon_base.png）
         └── README.md    #     工具说明 + 变更记录（画→刚体解谜，修复原型双 bug）
-                        #   （工具文档见 RedTools/docs/工具文档/益智/逻辑思维/）
+                        #   （工具文档见 RedTools/docs/教育小程序/益智/逻辑思维/）
 └── 空间感知/            # 子系列：空间感知训练
     ├── README.md        #   子系列说明 + 工具清单
     └── 简单拼图/         #   工具：简单拼图
         ├── src/         #     index.html + assets/（main.js/scenes.js/style.css/icon_base.png）
         └── README.md    #     工具说明 + 变更记录（程序化 SVG 场景切块，无图方案）
-                        #   （工具文档见 RedTools/docs/工具文档/益智/空间感知/）
+                        #   （工具文档见 RedTools/docs/教育小程序/益智/空间感知/）
 └── 反应力/              # 子系列：反应力训练
     ├── README.md        #   子系列说明 + 工具清单
     ├── 点击反应测试/     #   工具：点击反应测试
@@ -121,7 +121,7 @@ series/益智/
 └── 颜色反应/         #   工具：颜色反应
         ├── src/         #     index.html + assets/（main.js/style.css/icon_base.png）
         └── README.md    #     工具说明 + 变更记录（Stroop 字色干扰 + 晒分传播）
-                        #   （工具文档见 RedTools/docs/工具文档/益智/反应力/）
+                        #   （工具文档见 RedTools/docs/教育小程序/益智/反应力/）
 └── 语言/                # 子系列：语言（表达逻辑）训练
     ├── README.md        #   子系列说明 + 工具清单
     ├── 看图说话排序/     #   工具：看图说话排序
@@ -130,7 +130,7 @@ series/益智/
     ├── 反义词配对/       #   工具：反义词配对（28 词对 + emoji 零素材，配对✓角标）
     ├── 绕口令节奏/       #   工具：绕口令节奏（8 首经典绕口令，纯文字节奏交互零音频零素材）
     └── 故事复述/         #   ⏸ 暂缓：语音方案未定（离线无 TTS）
-                        #   （工具文档见 RedTools/docs/工具文档/益智/语言/）
+                        #   （工具文档见 RedTools/docs/教育小程序/益智/语言/）
 ```
 
 ## 构建命令

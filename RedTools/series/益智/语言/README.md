@@ -25,7 +25,7 @@
 
 ## 工具文档
 
-- `RedTools/docs/工具文档/益智/语言/看图说话排序-设计文档.md`
-- `RedTools/docs/工具文档/益智/语言/看图说话排序-使用文档.md`
-- `RedTools/docs/工具文档/益智/语言/反义词配对-设计文档.md`
-- `RedTools/docs/工具文档/益智/语言/反义词配对-使用文档.md`
+- `RedTools/docs/教育小程序/益智/语言/看图说话排序-设计文档.md`
+- `RedTools/docs/教育小程序/益智/语言/看图说话排序-使用文档.md`
+- `RedTools/docs/教育小程序/益智/语言/反义词配对-设计文档.md`
+- `RedTools/docs/教育小程序/益智/语言/反义词配对-使用文档.md`

@@ -2,7 +2,7 @@
 
 > 状态：**✅ v1.0 已构建（2026-09-19，审计 PASS + smoke 14/14 + 视觉质检通过）**。
 > 定位：教育工具产品矩阵规划 §6 扩展品类 P2「涂色练习」（线稿图点击填色，美育）；扩展系列第三款。
-> 需求与设计：`docs/工具文档/扩展/涂色练习-设计文档.md`；用户操作指南：`docs/工具文档/扩展/涂色练习-使用文档.md`。
+> 需求与设计：`docs/教育小程序/扩展/涂色练习-设计文档.md`；用户操作指南：`docs/教育小程序/扩展/涂色练习-使用文档.md`。
 
 ## 需求摘要（草案）
 
@@ -33,7 +33,7 @@ python build_all.py --tool 涂色练习
 - [x] tools.py 登记 ToolConfig（series=扩展，datasource="static"）
 - [x] src/：index.html + assets/（main.js 视图 / coloring.js 线稿库与填色引擎 / style.css / icon_base.png）
 - [x] 构建（0.03 MiB）→ 审计 PASS（6 files 0 warning）→ 合规自查 → smoke-color 14/14 + 视觉质检（太阳 9 区线稿/填色/完成）
-- [x] docs/工具文档/扩展/涂色练习-{设计,使用}文档.md
+- [x] docs/教育小程序/扩展/涂色练习-{设计,使用}文档.md
 - [x] 更新进度清单（README + 系列 README + 产品矩阵 §6）
 
 ## 交付记录

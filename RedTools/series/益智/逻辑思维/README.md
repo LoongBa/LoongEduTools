@@ -50,7 +50,7 @@ series/益智/逻辑思维/
     ├── src/             #   index.html + assets/（main.js/physics.js/render.js/levels.js/matter.min.js/…）
     ├── build_levels.py  #   关卡数据脚本
     └── README.md        #   工具说明 + 变更记录
-                        # （工具文档见 RedTools/docs/工具文档/益智/逻辑思维/）
+                        # （工具文档见 RedTools/docs/教育小程序/益智/逻辑思维/）
 ```
 
 ## 构建命令

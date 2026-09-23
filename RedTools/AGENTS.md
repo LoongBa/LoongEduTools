@@ -55,7 +55,7 @@ RedTools/
 
 **规则**：
 - 系列/工具目录用**中文命名**（学科 / 英语点读 / 数学口算）。
-- **工具文档（设计/使用）统一放 `RedTools/docs/工具文档/`，不混入代码目录**：
+- **工具文档（设计/使用）统一放 `RedTools/docs/教育小程序/`，不混入代码目录**：
   每个小工具一份 `设计文档` + 一份 `使用文档`，命名 `<工具>-<类型>.md`，按系列（子系列）分目录；
   系列/工具 README 只做入口链接，不承载完整文档正文。
 - publish 是**所有系列的公共发布目录**，按系列分目录、**系列内不再细分**（用文件名区分工具）。
@@ -114,7 +114,7 @@ python .skill/minitool-zip-builder/scripts/audit_artifact.py publish/学科/新�
   是否发布（小红书离线包 / 微信在线包）/ 产物 / 文档位置 / 备注）。
 - 系列内部变更详情（功能/踩坑）记入 `series/<系列>/README.md` 或 `设计文档.md`。
 - 新工具立项：先写 `series/<系列>/<工具>/README.md`（含需求草案），再进入开发。
-- 工具文档（设计/使用）统一在 `docs/工具文档/<系列>/` 维护，与代码目录分离。
+- 工具文档（设计/使用）统一在 `docs/教育小程序/<系列>/` 维护，与代码目录分离。
 
 ## 6. 版本管理规则
 
@@ -145,7 +145,7 @@ python .skill/minitool-zip-builder/scripts/audit_artifact.py publish/学科/新�
    - 并行会话活跃时：只提交不 push，等稳定后统一推送
 6. **规则沉淀**：流程性变更同步更新本文件（AGENTS.md）
 
-**方案/审核报告文档位置**：`docs/<工具>/`（工具级迭代文档，与 `docs/工具文档/` 的使用/设计文档区分）。
+**方案/审核报告文档位置**：`docs/<工具>/`（工具级迭代文档，与 `docs/教育小程序/` 的使用/设计文档区分）。
 
 ## 7. 新增工具 checklist
 
@@ -153,7 +153,7 @@ python .skill/minitool-zip-builder/scripts/audit_artifact.py publish/学科/新�
 2. `tools.py` 登记 `ToolConfig`（series/tool/version/book/素材目录/app_name/default_unit）
 3. 构建管线差异 → 扩展 `build_framework.py`（保持向后兼容）
 4. `python build_all.py --tool <工具>` → 审计 → 合规自查 → 冒烟测试
-5. 在 `docs/工具文档/<系列>/` 撰写 `<工具>-设计文档.md` + `<工具>-使用文档.md`
+5. 在 `docs/教育小程序/<系列>/` 撰写 `<工具>-设计文档.md` + `<工具>-使用文档.md`
 6. 更新进度清单（README 总表）+ 系列 README + 本文件（如结构变化）
 
 ## 8. 常用规范速查
