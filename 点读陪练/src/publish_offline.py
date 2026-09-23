@@ -13,10 +13,13 @@
   4. IP 头像 PNG → public/ip/webp/
   5. pnpm build（CATALOG_UNITS=uXX,... 按发布单元过滤内联 catalog）
   6. 离线拆分：dist/ → build/offline/（壳 index/assets/theme-boot/logo/ip/webp + 选中单元）
-  7. 包体门禁（≤10MB / 无双后缀 / 相对路径 / 无 type=module / 无 a[download]）
-     + minitool audit_artifact.py 审目录
-  8. zip 打包 → RedTools/publish/学科/点读陪练_<标签>_离线版.zip
-  9. minitool audit_artifact.py 审 zip
+  7. 音频 base64 编码（平台白名单：zip 内禁音频文件）：
+     mp3 → audio/<key>.js（window.AUDIO_DATA[key]=base64）+ 删除原 mp3
+  8. 包体门禁（≤10MB / 无双后缀 / 相对路径 / 无 type=module / 无 a[download] / 无音频残留）
+      + minitool audit_artifact.py 审目录
+  9. zip 打包 → RedTools/publish/学科/点读陪练_<标签>_离线版.zip
+ 10. 自动解压一份（zip 旁同名目录）→ 供 file:// 直接打开 index.html 测试
+ 11. minitool audit_artifact.py 审 zip
 
 后台调用示例（不阻塞当前会话）：
   PowerShell:  Start-Process python -ArgumentList 'publish_offline.py','-u','u01,u02' -RedirectStandardOutput publish.log ...
@@ -483,6 +486,8 @@ def check_package(root: Path) -> list[str]:
             issues.append(f'超10MB: {p.relative_to(root)}')
         if p.name.endswith('.mp3.mp3'):
             issues.append(f'双后缀: {p.relative_to(root)}')
+        if p.suffix.lower() in ('.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac'):
+            issues.append(f'平台白名单外音频残留: {p.relative_to(root)}（应用 encode_audio_b64.py 编码）')
 
     html = (root / 'index.html').read_text(encoding='utf-8')
     if re.search(r'(?:src|href)\s*=\s*["\']/', html):
@@ -557,7 +562,7 @@ def main():
 
     log(f'=== 发布 {label}（{", ".join(unit_ids)}）===')
 
-    # [1/9] 就绪校验
+    # [1/11] 就绪校验
     sched_ready = find_ready_units_from_schedule()
     for uid, ud in zip(unit_ids, unit_dirs):
         ready, issues = check_ready(ud)
@@ -570,33 +575,47 @@ def main():
             log(f'  ✅ {uid} 对齐表「交付」标记确认')
     log(f'  ✅ {len(unit_ids)} 个单元素材与内容包引用一一对应')
 
-    # [2/9] 素材入 public（build 前）
-    log('[2/9] 素材入 public（audio / images / content / song）')
+    # [2/11] 素材入 public（build 前）
+    log('[2/11] 素材入 public（audio / images / content / song）')
     for uid, ud in zip(unit_ids, unit_dirs):
         prepare_audio(ud, webh5 / 'public' / 'units' / uid / 'audio')
         prepare_images(ud, webh5, uid)
         prepare_content(uid, ud, webh5)
         sync_unit_song(uid, webh5)
 
-    # [3/9] manifest → public（gen_catalog 读取）
-    log('[3/9] manifest -> public')
+    # [3/11] manifest → public（gen_catalog 读取）
+    log('[3/11] manifest -> public')
     write_manifest(webh5 / 'public' / 'units')
 
-    # [4/9] IP 头像
-    log('[4/9] IP 头像压缩')
+    # [4/11] IP 头像
+    log('[4/11] IP 头像压缩')
     compress_ip(webh5)
 
-    # [5/9] 构建（按单元过滤 catalog）
-    log('[5/9] WebH5 构建')
+    # [5/11] 构建（按单元过滤 catalog）
+    log('[5/11] WebH5 构建')
     webh5_build(webh5, unit_ids)
 
-    # [6/9] 离线拆分
-    log('[6/9] 离线拆分')
+    # [6/11] 离线拆分
+    log('[6/11] 离线拆分')
     split_offline(webh5, out_root, unit_ids)
     write_manifest(out_root / 'units')
 
-    # [7/9] 包体门禁 + audit(目录)
-    log('[7/9] 包体门禁 + minitool audit(目录)')
+    # [7/11] 音频 base64 编码（平台白名单：zip 内禁音频文件）
+    log('[7/11] 音频 base64 编码（mp3 → audio/<key>.js + 删原文件）')
+    enc_script = ROOT / 'src' / 'encode_audio_b64.py'
+    if not enc_script.exists():
+        log(f'❌ 缺编码脚本: {enc_script}')
+        sys.exit(4)
+    r = subprocess.run([sys.executable, str(enc_script), '-b', str(out_root)],
+                       capture_output=True, text=True, encoding='utf-8')
+    for line in (r.stdout or '').splitlines():
+        log(f'    {line}')
+    if r.returncode != 0 or (r.stderr or '').strip():
+        log(f'❌ 音频编码失败: {(r.stderr or "")[-400:]}')
+        sys.exit(4)
+
+    # [8/11] 包体门禁 + audit(目录)
+    log('[8/11] 包体门禁 + minitool audit(目录)')
     problems = check_package(out_root)
     if problems:
         log('❌ 包体门禁未通过：')
@@ -607,8 +626,8 @@ def main():
     if not run_audit(out_root, 'offline目录'):
         sys.exit(4)
 
-    # [8/9] zip
-    log('[8/9] zip 打包发布')
+    # [9/11] zip
+    log('[9/11] zip 打包发布')
     zip_path = zip_package(out_root, publish_dir, zip_label)
     with zipfile.ZipFile(zip_path) as z:
         worst = max(z.infolist(), key=lambda i: i.file_size)
@@ -619,13 +638,23 @@ def main():
     log(f'  ✅ {zip_path}  {mb:.2f}MB'
         f'（{n_entries} 项，{n_units} 个单元，最大 {worst.file_size // 1024}KB）')
 
-    # [9/9] audit(zip)
-    log('[9/9] minitool audit(zip)')
+    # [10/11] 自动解压一份（zip 旁同名目录，供 file:// 直接打开 index.html 测试）
+    log('[10/11] 自动解压一份供测试')
+    extract_dir = publish_dir / f'点读陪练_{zip_label}_离线版'
+    if extract_dir.exists():
+        shutil.rmtree(extract_dir)
+    with zipfile.ZipFile(zip_path) as z:
+        z.extractall(extract_dir)
+    log(f'  ✅ 解压完成 -> {extract_dir}')
+
+    # [11/11] audit(zip)
+    log('[11/11] minitool audit(zip)')
     if not run_audit(zip_path, 'zip'):
         sys.exit(4)
 
     log('=== 发布完成 ===')
-    log(str(zip_path))
+    log(f'zip 包:  {zip_path}')
+    log(f'解压目录: {extract_dir}（打开其中 index.html 即可测试）')
 
 
 if __name__ == '__main__':

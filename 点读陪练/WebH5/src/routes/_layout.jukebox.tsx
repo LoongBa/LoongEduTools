@@ -4,6 +4,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { UNITS, unitOf, type Song } from "@/data/content";
 import { useProgress } from "@/lib/store";
 import { speechSupported, speakMp3, stopAudio, setAudioRate } from "@/lib/speech";
+import { ensureAudioCtx, getAudioBuffer, normalizeKey } from "@/lib/audio";
 import { Btn, PageHead, Panel } from "@/components/ui-kit";
 import { SpeakerIcon, StarIcon, TurtleIcon, PlayIcon, PauseIcon, PrevIcon, NextIcon, MusicIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
@@ -137,8 +138,17 @@ function Player({
   const [trackMode, setTrackMode] = useState<"original" | "instrumental" | "vocal">("original"); // 整曲：原曲/伴奏/清唱
   const [rate, setRate] = useState<number>(slowInit ? 0.85 : 1); // 倍率：0.75/0.85/1/1.25/1.5
   const timer = useRef<number | null>(null);
-  const vocalRef = useRef<HTMLAudioElement | null>(null);
-  const instRef = useRef<HTMLAudioElement | null>(null);
+  // 整曲双轨（Web Audio：base64 → decodeAudioData → BufferSource + Gain 控制三态）
+  const vocalBufRef = useRef<AudioBuffer | null>(null);
+  const instBufRef = useRef<AudioBuffer | null>(null);
+  const vocalSrcRef = useRef<AudioBufferSourceNode | null>(null);
+  const instSrcRef = useRef<AudioBufferSourceNode | null>(null);
+  const vocalGainRef = useRef<GainNode | null>(null);
+  const instGainRef = useRef<GainNode | null>(null);
+  const startAtRef = useRef(0); // 播放起点（ctx.currentTime 基准）
+  const pausePosRef = useRef(0); // 暂停位置（秒；seek/续播用）
+  const playingRef = useRef(false);
+  const curTimerRef = useRef<number | null>(null);
 
   // 倍率档位（"慢一点"选择器）
   const RATES = [0.75, 0.85, 1, 1.25, 1.5];
@@ -150,45 +160,26 @@ function Player({
   useEffect(() => () => {
     if (timer.current) window.clearTimeout(timer.current);
     stopAudio();
-    vocalRef.current?.pause();
-    instRef.current?.pause();
+    stopTrack();
   }, []);
 
-  // 整曲双轨 audio 生命周期：创建 → timeupdate 驱动高亮/进度 → 清理
+  // 预解码整曲双轨（进入整曲模式即加载；解码完成前 syncPlay 自动等待）
   useEffect(() => {
     if (!isTrack || !song.audio) return;
-    const v = new Audio(song.audio);
-    const it = new Audio(song.instrumental!);
-    vocalRef.current = v;
-    instRef.current = it;
-    v.preload = "metadata";
-    it.preload = "metadata";
-    // 三态：原曲=双开 / 伴奏=只伴奏 / 清唱=只人声
-    v.muted = trackMode === "instrumental";
-    it.muted = trackMode === "vocal";
-    const tl = song.timeline!;
-    const onTime = () => {
-      setCur(v.currentTime);
-      const idx = tl.findIndex((t) => v.currentTime >= t.start && v.currentTime < t.end);
-      if (idx >= 0) setActive(idx);
-      else if (tl.length > 0 && v.currentTime >= tl[tl.length - 1].end) setActive(null);
-    };
-    const onEnd = () => {
-      setPlaying(false);
-      setActive(null);
-      setCur(0);
-      v.currentTime = 0;
-      it.currentTime = 0;
-    };
-    v.addEventListener("timeupdate", onTime);
-    v.addEventListener("ended", onEnd);
+    let alive = true;
+    getAudioBuffer(normalizeKey(song.audio), (buf) => {
+      if (alive && buf) vocalBufRef.current = buf;
+    });
+    if (song.instrumental) {
+      getAudioBuffer(normalizeKey(song.instrumental), (buf) => {
+        if (alive && buf) instBufRef.current = buf;
+      });
+    }
     return () => {
-      v.pause();
-      it.pause();
-      v.removeEventListener("timeupdate", onTime);
-      v.removeEventListener("ended", onEnd);
-      vocalRef.current = null;
-      instRef.current = null;
+      alive = false;
+      stopTrack();
+      vocalBufRef.current = null;
+      instBufRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTrack, song.audio]);
@@ -196,10 +187,29 @@ function Player({
   // 倍率：双轨同步（0.75/0.85/1/1.25/1.5）
   useEffect(() => {
     if (!isTrack) return;
-    if (vocalRef.current) vocalRef.current.playbackRate = rate;
-    if (instRef.current) instRef.current.playbackRate = rate;
+    if (vocalSrcRef.current) vocalSrcRef.current.playbackRate.value = rate;
+    if (instSrcRef.current) instSrcRef.current.playbackRate.value = rate;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rate, isTrack, playing]);
+
+  /** 停止整曲双轨 + 清轮询（不触发 onEndTrack；被 stop 打断的 onended 因 playingRef=false 被忽略） */
+  const stopTrack = () => {
+    if (curTimerRef.current) {
+      window.clearInterval(curTimerRef.current);
+      curTimerRef.current = null;
+    }
+    try {
+      vocalSrcRef.current?.stop();
+      instSrcRef.current?.stop();
+    } catch {
+      /* ignore */
+    }
+    vocalSrcRef.current = null;
+    instSrcRef.current = null;
+    vocalGainRef.current = null;
+    instGainRef.current = null;
+    playingRef.current = false;
+  };
 
   // 跟读弹窗倒计时：promptDur 每秒递减，到 0 自动进入下一句
   useEffect(() => {
@@ -220,25 +230,98 @@ function Player({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prompt, promptDur > 0]);
 
-  /** 双轨同步播放/暂停/跳转 */
-  const syncPlay = () => {
-    vocalRef.current?.play();
-    instRef.current?.play();
-  };
-  const syncPause = () => {
-    vocalRef.current?.pause();
-    instRef.current?.pause();
-  };
-  const syncSeek = (t: number) => {
-    if (vocalRef.current) vocalRef.current.currentTime = t;
-    if (instRef.current) instRef.current.currentTime = t;
+  /** 三态静音（Gain）：原曲=双开 / 伴奏=人声关 / 清唱=伴奏关 */
+  const applyTrackMode = (m: "original" | "instrumental" | "vocal") => {
+    if (vocalGainRef.current) vocalGainRef.current.gain.value = m === "instrumental" ? 0 : 1;
+    if (instGainRef.current) instGainRef.current.gain.value = m === "vocal" ? 0 : 1;
   };
 
-  /** 三态切换：原曲/伴奏/清唱（播放中即时生效 muted） */
+  /** 建双轨 BufferSource（从 from 秒起）；人声 buffer 未就绪返回 false。 */
+  const buildSources = (from: number): boolean => {
+    const ctx = ensureAudioCtx();
+    const vBuf = vocalBufRef.current;
+    if (!ctx || !vBuf) return false;
+    stopTrack();
+    const vSrc = ctx.createBufferSource();
+    vSrc.buffer = vBuf;
+    vSrc.playbackRate.value = rate;
+    const vGain = ctx.createGain();
+    vSrc.connect(vGain).connect(ctx.destination);
+    let iSrc: AudioBufferSourceNode | null = null;
+    const iBuf = instBufRef.current;
+    if (iBuf) {
+      iSrc = ctx.createBufferSource();
+      iSrc.buffer = iBuf;
+      iSrc.playbackRate.value = rate;
+      const iGain = ctx.createGain();
+      iSrc.connect(iGain).connect(ctx.destination);
+      instGainRef.current = iGain;
+    }
+    vSrc.onended = () => {
+      if (!playingRef.current || vocalSrcRef.current !== vSrc) return; // 被 stopTrack 打断
+      stopTrack();
+      setPlaying(false);
+      setActive(null);
+      setCur(0);
+      pausePosRef.current = 0;
+    };
+    vocalSrcRef.current = vSrc;
+    instSrcRef.current = iSrc;
+    vocalGainRef.current = vGain;
+    applyTrackMode(trackMode);
+    return true;
+  };
+
+  /** 双轨同步播放：从 pausePos 起播 + 进度轮询（驱动进度条/歌词高亮） */
+  const syncPlay = () => {
+    const ctx = ensureAudioCtx();
+    if (!ctx || !vocalBufRef.current) return;
+    if (ctx.state === "suspended" && ctx.resume) void ctx.resume();
+    const from = pausePosRef.current;
+    if (!buildSources(from)) return;
+    startAtRef.current = ctx.currentTime - from;
+    playingRef.current = true;
+    try {
+      vocalSrcRef.current?.start(0, from);
+      instSrcRef.current?.start(0, from);
+    } catch {
+      /* ignore */
+    }
+    setPlaying(true);
+    if (curTimerRef.current) window.clearInterval(curTimerRef.current);
+    curTimerRef.current = window.setInterval(() => {
+      if (!playingRef.current) return;
+      const c = Math.max(0, ctx.currentTime - startAtRef.current);
+      setCur(c);
+      const tl = song.timeline;
+      if (tl && tl.length > 0) {
+        const idx = tl.findIndex((t) => c >= t.start && c < t.end);
+        setActive((prev) => (idx >= 0 ? idx : c >= tl[tl.length - 1].end ? null : prev));
+      }
+    }, 100);
+  };
+
+  /** 双轨同步暂停：记住暂停位置 */
+  const syncPause = () => {
+    const ctx = ensureAudioCtx();
+    if (ctx && playingRef.current) {
+      pausePosRef.current = Math.max(0, ctx.currentTime - startAtRef.current);
+    }
+    stopTrack();
+    setPlaying(false);
+  };
+
+  /** 双轨同步跳转：播放中重建源续播；暂停中仅改位置 */
+  const syncSeek = (t: number) => {
+    pausePosRef.current = Math.max(0, t);
+    setCur(t);
+    if (playingRef.current) syncPlay();
+  };
+
+  /** 三态切换：原曲/伴奏/清唱（播放中即时生效 gain） */
   const setTrackModeVal = (m: "original" | "instrumental" | "vocal") => {
     setTrackMode(m);
-    if (vocalRef.current) vocalRef.current.muted = m === "instrumental";
-    if (instRef.current) instRef.current.muted = m === "vocal";
+    applyTrackMode(m);
   };
 
   /** 从第 i 句续播：非最后一句→下一句；最后一句→安全收尾（供 onEnd 与跟读弹窗共用） */
@@ -287,7 +370,7 @@ function Player({
     setPlaying(true);
   };
 
-  /** 句长（ms）：metadata 预取真实 duration，未加载完先回默认、异步再更新 */
+  /** 句长（ms）：base64 时代无 <audio> metadata 预取——异步解码后更新真实时长，未完成先用默认 */
   const durCache = useRef<Record<number, number>>({});
   const lineDur = (i: number): number => {
     const c = durCache.current;
@@ -297,47 +380,32 @@ function Player({
       c[i] = 2800;
       return c[i];
     }
-    const a = new Audio(line.audio);
-    a.preload = "metadata";
-    a.addEventListener(
-      "loadedmetadata",
-      () => {
-        if (Number.isFinite(a.duration) && a.duration > 0) {
-          c[i] = a.duration * 1000;
-        }
-      },
-      { once: true },
-    );
-    c[i] = 2800; // 未加载完先用默认；加载后后续查询命中真实值
+    getAudioBuffer(normalizeKey(line.audio), (buf) => {
+      if (buf && Number.isFinite(buf.duration) && buf.duration > 0) {
+        c[i] = buf.duration * 1000;
+      }
+    });
+    c[i] = 2800; // 未解码完先用默认；解码后后续查询命中真实值
     return c[i];
   };
 
-  /** 整曲模式：跳转到第 i 句开头（双轨同步 seek） */
+  /** 整曲模式：跳转到第 i 句开头（双轨同步 seek；暂停中则顺带开播） */
   const seekTo = (i: number) => {
-    const v = vocalRef.current;
     const tl = song.timeline;
-    if (!v || !tl || i < 0 || i >= tl.length) return;
+    if (!tl || i < 0 || i >= tl.length) return;
     const t = tl[i].start;
     syncSeek(t);
-    setCur(t);
     setActive(i);
-    if (v.paused) {
-      syncPlay();
-      setPlaying(true);
-    }
+    if (!playingRef.current) syncPlay();
   };
 
   /** 暂停：停住当前句；继续：当前句从头重播（逐句 mp3 无时间戳，断点续播不可行） */
   const togglePlay = () => {
     if (isTrack) {
-      const v = vocalRef.current;
-      if (!v) return;
-      if (v.paused) {
-        syncPlay();
-        setPlaying(true);
-      } else {
+      if (playingRef.current) {
         syncPause();
-        setPlaying(false);
+      } else {
+        syncPlay();
       }
       return;
     }

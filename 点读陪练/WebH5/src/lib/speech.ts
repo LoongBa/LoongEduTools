@@ -1,6 +1,6 @@
 // 发音：浏览器内置语音合成（Web Speech API）；不支持时由调用方走文字退化
 import { useCallback, useEffect, useRef, useState } from "react";
-import { audioUrl } from "./audio";
+import { playMp3Buffer, stopCurrentAudio, setCurrentAudioRate } from "./audio";
 
 let cachedVoices: SpeechSynthesisVoice[] = [];
 
@@ -65,34 +65,20 @@ export function speak(text: string, opts: SpeakOptions = {}): boolean {
 }
 
 /**
- * mp3 优先的朗读：key 对应管线 TTS 文件 → 播放 mp3；文件缺失/播放失败 → 回退 speak()。
- * slow 生效：mp3 播放时设 playbackRate（并保持音高不失真）。
- * 返回是否成功发起发声（mp3 的异步失败会自动回退浏览器朗读）。
+ * 音频优先的朗读：key 对应管线 TTS 音频（base64 内嵌 js）→ 解码播放；加载/解码失败 → 回退 speak()。
+ * slow 生效：播放时设 playbackRate（WebAudio 变速同时改变音高——Chrome 61 基线本无 preservesPitch，行为一致）。
+ * 返回是否成功发起发声（异步失败会自动回退浏览器朗读）。
  */
-let currentAudio: HTMLAudioElement | null = null;
 
-/** 停止当前发声（mp3 暂停 + 浏览器朗读取消）。用于播放控制（暂停/上/下一句打断）。 */
+/** 停止当前发声（音频 buffer 停止 + 浏览器朗读取消）。用于播放控制（暂停/上/下一句打断）。 */
 export function stopAudio(): void {
-  if (currentAudio) {
-    try {
-      currentAudio.pause();
-    } catch {
-      /* ignore */
-    }
-    currentAudio = null;
-  }
+  stopCurrentAudio();
   if (speechSupported()) window.speechSynthesis.cancel();
 }
 
-/** 当前正在播放的 mp3 立即变速（不打断）。用于播放中切换倍率即时生效。 */
+/** 当前正在播放的音频立即变速（不打断）。用于播放中切换倍率即时生效。 */
 export function setAudioRate(r: number): void {
-  if (!currentAudio || !r || r <= 0) return;
-  try {
-    currentAudio.playbackRate = r;
-    if ("preservesPitch" in currentAudio) currentAudio.preservesPitch = true;
-  } catch {
-    /* ignore */
-  }
+  if (r > 0) setCurrentAudioRate(r);
 }
 
 export function speakMp3(
@@ -102,47 +88,16 @@ export function speakMp3(
 ): boolean {
   if (!key) return speak(text, opts);
   stopAudio();
-  try {
-    const a = new Audio(audioUrl(key));
-    // 倍率：rate 优先，slow 档回落 RATE_SLOW（preservesPitch 保持音高，避免变调）
-    const r = opts.rate ?? (opts.slow ? RATE_SLOW : undefined);
-    if (r && r !== 1) {
-      a.playbackRate = r;
-      if ("preservesPitch" in a) a.preservesPitch = true;
-    }
-    currentAudio = a;
-    let settled = false;
-    // 实际播放耗时（ms）：mp3 原始时长 ÷ 倍速（叠加加速效果后的真实时长）
-    const actualMs = () => {
-      if (Number.isFinite(a.duration) && a.duration > 0) {
-        const r = a.playbackRate || 1;
-        return (a.duration / r) * 1000;
-      }
-      return undefined;
-    };
-    const settleEnd = () => {
-      if (settled) return;
-      settled = true;
-      if (currentAudio === a) currentAudio = null;
-      opts.onEnd?.(actualMs());
-    };
-    const fallback = () => {
-      if (settled) return;
-      settled = true;
-      if (currentAudio === a) currentAudio = null;
-      // 交给 speak 的 onend 统一回调（不在此处调，避免双 onEnd）；
-      // speak 本身也失败时才兜底一次
+  const r = opts.rate ?? (opts.slow ? RATE_SLOW : undefined);
+  return playMp3Buffer(key, {
+    rate: r,
+    onEnd: (durationMs) => opts.onEnd?.(durationMs),
+    onError: () => {
+      // 交给 speak 的 onend 统一回调（不在此处调，避免双 onEnd）；speak 本身也失败时才兜底一次
       const spoke = speak(text, opts);
-      if (!spoke) opts.onEnd?.(actualMs());
-    };
-    a.addEventListener("ended", settleEnd, { once: true });
-    a.addEventListener("error", fallback, { once: true });
-    const p = a.play();
-    if (p) p.catch(fallback);
-    return true;
-  } catch {
-    return speak(text, opts);
-  }
+      if (!spoke) opts.onEnd?.();
+    },
+  });
 }
 
 /** 录音跟读：只在内存中回放，不写存储、不外传。
