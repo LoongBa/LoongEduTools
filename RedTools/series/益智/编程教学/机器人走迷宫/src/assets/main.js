@@ -45,16 +45,17 @@
   var LEVELS_CFG = {
     easy:   { key: 'easy',   label: '简单', from: 0, to: 30 },    // 1-30 关（入门渐进）
     normal: { key: 'normal', label: '普通', from: 30, to: 80 },   // 31-80 关（进阶推理）
-    hard:   { key: 'hard',   label: '挑战', from: 80, to: 175 }   // 81-175 关（全量挑战 + v1.5 条件分支 156-175）
+    hard:   { key: 'hard',   label: '挑战', from: 80, to: 185 }   // 81-185 关（全量挑战 + v1.6 参数化 176-185）
   };
   var LEVEL_ORDER = ['easy', 'normal', 'hard'];
 
   /* 指令常量 */
-  var CMD_FWD = { id: 'fwd', label: '↑ 前进' };
-  var CMD_L = { id: 'left', label: '↰ 左转' };
-  var CMD_R = { id: 'right', label: '↱ 右转' };
-  var CMD_BLOCK = { id: 'block', label: '🧱 前方探测' };   // v1.3 条件指令：前方有墙/边界则不走
-  var CMD_IF = { id: 'if', label: '❓ if前方有墙' };       // v1.5 条件分支：有墙→then / 无墙→else
+  var CMD_FWD = { id: 'fwd', label: '↑前进' };
+  var CMD_L = { id: 'left', label: '↰左转' };
+  var CMD_R = { id: 'right', label: '↱右转' };
+  var CMD_BLOCK = { id: 'block', label: '🧱探测' };   // v1.3 条件指令：前方有墙/边界则不走
+  var CMD_IF = { id: 'if', label: '❓if墙' };       // v1.5 条件分支：有墙→then / 无墙→else
+  var CMD_STEPS = { id: 'steps', label: '➡N步' };      // v1.6 参数化移动：直线移动 N 格（参数=距离）
   var DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]]; // 右/下/左/上
 
   /* ---------- 状态 ---------- */
@@ -331,7 +332,7 @@
     // 指令区
     var cmdBar = makeEl('div', 'cmd-bar');
     cmdBar.id = 'cmd-bar';
-    [CMD_FWD, CMD_L, CMD_R, CMD_BLOCK, CMD_IF].forEach(function (cmd) {
+    [CMD_FWD, CMD_L, CMD_R, CMD_BLOCK, CMD_STEPS, CMD_IF].forEach(function (cmd) {
       var btn = makeEl('button', 'cmd-add', cmd.label);
       btn.addEventListener('click', function () { addCmd(cmd.id); });
       cmdBar.appendChild(btn);
@@ -400,13 +401,15 @@
     clearNode(box);
     state.cmds.forEach(function (cmd, i) {
       var isIf = cmd.id === 'if';
-      var lbl = cmd.id === 'fwd' ? '↑' : (cmd.id === 'left' ? '↰' : (cmd.id === 'right' ? '↱' : (cmd.id === 'block' ? '🧱' : '❓if')));
-      var repTxt = (!isIf && cmd.rep && cmd.rep > 1) ? ('×' + cmd.rep) : '';
-      // 指令 chip：单击循环次数（1→2→3→4→1）或打开 if 编辑区；✕ 角标删除
+      var isSteps = cmd.id === 'steps';
+      var lbl = cmd.id === 'fwd' ? '↑' : (cmd.id === 'left' ? '↰' : (cmd.id === 'right' ? '↱' : (cmd.id === 'block' ? '🧱' : (cmd.id === 'steps' ? '➡走' + (cmd.steps || 1) + '步' : '❓if'))));
+      var repTxt = (!isIf && !isSteps && cmd.rep && cmd.rep > 1) ? ('×' + cmd.rep) : '';
+      // 指令 chip：单击循环次数/参数递增/打开 if 编辑区；✕ 角标删除
       var chip = makeEl('span', 'cmd-chip' + (repTxt ? ' loop' : '') + (isIf ? ' if' : ''), (i + 1) + '.' + lbl + repTxt);
       chip.addEventListener('click', function (ev) {
         ev.stopPropagation();
         if (isIf) { openEditCtx(i, cmd); }
+        else if (isSteps) { cycleSteps(i); }
         else { cycleRep(i); }
       });
       var x = makeEl('span', 'chip-x', '✕');
@@ -423,7 +426,7 @@
   function cycleRep(i) {
     if (state.execLock) { return; }
     var cmd = state.cmds[i];
-    if (!cmd || cmd.id === 'if') { return; }
+    if (!cmd || cmd.id === 'if' || cmd.id === 'steps') { return; }
     var next = ((cmd.rep || 1) % 4) + 1;
     cmd.rep = next;
     renderSeq();
@@ -431,6 +434,14 @@
   function setRepFromIdx(i, rep) {
     var cmd = state.cmds[i];
     if (cmd) { cmd.rep = rep; }
+  }
+  // v1.6 参数递增：1→2→3→…→9→1（steps 参数化，区别于 rep 的 4 上限）
+  function cycleSteps(i) {
+    if (state.execLock) { return; }
+    var cmd = state.cmds[i];
+    if (!cmd || cmd.id !== 'steps') { return; }
+    cmd.steps = ((cmd.steps || 1) % 9) + 1;
+    renderSeq();
   }
 
   function renderBoardOnly() {
@@ -441,6 +452,7 @@
   function addCmd(id) {
     if (state.execLock) { return; }
     if (id === 'if') { state.cmds.push({ id: id, then: [], else: [] }); }
+    else if (id === 'steps') { state.cmds.push({ id: id, steps: 1 }); }
     else { state.cmds.push({ id: id, rep: 1 }); }
     renderSeq();
   }
@@ -516,13 +528,18 @@
     chipsWrap.id = 'branch-chips-' + type;
     arr.forEach(function (bc, bi) {
       var isIf = bc.id === 'if';
-      var lbl = bc.id === 'fwd' ? '↑' : (bc.id === 'left' ? '↰' : (bc.id === 'right' ? '↱' : (bc.id === 'block' ? '🧱' : '❓if')));
-      var repTxt = (!isIf && bc.rep && bc.rep > 1) ? ('×' + bc.rep) : '';
+      var isSteps = bc.id === 'steps';
+      var lbl = bc.id === 'fwd' ? '↑' : (bc.id === 'left' ? '↰' : (bc.id === 'right' ? '↱' : (bc.id === 'block' ? '🧱' : (bc.id === 'steps' ? '➡走' + (bc.steps || 1) + '步' : '❓if'))));
+      var repTxt = (!isIf && !isSteps && bc.rep && bc.rep > 1) ? ('×' + bc.rep) : '';
       var chip = makeEl('span', 'cmd-chip small' + (isIf ? ' if' : ''), (bi + 1) + '.' + lbl + repTxt);
       chip.addEventListener('click', function (ev) {
         ev.stopPropagation();
         if (state.execLock) { return; }
         if (isIf) { openNestedEditCtx(bc); }
+        else if (isSteps) {
+          bc.steps = ((bc.steps || 1) % 9) + 1;
+          renderEditCtx();
+        }
         else {
           var next = ((bc.rep || 1) % 4) + 1;
           bc.rep = next;
@@ -542,7 +559,7 @@
     });
     col.appendChild(chipsWrap);
     var addWrap = makeEl('div', 'block-edit-add');
-    var addBtns = [CMD_FWD, CMD_L, CMD_R, CMD_BLOCK, CMD_IF];
+    var addBtns = [CMD_FWD, CMD_L, CMD_R, CMD_BLOCK, CMD_STEPS, CMD_IF];
     addBtns.forEach(function (a) {
       var btn = makeEl('button', 'cmd-add-sm', '+ ' + a.label);
       btn.addEventListener('click', function () {
@@ -554,6 +571,8 @@
             return;
           }
           arr.push({ id: 'if', then: [], else: [] });
+        } else if (a.id === 'steps') {
+          arr.push({ id: 'steps', steps: 1 });
         } else {
           arr.push({ id: a.id, rep: 1 });
         }
@@ -636,16 +655,39 @@
     }
   }
 
-  /* 递归重置 _loopLeft（含 if 分支内指令），防二次执行残留旧计数 */
+  /* 递归重置执行期计数（_loopLeft + v1.6 _stepsLeft/_stepsMoved，含 if 分支内指令），防二次执行残留 */
   function resetLoopLeft(cmds) {
     for (var i = 0; i < cmds.length; i++) {
       var c = cmds[i];
       c._loopLeft = undefined;
+      c._stepsLeft = undefined;
+      c._stepsMoved = undefined;
       if (c.id === 'if') {
         if (c.then && c.then.length) { resetLoopLeft(c.then); }
         if (c.else && c.else.length) { resetLoopLeft(c.else); }
       }
     }
+  }
+
+  /* v1.6 共享前进一格逻辑：fwd/steps/block 三指令共用，返回 {moved, reason} */
+  function tryMoveFwd() {
+    var pr = state.player % state.w, pc = Math.floor(state.player / state.w);
+    var dx = DIRS[state.face][0], dy = DIRS[state.face][1];
+    var nr = pr + dx, nc = pc + dy;
+    if (nr < 0 || nr >= state.w || nc < 0 || nc >= state.h) { return { moved: false, reason: 'edge' }; }
+    var nIdx = nc * state.w + nr;
+    if (state.walls[nIdx]) { return { moved: false, reason: 'wall' }; }
+    if (state.boxes[nIdx]) {
+      var br = nr + dx, bc = nc + dy;
+      if (br < 0 || br >= state.w || bc < 0 || bc >= state.h) { return { moved: false, reason: 'box' }; }
+      var bIdx = bc * state.w + br;
+      if (state.walls[bIdx] || state.boxes[bIdx]) { return { moved: false, reason: 'box' }; }
+      delete state.boxes[nIdx]; state.boxes[bIdx] = true;
+      state.player = nIdx;
+      return { moved: true, reason: 'ok' };
+    }
+    state.player = nIdx;
+    return { moved: true, reason: 'ok' };
   }
 
   function execStep() {
@@ -672,7 +714,7 @@
     // 当前高亮：分支指令继承父级 if 的顶层下标
     state.curTop = (cmd._execTop !== undefined) ? cmd._execTop : -1;
 
-    // rep-on-cmd（v1.4 模型保持）：rep>1 时重复执行，重新插入队首
+    // rep-on-cmd（v1.4 模型保持）：rep>1 时重复执行，重新插入队首（steps 无 rep → 天然 no-op）
     if (cmd._loopLeft === undefined) { cmd._loopLeft = cmd.rep || 1; }
     if (cmd._loopLeft > 0) {
       cmd._loopLeft -= 1;
@@ -688,46 +730,36 @@
     } else if (cmd.id === 'if') {
       // V1.5 条件分支：求值 → 选中分支指令插入队首（if 块自身不移动）
       execIf(cmd);
-    } else {
-      // 前进方向目标格（fwd / block 共用）
-      var pr = state.player % state.w;
-      var pc = Math.floor(state.player / state.w);
-      var dx = DIRS[state.face][0], dy = DIRS[state.face][1];
-      var nr = pr + dx, nc = pc + dy;
-      var moved = false;
-      if (cmd.id === 'block') {
-        // v1.3 条件指令「前方探测」：若前方越界/墙/箱子（障碍）→ 条件成立不前进；否则前进
-        if (nr >= 0 && nr < state.w && nc >= 0 && nc < state.h && !state.walls[nc * state.w + nr] && !state.boxes[nc * state.w + nr]) {
-          state.player = nc * state.w + nr;
-          moved = true;
-        }
-      } else if (cmd.id === 'fwd' && nr >= 0 && nr < state.w && nc >= 0 && nc < state.h) {
-        var nIdx = nc * state.w + nr;
-        if (!state.walls[nIdx]) {
-          if (state.boxes[nIdx]) {
-            var br = nr + dx, bc = nc + dy;
-            if (br >= 0 && br < state.w && bc >= 0 && bc < state.h) {
-              var bIdx = bc * state.w + br;
-              if (!state.walls[bIdx] && !state.boxes[bIdx]) {
-                delete state.boxes[nIdx];
-                state.boxes[bIdx] = true;
-                state.player = nIdx;
-                moved = true;
-              }
-            }
-          } else {
-            state.player = nIdx;
-            moved = true;
-          }
-        }
+    } else if (cmd.id === 'steps') {
+      // v1.6 参数化移动：逐格动画（工作队列复用，撞墙即停不记失败，除非第一步）
+      if (cmd._stepsLeft === undefined) { cmd._stepsLeft = cmd.steps || 1; cmd._stepsMoved = 0; }
+      var sr = tryMoveFwd();
+      if (sr.moved) { cmd._stepsLeft--; cmd._stepsMoved++; }
+      // 仅"移动成功且未走完"才重插入队首 → 逐格动画；撞墙不重插入（无死循环）
+      if (sr.moved && cmd._stepsLeft > 0) {
+        state.execQueue.splice(state.queueIdx, 0, cmd);
       }
-      // V1.4 失败定位：fwd 试图移动但未动 → 记首个失败（记录指令对象引用，可回溯父级 if）
-      if (!moved && !state.firstFail && cmd.id === 'fwd') {
-        var reason = 'box'; // 箱后墙/箱推不动
-        if (nr < 0 || nr >= state.w || nc < 0 || nc >= state.h) { reason = 'edge'; }
-        else if (state.walls[nc * state.w + nr]) { reason = 'wall'; }
-        else if (!state.boxes[nc * state.w + nr]) { reason = 'wall'; } // 非箱非墙但没动
-        state.firstFail = { absStep: state.absStep, cmd: cmd, reason: reason };
+      // 失败语义：第一步即撞墙 → 记失败；中途撞墙（_stepsMoved>0）→ 正常停止
+      if (!sr.moved && cmd._stepsMoved === 0 && !state.firstFail) {
+        state.firstFail = { absStep: state.absStep, cmd: cmd, reason: sr.reason };
+      }
+    } else {
+      // fwd 用 tryMoveFwd（可推箱）；block 是"前方探测"——只在前方空地才前进（不推箱，前方有箱视为障碍）
+      if (cmd.id === 'block') {
+        var pr2 = state.player % state.w, pc2 = Math.floor(state.player / state.w);
+        var dx2 = DIRS[state.face][0], dy2 = DIRS[state.face][1];
+        var nr2 = pr2 + dx2, nc2 = pc2 + dy2;
+        // v1.3 条件指令「前方探测」：若前方越界/墙/箱子（障碍）→ 条件成立不前进；否则前进（不推箱）
+        if (nr2 >= 0 && nr2 < state.w && nc2 >= 0 && nc2 < state.h && !state.walls[nc2 * state.w + nr2] && !state.boxes[nc2 * state.w + nr2]) {
+          state.player = nc2 * state.w + nr2;
+        }
+        // block 不记 firstFail（前方有障碍是条件成立，非错误）
+      } else {
+        var r = tryMoveFwd();
+        // v1.4 失败定位：fwd 试图移动但未动 → 记首个失败
+        if (!r.moved && !state.firstFail && cmd.id === 'fwd') {
+          state.firstFail = { absStep: state.absStep, cmd: cmd, reason: r.reason };
+        }
       }
     }
     renderBoardOnly();
