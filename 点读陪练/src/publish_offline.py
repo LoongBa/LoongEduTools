@@ -221,6 +221,66 @@ def webh5_build(webh5: Path):
     log(f'  ✅ build 完成: JS {js // 1024}KB / CSS {css // 1024}KB')
 
 
+def compress_song(src_dir: Path, dst_dir: Path) -> dict | None:
+    """点唱台整曲素材：wav → mp3（ffmpeg 128kbps），song.json 复制并把 audio/instrumental 指向 mp3。
+
+    返回压缩后的 song.json 内容（用于合入离线/在线包），无素材时返回 None。
+    """
+    if not src_dir.is_dir():
+        return None
+    wavs = {p.name: p for p in src_dir.iterdir() if p.suffix.lower() in ('.wav', '.mp3')}
+    sj = src_dir / 'song.json'
+    if not sj.exists() or not wavs:
+        return None
+    dst_dir.mkdir(parents=True, exist_ok=True)
+    for name, src in wavs.items():
+        stem = src.stem
+        out = dst_dir / f'{stem}.mp3'
+        r = subprocess.run(
+            ['ffmpeg', '-y', '-i', str(src), '-codec:a', 'libmp3lame', '-b:a', '128k', str(out)],
+            capture_output=True, text=True,
+        )
+        if r.returncode != 0:
+            log(f'  ⚠️  {name} 压缩失败: {r.stderr[-200:]}')
+            shutil.copy2(src, dst_dir / f'{stem}{src.suffix}')  # 兜底：原样复制
+    with open(sj, encoding='utf-8') as f:
+        data = json.load(f)
+    # audio / instrumental 字段残余 .wav → 指向 mp3
+    for key in ('audio', 'instrumental'):
+        v = str(data.get(key, '') or '')
+        if v.lower().endswith('.wav'):
+            data[key] = v[:-4] + '.mp3'
+    return data
+
+
+def sync_unit_song(unit_id: str, out_root: Path, webh5: Path):
+    """把 build/<unit>/assets/song/ 压缩并入 units/<id>/song/（offline + public 双写）。
+
+    内容：
+      - song.json + song_vocal/instrumental.mp3（原创儿歌整曲，wav→mp3 压缩）
+      - textbook_lyrics.json + textbook/*.mp3（教材歌词跟读，逐句 TTS 原样复制）
+    """
+    src = ROOT / 'build' / unit_id / 'assets' / 'song'
+    if not src.is_dir():
+        return None
+    for root in (out_root / 'units' / unit_id, webh5 / 'public' / 'units' / unit_id):
+        root.mkdir(parents=True, exist_ok=True)
+        song_dst = root / 'song'
+        data = compress_song(src, song_dst)
+        if data:
+            with open(song_dst / 'song.json', 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+        # 教材歌词跟读：逐句 TTS mp3 原样复制（无需压缩）+ 数据 JSON
+        tb_src = src / 'textbook'
+        if tb_src.is_dir():
+            shutil.copytree(tb_src, song_dst / 'textbook', dirs_exist_ok=True)
+        tb_json = src / 'textbook_lyrics.json'
+        if tb_json.exists():
+            shutil.copy2(tb_json, song_dst / 'textbook_lyrics.json')
+    log(f'  ✅ 点唱台素材同步 {unit_id}（原创儿歌 wav→mp3 + song.json；教材跟读 textbook/ + textbook_lyrics.json；offline/public）')
+    return True
+
+
 def split_offline(webh5: Path, out_root: Path, unit_id: str):
     """从 dist 拆离线包（壳 + ip/webp + units/uXX）。
 
@@ -266,6 +326,8 @@ def split_offline(webh5: Path, out_root: Path, unit_id: str):
                 pub_dst.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(cand, pub_dst)
                 break
+    # 点唱台整曲素材（原创儿歌 song.json + wav→mp3）
+    sync_unit_song(unit_id, out_root, webh5)
     log(f'  ✅ 离线拆分 {unit_id} -> {out_root}')
 
 
