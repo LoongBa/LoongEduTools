@@ -1,16 +1,17 @@
-// 应用壳：手机比例画幅 + 底部四格导航；桌面居中留柔和空白
+// 应用壳：手机比例画幅 + 底部五格导航（首页居中突出）；桌面居中留柔和空白
 import { Link, Outlet, createFileRoute, useMatchRoute } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
-import { HomeIcon, BookIcon, MusicIcon, UserIcon } from "@/components/nav-icons";
+import { HomeIcon, BookIcon, MusicIcon, UserIcon, LeafIcon } from "@/components/nav-icons";
 
 export const Route = createFileRoute("/_layout")({
   component: LayoutShell,
 });
 
 const NAV = [
-  { to: "/", label: "首页", Icon: HomeIcon },
   { to: "/words", label: "词卡", Icon: BookIcon },
   { to: "/jukebox", label: "点唱台", Icon: MusicIcon },
+  { to: "/", label: "首页", Icon: HomeIcon },
+  { to: "/growth", label: "成长卡", Icon: LeafIcon },
   { to: "/me", label: "我的", Icon: UserIcon },
 ] as const;
 
@@ -39,28 +40,44 @@ function LayoutShell() {
           aria-label="主导航"
           className="panel-border no-print fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[520px] border-t bg-card/95 backdrop-blur-sm"
         >
-          <ul className="grid grid-cols-4 px-2 py-1.5">
+          <ul className="grid grid-cols-5 px-2 py-1.5">
             {NAV.map(({ to, label, Icon }) => {
               const active = isNavActive(to);
+              const isHome = to === "/";
               return (
-                <li key={to}>
+                <li key={to} className="flex items-stretch justify-center">
                   <Link
                     to={to}
                     className={cn(
-                      "tap-target flex flex-col items-center justify-center gap-1 rounded-2xl py-1.5 transition-colors duration-200",
-                      active ? "text-primary-deep" : "text-muted-text hover:text-foreground",
+                      "tap-target flex flex-col items-center justify-center gap-1 rounded-2xl transition-colors duration-200",
+                      isHome ? "py-0.5" : "py-1.5",
+                      active && !isHome ? "text-primary-deep" : !isHome && "text-muted-text hover:text-foreground",
                     )}
                     aria-current={active ? "page" : undefined}
+                    aria-label={isHome ? "首页" : undefined}
                   >
-                    <span
-                      className={cn(
-                        "grid h-9 w-14 place-items-center rounded-full transition-colors duration-300",
-                        active && "bg-accent",
-                      )}
-                    >
-                      <Icon className="h-5 w-5" />
-                    </span>
-                    <span className="text-[12px] font-semibold leading-none">{label}</span>
+                    {isHome ? (
+                      <span
+                        className={cn(
+                          "grid h-14 w-14 -translate-y-2 place-items-center rounded-full shadow-lift transition-colors duration-300",
+                          active ? "bg-primary text-primary-foreground" : "bg-accent text-primary-deep",
+                        )}
+                      >
+                        <Icon className="h-7 w-7" />
+                      </span>
+                    ) : (
+                      <>
+                        <span
+                          className={cn(
+                            "grid h-9 w-14 place-items-center rounded-full transition-colors duration-300",
+                            active && "bg-accent",
+                          )}
+                        >
+                          <Icon className="h-5 w-5" />
+                        </span>
+                        <span className="text-[12px] font-semibold leading-none">{label}</span>
+                      </>
+                    )}
                   </Link>
                 </li>
               );

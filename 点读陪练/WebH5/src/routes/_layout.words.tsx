@@ -1,12 +1,13 @@
-// 词卡收藏册：翻面卡片 + 单元筛选 + 柔性「该复习啦」角标
-import { useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
-import { UNIT_ROWS, unitOf, type WordCard } from "@/data/content";
+// 词卡收藏册：翻面卡片 + 单元筛选 + 柔性「该复习啦」角标 + 听写入口
+import { useEffect, useMemo, useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { unitOf, type WordCard } from "@/data/content";
 import { ipOf } from "@/data/ip";
 import { useProgress } from "@/lib/store";
 import { speechSupported, speakMp3 } from "@/lib/speech";
 import { LeafIcon, SpeakerIcon, StarIcon, TurtleIcon } from "@/components/icons";
-import { PageHead, Panel } from "@/components/ui-kit";
+import { Btn, PageHead, Panel } from "@/components/ui-kit";
+import { UnitScope } from "@/components/unit-scope";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_layout/words")({
@@ -17,14 +18,16 @@ type Filter = "all" | "lit" | "todo";
 
 function WordsPage() {
   const p = useProgress();
-  const [unitId, setUnitId] = useState(p.state.unitId);
   const [filter, setFilter] = useState<Filter>("all");
   const [flipped, setFlipped] = useState<string | null>(null);
   const [noVoice, setNoVoice] = useState(false);
   const [slow, setSlow] = useState(p.state.settings.slowRate);
 
-  const unit = unitOf(unitId);
+  const unit = unitOf(p.state.unitId);
   const dueSet = useMemo(() => new Set(p.dueReview), [p.dueReview]);
+
+  // 全局切换单元时重置翻面状态
+  useEffect(() => setFlipped(null), [p.state.unitId]);
 
   const list = useMemo(() => {
     return unit.words.filter((w) => {
@@ -34,7 +37,10 @@ function WordsPage() {
     });
   }, [unit, filter, p.state.litWords]);
 
-  const collected = p.stats.collected;
+  const collected = useMemo(
+    () => unit.words.filter((w) => p.state.litWords.includes(w.word)).length,
+    [unit, p.state.litWords],
+  );
 
   const play = (word: string, mp3?: string) => {
     // mp3 优先（含慢速），无则浏览器朗读回退
@@ -45,9 +51,21 @@ function WordsPage() {
   return (
     <div className="flex flex-col gap-4">
       <PageHead
-        eyebrow={`已收集 ${collected} / ${p.stats.totalWords}`}
+        eyebrow={`已收集 ${collected} / ${unit.words.length}`}
         title="词卡收藏册"
-        desc="点卡片翻面看中文，点小喇叭再听一遍。收集是成就，不是考核。"
+        desc={
+          <>
+            <p>点卡片翻面看中文，点小喇叭再听一遍。</p>
+            <p>收集是成就，不是考核。</p>
+          </>
+        }
+        right={
+          <Link to="/dictation">
+            <Btn size="sm" variant="soft">
+              听写
+            </Btn>
+          </Link>
+        }
       />
 
       {/* 进度条 */}
@@ -55,7 +73,7 @@ function WordsPage() {
         <div className="h-2.5 w-full overflow-hidden rounded-full bg-idle">
           <div
             className="h-full rounded-full bg-lit transition-[width] duration-700 ease-out"
-            style={{ width: `${Math.min(100, (collected / p.stats.totalWords) * 100)}%` }}
+            style={{ width: `${Math.min(100, unit.words.length ? (collected / unit.words.length) * 100 : 0)}%` }}
           />
         </div>
         <p className="mt-2 text-[13px] text-muted-text">
@@ -70,27 +88,8 @@ function WordsPage() {
         </p>
       </Panel>
 
-      {/* 单元筛选 */}
-      <div className="-mx-1 flex snap-x gap-1.5 overflow-x-auto px-1 pb-1">
-        {UNIT_ROWS.map((u) => (
-          <button
-            key={u.id}
-            type="button"
-            onClick={() => {
-              setUnitId(u.id);
-              setFlipped(null);
-            }}
-            className={cn(
-              "shrink-0 snap-start rounded-full px-3.5 py-1.5 text-[14px] font-semibold transition-colors duration-200",
-              u.id === unitId
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary text-secondary-foreground hover:bg-accent",
-            )}
-          >
-            U{u.no} {u.cn}
-          </button>
-        ))}
-      </div>
+      {/* 当前单元（只读，切换在"我的"） */}
+      <UnitScope />
 
       {/* 状态分组 */}
       <div className="flex gap-1.5">
@@ -192,7 +191,7 @@ function WordTile({
       )}
     >
       {due && (
-        <span className="absolute right-2.5 top-2.5 rounded-full bg-warm-soft px-2 py-0.5 text-[11px] font-bold text-[var(--warm)]">
+        <span className="absolute left-2.5 top-2.5 rounded-full bg-warm-soft px-2 py-0.5 text-[11px] font-bold text-[var(--warm)]">
           该复习啦
         </span>
       )}
@@ -215,10 +214,10 @@ function WordTile({
             />
           )}
           <p className="mt-2.5 text-[18px] font-bold leading-tight break-words">{card.word}</p>
-          <p className="mt-1 inline-flex items-center gap-1 text-[12px] font-semibold text-muted-text">
-            <StarIcon className={cn("h-3.5 w-3.5", lit ? "text-[var(--lit)]" : "text-idle")} filled={lit} />
-            {lit ? "已点亮" : "待点亮"}
-          </p>
+          {/* 右上角五角星：空心灰=待点亮，实心黄=已点亮 */}
+          <span className="absolute right-2.5 top-2.5">
+            <StarIcon className={cn("h-5 w-5", lit ? "text-[var(--warm)]" : "text-idle")} filled={lit} />
+          </span>
         </>
       ) : (
         <>

@@ -1,10 +1,11 @@
 // 打印小单：A4 黑白线稿（句卡 / PBL 模板 / 检验记录单 / 单元地图 / 练习小单含背面答案）
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { UNIT_ROWS, shuffled, stageLabel, unitOf, type Stage } from "@/data/content";
+import { shuffled, stageLabel, unitOf, type Stage } from "@/data/content";
 import { useProgress } from "@/lib/store";
 import { Btn, PageHead, Panel } from "@/components/ui-kit";
 import { PrintIcon } from "@/components/icons";
+import { UnitScope } from "@/components/unit-scope";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_layout/print")({
@@ -24,8 +25,7 @@ const TEMPLATES: { k: Template; t: string; note: string }[] = [
 function PrintPage() {
   const p = useProgress();
   const [tpl, setTpl] = useState<Template>("cards");
-  const [unitId, setUnitId] = useState(p.state.unitId);
-  const unit = unitOf(unitId);
+  const unit = unitOf(p.state.unitId);
 
   return (
     <div className="flex flex-col gap-4">
@@ -41,7 +41,7 @@ function PrintPage() {
         }
       />
 
-      {/* 选择器（不参与打印） */}
+      {/* 选择器（不参与打印）：模板；当前单元只读 */}
       <div className="no-print flex flex-col gap-2.5">
         <div className="-mx-1 flex snap-x gap-1.5 overflow-x-auto px-1">
           {TEMPLATES.map((t) => (
@@ -61,21 +61,7 @@ function PrintPage() {
             </button>
           ))}
         </div>
-        <div className="-mx-1 flex snap-x gap-1.5 overflow-x-auto px-1">
-          {UNIT_ROWS.map((u) => (
-            <button
-              key={u.id}
-              type="button"
-              onClick={() => setUnitId(u.id)}
-              className={cn(
-                "shrink-0 snap-start rounded-full px-3.5 py-1.5 text-[14px] font-semibold transition-colors duration-200",
-                u.id === unitId ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground",
-              )}
-            >
-              U{u.no} {u.cn}
-            </button>
-          ))}
-        </div>
+        <UnitScope />
       </div>
 
       {/* A4 纸张预览 */}

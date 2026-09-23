@@ -1,11 +1,12 @@
 // 首页：唯一视觉重心是「今日陪练」，其余入口降级为小卡列表
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { UNIT_ROWS, DAY_TITLES } from "@/data/content";
+import { DAY_TITLES } from "@/data/content";
 import { IP_CHARACTERS } from "@/data/ip";
 import { useProgress } from "@/lib/store";
 import { Btn, DayDots, Panel } from "@/components/ui-kit";
 import { MusicIcon, BookIcon, PrintIcon, ShieldIcon, PlayIcon, LeafIcon, StarIcon } from "@/components/icons";
+import { UnitScope } from "@/components/unit-scope";
 
 export const Route = createFileRoute("/_layout/")({
   component: HomePage,
@@ -35,33 +36,16 @@ function HomePage() {
         <DayDots lit={litDays} current={dayNo} size="sm" />
       </Panel>
 
-      {firstTime && (
-        <Panel className="reveal-up border-l-4 border-l-[var(--warm)] px-4 py-3.5">
-          <p className="text-[15px] font-bold leading-snug">第一次来，选一个单元就能开始</p>
-          <p className="mt-1 text-[14px] leading-relaxed text-muted-text">
-            不需要注册，也不填任何信息。进度只存在这台设备上。
-          </p>
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {UNIT_ROWS.map((u) => (
-              <button
-                key={u.id}
-                type="button"
-                onClick={() => {
-                  p.setUnit(u.id);
-                  setPicked(true);
-                }}
-                className={
-                  "rounded-full px-3.5 py-1.5 text-[14px] font-semibold transition-colors duration-200 " +
-                  (u.id === state.unitId
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary text-secondary-foreground hover:bg-accent")
-                }
-              >
-                U{u.no} {u.cn}
-              </button>
-            ))}
-          </div>
-        </Panel>
+      {firstTime ? (
+        <UnitScope
+          switchable
+          title="第一次来，选一个单元就能开始"
+          note="不需要注册，也不填任何信息。进度只存在这台设备上。"
+          className="reveal-up border-l-4 border-l-[var(--warm)]"
+          onPick={() => setPicked(true)}
+        />
+      ) : (
+        <UnitScope />
       )}
 
       {/* 今日陪练大卡片：唯一视觉重心 */}

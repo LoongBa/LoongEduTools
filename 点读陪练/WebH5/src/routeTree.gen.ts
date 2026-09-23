@@ -13,6 +13,8 @@ import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as LayoutIndexRouteImport } from './routes/_layout.index'
 import { Route as LayoutCardRouteImport } from './routes/_layout.card'
 import { Route as LayoutDailyRouteImport } from './routes/_layout.daily'
+import { Route as LayoutDictationRouteImport } from './routes/_layout.dictation'
+import { Route as LayoutGrowthRouteImport } from './routes/_layout.growth'
 import { Route as LayoutJukeboxRouteImport } from './routes/_layout.jukebox'
 import { Route as LayoutMeRouteImport } from './routes/_layout.me'
 import { Route as LayoutPrintRouteImport } from './routes/_layout.print'
@@ -36,6 +38,16 @@ const LayoutCardRoute = LayoutCardRouteImport.update({
 const LayoutDailyRoute = LayoutDailyRouteImport.update({
   id: '/daily',
   path: '/daily',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutDictationRoute = LayoutDictationRouteImport.update({
+  id: '/dictation',
+  path: '/dictation',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutGrowthRoute = LayoutGrowthRouteImport.update({
+  id: '/growth',
+  path: '/growth',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutJukeboxRoute = LayoutJukeboxRouteImport.update({
@@ -68,6 +80,8 @@ export interface FileRoutesByFullPath {
   '/': typeof LayoutIndexRoute
   '/card': typeof LayoutCardRoute
   '/daily': typeof LayoutDailyRoute
+  '/dictation': typeof LayoutDictationRoute
+  '/growth': typeof LayoutGrowthRoute
   '/jukebox': typeof LayoutJukeboxRoute
   '/me': typeof LayoutMeRoute
   '/print': typeof LayoutPrintRoute
@@ -77,6 +91,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/card': typeof LayoutCardRoute
   '/daily': typeof LayoutDailyRoute
+  '/dictation': typeof LayoutDictationRoute
+  '/growth': typeof LayoutGrowthRoute
   '/jukebox': typeof LayoutJukeboxRoute
   '/me': typeof LayoutMeRoute
   '/print': typeof LayoutPrintRoute
@@ -89,6 +105,8 @@ export interface FileRoutesById {
   '/_layout': typeof LayoutRouteWithChildren
   '/_layout/card': typeof LayoutCardRoute
   '/_layout/daily': typeof LayoutDailyRoute
+  '/_layout/dictation': typeof LayoutDictationRoute
+  '/_layout/growth': typeof LayoutGrowthRoute
   '/_layout/jukebox': typeof LayoutJukeboxRoute
   '/_layout/me': typeof LayoutMeRoute
   '/_layout/print': typeof LayoutPrintRoute
@@ -102,6 +120,8 @@ export interface FileRouteTypes {
     | '/'
     | '/card'
     | '/daily'
+    | '/dictation'
+    | '/growth'
     | '/jukebox'
     | '/me'
     | '/print'
@@ -111,6 +131,8 @@ export interface FileRouteTypes {
   to:
     | '/card'
     | '/daily'
+    | '/dictation'
+    | '/growth'
     | '/jukebox'
     | '/me'
     | '/print'
@@ -122,6 +144,8 @@ export interface FileRouteTypes {
     | '/_layout'
     | '/_layout/card'
     | '/_layout/daily'
+    | '/_layout/dictation'
+    | '/_layout/growth'
     | '/_layout/jukebox'
     | '/_layout/me'
     | '/_layout/print'
@@ -162,6 +186,20 @@ declare module '@tanstack/react-router' {
       path: '/daily'
       fullPath: '/daily'
       preLoaderRoute: typeof LayoutDailyRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/dictation': {
+      id: '/_layout/dictation'
+      path: '/dictation'
+      fullPath: '/dictation'
+      preLoaderRoute: typeof LayoutDictationRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/growth': {
+      id: '/_layout/growth'
+      path: '/growth'
+      fullPath: '/growth'
+      preLoaderRoute: typeof LayoutGrowthRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/jukebox': {
@@ -205,6 +243,8 @@ declare module '@tanstack/react-router' {
 interface LayoutRouteChildren {
   LayoutCardRoute: typeof LayoutCardRoute
   LayoutDailyRoute: typeof LayoutDailyRoute
+  LayoutDictationRoute: typeof LayoutDictationRoute
+  LayoutGrowthRoute: typeof LayoutGrowthRoute
   LayoutJukeboxRoute: typeof LayoutJukeboxRoute
   LayoutMeRoute: typeof LayoutMeRoute
   LayoutPrintRoute: typeof LayoutPrintRoute
@@ -216,6 +256,8 @@ interface LayoutRouteChildren {
 const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutCardRoute: LayoutCardRoute,
   LayoutDailyRoute: LayoutDailyRoute,
+  LayoutDictationRoute: LayoutDictationRoute,
+  LayoutGrowthRoute: LayoutGrowthRoute,
   LayoutJukeboxRoute: LayoutJukeboxRoute,
   LayoutMeRoute: LayoutMeRoute,
   LayoutPrintRoute: LayoutPrintRoute,
