@@ -166,5 +166,5 @@ python .skill/minitool-zip-builder/scripts/audit_artifact.py publish/学科/新�
 | 防沉迷 / 自控力（时长/局数/自律锁） | `docs/通用需求-防沉迷自控力.md` |
 | 结算三选 / 分享卡片 / 复制文案 | `docs/通用需求-打卡分享记录.md` §2.3/§5.2/§5.3 |
 | 视觉质检（多模态看板） | `look_at` 工具 / `task(subagent_type="multimodal-looker")` 可用：全局 opencode 已配置 `sensenova/sensenova-6.8-flash-lite`（视觉模型 + `modalities` 声明），离线截图/PDF 目检直接走此链路 |
-| 教师客户端（桌面壳） | `../docs/教育工具/教育工具-教师客户端需求分析与设计方案.md` |
+| 教师客户端（桌面壳） | `../教师客户端/docs/教育工具-教师客户端需求分析与设计方案.md` |
 | 批量生图/批量重绘 | `../LoongMediaTools/批量生图工具/`（README：`LoongMediaTools/批量生图工具/README.md`） | **通用批量 AI 生图引擎**（**已迁移至 LoongMediaTools 仓库**）：多 Key 均衡/并发/断点续跑/Provider 插件，公共 `keys.json` 配置（含密钥不入 git）。其它工具/Agent 程序化调用：`sys.path.insert(0, r"F:\LoongBa_Git\LoongMediaTools")` + `from 批量生图工具 import execute_task, get_manager, get_provider, ...`；或命令行 `python LoongMediaTools/批量生图工具/batch_cli.py run/list/status/create`。前置：Python 3.9+、`pip install requests`。教材重绘（`重绘工具/`）key 已接入其公共配置 |
