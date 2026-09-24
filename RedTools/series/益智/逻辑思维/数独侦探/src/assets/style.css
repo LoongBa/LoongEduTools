@@ -865,6 +865,50 @@ body {
 .streak-info { text-align: center; margin-top: 10px; font-size: 14px; color: #2a3a4a; }
 .streak-info b { color: #ff9c1a; }
 
+/* 家长报告（v1.9）：报告卡片 + 数据行 */
+.board-card { max-width: 420px; margin: 0 auto; } /* E4：9×9 大盘缩幅居中 */
+
+.report-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(74, 168, 255, 0.12);
+}
+
+.report-card-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #2a3a4a;
+  margin-bottom: 8px;
+}
+
+.report-row {
+  font-size: 13px;
+  color: #3a5a7a;
+  line-height: 1.7;
+}
+
+.report-badge-line {
+  font-size: 13px;
+  color: #3a5a7a;
+  line-height: 1.8;
+  margin-top: 6px;
+}
+
+.report-dist {
+  font-size: 13px;
+  color: #3a5a7a;
+  line-height: 1.7;
+  margin-top: 4px;
+}
+
+.report-empty {
+  font-size: 13px;
+  color: #8ba4bd;
+  padding: 6px 0;
+}
+
 /* ---------- 响应式：大屏微调 / 小屏收紧 ---------- */
 
 @media (min-width: 400px) {

@@ -13,6 +13,8 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     v1.7：分享题（题目文本导出/导入 + 打印图片）；导入题不计成绩
     v1.7.1：分享成绩（1080×1920 成绩卡图片 + 分享文案；无竞技对比，仅展示自
           身表现——核心原则无竞技无排行）
+    v1.9：家长报告（今日反馈 / 近 7 天 / 技巧掌握度，数据只存本地不上传）
+          + 9×9 小屏适配（窄屏缩字号 + 竖屏横屏提示一次；双指缩放 P2 不做）
     星级：hints===0 && errors===0 → 3★；hints<=1 && errors<=3 → 2★；否则 1★
    难度：双参数（盘面尺寸 × 目标已知格）4×4→10、6×6→21、9×9→33
    设计约束（对齐 series/益智/设计文档.md §5）：
@@ -39,6 +41,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
   var errorsEl = null;
   var overlayEl = null;
   var hintBtnEl = null;
+  var hint9Shown = false;   // v1.9 E4：9×9 竖屏「建议横屏」提示是否已显示（一次性，不存 localStorage）
   var penBtnEl = null;
   var cellEls = [];   // 棋盘格子外层 DOM（按格下标索引）
 
@@ -541,7 +544,8 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
         if (r % br === 0 && r > 0) { cell.className = 'cell box-t'; }
         if (c % bc === 0 && c > 0) { cell.className = cell.className + ' box-l'; }
         var inner = makeEl('div', 'cell-inner');
-        inner.style.fontSize = cellFont(state.N);
+        // v1.9 E4：9×9 窄屏（<=340px）字号降到 14px 保可读（设计基线 ≥14px），其余照旧
+        inner.style.fontSize = (state.N === 9 && window.innerWidth <= 340) ? '14px' : cellFont(state.N);
         cell.appendChild(inner);
         cell.addEventListener('click', function () { selectCell(idx); });
         cellEls[idx] = cell;
@@ -550,6 +554,15 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     }
     card.appendChild(board);
     viewEl.appendChild(card);
+    // v1.9 E4：9×9 竖屏时温和提示横屏（一次性、非阻塞；双指缩放 P2 不做）
+    if (state.N === 9 && window.innerHeight > window.innerWidth && !hint9Shown) {
+      hint9Shown = true;
+      showOverlay('📱 建议横屏', '9×9 盘面较大，横屏使用格子更大更好点', [
+        { cls: 'checkin-line', text: '建议横屏使用，格子更大更好点' }
+      ], [
+        { text: '知道了', cls: 'btn-main', act: hideOverlay }
+      ]);
+    }
 
     // 提示行
     var msgEl = makeEl('div', 'sudoku-msg', '点空格 → 选数字，行/列/宫不重复就过关！');
@@ -1002,6 +1015,13 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     favBtn.setAttribute('aria-label', '打开收藏本');
     favBtn.addEventListener('click', showFavoriteView);
     viewEl.appendChild(favBtn);
+    // 家长报告入口（v1.9）：今日反馈 / 近 7 天 / 技巧掌握度（只读本地数据）
+    var reportBtn = makeEl('button', 'teach-btn book-btn');
+    reportBtn.appendChild(makeEl('span', 'teach-btn-head', '📊 家长报告'));
+    reportBtn.appendChild(makeEl('span', 'teach-btn-sub', '今日反馈 · 近 7 天 · 技巧掌握度'));
+    reportBtn.setAttribute('aria-label', '打开家长报告');
+    reportBtn.addEventListener('click', showReportView);
+    viewEl.appendChild(reportBtn);
     // 导入题目入口（v1.7）：粘贴别人分享的题目文本直接玩
     var importBtn = makeEl('button', 'teach-btn book-btn');
     importBtn.appendChild(makeEl('span', 'teach-btn-head', '📥 导入题目'));
@@ -2330,6 +2350,96 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     btnBack.setAttribute('aria-label', '返回难度选择');
     btnBack.addEventListener('click', showDifficultyView);
     footerEl.appendChild(btnBack);
+  }
+  /* ---------- 家长报告（v1.9）：只读本地数据，不写任何 store 字段 ---------- */
+  function dsNum(s) {
+    // 'YYYYMMDD' 转可比较整数（同长度日期字符串可直接比较）
+    return parseInt(s, 10);
+  }
+  function historyInRange(days) {
+    // 近 {days} 天（含今天）的对局记录：按 date >= 今天-{days} 过滤 store.history
+    var from = dsNum(fmtDate(new Date(Date.now() - days * 86400000)));
+    var out = [];
+    var i;
+    for (i = 0; i < store.history.length; i++) {
+      if (dsNum(store.history[i].date) >= from) { out.push(store.history[i]); }
+    }
+    return out;
+  }
+  function showReportView() {
+    // 家长报告视图（v1.9）：今日反馈 + 近 7 天（难度分布/总用时/技巧掌握度），结构对齐 showCheckinView
+    hideOverlay();
+    stopTimer();
+    state.won = false;
+    state.playing = false;
+    renderHeader('家长报告');
+    clearNode(viewEl);
+    viewEl.appendChild(makeEl('div', 'page-title', '家长报告'));
+    viewEl.appendChild(makeEl('div', 'home-hint', '数据只保存在本机，不上传'));
+    // 卡片 A：今日反馈
+    var today = fmtDate(new Date());
+    var todayList = [];
+    var i;
+    for (i = 0; i < store.history.length; i++) {
+      if (store.history[i].date === today) { todayList.push(store.history[i]); }
+    }
+    var cardA = makeEl('div', 'report-card');
+    cardA.appendChild(makeEl('div', 'report-card-title', '📅 今日反馈'));
+    if (todayList.length === 0) {
+      cardA.appendChild(makeEl('div', 'report-empty', '今天还没完成对局'));
+    } else {
+      var sumMs = 0, sumErr = 0, sumHint = 0, sumStars = 0;
+      for (i = 0; i < todayList.length; i++) {
+        sumMs += todayList[i].ms;
+        sumErr += todayList[i].errors;
+        sumHint += todayList[i].hints;
+        sumStars += todayList[i].stars;
+      }
+      cardA.appendChild(makeEl('div', 'report-row',
+        '完成 ' + todayList.length + ' 局 · 平均用时 ' + fmtTime(Math.round(sumMs / todayList.length))));
+      cardA.appendChild(makeEl('div', 'report-row', '错误合计 ' + sumErr + ' 次 · 提示合计 ' + sumHint + ' 次'));
+      cardA.appendChild(makeEl('div', 'report-row',
+        '平均星级 ' + (Math.round(sumStars / todayList.length * 10) / 10) + ' ★'));
+    }
+    viewEl.appendChild(cardA);
+    // 卡片 B：近 7 天
+    var week = historyInRange(7);
+    var cardB = makeEl('div', 'report-card');
+    cardB.appendChild(makeEl('div', 'report-card-title', '📆 近 7 天'));
+    if (week.length === 0) {
+      cardB.appendChild(makeEl('div', 'report-empty', '近 7 天还没完成对局'));
+    } else {
+      var weekMs = 0;
+      for (i = 0; i < week.length; i++) { weekMs += week[i].ms; }
+      cardB.appendChild(makeEl('div', 'report-row', '完成 ' + week.length + ' 局 · 总用时 ' + fmtBestTime(weekMs)));
+      // 难度分布（按 LEVELS 逐难度统计局数）
+      var distParts = [];
+      var li;
+      for (li = 0; li < LEVELS.length; li++) {
+        var cnt = 0;
+        var j;
+        for (j = 0; j < week.length; j++) {
+          if (week[j].level === LEVELS[li].key) { cnt++; }
+        }
+        distParts.push(LEVELS[li].name + ' ' + LEVELS[li].N + '×' + LEVELS[li].N + '：' + cnt + ' 局');
+      }
+      cardB.appendChild(makeEl('div', 'report-dist', distParts.join(' · ')));
+      // 技巧掌握度：4 枚徽章点亮状态（lit ✅ / 未点亮 🎯）
+      var skillParts = [];
+      for (li = 0; li < SKILLS.length; li++) {
+        var lit = !!store.skills[SKILLS[li].key];
+        skillParts.push((lit ? '✅ ' : '🎯 ') + SKILLS[li].name);
+      }
+      cardB.appendChild(makeEl('div', 'report-badge-line', skillParts.join(' ')));
+      cardB.appendChild(makeEl('div', 'report-row', countLitSkills() + '/' + SKILLS.length + ' 枚技巧徽章已点亮'));
+    }
+    viewEl.appendChild(cardB);
+    // 返回难度
+    var back = makeEl('button', 'btn-checkin', '← 返回');
+    back.setAttribute('aria-label', '返回难度选择');
+    back.style.marginTop = '4px';
+    back.addEventListener('click', showDifficultyView);
+    viewEl.appendChild(back);
   }
 
   /* ---------- 实体键盘增强（1-9 / Backspace / Delete；仅游戏页） ---------- */
