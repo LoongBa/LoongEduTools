@@ -1,0 +1,530 @@
+{
+  "schema_version": "1.0",
+  "unit": "U2",
+  "grade": "6A",
+  "title": "Getting together",
+  "topic": "Why do we get together?",
+  "grammar_rule": "past_question",
+  "phonics": {
+    "level": "review",
+    "note": "不规则动词过去式"
+  },
+  "abilities": [
+    {
+      "id": "A1",
+      "desc": "I can say what people do at festivals or big events.",
+      "training_segments": [
+        "S1",
+        "S2"
+      ],
+      "check": {
+        "type": "oral_produce",
+        "items": "说出 3 个节日活动：clean the house / paste fu / eat mooncakes",
+        "pass_rule": ">=2 of 3",
+        "retrain_segment": "S1"
+      }
+    },
+    {
+      "id": "A2",
+      "desc": "I can ask and answer about past activities.",
+      "training_segments": [
+        "S2",
+        "S3"
+      ],
+      "check": {
+        "type": "oral_produce",
+        "items": "用 Did you ...? 提问并回答",
+        "pass_rule": "问答各 1 组",
+        "retrain_segment": "S2"
+      }
+    },
+    {
+      "id": "A3",
+      "desc": "I can write about things I did at a festival.",
+      "training_segments": [
+        "S5"
+      ],
+      "check": {
+        "type": "write",
+        "items": "写 3-5 句节日经历",
+        "pass_rule": "用过去式写对即可",
+        "retrain_segment": "S5"
+      }
+    }
+  ],
+  "segments": [
+    {
+      "id": "S0",
+      "type": "map",
+      "scene": {
+        "image": "g6u2_s0_main.png",
+        "image_prompt": "扁平卡通暖色调节日聚会场景，一家人围坐在一起吃月饼，桌上有灯笼和月饼，圆角白底卡图风格，无文字",
+        "hotspots": [
+          {
+            "id": "H1",
+            "text": "Did you eat mooncakes?",
+            "zh": "你们吃月饼了吗？",
+            "audio": "g6u2_s0_h01.mp3",
+            "image": "g6u2_s0_h01.png",
+            "image_prompt": "一家人吃月饼，暖色调扁平卡通，圆角白底，无文字"
+          },
+          {
+            "id": "H2",
+            "text": "Yes, we did.",
+            "zh": "是的，我们吃了。",
+            "audio": "g6u2_s0_h02.mp3",
+            "image": "g6u2_s0_h02.png",
+            "image_prompt": "开心点头，暖色调扁平卡通，圆角白底，无文字"
+          },
+          {
+            "id": "H3",
+            "text": "We had a big dinner.",
+            "zh": "我们吃了一顿丰盛的晚餐。",
+            "audio": "g6u2_s0_h03.mp3",
+            "image": "g6u2_s0_h03.png",
+            "image_prompt": "丰盛的节日晚餐，暖色调扁平卡通，圆角白底，无文字"
+          },
+          {
+            "id": "H4",
+            "text": "We got together.",
+            "zh": "我们聚在一起。",
+            "audio": "g6u2_s0_h04.mp3",
+            "image": "g6u2_s0_h04.png",
+            "image_prompt": "一家人团聚，暖色调扁平卡通，圆角白底，无文字"
+          }
+        ]
+      }
+    },
+    {
+      "id": "S1",
+      "type": "vocab",
+      "title": "节日活动",
+      "groups": [
+        {
+          "name": "festival_activities",
+          "cards": [
+            {
+              "word": "clean the house",
+              "zh": "打扫房子",
+              "audio": "g6u2_v_clean.mp3",
+              "image": "g6u2_v_clean.png",
+              "image_prompt": "打扫房子，扁平卡通，圆角白底词卡，无文字"
+            },
+            {
+              "word": "paste fu",
+              "zh": "贴福字",
+              "audio": "g6u2_v_fu.mp3",
+              "image": "g6u2_v_fu.png",
+              "image_prompt": "贴福字，扁平卡通，圆角白底词卡，无文字"
+            },
+            {
+              "word": "eat mooncakes",
+              "zh": "吃月饼",
+              "audio": "g6u2_v_mooncake.mp3",
+              "image": "g6u2_v_mooncake.png",
+              "image_prompt": "吃月饼，扁平卡通，圆角白底词卡，无文字"
+            },
+            {
+              "word": "eat zongzi",
+              "zh": "吃粽子",
+              "audio": "g6u2_v_zongzi.mp3",
+              "image": "g6u2_v_zongzi.png",
+              "image_prompt": "吃粽子，扁平卡通，圆角白底词卡，无文字"
+            },
+            {
+              "word": "watch the Gala",
+              "zh": "看春晚",
+              "audio": "g6u2_v_gala.mp3",
+              "image": "g6u2_v_gala.png",
+              "image_prompt": "看春节晚会，扁平卡通，圆角白底词卡，无文字"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "S2",
+      "type": "pattern",
+      "title": "问过去做没做",
+      "pattern": "Did you ___? / Yes, we did. / No, we didn't.",
+      "layers": {
+        "original": [
+          {
+            "id": "s2_orig01",
+            "text": "Did you take a trip?",
+            "zh": "你们去旅行了吗？",
+            "source": "textbook",
+            "audio": "g6u2_s2_orig01.mp3"
+          },
+          {
+            "id": "s2_orig02",
+            "text": "No, we didn't.",
+            "zh": "不，我们没有。",
+            "source": "textbook",
+            "audio": "g6u2_s2_orig02.mp3"
+          },
+          {
+            "id": "s2_orig03",
+            "text": "Did you eat mooncakes?",
+            "zh": "你们吃月饼了吗？",
+            "source": "textbook",
+            "audio": "g6u2_s2_orig03.mp3"
+          },
+          {
+            "id": "s2_orig04",
+            "text": "Yes, we did.",
+            "zh": "是的，我们吃了。",
+            "source": "textbook",
+            "audio": "g6u2_s2_orig04.mp3"
+          }
+        ],
+        "complete": [
+          {
+            "id": "s2_comp01",
+            "text": "Did you clean the house?",
+            "zh": "你们打扫房子了吗？",
+            "tags": [
+              "replace:action"
+            ],
+            "audio": "g6u2_s2_comp01.mp3"
+          },
+          {
+            "id": "s2_comp02",
+            "text": "Yes, we did.",
+            "zh": "是的，我们打扫了。",
+            "tags": [
+              "replace:answer"
+            ],
+            "audio": "g6u2_s2_comp02.mp3"
+          },
+          {
+            "id": "s2_comp03",
+            "text": "Did you paste fu?",
+            "zh": "你们贴福字了吗？",
+            "tags": [
+              "replace:action"
+            ],
+            "audio": "g6u2_s2_comp03.mp3"
+          },
+          {
+            "id": "s2_comp04",
+            "text": "No, we didn't.",
+            "zh": "不，我们没有。",
+            "tags": [
+              "replace:answer"
+            ],
+            "audio": "g6u2_s2_comp04.mp3"
+          }
+        ],
+        "extend": [
+          {
+            "id": "s2_ext01",
+            "text": "Did you watch the Gala?",
+            "zh": "你们看春晚了吗？",
+            "tags": [
+              "extend:action"
+            ],
+            "audio": "g6u2_s2_ext01.mp3"
+          },
+          {
+            "id": "s2_ext02",
+            "text": "Did you eat jiaozi?",
+            "zh": "你们吃饺子了吗？",
+            "tags": [
+              "extend:action"
+            ],
+            "audio": "g6u2_s2_ext02.mp3"
+          },
+          {
+            "id": "s2_ext03",
+            "text": "Did you get together?",
+            "zh": "你们团聚了吗？",
+            "tags": [
+              "extend:action"
+            ],
+            "audio": "g6u2_s2_ext03.mp3"
+          }
+        ]
+      }
+    },
+    {
+      "id": "S3",
+      "type": "pattern",
+      "title": "问喜欢什么",
+      "pattern": "What did you like about it? / I liked ___.",
+      "layers": {
+        "original": [
+          {
+            "id": "s3_orig01",
+            "text": "What did you like about it?",
+            "zh": "你喜欢它什么？",
+            "source": "textbook",
+            "audio": "g6u2_s3_orig01.mp3"
+          },
+          {
+            "id": "s3_orig02",
+            "text": "I liked watching the runners.",
+            "zh": "我喜欢看跑步的人。",
+            "source": "textbook",
+            "audio": "g6u2_s3_orig02.mp3"
+          },
+          {
+            "id": "s3_orig03",
+            "text": "I cheered for them.",
+            "zh": "我为他们加油。",
+            "source": "textbook",
+            "audio": "g6u2_s3_orig03.mp3"
+          }
+        ],
+        "complete": [
+          {
+            "id": "s3_comp01",
+            "text": "I liked the dragon boat race.",
+            "zh": "我喜欢赛龙舟。",
+            "tags": [
+              "replace:event"
+            ],
+            "audio": "g6u2_s3_comp01.mp3"
+          },
+          {
+            "id": "s3_comp02",
+            "text": "I liked the food.",
+            "zh": "我喜欢食物。",
+            "tags": [
+              "replace:event"
+            ],
+            "audio": "g6u2_s3_comp02.mp3"
+          },
+          {
+            "id": "s3_comp03",
+            "text": "I liked spending time with family.",
+            "zh": "我喜欢和家人在一起。",
+            "tags": [
+              "replace:event"
+            ],
+            "audio": "g6u2_s3_comp03.mp3"
+          }
+        ],
+        "extend": [
+          {
+            "id": "s3_ext01",
+            "text": "I liked the stories.",
+            "zh": "我喜欢那些故事。",
+            "tags": [
+              "extend:event"
+            ],
+            "audio": "g6u2_s3_ext01.mp3"
+          },
+          {
+            "id": "s3_ext02",
+            "text": "I liked the music.",
+            "zh": "我喜欢音乐。",
+            "tags": [
+              "extend:event"
+            ],
+            "audio": "g6u2_s3_ext02.mp3"
+          },
+          {
+            "id": "s3_ext03",
+            "text": "I liked the games.",
+            "zh": "我喜欢游戏。",
+            "tags": [
+              "extend:event"
+            ],
+            "audio": "g6u2_s3_ext03.mp3"
+          }
+        ]
+      }
+    },
+    {
+      "id": "S4",
+      "type": "pbl",
+      "title": "Present photos from school events",
+      "steps": [
+        {
+          "step": 1,
+          "desc": "Mr Jones and Binbin are talking about school events."
+        },
+        {
+          "step": 2,
+          "desc": "Here are photos from the school events."
+        },
+        {
+          "step": 3,
+          "desc": "Prepare your photos."
+        },
+        {
+          "step": 4,
+          "desc": "Present your photos in class."
+        }
+      ]
+    },
+    {
+      "id": "S5",
+      "type": "story",
+      "title": "Dragon Boat Festival",
+      "lines": [
+        {
+          "id": "s5_01",
+          "text": "The notice about the dragon boat race finally came out.",
+          "zh": "赛龙舟的通知终于出来了。",
+          "audio": "g6u2_s5_01.mp3",
+          "image": "g6u2_s5_01.png",
+          "image_prompt": "公告栏上贴着赛龙舟通知，一个孩子和爸爸站在前面看着，暖色调扁平卡通，圆角白底，无文字"
+        },
+        {
+          "id": "s5_02",
+          "text": "My dad woke up early and went to the river.",
+          "zh": "我爸爸起得很早，去了河边。",
+          "audio": "g6u2_s5_02.mp3",
+          "image": "g6u2_s5_02.png",
+          "image_prompt": "清晨爸爸走向河边，河上停着龙舟，朝阳升起，暖色调扁平卡通，圆角白底，无文字"
+        },
+        {
+          "id": "s5_03",
+          "text": "The judge counted down. The race began!",
+          "zh": "裁判倒数。比赛开始了！",
+          "audio": "g6u2_s5_03.mp3",
+          "image": "g6u2_s5_03.png",
+          "image_prompt": "裁判站在岸边吹哨，几条龙舟在河上竞速划行，桨手们奋力划桨，暖色调扁平卡通，圆角白底，无文字"
+        },
+        {
+          "id": "s5_04",
+          "text": "I ran and cheered for my dad.",
+          "zh": "我跑着为爸爸加油。",
+          "audio": "g6u2_s5_04.mp3",
+          "image": "g6u2_s5_04.png",
+          "image_prompt": "孩子在岸边跑着为爸爸的龙舟加油，挥舞着小旗子，暖色调扁平卡通，圆角白底，无文字"
+        },
+        {
+          "id": "s5_05",
+          "text": "His team won the race!",
+          "zh": "他的队赢了比赛！",
+          "audio": "g6u2_s5_05.mp3",
+          "image": "g6u2_s5_05.png",
+          "image_prompt": "爸爸的龙舟冲过终点线获胜，队员欢呼，岸边观众鼓掌，暖色调扁平卡通，圆角白底，无文字"
+        },
+        {
+          "id": "s5_06",
+          "text": "Our family made zongzi and had a big dinner.",
+          "zh": "我们家包了粽子，吃了一顿丰盛的晚餐。",
+          "audio": "g6u2_s5_06.mp3",
+          "image": "g6u2_s5_06.png",
+          "image_prompt": "一家人在家围桌包粽子，桌上摆满粽子和丰盛的晚餐，大家开心地笑，暖色调扁平卡通，圆角白底，无文字"
+        }
+      ]
+    },
+    {
+      "id": "S6",
+      "type": "check",
+      "title": "能力检验站",
+      "checks": [
+        {
+          "ability": "A1",
+          "type": "oral_produce",
+          "desc": "说出 3 个节日活动"
+        },
+        {
+          "ability": "A2",
+          "type": "oral_produce",
+          "desc": "用 Did you ...? 提问并回答"
+        },
+        {
+          "ability": "A3",
+          "type": "write",
+          "desc": "写 3-5 句节日经历"
+        }
+      ]
+    }
+  ],
+  "print_version": {
+    "worksheet_title": "六上 U2 天天见 · 练习小单",
+    "parts": [
+      {
+        "name": "Part 1 节日活动",
+        "instruction": "把活动和对应图片连起来",
+        "items": 5
+      },
+      {
+        "name": "Part 2 Did you...?",
+        "instruction": "把问句和答句连起来：Did you ...?",
+        "items": 4
+      },
+      {
+        "name": "Part 3 问喜欢什么",
+        "instruction": "把句子补全：I liked ...",
+        "items": 3
+      }
+    ],
+    "answer_sheet": true
+  },
+  "singalong": {
+    "original_song": {
+      "title": "",
+      "audio": "song/song_vocal.wav",
+      "instrumental": "song/song_instrumental.wav",
+      "lyrics_json": "song/song.json",
+      "status": "pending"
+    },
+    "textbook_lyrics": {
+      "title": "Unit Chant",
+      "type": "textbook_lyrics",
+      "chants": [
+        {
+          "id": "chant1",
+          "name": "Appendix Song: Getting together",
+          "lines": [
+            {
+              "en": "My family and I, we have a great time.",
+              "zh": "我和家人过得很开心。"
+            },
+            {
+              "en": "We get together at special events.",
+              "zh": "我们在特殊日子团聚。"
+            },
+            {
+              "en": "Events are fun. I love every one.",
+              "zh": "活动很有趣，我喜欢每一个。"
+            },
+            {
+              "en": "Yeah, yeah, yeah! Yeah, yeah, yeah!",
+              "zh": "耶！耶！耶！"
+            },
+            {
+              "en": "My parents and I, we had a sports day.",
+              "zh": "我和父母举办了运动日。"
+            },
+            {
+              "en": "There were many fun activities to do.",
+              "zh": "有好多有趣的活动。"
+            },
+            {
+              "en": "We ran so fast. My brother clapped.",
+              "zh": "我们跑得很快，我哥哥鼓掌。"
+            },
+            {
+              "en": "Go, go, go! Go, go, go!",
+              "zh": "加油！加油！"
+            },
+            {
+              "en": "My mother and I, we cleaned up at New Year.",
+              "zh": "我和妈妈新年大扫除。"
+            },
+            {
+              "en": "And pasted fu on our door.",
+              "zh": "我们门上贴福字。"
+            },
+            {
+              "en": "We dressed in red. All were fed.",
+              "zh": "我们穿红衣，大家都吃饱。"
+            },
+            {
+              "en": "Yum, yum, yum! Yum, yum, yum!",
+              "zh": "好吃！好吃！"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

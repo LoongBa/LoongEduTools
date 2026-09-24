@@ -1,0 +1,530 @@
+{
+  "schema_version": "1.0",
+  "unit": "U2",
+  "grade": "2A",
+  "title": "A great picture",
+  "topic": "How can we be creative?",
+  "grammar_rule": "is_colour",
+  "phonics": {
+    "level": "letters",
+    "letters": "Aa Bb Cc"
+  },
+  "abilities": [
+    {
+      "id": "A1",
+      "desc": "I can say colours.",
+      "training_segments": [
+        "S1"
+      ],
+      "check": {
+        "type": "listen_point",
+        "items": "听指令指颜色：red/blue/green/yellow...",
+        "pass_rule": ">=6 of 8",
+        "retrain_segment": "S1"
+      }
+    },
+    {
+      "id": "A2",
+      "desc": "I can say what colour things are.",
+      "training_segments": [
+        "S2"
+      ],
+      "check": {
+        "type": "oral_produce",
+        "items": "看图说 The ... is ...",
+        "pass_rule": ">=2 of 3",
+        "retrain_segment": "S2"
+      }
+    },
+    {
+      "id": "A3",
+      "desc": "I can draw and say.",
+      "training_segments": [
+        "S3",
+        "S4"
+      ],
+      "check": {
+        "type": "oral_produce",
+        "items": "说 Let's draw a ...",
+        "pass_rule": "说对即可",
+        "retrain_segment": "S3"
+      }
+    }
+  ],
+  "segments": [
+    {
+      "id": "S0",
+      "type": "map",
+      "scene": {
+        "image": "g2u2_s0_main.png",
+        "image_prompt": "扁平卡通暖色调画展场景，墙上挂着各种颜色的画，小朋友们在看画，圆角白底卡图风格，无文字",
+        "hotspots": [
+          {
+            "id": "H1",
+            "text": "The apple is red.",
+            "zh": "苹果是红色的。",
+            "audio": "g2u2_s0_h01.mp3",
+            "image": "g2u2_s0_h01.png",
+            "image_prompt": "红色的苹果画，暖色调扁平卡通，圆角白底，无文字"
+          },
+          {
+            "id": "H2",
+            "text": "I like colours.",
+            "zh": "我喜欢颜色。",
+            "audio": "g2u2_s0_h02.mp3",
+            "image": "g2u2_s0_h02.png",
+            "image_prompt": "彩色调色盘，暖色调扁平卡通，圆角白底，无文字"
+          },
+          {
+            "id": "H3",
+            "text": "Let's draw a picture.",
+            "zh": "我们来画画吧。",
+            "audio": "g2u2_s0_h03.mp3",
+            "image": "g2u2_s0_h03.png",
+            "image_prompt": "小朋友一起画画，暖色调扁平卡通，圆角白底，无文字"
+          },
+          {
+            "id": "H4",
+            "text": "What a great picture!",
+            "zh": "多棒的画啊！",
+            "audio": "g2u2_s0_h04.mp3",
+            "image": "g2u2_s0_h04.png",
+            "image_prompt": "完成的彩色画，暖色调扁平卡通，圆角白底，无文字"
+          }
+        ]
+      }
+    },
+    {
+      "id": "S1",
+      "type": "vocab",
+      "title": "颜色",
+      "groups": [
+        {
+          "name": "colours",
+          "cards": [
+            {
+              "word": "red",
+              "zh": "红色",
+              "audio": "g2u2_v_red.mp3",
+              "image": "g2u2_v_red.png",
+              "image_prompt": "红色圆片，扁平卡通，圆角白底词卡，无文字"
+            },
+            {
+              "word": "blue",
+              "zh": "蓝色",
+              "audio": "g2u2_v_blue.mp3",
+              "image": "g2u2_v_blue.png",
+              "image_prompt": "蓝色圆片，扁平卡通，圆角白底词卡，无文字"
+            },
+            {
+              "word": "green",
+              "zh": "绿色",
+              "audio": "g2u2_v_green.mp3",
+              "image": "g2u2_v_green.png",
+              "image_prompt": "绿色圆片，扁平卡通，圆角白底词卡，无文字"
+            },
+            {
+              "word": "yellow",
+              "zh": "黄色",
+              "audio": "g2u2_v_yellow.mp3",
+              "image": "g2u2_v_yellow.png",
+              "image_prompt": "黄色圆片，扁平卡通，圆角白底词卡，无文字"
+            },
+            {
+              "word": "orange",
+              "zh": "橙色",
+              "audio": "g2u2_v_orange.mp3",
+              "image": "g2u2_v_orange.png",
+              "image_prompt": "橙色圆片，扁平卡通，圆角白底词卡，无文字"
+            },
+            {
+              "word": "brown",
+              "zh": "棕色",
+              "audio": "g2u2_v_brown.mp3",
+              "image": "g2u2_v_brown.png",
+              "image_prompt": "棕色圆片，扁平卡通，圆角白底词卡，无文字"
+            },
+            {
+              "word": "white",
+              "zh": "白色",
+              "audio": "g2u2_v_white.mp3",
+              "image": "g2u2_v_white.png",
+              "image_prompt": "白色圆片，扁平卡通，圆角白底词卡，无文字"
+            },
+            {
+              "word": "black",
+              "zh": "黑色",
+              "audio": "g2u2_v_black.mp3",
+              "image": "g2u2_v_black.png",
+              "image_prompt": "黑色圆片，扁平卡通，圆角白底词卡，无文字"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "S2",
+      "type": "pattern",
+      "title": "描述颜色",
+      "pattern": "The ___ is ___.",
+      "layers": {
+        "original": [
+          {
+            "id": "s2_orig01",
+            "text": "The apple is red.",
+            "zh": "苹果是红色的。",
+            "source": "textbook",
+            "audio": "g2u2_s2_orig01.mp3"
+          },
+          {
+            "id": "s2_orig02",
+            "text": "This pencil is blue.",
+            "zh": "这支铅笔是蓝色的。",
+            "source": "textbook",
+            "audio": "g2u2_s2_orig02.mp3"
+          },
+          {
+            "id": "s2_orig03",
+            "text": "This flower is for you!",
+            "zh": "这朵花送给你！",
+            "source": "textbook",
+            "audio": "g2u2_s2_orig03.mp3"
+          }
+        ],
+        "complete": [
+          {
+            "id": "s2_comp01",
+            "text": "The banana is yellow.",
+            "zh": "香蕉是黄色的。",
+            "tags": [
+              "replace:noun"
+            ],
+            "audio": "g2u2_s2_comp01.mp3"
+          },
+          {
+            "id": "s2_comp02",
+            "text": "The tree is green.",
+            "zh": "树是绿色的。",
+            "tags": [
+              "replace:noun"
+            ],
+            "audio": "g2u2_s2_comp02.mp3"
+          },
+          {
+            "id": "s2_comp03",
+            "text": "The orange is orange.",
+            "zh": "橙子是橙色的。",
+            "tags": [
+              "replace:noun"
+            ],
+            "audio": "g2u2_s2_comp03.mp3"
+          }
+        ],
+        "extend": [
+          {
+            "id": "s2_ext01",
+            "text": "The sky is blue.",
+            "zh": "天空是蓝色的。",
+            "tags": [
+              "extend:noun"
+            ],
+            "audio": "g2u2_s2_ext01.mp3"
+          },
+          {
+            "id": "s2_ext02",
+            "text": "The cat is black.",
+            "zh": "猫是黑色的。",
+            "tags": [
+              "extend:noun"
+            ],
+            "audio": "g2u2_s2_ext02.mp3"
+          },
+          {
+            "id": "s2_ext03",
+            "text": "The snow is white.",
+            "zh": "雪是白色的。",
+            "tags": [
+              "extend:noun"
+            ],
+            "audio": "g2u2_s2_ext03.mp3"
+          }
+        ]
+      }
+    },
+    {
+      "id": "S3",
+      "type": "pattern",
+      "title": "提议画画",
+      "pattern": "Let's draw a ___ ___.",
+      "layers": {
+        "original": [
+          {
+            "id": "s3_orig01",
+            "text": "Let's draw a red apple.",
+            "zh": "我们来画一个红苹果吧。",
+            "source": "textbook",
+            "audio": "g2u2_s3_orig01.mp3"
+          },
+          {
+            "id": "s3_orig02",
+            "text": "Let's draw a blue dog.",
+            "zh": "我们来画一只蓝狗吧。",
+            "source": "textbook",
+            "audio": "g2u2_s3_orig02.mp3"
+          },
+          {
+            "id": "s3_orig03",
+            "text": "Let's colour it yellow.",
+            "zh": "我们把它涂成黄色吧。",
+            "source": "textbook",
+            "audio": "g2u2_s3_orig03.mp3"
+          }
+        ],
+        "complete": [
+          {
+            "id": "s3_comp01",
+            "text": "Let's draw a red rabbit.",
+            "zh": "我们来画一只红兔子吧。",
+            "tags": [
+              "replace:animal"
+            ],
+            "audio": "g2u2_s3_comp01.mp3"
+          },
+          {
+            "id": "s3_comp02",
+            "text": "Let's draw a yellow fish.",
+            "zh": "我们来画一条黄鱼吧。",
+            "tags": [
+              "replace:animal"
+            ],
+            "audio": "g2u2_s3_comp02.mp3"
+          },
+          {
+            "id": "s3_comp03",
+            "text": "Let's draw a green tree.",
+            "zh": "我们来画一棵绿树吧。",
+            "tags": [
+              "replace:object"
+            ],
+            "audio": "g2u2_s3_comp03.mp3"
+          }
+        ],
+        "extend": [
+          {
+            "id": "s3_ext01",
+            "text": "Let's draw a pink cat.",
+            "zh": "我们来画一只粉猫吧。",
+            "tags": [
+              "extend:animal"
+            ],
+            "audio": "g2u2_s3_ext01.mp3"
+          },
+          {
+            "id": "s3_ext02",
+            "text": "Let's draw a brown bear.",
+            "zh": "我们来画一只棕熊吧。",
+            "tags": [
+              "extend:animal"
+            ],
+            "audio": "g2u2_s3_ext02.mp3"
+          }
+        ]
+      }
+    },
+    {
+      "id": "S4",
+      "type": "pbl",
+      "title": "Draw animals with numbers",
+      "steps": [
+        {
+          "step": 1,
+          "desc": "Write some numbers."
+        },
+        {
+          "step": 2,
+          "desc": "Draw animals with a partner. Colour them."
+        },
+        {
+          "step": 3,
+          "desc": "Share your card. This is a yellow fish. This is also number 4."
+        }
+      ]
+    },
+    {
+      "id": "S5",
+      "type": "phonics",
+      "title": "Letters Aa Bb Cc",
+      "level": "letters",
+      "letter_groups": [
+        {
+          "letter": "Aa",
+          "word": "apple",
+          "audio": "g2u2_ph_a.mp3",
+          "image": "g2u2_ph_a.png"
+        },
+        {
+          "letter": "Bb",
+          "word": "bear",
+          "audio": "g2u2_ph_b.mp3",
+          "image": "g2u2_ph_b.png"
+        },
+        {
+          "letter": "Cc",
+          "word": "cat",
+          "audio": "g2u2_ph_c.mp3",
+          "image": "g2u2_ph_c.png"
+        }
+      ]
+    },
+    {
+      "id": "S6",
+      "type": "story",
+      "title": "Handprint tree",
+      "lines": [
+        {
+          "id": "s6_01",
+          "text": "Let's draw a tree. OK!",
+          "zh": "我们来画一棵树吧。好！",
+          "audio": "g2u2_s6_01.mp3",
+          "image": "g2u2_s6_01.png",
+          "image_prompt": "两个小朋友坐在桌前准备画画，桌上铺着画纸和颜料盘，暖色调扁平卡通，圆角白底，无文字"
+        },
+        {
+          "id": "s6_02",
+          "text": "Look! Your hand! Oh no! My hand!",
+          "zh": "看！你的手！哦不！我的手！",
+          "audio": "g2u2_s6_02.mp3",
+          "image": "g2u2_s6_02.png",
+          "image_prompt": "一个小朋友的手不小心按进颜料盘，另一个小朋友惊讶地看着，暖色调扁平卡通，圆角白底，无文字"
+        },
+        {
+          "id": "s6_03",
+          "text": "It's OK. Let's use our hands.",
+          "zh": "没关系。我们用手来画吧。",
+          "audio": "g2u2_s6_03.mp3",
+          "image": "g2u2_s6_03.png",
+          "image_prompt": "两个小朋友把沾颜料的手掌按在画纸上画画，笑嘻嘻的，暖色调扁平卡通，圆角白底，无文字"
+        },
+        {
+          "id": "s6_04",
+          "text": "A green hand, a red hand.",
+          "zh": "一只绿手，一只红手。",
+          "audio": "g2u2_s6_04.mp3",
+          "image": "g2u2_s6_04.png",
+          "image_prompt": "画纸上出现绿色的手掌印和红色的手掌印，两个小朋友开心地看着，暖色调扁平卡通，圆角白底，无文字"
+        },
+        {
+          "id": "s6_05",
+          "text": "A yellow hand, a blue hand.",
+          "zh": "一只黄手，一只蓝手。",
+          "audio": "g2u2_s6_05.mp3",
+          "image": "g2u2_s6_05.png",
+          "image_prompt": "画纸上又多了黄色的手掌印和蓝色的手掌印，五彩缤纷，暖色调扁平卡通，圆角白底，无文字"
+        },
+        {
+          "id": "s6_06",
+          "text": "We have a great picture!",
+          "zh": "我们有一幅好画！",
+          "audio": "g2u2_s6_06.mp3",
+          "image": "g2u2_s6_06.png",
+          "image_prompt": "一幅用彩色手掌印画成的大树完成，两个小朋友站在画前开心地拍手，暖色调扁平卡通，圆角白底，无文字"
+        }
+      ]
+    },
+    {
+      "id": "S7",
+      "type": "check",
+      "title": "能力检验站",
+      "checks": [
+        {
+          "ability": "A1",
+          "type": "listen_point",
+          "desc": "听指令指颜色：red/blue/green/yellow..."
+        },
+        {
+          "ability": "A2",
+          "type": "oral_produce",
+          "desc": "看图说 The ... is ..."
+        },
+        {
+          "ability": "A3",
+          "type": "oral_produce",
+          "desc": "说 Let's draw a ..."
+        }
+      ]
+    }
+  ],
+  "print_version": {
+    "worksheet_title": "二上 U2 天天见 · 练习小单",
+    "parts": [
+      {
+        "name": "Part 1 颜色",
+        "instruction": "把颜色和对应颜色的圆片连起来",
+        "items": 5
+      },
+      {
+        "name": "Part 2 描述颜色",
+        "instruction": "看图，把句子补全：The ... is ...",
+        "items": 4
+      },
+      {
+        "name": "Part 3 提议画画",
+        "instruction": "把句子补全：Let's draw a ...",
+        "items": 3
+      }
+    ],
+    "answer_sheet": true
+  },
+  "singalong": {
+    "original_song": {
+      "title": "We Are Friends",
+      "audio": "song/song_vocal.wav",
+      "instrumental": "song/song_instrumental.wav",
+      "lyrics_json": "song/song.json"
+    },
+    "textbook_lyrics": {
+      "title": "Unit 2 Chant",
+      "type": "textbook_lyrics",
+      "chants": [
+        {
+          "id": "chant1",
+          "name": "Listen and Chant (p.11)",
+          "lines": [
+            {
+              "en": "This pencil is red.",
+              "zh": "这支铅笔是红色的。"
+            },
+            {
+              "en": "This pencil is blue.",
+              "zh": "这支铅笔是蓝色的。"
+            },
+            {
+              "en": "This pencil is orange.",
+              "zh": "这支铅笔是橙色的。"
+            },
+            {
+              "en": "This flower is for you!",
+              "zh": "这朵花是送给你的！"
+            },
+            {
+              "en": "This pencil is brown.",
+              "zh": "这支铅笔是棕色的。"
+            },
+            {
+              "en": "This pencil is green.",
+              "zh": "这支铅笔是绿色的。"
+            },
+            {
+              "en": "This pencil is yellow.",
+              "zh": "这支铅笔是黄色的。"
+            },
+            {
+              "en": "This tree is for you!",
+              "zh": "这棵树是送给你的！"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

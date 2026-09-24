@@ -230,25 +230,30 @@ def sync_unit_song(unit_id: str, webh5: Path):
     内容：
       - song.json + song_vocal/instrumental.mp3（原创儿歌整曲，wav→mp3 压缩）
       - textbook_lyrics.json + textbook/*.mp3（教材歌词跟读，逐句 TTS 原样复制）
+    规则：build/<unit>/song.skip 存在时，跳过原创整曲（作废/待重生成），保留教材跟读。
     """
     src = ROOT / 'build' / unit_id / 'assets' / 'song'
     if not src.is_dir():
         log(f'  ⚠️ 无点唱台素材: {src}')
         return None
+    skip_orig = (ROOT / 'build' / unit_id / 'song.skip').exists()
     root = webh5 / 'public' / 'units' / unit_id
     root.mkdir(parents=True, exist_ok=True)
     song_dst = root / 'song'
-    data = compress_song(src, song_dst)
-    if data:
-        with open(song_dst / 'song.json', 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+    if skip_orig:
+        log(f'  ⏭️ {unit_id} song.skip：跳过原创整曲（作废/待重生成），保留教材跟读')
+    else:
+        data = compress_song(src, song_dst)
+        if data:
+            with open(song_dst / 'song.json', 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
     tb_src = src / 'textbook'
     if tb_src.is_dir():
         shutil.copytree(tb_src, song_dst / 'textbook', dirs_exist_ok=True)
     tb_json = src / 'textbook_lyrics.json'
     if tb_json.exists():
         shutil.copy2(tb_json, song_dst / 'textbook_lyrics.json')
-    log(f'  ✅ 点唱台 -> {unit_id}/song（wav→mp3 + song.json + textbook 跟读）')
+    log(f'  ✅ 点唱台 -> {unit_id}/song（{"教材跟读 only" if skip_orig else "wav→mp3 + song.json + textbook 跟读"}）')
     return True
 
 
@@ -256,8 +261,10 @@ def check_ready(unit_dir: Path) -> tuple[bool, list[str]]:
     """发布前就绪校验：内容包存在 + audio/image 素材与内容包引用一一对应。
 
     返回 (是否就绪, 问题清单)。不齐打回，防止缺素材发布。
+    歌曲（song/… 引用）为可选素材：缺失仅 WARN 不阻塞（无原创歌曲的单元可正常发布）。
     """
     issues = []
+    song_warns = []
     pkg_path = find_content_pkg(unit_dir, unit_dir.name)
     if not pkg_path:
         return False, [f'缺内容包: {unit_dir.name}_content_package.json（先完成步骤 2）']
@@ -283,7 +290,11 @@ def check_ready(unit_dir: Path) -> tuple[bool, list[str]]:
     def audio_ok(ref: str) -> bool:
         # 路径引用（song/song_vocal.wav 等）相对 assets/
         if '/' in ref:
-            return (unit_dir / 'assets' / ref).exists()
+            ok = (unit_dir / 'assets' / ref).exists()
+            if not ok and ref.startswith('song/'):
+                song_warns.append(ref)  # 歌曲可选：缺失不阻塞（见 sync_unit_song / song.skip）
+                return True
+            return ok
         audio_dir = unit_dir / 'assets' / 'audio'
         return (audio_dir / ref).exists() or (audio_dir / (ref + '.mp3')).exists() \
             or (audio_dir / ref.replace('.mp3', '')).exists()
@@ -292,6 +303,8 @@ def check_ready(unit_dir: Path) -> tuple[bool, list[str]]:
     img_dir = unit_dir / 'assets' / 'images'
     miss_aud = [a for a in sorted(auds) if not audio_ok(a)]
     miss_img = [i for i in sorted(imgs) if not (img_dir / i).exists()]
+    for sw in song_warns:
+        log(f'  ⚠️ 歌曲素材缺失（可选，按规则可跳过）: {sw}')
     if miss_aud:
         issues.append(f'缺音频 {len(miss_aud)} 个: {miss_aud[:5]}')
     if miss_img:

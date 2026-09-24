@@ -1,0 +1,379 @@
+{
+  "schema_version": "1.0",
+  "unit": "U2",
+  "grade": "1A",
+  "title": "My first class",
+  "topic": "What do teachers say in class?",
+  "grammar_rule": "imperative",
+  "phonics": {
+    "level": "none",
+    "note": "起点册，无语音重点"
+  },
+  "abilities": [
+    {
+      "id": "A1",
+      "desc": "I can understand classroom instructions.",
+      "training_segments": [
+        "S2",
+        "S3"
+      ],
+      "check": {
+        "type": "listen_do",
+        "items": "听指令做动作：Show me your pencil. / Open your book.",
+        "pass_rule": ">=3 of 4",
+        "retrain_segment": "S2"
+      }
+    },
+    {
+      "id": "A2",
+      "desc": "I can say school things.",
+      "training_segments": [
+        "S1"
+      ],
+      "check": {
+        "type": "listen_point",
+        "items": "指图说出 pencil / book",
+        "pass_rule": "说对即可",
+        "retrain_segment": "S1"
+      }
+    }
+  ],
+  "segments": [
+    {
+      "id": "S0",
+      "type": "map",
+      "scene": {
+        "image": "g1u2_s0_main.png",
+        "image_prompt": "扁平卡通暖色调小学教室全景，老师在前面讲课，学生坐在课桌前，桌上有铅笔和书，圆角白底卡图风格，无文字",
+        "hotspots": [
+          {
+            "id": "H1",
+            "text": "Good morning!",
+            "zh": "早上好！",
+            "audio": "g1u2_s0_h01.mp3",
+            "image": "g1u2_s0_h01.png",
+            "image_prompt": "老师和学生早上打招呼，暖色调扁平卡通，圆角白底，无文字"
+          },
+          {
+            "id": "H2",
+            "text": "Show me your pencil.",
+            "zh": "把你的铅笔举给我看。",
+            "audio": "g1u2_s0_h02.mp3",
+            "image": "g1u2_s0_h02.png",
+            "image_prompt": "学生举铅笔，暖色调扁平卡通，圆角白底，无文字"
+          },
+          {
+            "id": "H3",
+            "text": "Open your book.",
+            "zh": "打开你的书。",
+            "audio": "g1u2_s0_h03.mp3",
+            "image": "g1u2_s0_h03.png",
+            "image_prompt": "学生打开书，暖色调扁平卡通，圆角白底，无文字"
+          },
+          {
+            "id": "H4",
+            "text": "Close your book.",
+            "zh": "合上你的书。",
+            "audio": "g1u2_s0_h04.mp3",
+            "image": "g1u2_s0_h04.png",
+            "image_prompt": "学生合上书，暖色调扁平卡通，圆角白底，无文字"
+          }
+        ]
+      }
+    },
+    {
+      "id": "S1",
+      "type": "vocab",
+      "title": "文具",
+      "groups": [
+        {
+          "name": "school_things",
+          "cards": [
+            {
+              "word": "pencil",
+              "zh": "铅笔",
+              "audio": "g1u2_v_pencil.mp3",
+              "image": "g1u2_v_pencil.png",
+              "image_prompt": "一支铅笔，扁平卡通，圆角白底词卡，无文字"
+            },
+            {
+              "word": "book",
+              "zh": "书",
+              "audio": "g1u2_v_book.mp3",
+              "image": "g1u2_v_book.png",
+              "image_prompt": "一本书，扁平卡通，圆角白底词卡，无文字"
+            },
+            {
+              "word": "paper",
+              "zh": "纸",
+              "audio": "g1u2_v_paper.mp3",
+              "image": "g1u2_v_paper.png",
+              "image_prompt": "一张纸，扁平卡通，圆角白底词卡，无文字"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "S2",
+      "type": "pattern",
+      "title": "举给我看",
+      "pattern": "Show me your ___.",
+      "layers": {
+        "original": [
+          {
+            "id": "s2_orig01",
+            "text": "Show me your pencil.",
+            "zh": "把你的铅笔举给我看。",
+            "source": "textbook",
+            "audio": "g1u2_s2_orig01.mp3"
+          },
+          {
+            "id": "s2_orig02",
+            "text": "Show me your book.",
+            "zh": "把你的书举给我看。",
+            "source": "textbook",
+            "audio": "g1u2_s2_orig02.mp3"
+          }
+        ],
+        "complete": [
+          {
+            "id": "s2_comp01",
+            "text": "Show me your paper.",
+            "zh": "把你的纸举给我看。",
+            "tags": [
+              "replace:item"
+            ],
+            "audio": "g1u2_s2_comp01.mp3"
+          },
+          {
+            "id": "s2_comp02",
+            "text": "Show me your ruler.",
+            "zh": "把你的尺子举给我看。",
+            "tags": [
+              "extend:item"
+            ],
+            "audio": "g1u2_s2_comp02.mp3"
+          }
+        ],
+        "extend": [
+          {
+            "id": "s2_ext01",
+            "text": "Show me your crayon.",
+            "zh": "把你的蜡笔举给我看。",
+            "tags": [
+              "extend:item"
+            ],
+            "audio": "g1u2_s2_ext01.mp3"
+          }
+        ]
+      }
+    },
+    {
+      "id": "S3",
+      "type": "pattern",
+      "title": "打开/合上",
+      "pattern": "Open your ___. / Close your ___.",
+      "layers": {
+        "original": [
+          {
+            "id": "s3_orig01",
+            "text": "Open your book, please.",
+            "zh": "请打开你的书。",
+            "source": "textbook",
+            "audio": "g1u2_s3_orig01.mp3"
+          },
+          {
+            "id": "s3_orig02",
+            "text": "Close your book.",
+            "zh": "合上你的书。",
+            "source": "textbook",
+            "audio": "g1u2_s3_orig02.mp3"
+          }
+        ],
+        "complete": [
+          {
+            "id": "s3_comp01",
+            "text": "Open your pencil case.",
+            "zh": "打开你的铅笔盒。",
+            "tags": [
+              "replace:item"
+            ],
+            "audio": "g1u2_s3_comp01.mp3"
+          },
+          {
+            "id": "s3_comp02",
+            "text": "Close your eyes.",
+            "zh": "闭上眼睛。",
+            "tags": [
+              "extend:item"
+            ],
+            "audio": "g1u2_s3_comp02.mp3"
+          }
+        ],
+        "extend": [
+          {
+            "id": "s3_ext01",
+            "text": "Open the door.",
+            "zh": "开门。",
+            "tags": [
+              "extend:item"
+            ],
+            "audio": "g1u2_s3_ext01.mp3"
+          }
+        ]
+      }
+    },
+    {
+      "id": "S4",
+      "type": "pbl",
+      "title": "Make action cards",
+      "steps": [
+        {
+          "step": 1,
+          "desc": "Get ready. Pencil? Ready! Paper? Ready!"
+        },
+        {
+          "step": 2,
+          "desc": "Make your action cards."
+        },
+        {
+          "step": 3,
+          "desc": "Play with your partner. Show me your pencil, please."
+        }
+      ]
+    },
+    {
+      "id": "S5",
+      "type": "story",
+      "title": "Animal class",
+      "lines": [
+        {
+          "id": "s5_01",
+          "text": "Let's play teacher and students. OK!",
+          "zh": "我们来玩老师和学生吧。好！",
+          "audio": "g1u2_s5_01.mp3",
+          "image": "g1u2_s5_01.png",
+          "image_prompt": "小朋友扮老师站在讲台前，几个同学坐在课桌前看着他，暖色调扁平卡通，圆角白底，无文字"
+        },
+        {
+          "id": "s5_02",
+          "text": "Show me your pencil, please!",
+          "zh": "请把你的铅笔举给我看！",
+          "audio": "g1u2_s5_02.mp3",
+          "image": "g1u2_s5_02.png",
+          "image_prompt": "一个小学生举起铅笔，老师微笑看着，暖色调扁平卡通，圆角白底，无文字"
+        },
+        {
+          "id": "s5_03",
+          "text": "Open your book, please!",
+          "zh": "请打开你的书！",
+          "audio": "g1u2_s5_03.mp3",
+          "image": "g1u2_s5_03.png",
+          "image_prompt": "一个小学生翻开课本，老师点头，暖色调扁平卡通，圆角白底，无文字"
+        },
+        {
+          "id": "s5_04",
+          "text": "Show me your paper, please!",
+          "zh": "请把你的纸举给我看！",
+          "audio": "g1u2_s5_04.mp3",
+          "image": "g1u2_s5_04.png",
+          "image_prompt": "一个小学生举起一张白纸，老师微笑，暖色调扁平卡通，圆角白底，无文字"
+        },
+        {
+          "id": "s5_05",
+          "text": "Good morning, teacher. Good morning.",
+          "zh": "早上好，老师。早上好。",
+          "audio": "g1u2_s5_05.mp3",
+          "image": "g1u2_s5_05.png",
+          "image_prompt": "早上老师和学生们互相问好，大家挥手微笑，暖色调扁平卡通，圆角白底，无文字"
+        },
+        {
+          "id": "s5_06",
+          "text": "Open your book, please!",
+          "zh": "请打开你的书！",
+          "audio": "g1u2_s5_06.mp3",
+          "image": "g1u2_s5_06.png",
+          "image_prompt": "学生们一起翻开课本认真看，老师站在前面微笑，暖色调扁平卡通，圆角白底，无文字"
+        }
+      ]
+    },
+    {
+      "id": "S6",
+      "type": "check",
+      "title": "能力检验站",
+      "checks": [
+        {
+          "ability": "A1",
+          "type": "listen_do",
+          "desc": "听指令做动作：Show me your pencil. / Open your book."
+        },
+        {
+          "ability": "A2",
+          "type": "listen_point",
+          "desc": "指图说出 pencil / book"
+        }
+      ]
+    }
+  ],
+  "print_version": {
+    "worksheet_title": "一上 U2 天天见 · 练习小单",
+    "parts": [
+      {
+        "name": "Part 1 文具",
+        "instruction": "把文具和对应图片连起来",
+        "items": 3
+      },
+      {
+        "name": "Part 2 课堂指令",
+        "instruction": "把指令和对应动作连起来",
+        "items": 4
+      }
+    ],
+    "answer_sheet": true
+  },
+  "singalong": {
+    "original_song": {
+      "title": "Good Morning",
+      "audio": "song/song_vocal.wav",
+      "instrumental": "song/song_instrumental.wav",
+      "lyrics_json": "song/song.json"
+    },
+    "textbook_lyrics": {
+      "title": "Unit 2 Chant",
+      "type": "textbook_lyrics",
+      "chants": [
+        {
+          "id": "chant1",
+          "name": "Listen and Chant (p.11)",
+          "lines": [
+            {
+              "en": "Good morning, kids.",
+              "zh": "早上好，孩子们。"
+            },
+            {
+              "en": "Good morning, Miss.",
+              "zh": "早上好，老师。"
+            },
+            {
+              "en": "Hello, hello, hello.",
+              "zh": "你好，你好，你好。"
+            },
+            {
+              "en": "Show me your book.",
+              "zh": "把你的书举给我看。"
+            },
+            {
+              "en": "Show me your pencil.",
+              "zh": "把你的铅笔举给我看。"
+            },
+            {
+              "en": "I'm ready. Hooray!",
+              "zh": "我准备好了！太棒了！"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

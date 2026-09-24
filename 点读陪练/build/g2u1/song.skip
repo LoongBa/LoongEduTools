@@ -1,0 +1,6 @@
+song.skip — 原创整曲跳过标记（发布工具读取）
+
+单元: g2u1（二上 U1 Fun numbers and letters）
+原因: 现存原创歌「I Love My Family」为作废旧版（教材对齐修复），新歌名待生成 =「Numbers and Letters Song」。
+处理: 发布时跳过原创整曲（song_vocal/instrumental + song.json），保留教材歌词跟读。
+待补: 新歌 Suno 生成 → process_song.py 处理后删除本标记文件 → 重新发布该单元。

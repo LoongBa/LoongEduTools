@@ -1,9 +1,10 @@
 # 点读陪练 · 内容生产 SOP（标准操作流程）
 
-> 版本：v1.2
-> 更新：2026-09-22
-> 适用：从教材 PDF 到可发布内容包的完整生产流程（步骤 1-7）+ 在线/离线发布流程（步骤 8-10）+ 交付开闸（步骤 11）
+> 版本：v1.3
+> 更新：2026-09-25
+> 适用：从教材 PDF 到可发布内容包的完整生产流程（步骤 1-7）+ 在线/离线发布流程（步骤 8-10）+ 交付开闸（步骤 11）+ **多册批量发布 Runbook（步骤 12，V1.0 五册实测）**
 > 执行：OpenCode Agent / 本地脚本
+> v1.3 要点：新增「步骤 12 多册批量发布 Runbook」（就绪矩阵 / 资产补全 / 发布命令 / 验证清单 / 数据契约 / 歌曲可选规则）；发布工具新增 song.skip 支持 + check_ready 歌曲可选（WARN 不阻塞）
 
 ---
 
@@ -225,6 +226,8 @@ python src\distribute_assets.py
 - [ ] 音频文件大小 > 100B（非空）
 - [ ] 图片文件大小 > 10KB（非空）
 - [ ] 内容包 JSON 结构完整（abilities/segments/print_version）
+- [ ] **数据契约**：`grade` 匹配 `^\d[AB]?$`、`unit` 匹配 `^[Uu]?\d+$`（发布标签/徽标依赖，格式错静默出 U0/错册）
+- [ ] **image 必带 image_prompt**（踩坑：story 行有 image 无 prompt 会静默跳过生图 → 建议升为 ERROR 而非 WARN）
 
 **执行命令**（待实现）：
 ```powershell
@@ -278,7 +281,7 @@ Start-Process python -ArgumentList "src\publish_offline.py","-u","u01" `
 | # | 环节 | 说明 |
 |---|---|---|
 | 1 | 就绪校验 | 内容包 + audio/image 与引用一一对应 + 对齐表「交付」标记（不齐 exit 3） |
-| 2 | 素材入 public | audio `.mp3.mp3` 双后缀**归一为单后缀**；配图 PNG→WebP；content.json；点唱台 wav→mp3 |
+| 2 | 素材入 public | audio `.mp3.mp3` 双后缀**归一为单后缀**；配图 PNG→WebP；content.json；点唱台 wav→mp3（**存在 `build\<unit>\song.skip` 时跳过原创整曲、保留教材跟读**） |
 | 3 | manifest → public | 扫 `public/units/*/content.json`（`gen_catalog` 构建期读取；`CATALOG_UNITS` 过滤内联） |
 | 4 | IP 头像压缩 | `public/ip/*.png` → `public/ip/webp/`（512px） |
 | 5 | WebH5 构建 | `pnpm build`，env `CATALOG_UNITS=u01,u02` 指定本次嵌入单元 |
@@ -370,6 +373,100 @@ Start-Process python -ArgumentList "src\publish_offline.py","-u","u01" `
 
 ---
 
+### 步骤 12：多册批量发布 Runbook（★ 从单单元走向多册量产）
+
+> **背景**：四上 U1-U2 首发（V0.9.3）验证了单册发布；本步骤把「资产补全 → 歌曲判定 → 发布 → 验证 → 看板」固化为**可复制流程**，支持一上/二上/三上/五上/六上等任意册 U1-U2 连续发布。
+> **实测**：2026-09-25 一次性发布五册 U1-02（一上 4.58MB / 二上 2.74MB / 三上 5.08MB / 五上 2.71MB / 六上 2.82MB，全部 audit PASS）。
+
+#### 12.1 发布前置：资产就绪矩阵
+
+**命令**：`python src\check_assets_status.py` —— 输出每单元「音频(完/总) / 图片(完/总) / 状态」。
+
+**就绪门槛**：目标单元必须全部 **✅ 全齐**（音频 100% + 图片 100%）。有任何 🟡 部分，先做 12.2 资产补全，不得带缺发布。
+
+**注意**：`check_assets_status` 的「缺」不含歌曲（歌曲可选，见 12.3）；但含 `song/song_vocal.wav` 这类路径引用——无歌曲单元会报歌曲缺失，属预期，**不阻塞**（publish_offline `check_ready` 已改为歌曲 WARN）。
+
+#### 12.2 资产补全三件套（scoped，只动目标单元）
+
+| 缺项 | 工具 | 命令 |
+|---|---|---|
+| 音频未分发（_assets 有货） | `distribute_unit()`（src/distribute_assets.py） | 临时脚本 import 后对目标包逐个调用；**勿跑全量 main()**（会波及非目标单元） |
+| 音频根本没生成 | `LoongMediaTools/音频批量生成工具/tts_batch.py` | 从内容包提取缺的 name+text → `--list` 小清单 → `--out build\<unit>\assets\audio`；phonics 字母组文本规则 = `"{letter}, {word}"`（如 `Aa, apple`），words 数组则 `", ".join(words)` |
+| 图片缺失（内容包有 image 无 image_prompt） | **先补 prompt 再生成** | ① 给内容包 story/… 行补 `image_prompt`（画风：`暖色调扁平卡通，圆角白底，无文字`；描述动作不写句子；人物一致性）② `python src\fill_missing_images.py --units g1u2,g2u2`（`--units` 限定单元，scoped 不碰其他单元） |
+
+> ⚠️ **踩坑记录**：批量生产期 story 行普遍「有 image 无 image_prompt」→ 生图静默跳过 → 单元 🟡 部分。修复：补 prompt + `fill_missing_images.py --units` 定向补齐。**QA 应将「image 无 image_prompt」从 WARN 升为 ERROR**（见 §12.5 数据契约）。
+
+#### 12.3 歌曲判定与 song.skip（原创歌曲可选规则）
+
+**规则**：单元可无原创歌曲发布；判定表：
+
+| 情形 | 处理 |
+|---|---|
+| 有有效原创歌（song.json + vocal/instrumental 在 `build\<unit>\assets\song\`） | 正常同步进包（自动 wav→mp3） |
+| 原创歌**作废**（设计稿标「需要重新生成」） | 建 `build\<unit>\song.skip` 标记文件 → 发布跳过原创整曲，**保留教材跟读**；新歌生成后删标记重发 |
+| 完全无歌曲素材（无 assets/song 目录） | 无需处理，发布自动跳过并 WARN |
+
+**song.skip 标记文件**（publish_offline.py `sync_unit_song` 读取）：内容写明「单元/原因/待补新歌名」；例：
+```
+song.skip — 原创整曲跳过标记（发布工具读取）
+单元: g1u2（一上 U2 My first class）
+原因: 现存原创歌「Good Morning」为作废旧版，新歌待生成 =「My First Class」
+待补: 新歌 Suno 生成 → process_song.py 处理后删除本标记 → 重新发布该单元
+```
+
+**发布工具配套改动**（v1.3 已实施）：
+- `check_ready`：`song/…` 路径引用缺失 → **WARN 不阻塞**（歌曲可选）
+- `sync_unit_song`：存在 `build\<unit>\song.skip` → 跳过原创整曲，保留 textbook 跟读
+
+**发布文案**：无原创歌单元在对外文案中不宣传「点唱台原创儿歌」，仅保留教材跟读能力。
+
+#### 12.4 发布命令与验证
+
+**命令**（同册 U1+U2 合并，一次构建）：
+```powershell
+cd F:\LoongBa_Git\LoongEduTools\点读陪练
+python src\publish_offline.py -u g1u1,g1u2   # 一上 U1-02
+python src\publish_offline.py -u g2u1,g2u2   # 二上 U1-02
+python src\publish_offline.py -u g3u1,g3u2   # 三上 U1-02
+python src\publish_offline.py -u g5u1,g5u2   # 五上 U1-02
+python src\publish_offline.py -u g6u1,g6u2   # 六上 U1-02
+```
+
+**产出**：`RedTools\publish\学科\点读陪练_<年级>上Unit01-02_离线版.zip` + 同名解压目录（file:// 直开 index.html 测试）。
+
+**验证清单**（脚本已自动跑 8-11 步，发布后人工复核）：
+- [ ] zip ≤10MiB；每单文件 ≤10MB（最大 js 为 base64 音频，2-3MB 合理）
+- [ ] 文件数 ≤200（五册实测 49-69 项）
+- [ ] zip 内**无** .mp3/.wav/.ogg（全 base64 化）
+- [ ] `units\` 只含本次发布的单元目录
+- [ ] 歌曲：有歌单元有 `song\song.json`；song.skip 单元只有 `song\textbook_lyrics.json` + `song\textbook\`（无 song.json）；无歌单元无 `song\` 目录
+- [ ] audit PASS（WARN 仅限 >2MiB base64 js，属合理代价不阻塞）
+
+#### 12.5 数据契约（发布工具静默陷阱）
+
+发布工具 `write_manifest`/`release_name` 依赖内容包字段，格式错会**静默产出错误标签/徽标**：
+
+| 字段 | 要求 | 错误后果 |
+|---|---|---|
+| `grade` | `^\d[AB]?$`（如 `3A`、`5A`） | 缺失/格式错 → grade_label 空 → 前端 `gradeLabelFor()` 静默回落「四年级上」硬编码 |
+| `unit` | `^[Uu]?\d+$`（如 `U1`，勿写 `G3U1`/`g3u1`） | regex 不匹配 → `no=0` → 徽标显示「U0」 |
+
+**QA 建议**：`publish_offline.py` 或 `qa_check.py` 增加断言：grade 匹配 `^\d[AB]?$`、unit 匹配 `^[Uu]?\d+$`，把静默错误变构建失败（待落地）。
+
+**前端零改动**：WebH5 是 manifest 驱动（`gen_catalog.mjs` 构建期内联 + `loadCatalog()` 运行时覆盖 `UNIT_ROWS`），新增单元/册次**纯素材 + publish_offline.py 即可，无需改前端代码**（u01Content.ts 仅作降级兜底，勿为其建新文件）。
+
+#### 12.6 版本与看板回写
+
+| 动作 | 说明 |
+|---|---|
+| WebH5 `package.json` version | 每发布一批新册，`1.0.0` → 递增（1.0.1、1.0.2…），并在「关于」页可见 |
+| git tag | 打 tag（`点读陪练-vX.Y.Z`）**必须另行征得用户同意**（AGENTS.md 规则） |
+| `docs/开发进度看板.md` | 点读陪练行更新「WebH5 应用」状态 + 已发布册次；活跃项同步 |
+| `docs/内容设计清单_全册进度看板.md` | 对应册次音频/图片列更新 ✅ |
+| `docs/日常工作对齐表.md` | 对应单元交付列 ✅ + 对齐记录一行 |
+
+---
+
 ## 三、目录结构总览
 
 ```
@@ -435,8 +532,12 @@ Start-Process python -ArgumentList "src\publish_offline.py","-u","u01" `
 | 资产文件名不匹配 | 以内容包 JSON 中的 audio/image 字段为准 |
 | 离线包有文件超 10MB | 检查是否混入未压缩 PNG 源图；跑 `publish_offline.py` 会 exit 2 提示超限文件 |
 | 单元目录里音频 404 | 确认音频在 `public/units/<机读名>/audio/`（机器名 u01，非中文名）；合并打包时勿改名 units 目录 |
-| WebH5 合并打包后歌曲/单元不显示 | 单元数据在 `u01Content.ts` 静态快照中，新增单元需先同步适配层与 `UNIT_ROWS` |
+| 打包后歌曲/单元不显示 | 确认 `public/units/<机读名>/content.json` 已生成 + `CATALOG_UNITS` 包含该单元；单元列表由 manifest 动态生成（**勿再改 u01Content.ts/UNIT_ROWS**，仅作降级兜底） |
 | pnpm 供应链校验拦截 | `WebH5/pnpm-workspace.yaml` 已配 `minimumReleaseAge: 0` + `onlyBuiltDependencies: [esbuild]`；勿移除 |
+| 单元资产 🟡 部分（缺图/缺音频） | 先跑 `check_assets_status.py` 看缺什么：音频在 `_assets/audio` 未分发 → `distribute_unit()` scoped 分发；图片缺 prompt → 补 image_prompt 后 `fill_missing_images.py --units <单元>` 定向生成 |
+| 发布报「缺音频 song/song_vocal.wav」 | 歌曲为可选素材：无歌单元属预期 WARN（v1.3 起不阻塞）；作废歌单元建 `song.skip` 跳过原创整曲 |
+| 发布后包内单元徽标显示 U0 / 册次错 | 内容包 `unit` 字段格式错（须 `U1` 非 `G3U1`）或 `grade` 字段缺失（须 `3A`）；修内容包后重发 |
+| 新增册次发布要不要改前端 | **不需要**：WebH5 manifest 驱动，`publish_offline.py -u` 一条命令自动接 catalog；前端零改动 |
 
 ---
 
@@ -451,13 +552,14 @@ Start-Process python -ArgumentList "src\publish_offline.py","-u","u01" `
 - [ ] 步骤 5：批量生图（run_image_gen.py）
 - [ ] 步骤 6：资产分发（distribute_assets.py）
 - [ ] 步骤 7：QA 校验（qa_check.py）
-- [ ] 步骤 8：WebH5 数据接入（u01Content.ts 适配层 + UNIT_ROWS）
+- [ ] 步骤 8：WebH5 数据接入（**新单元零改动**；manifest 自动发现，u01Content.ts 勿动）
 - [ ] 步骤 9：一键离线发布（publish_offline.py，可后台运行）
 - [ ] 步骤 10：合并打包 + 合规验证（单文件 ≤10MB）
 - [ ] 步骤 11：更新对齐表与进度看板（★ 交付开闸）
+- [ ] 步骤 12：多册批量发布 Runbook（就绪矩阵 → 资产补全 → 歌曲判定 → 发布 → 验证 → 看板）
 
 > 发布标准：离线 zip 单文件 ≤10MB（脚本自动校验）；在线 dist 部署 Web 服务器即可。
 
 ---
 
-*SOP v1.2（新增步骤 11：交付开闸） · 2026-09-22*
+*SOP v1.3（新增步骤 12 多册批量发布 Runbook + song.skip 歌曲可选规则 + 数据契约 QA） · 2026-09-25*

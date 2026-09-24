@@ -1,0 +1,596 @@
+{
+  "schema_version": "1.0",
+  "unit": "U2",
+  "grade": "5A",
+  "title": "My feelings",
+  "topic": "How do people get along?",
+  "grammar_rule": "adj_feeling",
+  "phonics": {
+    "level": "phonics",
+    "pattern": "ee/ea",
+    "words": [
+      "sheep",
+      "bee",
+      "see",
+      "meet",
+      "tea",
+      "team",
+      "free",
+      "eat"
+    ]
+  },
+  "abilities": [
+    {
+      "id": "A1",
+      "desc": "I can talk about different feelings.",
+      "training_segments": [
+        "S1",
+        "S2"
+      ],
+      "check": {
+        "type": "oral_produce",
+        "items": "看图说出情绪：excited/worried/angry/sad/happy",
+        "pass_rule": ">=4 of 5",
+        "retrain_segment": "S1"
+      }
+    },
+    {
+      "id": "A2",
+      "desc": "I can help other people with their problems.",
+      "training_segments": [
+        "S3"
+      ],
+      "check": {
+        "type": "oral_produce",
+        "items": "给出建议：You can ... / You need to ...",
+        "pass_rule": ">=2 of 3",
+        "retrain_segment": "S3"
+      }
+    },
+    {
+      "id": "A3",
+      "desc": "I can read an email about feelings and talk about it.",
+      "training_segments": [
+        "S6"
+      ],
+      "check": {
+        "type": "read_retell",
+        "items": "复述 Jim 的问题和 Mike 的建议",
+        "pass_rule": "说清问题+建议即可",
+        "retrain_segment": "S6"
+      }
+    },
+    {
+      "id": "A4",
+      "desc": "I can write a sentence using words with ee or ea.",
+      "training_segments": [
+        "S5"
+      ],
+      "check": {
+        "type": "listen_write",
+        "items": "听写 ee/ea 单词：sheep/bee/see/tea",
+        "pass_rule": ">=3 of 4",
+        "retrain_segment": "S5"
+      }
+    }
+  ],
+  "segments": [
+    {
+      "id": "S0",
+      "type": "map",
+      "scene": {
+        "image": "g5u2_s0_main.png",
+        "image_prompt": "扁平卡通暖色调情绪表情墙，墙上贴着各种表情的脸：开心/难过/生气/担心/兴奋，圆角白底卡图风格，无文字",
+        "hotspots": [
+          {
+            "id": "H1",
+            "text": "You look sad. What's the matter?",
+            "zh": "你看起来很难过。怎么了？",
+            "audio": "g5u2_s0_h01.mp3",
+            "image": "g5u2_s0_h01.png",
+            "image_prompt": "难过的小朋友，暖色调扁平卡通，圆角白底，无文字"
+          },
+          {
+            "id": "H2",
+            "text": "I'm so worried!",
+            "zh": "我好担心啊！",
+            "audio": "g5u2_s0_h02.mp3",
+            "image": "g5u2_s0_h02.png",
+            "image_prompt": "担心的小朋友，暖色调扁平卡通，圆角白底，无文字"
+          },
+          {
+            "id": "H3",
+            "text": "You can talk to your parents.",
+            "zh": "你可以和爸爸妈妈聊聊。",
+            "audio": "g5u2_s0_h03.mp3",
+            "image": "g5u2_s0_h03.png",
+            "image_prompt": "小朋友和家长聊天，暖色调扁平卡通，圆角白底，无文字"
+          },
+          {
+            "id": "H4",
+            "text": "Don't worry. We can help.",
+            "zh": "别担心。我们可以帮忙。",
+            "audio": "g5u2_s0_h04.mp3",
+            "image": "g5u2_s0_h04.png",
+            "image_prompt": "朋友们互相帮助，暖色调扁平卡通，圆角白底，无文字"
+          }
+        ]
+      }
+    },
+    {
+      "id": "S1",
+      "type": "vocab",
+      "title": "情绪",
+      "groups": [
+        {
+          "name": "feelings",
+          "cards": [
+            {
+              "word": "excited",
+              "zh": "兴奋的",
+              "audio": "g5u2_v_excited.mp3",
+              "image": "g5u2_v_excited.png",
+              "image_prompt": "兴奋表情，扁平卡通，圆角白底词卡，无文字"
+            },
+            {
+              "word": "worried",
+              "zh": "担心的",
+              "audio": "g5u2_v_worried.mp3",
+              "image": "g5u2_v_worried.png",
+              "image_prompt": "担心表情，扁平卡通，圆角白底词卡，无文字"
+            },
+            {
+              "word": "angry",
+              "zh": "生气的",
+              "audio": "g5u2_v_angry.mp3",
+              "image": "g5u2_v_angry.png",
+              "image_prompt": "生气表情，扁平卡通，圆角白底词卡，无文字"
+            },
+            {
+              "word": "sad",
+              "zh": "难过的",
+              "audio": "g5u2_v_sad.mp3",
+              "image": "g5u2_v_sad.png",
+              "image_prompt": "难过表情，扁平卡通，圆角白底词卡，无文字"
+            },
+            {
+              "word": "happy",
+              "zh": "开心的",
+              "audio": "g5u2_v_happy.mp3",
+              "image": "g5u2_v_happy.png",
+              "image_prompt": "开心表情，扁平卡通，圆角白底词卡，无文字"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "S2",
+      "type": "pattern",
+      "title": "问情绪",
+      "pattern": "You look ___. / What's the matter?",
+      "layers": {
+        "original": [
+          {
+            "id": "s2_orig01",
+            "text": "Hi, Mike. You look sad. What's the matter?",
+            "zh": "嗨，迈克。你看起来很难过。怎么了？",
+            "source": "textbook",
+            "audio": "g5u2_s2_orig01.mp3"
+          },
+          {
+            "id": "s2_orig02",
+            "text": "I'm so worried!",
+            "zh": "我好担心啊！",
+            "source": "textbook",
+            "audio": "g5u2_s2_orig02.mp3"
+          },
+          {
+            "id": "s2_orig03",
+            "text": "You look worried.",
+            "zh": "你看起来很担心。",
+            "source": "textbook",
+            "audio": "g5u2_s2_orig03.mp3"
+          }
+        ],
+        "complete": [
+          {
+            "id": "s2_comp01",
+            "text": "You look angry.",
+            "zh": "你看起来很生气。",
+            "tags": [
+              "replace:feeling"
+            ],
+            "audio": "g5u2_s2_comp01.mp3"
+          },
+          {
+            "id": "s2_comp02",
+            "text": "I feel happy.",
+            "zh": "我觉得很开心。",
+            "tags": [
+              "replace:feeling"
+            ],
+            "audio": "g5u2_s2_comp02.mp3"
+          },
+          {
+            "id": "s2_comp03",
+            "text": "What's wrong?",
+            "zh": "怎么了？",
+            "tags": [
+              "replace:question"
+            ],
+            "audio": "g5u2_s2_comp03.mp3"
+          }
+        ],
+        "extend": [
+          {
+            "id": "s2_ext01",
+            "text": "You look excited.",
+            "zh": "你看起来很兴奋。",
+            "tags": [
+              "extend:feeling"
+            ],
+            "audio": "g5u2_s2_ext01.mp3"
+          },
+          {
+            "id": "s2_ext02",
+            "text": "I feel sad.",
+            "zh": "我觉得很难过。",
+            "tags": [
+              "extend:feeling"
+            ],
+            "audio": "g5u2_s2_ext02.mp3"
+          },
+          {
+            "id": "s2_ext03",
+            "text": "Are you OK?",
+            "zh": "你还好吗？",
+            "tags": [
+              "extend:question"
+            ],
+            "audio": "g5u2_s2_ext03.mp3"
+          }
+        ]
+      }
+    },
+    {
+      "id": "S3",
+      "type": "pattern",
+      "title": "给建议",
+      "pattern": "You can ___. / You need to ___.",
+      "layers": {
+        "original": [
+          {
+            "id": "s3_orig01",
+            "text": "You can talk to your parents.",
+            "zh": "你可以和爸爸妈妈聊聊。",
+            "source": "textbook",
+            "audio": "g5u2_s3_orig01.mp3"
+          },
+          {
+            "id": "s3_orig02",
+            "text": "You can ask your teacher for help.",
+            "zh": "你可以找老师帮忙。",
+            "source": "textbook",
+            "audio": "g5u2_s3_orig02.mp3"
+          },
+          {
+            "id": "s3_orig03",
+            "text": "You need to listen to your friends.",
+            "zh": "你需要倾听朋友的想法。",
+            "source": "textbook",
+            "audio": "g5u2_s3_orig03.mp3"
+          }
+        ],
+        "complete": [
+          {
+            "id": "s3_comp01",
+            "text": "You can share ideas.",
+            "zh": "你可以分享想法。",
+            "tags": [
+              "replace:action"
+            ],
+            "audio": "g5u2_s3_comp01.mp3"
+          },
+          {
+            "id": "s3_comp02",
+            "text": "You can help each other.",
+            "zh": "你们可以互相帮助。",
+            "tags": [
+              "replace:action"
+            ],
+            "audio": "g5u2_s3_comp02.mp3"
+          },
+          {
+            "id": "s3_comp03",
+            "text": "It's important to talk.",
+            "zh": "沟通很重要。",
+            "tags": [
+              "replace:sentence"
+            ],
+            "audio": "g5u2_s3_comp03.mp3"
+          }
+        ],
+        "extend": [
+          {
+            "id": "s3_ext01",
+            "text": "You can take a deep breath.",
+            "zh": "你可以深呼吸。",
+            "tags": [
+              "extend:action"
+            ],
+            "audio": "g5u2_s3_ext01.mp3"
+          },
+          {
+            "id": "s3_ext02",
+            "text": "You can play with your friend.",
+            "zh": "你可以和朋友一起玩。",
+            "tags": [
+              "extend:action"
+            ],
+            "audio": "g5u2_s3_ext02.mp3"
+          },
+          {
+            "id": "s3_ext03",
+            "text": "Don't be afraid.",
+            "zh": "别害怕。",
+            "tags": [
+              "extend:sentence"
+            ],
+            "audio": "g5u2_s3_ext03.mp3"
+          }
+        ]
+      }
+    },
+    {
+      "id": "S4",
+      "type": "pbl",
+      "title": "Make a feelings book",
+      "steps": [
+        {
+          "step": 1,
+          "desc": "How are the children feeling?"
+        },
+        {
+          "step": 2,
+          "desc": "Talk to Mike, Amy or John."
+        },
+        {
+          "step": 3,
+          "desc": "Make your feelings book. What makes me angry? What can I do?"
+        },
+        {
+          "step": 4,
+          "desc": "Share your book. When I feel angry, I want to ... I can ..."
+        }
+      ]
+    },
+    {
+      "id": "S5",
+      "type": "phonics",
+      "title": "ee / ea",
+      "level": "phonics",
+      "letter_groups": [
+        {
+          "pattern": "ee",
+          "words": [
+            "sheep",
+            "bee",
+            "see",
+            "meet",
+            "free"
+          ],
+          "audio": "g5u2_ph_ee.mp3",
+          "image": "g5u2_ph_ee.png"
+        },
+        {
+          "pattern": "ea",
+          "words": [
+            "tea",
+            "team",
+            "eat"
+          ],
+          "audio": "g5u2_ph_ea.mp3",
+          "image": "g5u2_ph_ea.png"
+        }
+      ],
+      "blending": [
+        "sheep",
+        "bee",
+        "see",
+        "tea",
+        "eat",
+        "meet"
+      ]
+    },
+    {
+      "id": "S6",
+      "type": "story",
+      "title": "Benjy's first snow",
+      "lines": [
+        {
+          "id": "s6_01",
+          "text": "It's snowing. I'm so excited!",
+          "zh": "下雪了！我好兴奋！",
+          "audio": "g5u2_s6_01.mp3",
+          "image": "g5u2_s6_01.png",
+          "image_prompt": "窗外正飘着大雪，一个孩子兴奋地趴在窗边看，暖色调扁平卡通，圆角白底，无文字"
+        },
+        {
+          "id": "s6_02",
+          "text": "Benjy looks worried. This is his first snow!",
+          "zh": "本吉看起来很担心。这是他第一次见到雪！",
+          "audio": "g5u2_s6_02.mp3",
+          "image": "g5u2_s6_02.png",
+          "image_prompt": "小狗蹲在窗边，歪着头担心地看着窗外的雪，暖色调扁平卡通，圆角白底，无文字"
+        },
+        {
+          "id": "s6_03",
+          "text": "Don't be afraid. It's important to try new things!",
+          "zh": "别害怕。尝试新事物很重要！",
+          "audio": "g5u2_s6_03.mp3",
+          "image": "g5u2_s6_03.png",
+          "image_prompt": "孩子蹲下来轻轻抚摸小狗，温柔地安慰它，暖色调扁平卡通，圆角白底，无文字"
+        },
+        {
+          "id": "s6_04",
+          "text": "He needs to exercise. Let's play with him.",
+          "zh": "他需要活动一下。我们和他一起玩吧。",
+          "audio": "g5u2_s6_04.mp3",
+          "image": "g5u2_s6_04.png",
+          "image_prompt": "孩子在雪地里抛雪球，小狗好奇地看着他，暖色调扁平卡通，圆角白底，无文字"
+        },
+        {
+          "id": "s6_05",
+          "text": "He's happy now. He likes the snow.",
+          "zh": "他现在开心了。他喜欢雪。",
+          "audio": "g5u2_s6_05.mp3",
+          "image": "g5u2_s6_05.png",
+          "image_prompt": "小狗在雪地里开心地跑跳，孩子在一旁笑着，暖色调扁平卡通，圆角白底，无文字"
+        },
+        {
+          "id": "s6_06",
+          "text": "Don't worry. We can play in the snow again tomorrow!",
+          "zh": "别担心。我们明天还可以玩雪！",
+          "audio": "g5u2_s6_06.mp3",
+          "image": "g5u2_s6_06.png",
+          "image_prompt": "孩子和小狗在雪地里玩耍，夕阳下约定明天再玩雪，暖色调扁平卡通，圆角白底，无文字"
+        }
+      ]
+    },
+    {
+      "id": "S7",
+      "type": "check",
+      "title": "能力检验站",
+      "checks": [
+        {
+          "ability": "A1",
+          "type": "oral_produce",
+          "desc": "看图说出情绪：excited/worried/angry/sad/happy"
+        },
+        {
+          "ability": "A2",
+          "type": "oral_produce",
+          "desc": "给出建议：You can ... / You need to ..."
+        },
+        {
+          "ability": "A3",
+          "type": "read_retell",
+          "desc": "复述 Jim 的问题和 Mike 的建议"
+        },
+        {
+          "ability": "A4",
+          "type": "listen_write",
+          "desc": "听写 ee/ea 单词：sheep/bee/see/tea"
+        }
+      ]
+    }
+  ],
+  "print_version": {
+    "worksheet_title": "五上 U2 天天见 · 练习小单",
+    "parts": [
+      {
+        "name": "Part 1 情绪词汇",
+        "instruction": "把情绪词和对应表情连起来",
+        "items": 5
+      },
+      {
+        "name": "Part 2 问情绪",
+        "instruction": "看图，把句子补全：You look ...",
+        "items": 4
+      },
+      {
+        "name": "Part 3 给建议",
+        "instruction": "选词填空：You can ... / You need to ...",
+        "items": 4
+      },
+      {
+        "name": "Part 4 ee/ea 发音",
+        "instruction": "圈出 ee/ea 发音的单词",
+        "items": 4
+      }
+    ],
+    "answer_sheet": true
+  },
+  "singalong": {
+    "original_song": {
+      "title": "",
+      "audio": "song/song_vocal.wav",
+      "instrumental": "song/song_instrumental.wav",
+      "lyrics_json": "song/song.json",
+      "status": "pending"
+    },
+    "textbook_lyrics": {
+      "title": "Unit Chant",
+      "type": "textbook_lyrics",
+      "chants": [
+        {
+          "id": "chant1",
+          "name": "Appendix Song: My friend Sam is angry",
+          "lines": [
+            {
+              "en": "My friend Sam is angry.",
+              "zh": "我的朋友山姆生气了。"
+            },
+            {
+              "en": "Yes, he is, he is.",
+              "zh": "是的，他是。"
+            },
+            {
+              "en": "My friend Sam is sad. Oh yes, he is.",
+              "zh": "我的朋友山姆很难过，哦是的。"
+            },
+            {
+              "en": "My friend Sam's dog is sick.",
+              "zh": "山姆的狗生病了。"
+            },
+            {
+              "en": "His dad's away.",
+              "zh": "他爸爸不在家。"
+            },
+            {
+              "en": "He's having a horrible day.",
+              "zh": "他今天过得很糟糕。"
+            },
+            {
+              "en": "My friend Sam's so unhappy.",
+              "zh": "我的朋友山姆很不开心。"
+            },
+            {
+              "en": "Yes, he is, he is.",
+              "zh": "是的，他是。"
+            },
+            {
+              "en": "My friend Sam is happy again.",
+              "zh": "我的朋友山姆又开心了。"
+            },
+            {
+              "en": "Yes, he is, he is.",
+              "zh": "是的，他是。"
+            },
+            {
+              "en": "My friend Sam's excited. Oh yes, he is.",
+              "zh": "我的朋友山姆很兴奋，哦是的。"
+            },
+            {
+              "en": "My friend Sam's dog is well.",
+              "zh": "山姆的狗好了。"
+            },
+            {
+              "en": "His dad's come home to play.",
+              "zh": "他爸爸回家陪他玩了。"
+            },
+            {
+              "en": "He's having a great day.",
+              "zh": "他今天过得很棒。"
+            },
+            {
+              "en": "Sam is very happy. Yes, he is, he is.",
+              "zh": "山姆很开心，是的。"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
