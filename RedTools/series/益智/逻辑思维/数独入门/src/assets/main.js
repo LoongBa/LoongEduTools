@@ -75,7 +75,8 @@
       best: {},                     // { "4": {ms,errors,hints,stars,date}, ... }
       recent: {},                   // 各难度最近用时 ms
       checkin: { dates: [], streak: 0 },
-      history: []                   // 滚动 30 条 {date,level,ms,errors,hints,stars}
+      history: [],                  // 滚动 30 条 {date,level,ms,errors,hints,stars}
+      cur: null                     // 断局快照（v1.2）：未完成对局，{level,N,givensCount,puzzle,solution,given,pencils,undoStack,hints,errors,selected,penMode,ms,startStamp}
     };
   }
   function loadStore() {
@@ -88,6 +89,7 @@
           if (!obj.recent) { obj.recent = {}; }
           if (!obj.checkin) { obj.checkin = { dates: [], streak: 0 }; }
           if (!obj.history) { obj.history = []; }
+          if (!obj.cur) { obj.cur = null; }
           if (obj.history.length > 30) { obj.history = obj.history.slice(-30); }
           return obj;
         }
@@ -102,6 +104,86 @@
   }
   var store = loadStore();
   saveStore(); // 初始化写入
+
+  /* ---------- 断局恢复（v1.2）：state 快照 ↔ store.cur ---------- */
+  function saveCur() {
+    if (state.won) { return; } // 已通关：不覆盖断局快照（onWin 已 clearCur）
+    // 计时基线冻结：state.ms 存累计毫秒，startStamp 记录本次落盘时间点，恢复时续算
+    state.ms = performance.now() - state.startMs;
+    var pens = [];
+    var i;
+    for (i = 0; i < state.pencils.length; i++) { pens.push(state.pencils[i].slice()); }
+    var undos = [];
+    for (i = 0; i < state.undoStack.length; i++) {
+      undos.push({ i: state.undoStack[i].i, val: state.undoStack[i].val,
+                   pen: state.undoStack[i].pen ? state.undoStack[i].pen.slice() : null });
+    }
+    store.cur = {
+      level: state.level, N: state.N, givens: state.givens, givensCount: state.givensCount,
+      puzzle: state.puzzle.slice(), solution: state.solution.slice(), given: state.given.slice(),
+      pencils: pens, undoStack: undos,
+      hints: state.hints, errors: state.errors, selected: state.selected,
+      penMode: state.penMode, won: false,
+      ms: state.ms, startStamp: Date.now()
+    };
+    saveStore();
+  }
+  function clearCur() {
+    if (store.cur) { store.cur = null; saveStore(); }
+  }
+  function countFilled(cur) {
+    var c = 0;
+    var i;
+    for (i = 0; i < cur.puzzle.length; i++) {
+      if (cur.puzzle[i] !== 0 && !cur.given[i]) { c++; }
+    }
+    return c;
+  }
+  function isValidCur(cur) {
+    if (!cur || typeof cur !== 'object') { return false; }
+    var N = cur.N;
+    if (N !== 4 && N !== 6 && N !== 9) { return false; }
+    var size = N * N;
+    if (!cur.puzzle || cur.puzzle.length !== size) { return false; }
+    if (!cur.solution || cur.solution.length !== size) { return false; }
+    if (!cur.given || cur.given.length !== size) { return false; }
+    if (!cur.pencils || cur.pencils.length !== size) { return false; }
+    if (!Array.isArray(cur.undoStack)) { return false; }
+    if (typeof cur.hints !== 'number' || typeof cur.errors !== 'number') { return false; }
+    if (typeof cur.ms !== 'number' || typeof cur.startStamp !== 'number') { return false; }
+    return true;
+  }
+  function restoreCur() {
+    var cur = store.cur;
+    if (!isValidCur(cur)) { clearCur(); return false; }
+    state.level = cur.level;
+    state.N = cur.N;
+    state.givens = cur.givens;
+    state.givensCount = cur.givensCount;
+    state.puzzle = cur.puzzle.slice();
+    state.solution = cur.solution.slice();
+    state.given = cur.given.slice();
+    var pens = [];
+    var i;
+    for (i = 0; i < cur.pencils.length; i++) { pens.push(cur.pencils[i].slice()); }
+    state.pencils = pens;
+    var undos = [];
+    for (i = 0; i < cur.undoStack.length; i++) {
+      undos.push({ i: cur.undoStack[i].i, val: cur.undoStack[i].val,
+                   pen: cur.undoStack[i].pen ? cur.undoStack[i].pen.slice() : null });
+    }
+    state.undoStack = undos;
+    state.hints = cur.hints;
+    state.errors = cur.errors;
+    state.selected = cur.selected;
+    state.penMode = cur.penMode;
+    state.won = false;
+    state.playing = true;
+    // 计时续算：从保存点继续（startMs 重置为「当前时刻 - 已累计」）
+    state.ms = cur.ms;
+    state.startMs = performance.now() - cur.ms;
+    return true;
+  }
 
   /* ---------- 工具函数 ---------- */
   function clearNode(node) {
@@ -195,7 +277,13 @@
   /* ---------- 计时 ---------- */
   function startTimer() {
     stopTimer();
-    state.startMs = performance.now();
+    // 断局恢复续算：若已有累计 ms（restoreCur 设置），startMs 以累计值为基线；
+    // 否则从当前时刻起算（新局）
+    if (state.ms > 0) {
+      state.startMs = performance.now() - state.ms;
+    } else {
+      state.startMs = performance.now();
+    }
     state.timerId = setInterval(function () {
       if (!state.won && timerEl) {
         timerEl.textContent = '⏱ ' + fmtTime(performance.now() - state.startMs);
@@ -491,6 +579,7 @@
       ? '✏ 铅笔模式：点数字在格子里记候选数，再点一下取消'
       : '');
     syncPenBtn();
+    saveCur();
   }
 
   /* ---------- 交互 ---------- */
@@ -535,6 +624,7 @@
     sndClick();
     refreshCells();
     showMsg('');
+    saveCur();
   }
   function onNumTap(v) {
     sndClick();
@@ -563,6 +653,7 @@
       showMsg('');
       checkHintBtn();
       checkWin();
+      saveCur();
     } else {
       // 冲突：红闪 400ms，错误 +1，温和提示，不改变盘面
       state.puzzle[i] = cur;
@@ -571,6 +662,7 @@
       flashWrong(i);
       showMsg('行 / 列 / 宫里已经有这个数啦，换一个试试', true);
       updateErrorsUI();
+      saveCur(); // 错误计数也持久化（冲突后退出不影响下次继续）
     }
   }
   function eraseSelected() {
@@ -590,6 +682,7 @@
     refreshCells();
     checkHintBtn();
     showMsg('');
+    saveCur();
   }
   function undoLast() {
     if (state.won) { return; }
@@ -601,6 +694,7 @@
     refreshCells();
     checkHintBtn();
     showMsg('');
+    saveCur();
   }
   /* 提示：候选最少的空格 → 直接填该格正确解（保证提示正确）；
      若正确解当前被占（有格被填错），寻找其它正确解仍可放的空格；
@@ -646,6 +740,7 @@
     checkHintBtn();
     showMsg('提示：第 ' + (pick.r + 1) + ' 行第 ' + (pick.c + 1) + ' 列 填数字 ' + v);
     checkWin();
+    saveCur();
   }
 
   /* ---------- 通关 / 星级 / 最佳 ---------- */
@@ -704,6 +799,7 @@
     store.history.push({ date: fmtDate(new Date()), level: key, ms: ms, errors: errors, hints: hints, stars: stars });
     while (store.history.length > 30) { store.history.shift(); }
     doCheckin();
+    clearCur();   // 通关后断局快照作废
     saveStore();
     // 结算浮层
     var notes = [
@@ -742,6 +838,19 @@
     clearNode(viewEl);
     viewEl.appendChild(makeEl('div', 'page-title', '选择难度'));
     viewEl.appendChild(makeEl('div', 'home-hint', '点空格 → 选数字，每行每列每宫只出现一次，填满就过关！'));
+    // 断局恢复入口（v1.2）：有未完成对局时显示
+    if (store.cur && isValidCur(store.cur)) {
+      var lv = findLevel(store.cur.level);
+      var resumeBtn = makeEl('button', 'diff-btn resume-btn');
+      var resHead = makeEl('span', 'diff-head', '▶ 继续上次 · ' + lv.name + ' ' + lv.N + '×' + lv.N);
+      resumeBtn.appendChild(resHead);
+      var resSub = makeEl('span', 'diff-sub',
+        '已玩 ' + fmtTime(store.cur.ms) + ' 秒 · 已填 ' + countFilled(store.cur) + ' 格 · 错 ' + store.cur.errors + ' · 提示 ' + store.cur.hints);
+      resumeBtn.appendChild(resSub);
+      resumeBtn.setAttribute('aria-label', '继续上次未完成的数独对局');
+      resumeBtn.addEventListener('click', resumeGame);
+      viewEl.appendChild(resumeBtn);
+    }
     var list = makeEl('div', 'diff-list');
     for (var i = 0; i < LEVELS.length; i++) {
       (function (l) {
@@ -763,6 +872,7 @@
     renderHomeFooter();
   }
   function newRound(levelKey) {
+    clearCur(); // 新局生成：旧断局快照作废
     var lv = findLevel(levelKey);
     var g = SUDOKU.genPuzzle(lv.N, lv.givens);
     state.level = lv.key;
@@ -796,6 +906,17 @@
     renderGameView();
     renderGameFooter();
     startTimer(); // 计时从游戏页渲染开始（数独整局计时）
+  }
+  function resumeGame() {
+    // 断局恢复：从 store.cur 还原并续玩
+    if (!SUDOKU) {
+      viewEl.textContent = '算法模块缺失，请检查 solver.js';
+      return;
+    }
+    if (!restoreCur()) { showDifficultyView(); return; }
+    renderGameView();
+    renderGameFooter();
+    startTimer();
   }
   function backToDifficulty() {
     hideOverlay();
