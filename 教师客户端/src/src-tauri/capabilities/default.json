@@ -1,12 +1,16 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "教师客户端主窗口与内容窗口能力",
-  "windows": ["main", "content"],
+  "description": "教师客户端主窗口/内容窗口/计时浮层能力",
+  "windows": ["main", "content", "timer-overlay"],
   "permissions": [
     "core:default",
     "core:window:allow-is-fullscreen",
     "core:window:allow-set-fullscreen",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-set-focus",
+    "core:window:allow-set-always-on-top",
     "core:event:allow-emit",
     "core:event:allow-listen",
     "store:default",

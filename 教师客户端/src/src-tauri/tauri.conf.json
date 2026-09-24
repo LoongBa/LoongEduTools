@@ -27,6 +27,17 @@
         "visible": false,
         "fullscreen": true,
         "resizable": true
+      },
+      {
+        "label": "timer-overlay",
+        "url": "index.html#/overlay",
+        "visible": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "decorations": false,
+        "resizable": false,
+        "width": 320,
+        "height": 140
       }
     ],
     "security": {
