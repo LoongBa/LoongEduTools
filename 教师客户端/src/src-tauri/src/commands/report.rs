@@ -91,6 +91,41 @@ fn now_secs() -> u64 {
         .unwrap_or(0)
 }
 
+/// 纯聚合逻辑（不落盘、不联网）：记录一次 progress 到队列
+/// - seconds：距上次同包 progress 的间隔，封顶 MAX_SECONDS_DELTA 防灌水
+/// - runs：同包同日 +1；新条目入队并裁剪到 QUEUE_MAX_ENTRIES（丢最旧）
+fn apply_progress(q: &mut ReportQueue, package_id: &str, ts: u64) {
+    let day = day_from_ts(ts);
+    if let Some(prev) = q.last_ts.get(package_id) {
+        let delta = ts.saturating_sub(*prev);
+        if delta <= MAX_SECONDS_DELTA {
+            if let Some(e) = q
+                .usage
+                .iter_mut()
+                .find(|e| e.package_id == package_id && e.day == day)
+            {
+                e.seconds += delta;
+            }
+        }
+    }
+    q.last_ts.insert(package_id.to_string(), ts);
+
+    match q.usage.iter_mut().find(|e| e.package_id == package_id && e.day == day) {
+        Some(e) => e.runs += 1,
+        None => {
+            q.usage.push(UsageEntry {
+                package_id: package_id.to_string(),
+                runs: 1,
+                seconds: 0,
+                day,
+            });
+            while q.usage.len() > QUEUE_MAX_ENTRIES {
+                q.usage.remove(0);
+            }
+        }
+    }
+}
+
 /// 记录一次内容包使用（本地聚合，同步快返，不联网）
 #[tauri::command]
 pub fn report_progress(
@@ -101,43 +136,8 @@ pub fn report_progress(
         return Err("payload.package_id 为空".into());
     }
     let ts = payload.ts.unwrap_or_else(now_secs);
-    let day = day_from_ts(ts);
-
     let mut q = load_queue(&app);
-    // seconds 增量：距上次同包 progress 的间隔（封顶防灌水）
-    if let Some(prev) = q.last_ts.get(&payload.package_id) {
-        let delta = ts.saturating_sub(*prev);
-        if delta <= MAX_SECONDS_DELTA {
-            if let Some(e) = q
-                .usage
-                .iter_mut()
-                .find(|e| e.package_id == payload.package_id && e.day == day)
-            {
-                e.seconds += delta;
-            }
-        }
-    }
-    q.last_ts.insert(payload.package_id.clone(), ts);
-
-    // runs 聚合（同包同日 +1）
-    match q
-        .usage
-        .iter_mut()
-        .find(|e| e.package_id == payload.package_id && e.day == day)
-    {
-        Some(e) => e.runs += 1,
-        None => {
-            q.usage.push(UsageEntry {
-                package_id: payload.package_id.clone(),
-                runs: 1,
-                seconds: 0,
-                day,
-            });
-            while q.usage.len() > QUEUE_MAX_ENTRIES {
-                q.usage.remove(0);
-            }
-        }
-    }
+    apply_progress(&mut q, &payload.package_id, ts);
     save_queue(&app, &q)
 }
 
@@ -203,5 +203,85 @@ pub async fn report_flush(
             eprintln!("[report] 上报失败（静默，不阻断）: {e}");
             Ok(())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn day_from_ts_epoch_and_known_dates() {
+        assert_eq!(day_from_ts(0), "1970-01-01");
+        assert_eq!(day_from_ts(86400), "1970-01-02");
+        // 经典时间戳校验
+        assert_eq!(day_from_ts(1234567890), "2009-02-13");
+        assert_eq!(day_from_ts(1500000000), "2017-07-14");
+    }
+
+    #[test]
+    fn day_from_ts_leap_day() {
+        // 2020-02-29（闰日）与次日 2020-03-01
+        assert_eq!(day_from_ts(1582934400), "2020-02-29");
+        assert_eq!(day_from_ts(1583020800), "2020-03-01");
+    }
+
+    #[test]
+    fn first_progress_creates_entry() {
+        let mut q = ReportQueue::default();
+        apply_progress(&mut q, "u01", 1_000_000);
+        assert_eq!(q.usage.len(), 1);
+        assert_eq!(q.usage[0].runs, 1);
+        assert_eq!(q.usage[0].seconds, 0);
+        assert_eq!(q.usage[0].day, day_from_ts(1_000_000));
+        assert_eq!(q.last_ts.get("u01"), Some(&1_000_000));
+    }
+
+    #[test]
+    fn same_day_accumulates_runs_and_seconds() {
+        let mut q = ReportQueue::default();
+        apply_progress(&mut q, "u01", 1_000_000);
+        apply_progress(&mut q, "u01", 1_000_120);
+        apply_progress(&mut q, "u01", 1_000_420);
+        assert_eq!(q.usage.len(), 1);
+        assert_eq!(q.usage[0].runs, 3);
+        assert_eq!(q.usage[0].seconds, 120 + 300);
+    }
+
+    #[test]
+    fn seconds_delta_capped_at_max() {
+        let mut q = ReportQueue::default();
+        apply_progress(&mut q, "u01", 1_000_000);
+        // 间隔 10000 > 1800：seconds 不加，runs 仍 +1
+        apply_progress(&mut q, "u01", 1_010_000);
+        assert_eq!(q.usage[0].runs, 2);
+        assert_eq!(q.usage[0].seconds, 0);
+        // 间隔恰等于 1800：计入
+        apply_progress(&mut q, "u01", 1_011_800);
+        assert_eq!(q.usage[0].runs, 3);
+        assert_eq!(q.usage[0].seconds, MAX_SECONDS_DELTA);
+    }
+
+    #[test]
+    fn different_day_makes_new_entry() {
+        let mut q = ReportQueue::default();
+        apply_progress(&mut q, "u01", 1_000_000);
+        apply_progress(&mut q, "u01", 1_000_000 + 86400);
+        assert_eq!(q.usage.len(), 2);
+        assert_ne!(q.usage[0].day, q.usage[1].day);
+        // 跨日无同日条目，seconds 不累加到旧条目
+        assert_eq!(q.usage[1].seconds, 0);
+    }
+
+    #[test]
+    fn queue_capped_at_200_dropping_oldest() {
+        let mut q = ReportQueue::default();
+        for i in 0..(QUEUE_MAX_ENTRIES + 5) {
+            apply_progress(&mut q, &format!("pkg{i}"), 1_000_000);
+        }
+        assert_eq!(q.usage.len(), QUEUE_MAX_ENTRIES);
+        // 最旧的 5 条已丢弃，保留的是后 200 条
+        assert_eq!(q.usage[0].package_id, "pkg5");
+        assert_eq!(q.usage[QUEUE_MAX_ENTRIES - 1].package_id, "pkg204");
     }
 }
