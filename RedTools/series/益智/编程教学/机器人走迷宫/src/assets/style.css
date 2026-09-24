@@ -595,5 +595,4 @@ body {
 
 /* 序列中参数块引用 chip（🧩名(N)——(N) 浅紫小字可调暗示） */
 .cmd-chip.call.param-call { background: #f3e8fd; border-color: #c9a8e8; color: #722ed1; font-weight: 600; }
-.cmd-chip.call.param-call .call-param-txt { color: #a07bd1; font-weight: 400; }
 

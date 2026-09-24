@@ -1306,10 +1306,6 @@
     cmd.rep = next;
     renderSeq();
   }
-  function setRepFromIdx(i, rep) {
-    var cmd = state.cmds[i];
-    if (cmd) { cmd.rep = rep; }
-  }
   // v1.6 参数递增：1→2→3→…→9→1（steps 参数化，区别于 rep 的 4 上限）
   function cycleSteps(i) {
     if (state.execLock) { return; }
