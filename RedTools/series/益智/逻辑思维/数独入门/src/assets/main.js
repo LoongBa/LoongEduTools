@@ -838,6 +838,13 @@
     clearNode(viewEl);
     viewEl.appendChild(makeEl('div', 'page-title', '选择难度'));
     viewEl.appendChild(makeEl('div', 'home-hint', '点空格 → 选数字，每行每列每宫只出现一次，填满就过关！'));
+    // 规则教学入口（v1.3）：三步看懂行/列/宫规则
+    var teachBtn = makeEl('button', 'teach-btn');
+    teachBtn.appendChild(makeEl('span', 'teach-btn-head', '📖 规则教学'));
+    teachBtn.appendChild(makeEl('span', 'teach-btn-sub', '3 步看懂：行 · 列 · 宫不重复'));
+    teachBtn.setAttribute('aria-label', '打开规则教学，三步看懂数独规则');
+    teachBtn.addEventListener('click', openTeach);
+    viewEl.appendChild(teachBtn);
     // 断局恢复入口（v1.2）：有未完成对局时显示
     if (store.cur && isValidCur(store.cur)) {
       var lv = findLevel(store.cur.level);
@@ -961,6 +968,92 @@
     ov.appendChild(card);
     document.body.appendChild(ov);
     overlayEl = ov;
+  }
+
+  /* ---------- 规则教学（v1.3） ---------- */
+  // 4×4 演示盘（空格即「缺谁」引导题）：唯一解验证通过
+  var TEACH_BOARD = [1, 0, 3, 4, 3, 4, 0, 2, 2, 1, 4, 3, 4, 3, 2, 1];
+  var TEACH_STEPS = [
+    { t: '每一行', text: '每一行里，数字 1-4 只能出现一次。看看这一行，缺了哪个数字？', hl: [0, 1, 2, 3] },
+    { t: '每一列', text: '每一列里，也只能出现一次。这一列缺了哪个数字？', hl: [1, 5, 9, 13] },
+    { t: '每个宫', text: '每个粗线小方格（宫）里，也只能出现一次。这个宫里缺了哪个数字？', hl: [0, 1, 4, 5] },
+    { t: '开动小脑瓜', text: '找到缺的数字填进去，每行、每列、每宫都不重复，全部填对就过关啦！点「开始挑战」玩一局吧。', hl: null }
+  ];
+  var teachIdx = 0;
+  var teachEls = null;
+  function renderTeachBoard() {
+    var box = teachEls.board;
+    clearNode(box);
+    var step = TEACH_STEPS[teachIdx];
+    for (var i = 0; i < 16; i++) {
+      (function (idx) {
+        var r = Math.floor(idx / 4);
+        var c = idx % 4;
+        var cell = makeEl('div', 'teach-cell');
+        if (r % 2 === 0) { cell.className = 'teach-cell box-t'; }
+        if (c % 2 === 0) { cell.className = cell.className + ' box-l'; }
+        var v = TEACH_BOARD[idx];
+        if (v) {
+          cell.appendChild(makeEl('span', 'teach-num', '' + v));
+        } else {
+          cell.appendChild(makeEl('span', 'teach-q', '?'));
+        }
+        if (step.hl && step.hl.indexOf(idx) >= 0) { cell.className = cell.className + ' hl'; }
+        box.appendChild(cell);
+      })(i);
+    }
+  }
+  function showTeachStep() {
+    var st = TEACH_STEPS[teachIdx];
+    teachEls.title.textContent = st.t;
+    teachEls.text.textContent = st.text;
+    teachEls.next.textContent = teachIdx === TEACH_STEPS.length - 1 ? '开始挑战' : '下一步';
+    teachEls.prev.style.display = teachIdx === 0 ? 'none' : '';
+    renderTeachBoard();
+  }
+  function openTeach() {
+    teachIdx = 0;
+    var ov = makeEl('div', 'overlay');
+    var card = makeEl('div', 'overlay-card teach-card');
+    teachEls = {
+      title: makeEl('div', 'teach-title', ''),
+      text: makeEl('div', 'teach-text', ''),
+      board: makeEl('div', 'teach-board')
+    };
+    card.appendChild(teachEls.title);
+    card.appendChild(teachEls.text);
+    card.appendChild(teachEls.board);
+    var nav = makeEl('div', 'overlay-btns');
+    var prev = makeEl('button', 'btn-ghost', '上一步');
+    prev.setAttribute('aria-label', '上一步');
+    prev.addEventListener('click', function () {
+      if (teachIdx > 0) { teachIdx--; showTeachStep(); sndClick(); }
+    });
+    var next = makeEl('button', 'btn-main', '下一步');
+    next.setAttribute('aria-label', '下一步');
+    next.addEventListener('click', function () {
+      sndClick();
+      if (teachIdx < TEACH_STEPS.length - 1) {
+        teachIdx++;
+        showTeachStep();
+      } else {
+        hideOverlay();
+        teachEls = null;
+      }
+    });
+    var skip = makeEl('button', 'btn-ghost', '跳过');
+    skip.setAttribute('aria-label', '跳过教学');
+    skip.addEventListener('click', function () { sndClick(); hideOverlay(); teachEls = null; });
+    nav.appendChild(prev);
+    nav.appendChild(next);
+    nav.appendChild(skip);
+    card.appendChild(nav);
+    ov.appendChild(card);
+    document.body.appendChild(ov);
+    overlayEl = ov;
+    teachEls.prev = prev;
+    teachEls.next = next;
+    showTeachStep();
   }
 
   /* ---------- 打卡 ---------- */
