@@ -265,7 +265,7 @@ export default function ProfileView({ auth, onAuthChange, onGoLogin }: Props) {
       )}
 
       <p className="hint">
-        零采集：本壳不上传任何学生数据；上报仅含授权/使用状态白名单字段。
+        零采集：本客户端不上传任何学生数据；上报仅含授权/使用状态白名单字段。
       </p>
     </section>
   );

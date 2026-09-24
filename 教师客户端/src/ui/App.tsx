@@ -117,7 +117,7 @@ function App() {
           <span className="brand-mark">龙</span>
           <div>
             <div className="brand-name">龙爸乐学</div>
-            <div className="brand-sub">教师客户端 v0.1.0</div>
+            <div className="brand-sub">教师助手 v0.1.0</div>
           </div>
         </div>
         <nav>
@@ -309,7 +309,7 @@ function App() {
           <section>
             <h2>设置</h2>
             <dl className="kv">
-              <dt>壳版本</dt>
+              <dt>客户端版本</dt>
               <dd>0.1.0</dd>
               <dt>WebView2</dt>
               <dd>
@@ -333,7 +333,7 @@ function App() {
               <dd className="mono">{auth?.device_id || "-"}</dd>
             </dl>
             <p className="hint">
-              零采集：本壳不上传任何学生数据；进度仅存本地 config.json。
+              零采集：本客户端不上传任何学生数据；进度仅存本地 config.json。
             </p>
           </section>
         )}
