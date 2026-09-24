@@ -2,7 +2,7 @@ mod commands;
 mod state;
 mod webview2;
 
-use crate::commands::{package, recents, window};
+use crate::commands::{auth, license, package, recents, window};
 use crate::state::AppState;
 use tauri::Manager as _;
 
@@ -41,6 +41,18 @@ pub fn run() {
             recents::recents_set,
             window::toggle_fullscreen,
             window::exit_fullscreen,
+            // P1 认证/口令（A01 / D05 §4）
+            auth::auth_status,
+            auth::auth_sms_send,
+            auth::auth_sms_verify,
+            auth::auth_login_password,
+            auth::auth_logout,
+            auth::auth_refresh,
+            auth::auth_profile,
+            auth::auth_activate,
+            license::license_status,
+            license::license_renew,
+            license::license_bind_current,
             // WebView2 状态查询（前端启动时调用，决定是否弹引导）
             test_webview2,
         ])

@@ -1,0 +1,11 @@
+# 依赖（npm install 可再生）
+node_modules/
+# Wrangler 本地状态
+.wrangler/
+# 环境/密钥（不入库）
+.dev.vars
+.env
+.env.*
+# 构建产物
+dist/
+*.log

@@ -1,0 +1,26 @@
+# D03 §2.1 资源命名：Worker edu-teacher-api / D1 edu-teacher-db / R2 edu-teacher-pack / KV edu-teacher-cache
+# 本地 dev：npx wrangler d1 execute edu-teacher-db --local --file=migrations/0001_init.sql
+# 部署前：wrangler d1 create / kv:namespace create / r2 bucket create 后回填真实 id
+name = "edu-teacher-api"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+[vars]
+SMS_MOCK = "true"
+LICENSE_SIGN_KEY_ID = "license-sign-2026"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "edu-teacher-db"
+database_id = "local-dev-placeholder"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "local-dev-placeholder"
+
+[[r2_buckets]]
+binding = "R2_PACK"
+bucket_name = "edu-teacher-pack"
+
+# Secrets（wrangler secret put，不入库）：
+#   JWT_SECRET / LICENSE_SIGN_KEY / PKG_ADMIN_KEY / SMS_SECRET（可选）

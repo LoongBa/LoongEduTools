@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, ClassProgress, InstalledPackage } from "./api";
+import { AuthStatus, ClassProgress, InstalledPackage, api } from "./api";
+import DisciplineView from "./DisciplineView";
+import LoginView from "./LoginView";
+import ProfileView from "./ProfileView";
 import "./App.css";
 
-type View = "apps" | "quickstart" | "settings";
+type View = "apps" | "quickstart" | "discipline" | "profile" | "login" | "settings";
 
 function App() {
   const [view, setView] = useState<View>("apps");
@@ -11,6 +14,7 @@ function App() {
   const [wv2, setWv2] = useState<string | null | "checking">("checking");
   const [err, setErr] = useState<string | null>(null);
   const [loadingPkg, setLoadingPkg] = useState<string | null>(null);
+  const [auth, setAuth] = useState<AuthStatus | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -32,7 +36,18 @@ function App() {
       .testWebview2()
       .then((v) => setWv2(v))
       .catch(() => setWv2(null));
+    api
+      .authStatus()
+      .then(setAuth)
+      .catch(() => setAuth(null));
   }, [refresh]);
+
+  // 启动在线时静默刷新凭证（D01 §3.1；失败不阻断）
+  useEffect(() => {
+    if (auth?.state === "ok" && auth.api_configured && !auth.offline_grace) {
+      api.authRefresh().catch(() => {});
+    }
+  }, [auth?.state, auth?.api_configured, auth?.offline_grace]);
 
   async function openPackage(pkg: InstalledPackage) {
     setLoadingPkg(pkg.package_id);
@@ -54,6 +69,14 @@ function App() {
     await openPackage(pkg);
   }
 
+  function navClass(v: View): string {
+    return view === v ? "nav-item active" : "nav-item";
+  }
+
+  const profileLabel = auth?.logged_in
+    ? auth.teacher?.name || "我的"
+    : "登录";
+
   return (
     <div className="shell">
       <aside className="sidebar">
@@ -65,26 +88,19 @@ function App() {
           </div>
         </div>
         <nav>
-          <button
-            className={view === "apps" ? "nav-item active" : "nav-item"}
-            onClick={() => setView("apps")}
-          >
+          <button className={navClass("apps")} onClick={() => setView("apps")}>
             应用
           </button>
-          <button
-            className={
-              view === "quickstart" ? "nav-item active" : "nav-item"
-            }
-            onClick={() => setView("quickstart")}
-          >
+          <button className={navClass("quickstart")} onClick={() => setView("quickstart")}>
             一键开课
           </button>
-          <button
-            className={
-              view === "settings" ? "nav-item active" : "nav-item"
-            }
-            onClick={() => setView("settings")}
-          >
+          <button className={navClass("discipline")} onClick={() => setView("discipline")}>
+            纪律
+          </button>
+          <button className={navClass("profile")} onClick={() => setView("profile")}>
+            {profileLabel}
+          </button>
+          <button className={navClass("settings")} onClick={() => setView("settings")}>
             设置
           </button>
         </nav>
@@ -110,6 +126,47 @@ function App() {
             {err}（点击关闭）
           </div>
         )}
+        {auth?.state === "expired" && view !== "profile" && view !== "login" && (
+          <div className="banner warn" onClick={() => setView("login")}>
+            登录凭证已过期，请联网重新登录（点击前往）。
+          </div>
+        )}
+        {auth?.offline_grace && view !== "profile" && (
+          <div className="banner warn">
+            处于离线宽限中（7 天内有效），联网后将自动刷新凭证。
+          </div>
+        )}
+
+        {view === "login" && (
+          <LoginView
+            onLoggedIn={(s) => {
+              setAuth(s);
+              setView("profile");
+            }}
+            onSkip={() => setView("apps")}
+          />
+        )}
+
+        {view === "profile" && (
+          <ProfileView
+            auth={
+              auth ?? {
+                logged_in: false,
+                state: "anonymous",
+                offline_grace: false,
+                teacher: null,
+                expires_at: null,
+                last_online_at: null,
+                api_configured: false,
+                device_id: "",
+              }
+            }
+            onAuthChange={setAuth}
+            onGoLogin={() => setView("login")}
+          />
+        )}
+
+        {view === "discipline" && <DisciplineView />}
 
         {view === "apps" && (
           <section>
@@ -184,6 +241,14 @@ function App() {
               <dd>packages/ · packages-embedded/（exe 同级）</dd>
               <dt>本地配置</dt>
               <dd>config.json（exe 同级，U 盘跟随）</dd>
+              <dt>服务端</dt>
+              <dd>
+                {auth?.api_configured
+                  ? "已配置（config.json api_base）"
+                  : "P0 离线模式（未配置 api_base）"}
+              </dd>
+              <dt>设备指纹</dt>
+              <dd className="mono">{auth?.device_id || "-"}</dd>
             </dl>
             <p className="hint">
               零采集：本壳不上传任何学生数据；进度仅存本地 config.json。

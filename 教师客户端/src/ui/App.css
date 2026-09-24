@@ -270,3 +270,347 @@ code {
   font-size: 13px;
   margin-top: 14px;
 }
+
+/* ---------- P1 登录 ---------- */
+.tab-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.tab {
+  flex: 1;
+  max-width: 160px;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.tab.active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.login-panel {
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.field input,
+.field select {
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 15px;
+  background: #fff;
+}
+
+.field.checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.field.inline-field {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+
+.field.inline-field input {
+  width: 64px;
+  padding: 6px 8px;
+}
+
+.code-row {
+  display: flex;
+  gap: 8px;
+}
+
+.code-row input {
+  flex: 1;
+}
+
+.primary-btn {
+  padding: 12px 18px;
+  min-height: 48px;
+  border: none;
+  border-radius: 10px;
+  background: #2563eb;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primary-btn:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.primary-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.primary-btn.sm {
+  min-height: 36px;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.ghost-btn.inline {
+  width: auto;
+  display: inline-block;
+  padding: 8px 14px;
+  font-size: 13px;
+}
+
+.ghost-btn.danger {
+  border-color: #fca5a5;
+  color: #ef4444;
+}
+
+.btn-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.login-foot {
+  margin-top: 16px;
+}
+
+.qr-placeholder {
+  text-align: center;
+  padding: 12px;
+}
+
+.qr-box {
+  width: 160px;
+  height: 160px;
+  margin: 0 auto 10px;
+  border: 2px dashed #94a3b8;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.mono {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12px;
+}
+
+.confirm-row {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ---------- P1 纪律工具（R13） ---------- */
+.discipline .disc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.discipline .disc-head h2 {
+  margin: 0;
+}
+
+.disc-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.score-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.score-bar-track {
+  position: relative;
+  height: 28px;
+  background: #e2e8f0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.score-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f59e0b, #f97316);
+  transition: width 0.15s ease;
+}
+
+.score-bar-label {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2933;
+}
+
+.disc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.disc-group {
+  text-align: center;
+  padding: 16px;
+}
+
+.disc-group-name {
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.rename-input {
+  width: 100%;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 4px;
+  border: 1px solid #2563eb;
+  border-radius: 6px;
+}
+
+.disc-score {
+  font-size: 48px;
+  font-weight: 700;
+  color: #f97316;
+  margin: 8px 0 12px;
+  line-height: 1;
+}
+
+.disc-btns {
+  display: flex;
+  gap: 10px;
+}
+
+.score-btn {
+  flex: 1;
+  min-height: 72px;
+  border: none;
+  border-radius: 12px;
+  font-size: 28px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.08s;
+}
+
+.score-btn:active {
+  transform: scale(0.96);
+}
+
+.score-btn.plus {
+  background: #22c55e;
+  color: #fff;
+}
+
+.score-btn.plus:hover {
+  background: #16a34a;
+}
+
+.score-btn.minus {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.score-btn.minus:hover {
+  background: #cbd5e1;
+}
+
+.rank-card {
+  max-width: 420px;
+}
+
+.rank-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rank-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  background: #f8fafc;
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+.rank-no {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #2563eb;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.rank-list li:nth-child(1) .rank-no {
+  background: #f59e0b;
+}
+
+.rank-list li:nth-child(2) .rank-no {
+  background: #94a3b8;
+}
+
+.rank-list li:nth-child(3) .rank-no {
+  background: #b45309;
+}
+
+.rank-name {
+  flex: 1;
+  font-weight: 600;
+}
+
+.rank-score {
+  font-weight: 700;
+  color: #f97316;
+}
