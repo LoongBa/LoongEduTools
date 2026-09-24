@@ -461,3 +461,76 @@ body {
   flex: 0 0 auto;
   padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
 }
+
+/* ============================================================
+   v1.9 关卡编辑器样式
+   ============================================================ */
+
+/* 首页自建关卡卡片 */
+.custom-card { background: -webkit-linear-gradient(135deg, #ffd591, #ffc069); background: linear-gradient(135deg, #ffd591, #ffc069); }
+
+/* 关卡库列表 */
+.custom-wrap { max-width: 420px; margin: 0 auto; padding: 16px; }
+.custom-title { font-size: 20px; margin: 0 0 12px; color: #1f2329; }
+.custom-empty { font-size: 14px; color: #86909c; margin: 12px 0; }
+.custom-row {
+  display: -webkit-box; display: -webkit-flex; display: flex;
+  -webkit-box-align: center; -webkit-align-items: center; align-items: center;
+  -webkit-box-pack: justify; -webkit-justify-content: space-between; justify-content: space-between;
+  background: #fff; border: 1px solid #e5e6eb; border-radius: 10px;
+  padding: 10px 12px; margin-bottom: 8px;
+}
+.custom-info { -webkit-box-flex: 1; -webkit-flex: 1 1 auto; flex: 1 1 auto; min-width: 0; }
+.custom-name { font-size: 15px; color: #1f2329; }
+.custom-meta { font-size: 12px; color: #86909c; margin-top: 2px; }
+.custom-btns { display: -webkit-box; display: -webkit-flex; display: flex; -webkit-box-flex: 0; -webkit-flex: 0 0 auto; flex: 0 0 auto; }
+.custom-btns .btn { margin-left: 6px; }
+.custom-limit { font-size: 12px; color: #f53f3f; margin: 8px 0; }
+
+/* 编辑器 */
+.editor-wrap { max-width: 420px; margin: 0 auto; padding: 16px; }
+.editor-title { font-size: 20px; margin: 0 0 12px; color: #1f2329; }
+.editor-name-row { display: -webkit-box; display: -webkit-flex; display: flex; -webkit-box-align: center; -webkit-align-items: center; align-items: center; margin-bottom: 10px; }
+.editor-name-label { font-size: 14px; color: #4e5969; margin-right: 8px; -webkit-box-flex: 0; -webkit-flex: 0 0 auto; flex: 0 0 auto; }
+.editor-name-input {
+  -webkit-box-flex: 1; -webkit-flex: 1 1 auto; flex: 1 1 auto; min-width: 0;
+  font-size: 14px; padding: 6px 10px; border: 1px solid #c9cdd4; border-radius: 8px; color: #1f2329;
+}
+.editor-grid {
+  display: -ms-grid; display: grid;
+  width: 100%; margin: 0 auto 10px;
+  border: 1px solid #c9cdd4; border-radius: 8px; overflow: hidden;
+  -webkit-user-select: none; -moz-user-select: none; user-select: none;
+  touch-action: none;
+}
+.editor-cell {
+  position: relative; height: 0; padding-bottom: 100%;
+  background: #f0f2f5; border: 1px solid #e5e6eb;
+  -webkit-box-sizing: border-box; box-sizing: border-box;
+}
+.editor-cell.is-wall { background: #8a8f98; }
+.editor-cell.has-goal::after {
+  content: ''; position: absolute; left: 50%; top: 50%; width: 40%; height: 40%;
+  -webkit-transform: translate(-50%, -50%); transform: translate(-50%, -50%);
+  border: 2px solid #ff9c4a; border-radius: 50%; -webkit-box-sizing: border-box; box-sizing: border-box;
+}
+.editor-cell.has-box::before {
+  content: ''; position: absolute; left: 18%; top: 18%; width: 64%; height: 64%;
+  background: #b76a1a; border-radius: 4px; -webkit-box-sizing: border-box; box-sizing: border-box;
+}
+.editor-cell.has-box.has-goal::before { background: #d98a3a; }
+.editor-cell.has-player::before {
+  content: ''; position: absolute; left: 25%; top: 25%; width: 50%; height: 50%;
+  background: #3a7bd5; border-radius: 50%; -webkit-box-sizing: border-box; box-sizing: border-box;
+}
+.editor-cell.has-player.has-goal::before { background: #2f5cb0; }
+
+.editor-tools { display: -webkit-box; display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap; margin-bottom: 10px; }
+.editor-tools .btn { margin-right: 6px; margin-bottom: 4px; }
+.editor-tools .btn.active { background: #165dff; color: #fff; border-color: #165dff; }
+.editor-actions { display: -webkit-box; display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap; margin-bottom: 10px; }
+.editor-actions .btn { margin-right: 6px; margin-bottom: 4px; }
+.editor-feedback { font-size: 13px; margin: 8px 0; padding: 8px 10px; border-radius: 8px; background: #f2f3f5; color: #4e5969; }
+.editor-feedback.ok { background: #e8ffea; color: #00b42a; }
+.editor-feedback.miss { background: #ffece8; color: #f53f3f; }
+

@@ -41,6 +41,41 @@
   var store = loadStore();
   saveStore();
 
+  /* ---------- v1.9 自定义关卡库（关卡编辑器） ---------- */
+  // 存储：storage.set('customLevels') → localStorage 'redtools.jiqirenzoumi.customLevels'（无 .v1. 段）
+  function loadCustomLevels() {
+    var arr = LX_SHARED.storage.get('customLevels');
+    return (arr && Array.isArray(arr)) ? arr : [];
+  }
+  function saveCustomLevels(arr) {
+    LX_SHARED.storage.set('customLevels', arr);
+  }
+  function addCustomLevel(g, name) {
+    var arr = customLevels;
+    if (arr.length >= 20) { return null; }   // 上限 20 关
+    var item = {
+      id: Date.now() + '-' + Math.random().toString(36).slice(2, 5),
+      name: name || ('我的关卡 ' + (arr.length + 1)),
+      g: g,
+      createdAt: Date.now(),
+      solved: false
+    };
+    arr.push(item);
+    saveCustomLevels(arr);
+    return item.id;
+  }
+  function removeCustomLevel(id) {
+    customLevels = customLevels.filter(function (c) { return c.id !== id; });
+    saveCustomLevels(customLevels);
+  }
+  function markCustomSolved(idx) {
+    if (customLevels[idx]) {
+      customLevels[idx].solved = true;
+      saveCustomLevels(customLevels);
+    }
+  }
+  var customLevels = loadCustomLevels();
+
   /* ---------- 难度档（关卡区段） ---------- */
   var LEVELS_CFG = {
     easy:   { key: 'easy',   label: '简单', from: 0, to: 30 },    // 1-30 关（入门渐进）
@@ -107,8 +142,9 @@
   }
 
   /* ---------- XSB 解析（复用推箱子） ---------- */
-  function parseLevel(idx) {
-    var rows = window.LEVELS[idx].g;
+  /* v1.9 重构：parseLevel 接收 XSB 行数组 g（原 idx → window.LEVELS[idx].g；自定义关卡传 customLevels[idx].g） */
+  function parseLevel(g) {
+    var rows = g;
     var h = rows.length;
     var w = 0;
     for (var r = 0; r < h; r++) {
@@ -132,6 +168,7 @@
     return { w: w, h: h, walls: walls, goals: goals, boxes: boxes, player: player };
   }
   function bestPushes(idx) {
+    if (state.level === 'custom') { return null; }   // v1.9：自建关卡无最优步数基准（兜底 2★）
     var b = window.LEVELS[idx] && window.LEVELS[idx].b;
     return (typeof b === 'number') ? b : null;
   }
@@ -144,7 +181,454 @@
     return true;
   }
 
-  /* ---------- 渲染：顶栏 ---------- */
+  /* ============================================================
+     v1.9 关卡编辑器：可解性 BFS + 编辑器视图 + 自定义关卡库
+     ============================================================ */
+
+  /* ---------- 可解性校验（isLevelSolvable）----------
+     push-state BFS：状态 = (归一化玩家区域, 排序箱子集)
+     死锁剪枝：角死锁（箱在两墙夹角非目标）+ 边死锁（箱贴墙且沿墙方向无目标）
+     状态上限 20 万；超限返回 'unknown'（暂不确定，提示缩小关卡） */
+  var EDITOR_DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+  function isLevelSolvable(g) {
+    var lv = parseLevel(g);
+    var w = lv.w, h = lv.h;
+    var walls = lv.walls, goals = lv.goals;
+    var initBoxes = lv.boxes, initPlayer = lv.player;
+    var boxKeys = Object.keys(initBoxes).map(Number);
+    if (boxKeys.length === 0 || initPlayer < 0) { return 'invalid'; }   // 无箱/无玩家 → 不可校验
+    if (boxKeys.length > 3) { return 'invalid'; }                        // 编辑器限制 ≤3 箱
+    // 单箱也走主 BFS（push-state 状态 = 玩家区域 × 箱位置 ≈ 小，完整可靠；
+    // 单箱快速路径只能查直线滑到目标，漏掉「横推后再竖推」两步解 → 已移除）
+
+    var MAX_STATES = 200000;
+    var seen = {};
+    var queue = [];
+    var head = 0;
+    // 初始状态：玩家可达区（flood fill）+ 初始箱子集
+    var startRegion = reachableRegion(initPlayer, initBoxes, w, h, walls);
+    var startState = regionKey(startRegion) + '|' + boxKey(initBoxes);
+    seen[startState] = true;
+    queue.push({ region: startRegion, boxes: cloneBoxes(initBoxes) });
+    var seenCount = 1;
+
+    while (head < queue.length) {
+      if (seenCount > MAX_STATES) { return 'unknown'; }
+      var cur = queue[head++];
+      if (allBoxesOnGoals(cur.boxes, goals)) { return true; }
+      // 对每个箱子 × 4 方向尝试推动
+      var boxIdxArr = Object.keys(cur.boxes).map(Number);
+      for (var bi = 0; bi < boxIdxArr.length; bi++) {
+        var bidx = boxIdxArr[bi];
+        var bx = bidx % w, by = Math.floor(bidx / w);
+        for (var d = 0; d < 4; d++) {
+          var dx = EDITOR_DIRS[d][0], dy = EDITOR_DIRS[d][1];
+          // 玩家需在箱子推动反方向（箱子旁且可达）
+          var standIdx = bidx - dx - dy * w;   // 玩家站在箱子推动反侧
+          if (standIdx < 0 || standIdx >= w * h || walls[standIdx]) { continue; }
+          if (!cur.region[standIdx]) { continue; }   // 玩家不可达该站位 → 推不了
+          var toIdx = bidx + dx + dy * w;            // 箱子的落点
+          if (toIdx < 0 || toIdx >= w * h || walls[toIdx] || cur.boxes[toIdx]) { continue; }
+          if (isDeadlock(bidx, toIdx, w, h, walls, goals)) { continue; }   // 死锁剪枝
+          // 新状态：箱子移动，玩家到箱子原位
+          var nb = cloneBoxes(cur.boxes);
+          delete nb[bidx]; nb[toIdx] = true;
+          var newRegion = reachableRegion(bidx, nb, w, h, walls);
+          var key = regionKey(newRegion) + '|' + boxKey(nb);
+          if (!seen[key]) {
+            seen[key] = true; seenCount++;
+            queue.push({ region: newRegion, boxes: nb });
+          }
+        }
+      }
+    }
+    return false;   // 队列耗尽 → 不可解
+  }
+
+  function reachableRegion(player, boxes, w, h, walls) {
+    var region = {};
+    var queue = [player];
+    region[player] = true;
+    var head = 0;
+    while (head < queue.length) {
+      var cur = queue[head++];
+      var cx = cur % w, cy = Math.floor(cur / w);
+      for (var d = 0; d < 4; d++) {
+        var nx = cx + EDITOR_DIRS[d][0], ny = cy + EDITOR_DIRS[d][1];
+        var nIdx = ny * w + nx;
+        if (nx < 0 || nx >= w || ny < 0 || ny >= h) { continue; }
+        if (walls[nIdx] || boxes[nIdx]) { continue; }
+        if (!region[nIdx]) { region[nIdx] = true; queue.push(nIdx); }
+      }
+    }
+    return region;
+  }
+  function regionKey(region) {
+    return Object.keys(region).map(Number).sort(function (a, b) { return a - b; }).join(',');
+  }
+  function boxKey(boxes) {
+    return Object.keys(boxes).map(Number).sort(function (a, b) { return a - b; }).join(',');
+  }
+  function cloneBoxes(boxes) {
+    var nb = {};
+    for (var k in boxes) { if (Object.prototype.hasOwnProperty.call(boxes, k)) { nb[k] = true; } }
+    return nb;
+  }
+  function allBoxesOnGoals(boxes, goals) {
+    for (var k in boxes) {
+      if (Object.prototype.hasOwnProperty.call(boxes, k) && !goals[k]) { return false; }
+    }
+    return true;
+  }
+  /* 死锁剪枝：箱子落在死锁位且非目标 → 剪枝
+     仅保留【角死锁】（严格安全：两相邻方向都墙 = 箱子永不可再移动，必死锁）
+     边死锁检测已移除——沿墙延展逻辑在单箱滑动场景会误剪可达路径（假阴性比不剪更糟），
+     边界死锁由状态上限（20 万）兜底，宁可多搜也不误判 */
+  function isDeadlockCell(x, y, w, h, walls, goals) {
+    var idx = y * w + x;
+    if (goals[idx]) { return false; }   // 目标位不死锁
+    var hasWallUp = y === 0 || walls[(y - 1) * w + x];
+    var hasWallDown = y === h - 1 || walls[(y + 1) * w + x];
+    var hasWallLeft = x === 0 || walls[y * w + (x - 1)];
+    var hasWallRight = x === w - 1 || walls[y * w + (x + 1)];
+    // 角死锁：两相邻方向都有墙（90° 夹角）
+    if ((hasWallUp && hasWallLeft) || (hasWallUp && hasWallRight) ||
+        (hasWallDown && hasWallLeft) || (hasWallDown && hasWallRight)) { return true; }
+    return false;
+  }
+  function isDeadlock(bidx, toIdx, w, h, walls, goals) {
+    return isDeadlockCell(toIdx % w, Math.floor(toIdx / w), w, h, walls, goals);
+  }
+
+  /* ---------- 编辑器视图（viewEditor） ---------- */
+  // 编辑态：editCells[y*w+x] = { wall, goal, box, player } 四布尔层
+  var editCells = [];
+  var editW = 12, editH = 12;
+  var editTool = 'wall';       // wall/box/goal/player/eraser
+  var editDragging = false;
+  var editName = '';
+  var editId = null;           // 编辑已有关卡时的 id（新建为 null）
+
+  function viewCustomList() {
+    stopTimer();
+    renderHeader();
+    clearNode(viewEl);
+    var wrap = makeEl('div', 'custom-wrap');
+    wrap.appendChild(makeEl('h2', 'custom-title', '🛠 自建关卡'));
+    if (!customLevels.length) {
+      wrap.appendChild(makeEl('p', 'custom-empty', '还没有自建关卡，来设计一个吧！'));
+    }
+    customLevels.forEach(function (c, idx) {
+      var row = makeEl('div', 'custom-row');
+      var info = makeEl('div', 'custom-info');
+      info.appendChild(makeEl('div', 'custom-name', c.name + (c.solved ? ' ✅已解' : '')));
+      info.appendChild(makeEl('div', 'custom-meta', '创建 ' + fmtDate(c.createdAt) + ' · ' + c.g.length + ' 行'));
+      row.appendChild(info);
+      var btns = makeEl('div', 'custom-btns');
+      var editBtn = makeEl('button', 'btn btn-sm', '✏ 编辑');
+      editBtn.addEventListener('click', function () { openEditor(idx); });
+      btns.appendChild(editBtn);
+      var playBtn = makeEl('button', 'btn btn-sm btn-primary', '▶ 挑战');
+      playBtn.addEventListener('click', function () { startCustom(idx); });
+      btns.appendChild(playBtn);
+      var delBtn = makeEl('button', 'btn btn-sm btn-danger', '🗑');
+      delBtn.addEventListener('click', function () {
+        if (window.confirm('删除关卡「' + c.name + '」？')) {
+          removeCustomLevel(c.id);
+          viewCustomList();
+        }
+      });
+      btns.appendChild(delBtn);
+      row.appendChild(btns);
+      wrap.appendChild(row);
+    });
+    var newBtn = makeEl('button', 'btn btn-primary', '+ 新建关卡');
+    newBtn.addEventListener('click', function () { openEditor(-1); });
+    wrap.appendChild(newBtn);
+    if (customLevels.length >= 20) {
+      wrap.appendChild(makeEl('p', 'custom-limit', '⚠ 已达上限 20 关，删除后可再新建'));
+    }
+    var back = makeEl('button', 'btn', '‹ 返回首页');
+    back.addEventListener('click', function () { viewHome(); });
+    wrap.appendChild(back);
+    viewEl.appendChild(wrap);
+    renderFooter('');
+  }
+
+  function fmtDate(ts) {
+    var d = new Date(ts);
+    return (d.getMonth() + 1) + '月' + d.getDate() + '日';
+  }
+
+  /* 打开编辑器：idx>=0 编辑已有；idx=-1 新建 */
+  function openEditor(idx) {
+    stopTimer();
+    renderHeader();
+    clearNode(viewEl);
+    editId = (idx >= 0) ? customLevels[idx].id : null;
+    editName = (idx >= 0) ? customLevels[idx].name : '';
+    editCells = [];
+    // 新建：12×12 空盘；编辑：载入已有 g
+    if (idx >= 0) { loadGToCells(customLevels[idx].g); }
+    else { loadGToCells([]); }
+    renderEditor();
+  }
+
+  /* 载入 XSB 行数组 → editCells 四层 */
+  function loadGToCells(g) {
+    editCells = [];
+    for (var y = 0; y < editH; y++) {
+      for (var x = 0; x < editW; x++) {
+        editCells.push({ wall: false, goal: false, box: false, player: false });
+      }
+    }
+    if (!g || !g.length) { return; }
+    for (var r = 0; r < g.length; r++) {
+      var row = g[r];
+      for (var c = 0; c < row.length; c++) {
+        var ch = row.charAt(c);
+        if (c >= editW || r >= editH) { continue; }
+        var cell = editCells[r * editW + c];
+        if (ch === '#') { cell.wall = true; }
+        else if (ch === '$') { cell.box = true; }
+        else if (ch === '.') { cell.goal = true; }
+        else if (ch === '*') { cell.box = true; cell.goal = true; }
+        else if (ch === '@') { cell.player = true; }
+        else if (ch === '+') { cell.player = true; cell.goal = true; }
+      }
+    }
+  }
+
+  /* editCells → XSB 行数组（auto-trim 全空行/列） */
+  function cellsToG() {
+    var rows = [];
+    for (var y = 0; y < editH; y++) {
+      var row = '';
+      for (var x = 0; x < editW; x++) {
+        var c = editCells[y * editW + x];
+        if (c.wall) { row += '#'; }
+        else if (c.box && c.goal) { row += '*'; }
+        else if (c.box) { row += '$'; }
+        else if (c.goal && c.player) { row += '+'; }
+        else if (c.goal) { row += '.'; }
+        else if (c.player) { row += '@'; }
+        else { row += ' '; }
+      }
+      rows.push(row);
+    }
+    // auto-trim：去全空行 + 去全空列
+    rows = rows.filter(function (r) { return r.trim().length > 0; });
+    if (!rows.length) { return []; }
+    var minCol = editW, maxCol = 0;
+    rows.forEach(function (r) {
+      for (var i = 0; i < editW; i++) {
+        if (r.charAt(i) !== ' ') {
+          if (i < minCol) { minCol = i; }
+          if (i > maxCol) { maxCol = i; }
+        }
+      }
+    });
+    return rows.map(function (r) { return r.slice(minCol, maxCol + 1); });
+  }
+
+  function renderEditor() {
+    clearNode(viewEl);
+    var wrap = makeEl('div', 'editor-wrap');
+    wrap.appendChild(makeEl('h2', 'editor-title', '🛠 关卡编辑器'));
+    // 名称输入
+    var nameRow = makeEl('div', 'editor-name-row');
+    nameRow.appendChild(makeEl('label', 'editor-name-label', '名称:'));
+    var nameInput = makeEl('input', 'editor-name-input');
+    nameInput.type = 'text';
+    nameInput.maxLength = 12;
+    nameInput.value = editName || ('我的关卡 ' + (customLevels.length + 1));
+    nameInput.addEventListener('input', function () { editName = nameInput.value; });
+    nameRow.appendChild(nameInput);
+    wrap.appendChild(nameRow);
+    // 网格
+    var grid = makeEl('div', 'editor-grid');
+    grid.style.gridTemplateColumns = 'repeat(' + editW + ', 1fr)';
+    grid.addEventListener('pointerdown', function (ev) { ev.preventDefault(); });
+    for (var i = 0; i < editW * editH; i++) {
+      (function (ci) {
+        var cellEl = makeEl('div', 'editor-cell');
+        cellEl.dataset.idx = ci;
+        refreshEditorCell(cellEl, ci);
+        cellEl.addEventListener('pointerdown', function (ev) {
+          ev.preventDefault();
+          editDragging = true;
+          paintCell(ci);
+          try { cellEl.setPointerCapture(ev.pointerId); } catch (e) { /* 兼容 */ }
+        });
+        // click 兜底（辅助技术/JS 触发 .click() 只派发 click 不派发 pointerdown）
+        cellEl.addEventListener('click', function () {
+          paintCell(ci);
+        });
+        cellEl.addEventListener('pointermove', function (ev) {
+          if (!editDragging) { return; }
+          var el = document.elementFromPoint(ev.clientX, ev.clientY);
+          if (el && el.dataset && el.dataset.idx !== undefined) {
+            paintCell(Number(el.dataset.idx));
+          }
+        });
+        cellEl.addEventListener('pointerup', function () { editDragging = false; });
+        cellEl.addEventListener('pointercancel', function () { editDragging = false; });
+        grid.appendChild(cellEl);
+      })(i);
+    }
+    wrap.appendChild(grid);
+    // 工具条
+    var tools = makeEl('div', 'editor-tools');
+    var toolDefs = [
+      { id: 'wall', label: '🧱墙' }, { id: 'box', label: '📦箱' },
+      { id: 'goal', label: '🎯目标' }, { id: 'player', label: '🤖玩家' }, { id: 'eraser', label: '🧹橡皮' }
+    ];
+    toolDefs.forEach(function (t) {
+      var btn = makeEl('button', 'btn btn-sm' + (editTool === t.id ? ' active' : ''), t.label);
+      btn.addEventListener('click', function () {
+        editTool = t.id;
+        // 重绘工具条高亮
+        var btns = tools.querySelectorAll('.btn');
+        for (var i = 0; i < btns.length; i++) {
+          btns[i].classList.remove('active');
+        }
+        btn.classList.add('active');
+      });
+      tools.appendChild(btn);
+    });
+    wrap.appendChild(tools);
+    // 操作按钮
+    var actions = makeEl('div', 'editor-actions');
+    var checkBtn = makeEl('button', 'btn', '✓ 检查可解');
+    checkBtn.addEventListener('click', function () { doCheckSolvable(); });
+    actions.appendChild(checkBtn);
+    var saveBtn = makeEl('button', 'btn btn-primary', '💾 保存');
+    saveBtn.addEventListener('click', function () { doSaveCustom(); });
+    actions.appendChild(saveBtn);
+    var clearBtn = makeEl('button', 'btn', '↺ 清空');
+    clearBtn.addEventListener('click', function () {
+      if (window.confirm('清空当前编辑的盘面？')) {
+        loadGToCells([]);
+        renderEditor();
+      }
+    });
+    actions.appendChild(clearBtn);
+    wrap.appendChild(actions);
+    var feedback = makeEl('div', 'editor-feedback', '');
+    feedback.id = 'editor-feedback';
+    wrap.appendChild(feedback);
+    var back = makeEl('button', 'btn', '‹ 返回关卡库');
+    back.addEventListener('click', function () { viewCustomList(); });
+    wrap.appendChild(back);
+    viewEl.appendChild(wrap);
+    renderFooter('');
+  }
+
+  /* 刷新单个编辑器格（按四层状态渲染） */
+  function refreshEditorCell(el, ci) {
+    var c = editCells[ci];
+    var cls = 'editor-cell';
+    if (c.wall) { cls += ' is-wall'; }
+    else {
+      if (c.goal) { cls += ' has-goal'; }
+      if (c.box) { cls += ' has-box'; }
+      if (c.player) { cls += ' has-player'; }
+    }
+    el.className = cls;
+  }
+
+  /* 涂格：按分层语义 */
+  function paintCell(ci) {
+    var c = editCells[ci];
+    var el = document.querySelector('.editor-cell[data-idx="' + ci + '"]');
+    if (editTool === 'wall') {
+      c.wall = true; c.goal = false; c.box = false; c.player = false;
+    } else if (editTool === 'box') {
+      if (!c.wall) { c.box = true; }
+    } else if (editTool === 'goal') {
+      if (!c.wall) { c.goal = true; }
+    } else if (editTool === 'player') {
+      if (!c.wall) {
+        c.box = false;   // 玩家不能站在箱上（游戏语义：推箱后玩家到箱原位，箱移走）；移除箱层
+        // 唯一：清旧玩家
+        for (var i = 0; i < editCells.length; i++) {
+          if (editCells[i].player) {
+            editCells[i].player = false;
+            var elOld = document.querySelector('.editor-cell[data-idx="' + i + '"]');
+            if (elOld) { refreshEditorCell(elOld, i); }
+          }
+        }
+        c.player = true;
+      }
+    } else if (editTool === 'eraser') {
+      c.wall = false; c.goal = false; c.box = false; c.player = false;
+    }
+    if (el) { refreshEditorCell(el, ci); }
+  }
+
+  /* 校验盘面 → 可解性 */
+  function validateCustomLevels(g) {
+    var lv = parseLevel(g);
+    var pCount = 0, bCount = 0, gCount = 0;
+    for (var k in lv.boxes) { if (Object.prototype.hasOwnProperty.call(lv.boxes, k)) { bCount++; } }
+    for (var gk in lv.goals) { if (Object.prototype.hasOwnProperty.call(lv.goals, gk)) { gCount++; } }
+    if (lv.player < 0) { return { ok: false, msg: '请放 1 个机器人（🤖玩家）' }; }
+    if (bCount === 0) { return { ok: false, msg: '请至少放 1 个箱子（📦箱）' }; }
+    if (gCount === 0) { return { ok: false, msg: '请至少放 1 个目标（🎯目标）' }; }
+    if (bCount > 3) { return { ok: false, msg: '最多放 3 个箱子（可解性校验更可靠）' }; }
+    return { ok: true };
+  }
+
+  function doCheckSolvable() {
+    var g = cellsToG();
+    var v = validateCustomLevels(g);
+    var fb = document.getElementById('editor-feedback');
+    if (!v.ok) { fb.textContent = '😅 ' + v.msg; fb.className = 'editor-feedback miss'; return; }
+    var sol = isLevelSolvable(g);
+    if (sol === true) { fb.textContent = '✅ 可解！可以保存啦'; fb.className = 'editor-feedback ok'; }
+    else if (sol === false) { fb.textContent = '😅 目前无解——箱子推不到所有目标，调整一下？'; fb.className = 'editor-feedback miss'; }
+    else { fb.textContent = '⏳ 关卡较复杂，暂不确定是否可解（可先试试小关卡）'; fb.className = 'editor-feedback miss'; }
+  }
+
+  function doSaveCustom() {
+    var g = cellsToG();
+    var v = validateCustomLevels(g);
+    var fb = document.getElementById('editor-feedback');
+    if (!v.ok) { fb.textContent = '😅 ' + v.msg + '（保存前需通过校验）'; fb.className = 'editor-feedback miss'; return; }
+    var sol = isLevelSolvable(g);
+    if (sol !== true) {
+      fb.textContent = '😅 关卡不可解，不能保存——调整到可解再保存吧'; fb.className = 'editor-feedback miss';
+      return;
+    }
+    var name = (editName || '').trim() || ('我的关卡 ' + (customLevels.length + 1));
+    if (editId) {
+      // 更新已有
+      for (var i = 0; i < customLevels.length; i++) {
+        if (customLevels[i].id === editId) {
+          customLevels[i].g = g;
+          customLevels[i].name = name;
+          break;
+        }
+      }
+      saveCustomLevels(customLevels);
+    } else {
+      var id = addCustomLevel(g, name);
+      if (!id) { fb.textContent = '⚠ 已达上限 20 关，删除旧关后再保存'; fb.className = 'editor-feedback miss'; return; }
+    }
+    viewCustomList();
+  }
+
+  /* ---------- 自定义关卡练习（startCustom） ---------- */
+  function startCustom(idx) {
+    state.firstFail = null; state.absStep = 0; state.execLock = false;   // ① 复位调试状态
+    if (editStack.length) { closeEditCtx(); }                             // ② 关编辑区
+    state.level = 'custom'; state.levelIdx = -1; state.customIdx = idx;  // ③ 双态标记
+    state.cmds = []; state.finished = false;                              // ④ 清指令
+    loadLevelState(); renderGame();                                       // ⑤ 载盘+渲染
+    state.startMs = Date.now(); startTimer();                             // ⑥ 计时
+  }
+
+
   function renderHeader(title) {
     clearNode(headerEl);
     var brand = makeEl('div', 'header-brand');
@@ -188,6 +672,12 @@
       wrap.appendChild(card);
     });
 
+    var customCard = makeEl('button', 'level-card custom-card');
+    customCard.appendChild(makeEl('div', 'level-name', '🛠 自建关卡 (' + customLevels.length + ')'));
+    customCard.appendChild(makeEl('div', 'level-best', '设计自己的迷宫！'));
+    customCard.addEventListener('click', function () { viewCustomList(); });
+    wrap.appendChild(customCard);
+
     var checkinBtn = makeEl('button', 'btn btn-checkin', store.checkin.dates.indexOf(todayStr()) >= 0 ? '✅ 今日已打卡' : '📅 今日打卡');
     checkinBtn.addEventListener('click', function () { doCheckin(checkinBtn); });
     wrap.appendChild(checkinBtn);
@@ -228,7 +718,9 @@
     if (hist.length) {
       wrap.appendChild(makeEl('h3', 'parent-sub', '最近记录'));
       hist.forEach(function (h) {
-        wrap.appendChild(makeEl('div', 'parent-row small', h.date + ' · ' + (LEVELS_CFG[h.level] ? LEVELS_CFG[h.level].label : h.level) + ' · ' + h.stars + '★'));
+        // v1.9：custom 历史显示自建关卡名
+        var label = h.level === 'custom' ? ('自建关卡·' + (h.customName || '')) : (LEVELS_CFG[h.level] ? LEVELS_CFG[h.level].label : h.level);
+        wrap.appendChild(makeEl('div', 'parent-row small', h.date + ' · ' + label + ' · ' + h.stars + '★'));
       });
     }
     var back = makeEl('button', 'btn', '‹ 返回');
@@ -238,6 +730,8 @@
     clearBtn.addEventListener('click', function () {
       if (window.confirm('确定清除所有练习数据？此操作不可恢复。')) {
         LX_SHARED.storage.remove('v1');
+        LX_SHARED.storage.remove('customLevels');   // v1.9：一并清除自建关卡（B5）
+        customLevels = [];
         store = loadStore();
         saveStore();
         viewHome();
@@ -264,7 +758,9 @@
   }
 
   function loadLevelState() {
-    var lv = parseLevel(state.levelIdx);
+    // v1.9：custom 模式读自定义关卡 g 数组；内置关读 window.LEVELS[idx].g
+    var g = state.level === 'custom' ? customLevels[state.customIdx].g : window.LEVELS[state.levelIdx].g;
+    var lv = parseLevel(g);
     state.w = lv.w; state.h = lv.h;
     state.walls = lv.walls; state.goals = lv.goals;
     state.boxes = lv.boxes; state.player = lv.player;
@@ -314,7 +810,8 @@
     var back = makeEl('button', 'game-back', '‹ 返回');
     back.addEventListener('click', function () { viewHome(); });
     top.appendChild(back);
-    var lvEl = makeEl('div', 'game-prog', LEVELS_CFG[state.level].label + ' · 第 ' + (state.levelIdx + 1) + ' 关');
+    // v1.9：custom 模式显示自建关卡名
+    var lvEl = makeEl('div', 'game-prog', (state.level === 'custom' ? (customLevels[state.customIdx] ? customLevels[state.customIdx].name : '自建关卡') : LEVELS_CFG[state.level].label) + ' · 第 ' + (state.levelIdx + 1) + ' 关');
     lvEl.id = 'game-prog';
     top.appendChild(lvEl);
     var timerEl = makeEl('div', 'game-timer', '⏱ 00.0');
@@ -1005,8 +1502,20 @@
   function finishLevel() {
     // 星级：实际执行步数（循环展开）vs 最少推动数
     var steps = totalSteps(state.cmds);
-    var best = bestPushes(state.levelIdx);
     var stars = 1;
+    if (state.level === 'custom') {
+      // v1.9 custom 分支：不写 store.best/recent（避免污染 DEFAULT_STORE）；b=null 兜底 2★；标记 solved
+      stars = 2;
+      markCustomSolved(state.customIdx);
+      var recC = { date: todayStr(), level: 'custom', stars: stars, cmds: steps, levelIdx: -1, customName: customLevels[state.customIdx] ? customLevels[state.customIdx].name : '' };
+      store.history.push(recC);
+      store.history = store.history.slice(-100);
+      saveStore();
+      var fbC = document.getElementById('game-feedback');
+      if (fbC) { fbC.textContent += '（' + stars + '★，指令 ' + steps + ' 步）'; }
+      return;
+    }
+    var best = bestPushes(state.levelIdx);
     if (best !== null) {
       if (steps <= best * 1.5) { stars = 3; }
       else if (steps <= best * 2.5) { stars = 2; }
@@ -1031,6 +1540,12 @@
     // V1.4：状态复位（防残留锁）
     state.firstFail = null; state.absStep = 0; state.execLock = false;
     if (editStack.length) { closeEditCtx(); }
+    if (state.level === 'custom') {   // v1.9：自建关卡无下一关 → 直接结算
+      state.finished = true;
+      stopTimer();
+      renderResult();
+      return;
+    }
     var maxIdx = LEVELS_CFG[state.level].to - 1;
     if (state.levelIdx < maxIdx) {
       state.levelIdx += 1;
@@ -1062,7 +1577,9 @@
     clearNode(viewEl);
     var wrap = makeEl('div', 'result-wrap');
     wrap.appendChild(makeEl('h2', 'result-title', '🎉 完成练习！'));
-    wrap.appendChild(makeEl('div', 'result-sub', LEVELS_CFG[state.level].label + ' 全部关卡完成'));
+    // v1.9：custom 模式显示自建关卡名
+    var subLabel = state.level === 'custom' ? (customLevels[state.customIdx] ? customLevels[state.customIdx].name : '自建关卡') : LEVELS_CFG[state.level].label;
+    wrap.appendChild(makeEl('div', 'result-sub', subLabel + ' 全部关卡完成'));
     var best = store.best[state.level];
     if (best) {
       wrap.appendChild(makeEl('div', 'result-best', '最佳 ' + best.stars + '★ · 第 ' + best.level + ' 关'));
@@ -1072,10 +1589,10 @@
     checkinBtn.addEventListener('click', function () { doCheckin(checkinBtn); });
     wrap.appendChild(checkinBtn);
     var again = makeEl('button', 'btn btn-primary', '再练一次');
-    again.addEventListener('click', function () { startGame(state.level); });
+    again.addEventListener('click', function () { if (state.level === 'custom') { startCustom(state.customIdx); } else { startGame(state.level); } });
     wrap.appendChild(again);
-    var home = makeEl('button', 'btn', '返回首页');
-    home.addEventListener('click', function () { viewHome(); });
+    var home = makeEl('button', 'btn', state.level === 'custom' ? '返回关卡库' : '返回首页');
+    home.addEventListener('click', function () { if (state.level === 'custom') { viewCustomList(); } else { viewHome(); } });
     wrap.appendChild(home);
     viewEl.appendChild(wrap);
     renderFooter('');
@@ -1097,5 +1614,19 @@
   M.renderGame = renderGame;
   M.loadLevelState = loadLevelState;
   M.nextLevel = nextLevel;
+  M.viewCustomList = viewCustomList;
+  M.openEditor = openEditor;
+  M.startCustom = startCustom;
+  M.isLevelSolvable = isLevelSolvable;
+  M.paintCell = paintCell;
+  M.doCheckSolvable = doCheckSolvable;
+  M.doSaveCustom = doSaveCustom;
+  M.cellsToG = cellsToG;
+  M.customLevels = customLevels;
+  // v1.9：重载 customLevels（storage → 内存变量；供测试/调试/外部变更后刷新）
+  M.reloadCustomLevels = function () {
+    customLevels = loadCustomLevels();
+    return customLevels;
+  };
   window.M = M;
 })();
