@@ -847,8 +847,9 @@
     teachBtn.setAttribute('aria-label', '打开规则教学，三步看懂数独规则');
     teachBtn.addEventListener('click', openTeach);
     viewEl.appendChild(teachBtn);
-    // 技巧教学入口（v1.4）：教学关完成点亮徽章
+    // 技巧教学入口（v1.4）：教学关完成点亮徽章；locked 占位卡不在难度页展示
     for (var si = 0; si < SKILLS.length; si++) {
+      if (SKILLS[si].locked) { continue; }
       (function (s) {
         var skBtn = makeEl('button', 'teach-btn skill-btn');
         skBtn.appendChild(makeEl('span', 'teach-btn-head',
@@ -860,6 +861,13 @@
         viewEl.appendChild(skBtn);
       })(SKILLS[si]);
     }
+    // 徽章墙入口（v1.5）：查看所有技巧徽章点亮状态
+    var badgeBtn = makeEl('button', 'teach-btn badge-btn');
+    badgeBtn.appendChild(makeEl('span', 'teach-btn-head', '🏆 技巧徽章墙'));
+    badgeBtn.appendChild(makeEl('span', 'teach-btn-sub', '查看已点亮的技巧徽章'));
+    badgeBtn.setAttribute('aria-label', '打开技巧徽章墙');
+    badgeBtn.addEventListener('click', showBadgeWallView);
+    viewEl.appendChild(badgeBtn);
     // 断局恢复入口（v1.2）：有未完成对局时显示
     if (store.cur && isValidCur(store.cur)) {
       var lv = findLevel(store.cur.level);
@@ -892,6 +900,38 @@
     }
     viewEl.appendChild(list);
     renderHomeFooter();
+  }
+  function showBadgeWallView() {
+    // 徽章墙（v1.5）：每枚技巧一枚卡片——已点亮 ✅ / 可学习 🎯 / 锁定 🔒（占位）
+    hideOverlay();
+    stopTimer();
+    state.won = false;
+    state.playing = false;
+    renderHeader('技巧徽章墙');
+    clearNode(viewEl);
+    viewEl.appendChild(makeEl('div', 'page-title', '技巧徽章墙'));
+    viewEl.appendChild(makeEl('div', 'home-hint', '每个技巧学会后点亮一枚徽章'));
+    for (var bi = 0; bi < SKILLS.length; bi++) {
+      (function (s, idx) {
+        var lit = !!store.skills[s.key];
+        var head = lit ? '✅ ' + s.name : (s.locked ? '🔒 ' + s.name : '🎯 ' + s.name);
+        var sub = s.locked ? '即将上线' : (lit ? '徽章已点亮 · 可再练一次' : '去学习这个技巧');
+        var card = makeEl('button', 'teach-btn badge-card' + (s.locked ? ' locked' : ''));
+        card.appendChild(makeEl('span', 'teach-btn-head', head));
+        card.appendChild(makeEl('span', 'teach-btn-sub', sub));
+        card.setAttribute('aria-label', head + '，' + sub);
+        if (!s.locked) {
+          card.addEventListener('click', function () { openSkill(idx, 'badgewall'); });
+        }
+        viewEl.appendChild(card);
+      })(SKILLS[bi], bi);
+    }
+    // 徽章墙底部：返回难度（无计时器，直接回难度页）
+    var back = makeEl('button', 'btn-checkin', '← 返回');
+    back.setAttribute('aria-label', '返回难度选择');
+    back.style.marginTop = '4px';
+    back.addEventListener('click', showDifficultyView);
+    viewEl.appendChild(back);
   }
   function newRound(levelKey) {
     clearCur(); // 新局生成：旧断局快照作废
@@ -1086,7 +1126,35 @@
         { text: '再看右上这个宫：已经有 3、4、2，缺 1！点这个空格，再点数字 1。', cell: 6, num: 1, hl: [2, 3, 6, 7] }
       ],
       done: '太棒啦！你学会了「单宫排除」——看一个宫里缺哪个数，就填哪个！'
-    }
+    },
+    // 行列排除：solution 唯一性已验证——idx2 行/列均缺 3，idx7 行/列均缺 2，无分支
+    {
+      key: 'rowColElim',
+      name: '行列排除',
+      tip: '看这一行或这一列：已经有的数，缺哪个就填哪个',
+      N: 4,
+      board: [1, 2, 0, 4, 3, 4, 1, 0, 2, 1, 4, 3, 4, 3, 2, 1],
+      steps: [
+        { text: '看这一行（浅蓝横排）：已经有 1、2、4，缺 3！点这个空格，再点数字 3。', cell: 2, num: 3, hl: [0, 1, 2, 3] },
+        { text: '再看这一列（浅蓝竖列）：已经有 1、3、4，缺 2！点这个空格，再点数字 2。', cell: 7, num: 2, hl: [3, 7, 11, 15] }
+      ],
+      done: '太棒啦！你学会了「行列排除」——看一行或一列里缺哪个数，就填哪个！'
+    },
+    // 区块排除：solution 唯一性已验证——idx2 列缺 4 唯一可填，填后 idx7 宫/行只剩 3
+    {
+      key: 'blockElim',
+      name: '区块排除',
+      tip: '看一个宫：宫里缺两个数时，用行和列的线索判断每个空格填什么',
+      N: 4,
+      board: [2, 3, 0, 1, 4, 1, 2, 0, 1, 4, 3, 2, 3, 2, 1, 4],
+      steps: [
+        { text: '看这个宫（粗线框）：缺 3 和 4。右边的空格，它的竖列已经有 4 了，所以 4 只能放这里！点这个空格，再点数字 4。', cell: 2, num: 4, hl: [2, 3, 6, 7] },
+        { text: '剩下这个空格：宫里只剩 3 了！点它，再点数字 3。', cell: 7, num: 3, hl: [2, 3, 6, 7] }
+      ],
+      done: '太棒啦！你学会了「区块排除」——宫里缺的数，用行和列一起判断！'
+    },
+    // 交叉排除：占位（locked）——徽章墙灰卡，无盘面/步骤，永不打开
+    { key: 'crossElim', name: '交叉排除', locked: true, N: 4, board: [], tip: '', steps: [], done: '' }
   ];
   var skill = {
     active: false,
@@ -1097,6 +1165,7 @@
     selected: -1,   // 当前选中格
     cells: []       // 教学关格子 DOM
   };
+  var badgeFrom = 'difficulty'; // 技巧教学返回去向：'difficulty' 难度页 / 'badgewall' 徽章墙
   function skillLevel() { return SKILLS[skill.idx]; }
   function renderSkillHeader(title) {
     clearNode(headerEl);
@@ -1171,21 +1240,28 @@
     refreshSkillCells();
   }
   function refreshSkillCells() {
+    // 两层渲染（与普通局同构）：宫界线/目标格画在外层 .cell，已知/高亮/选中画在内层 .cell-inner
     var lv = skillLevel();
     var st = lv.steps[skill.step];
+    var dims = SUDOKU.boxDims(lv.N);
     for (var i = 0; i < skill.cells.length; i++) {
       var cell = skill.cells[i];
       var inner = cell.firstChild;
-      var cls = 'cell';
       var r = Math.floor(i / lv.N);
       var c = i % lv.N;
-      if (r % SUDOKU.boxDims(lv.N)[0] === 0 && r > 0) { cls = 'cell box-t'; }
-      if (c % SUDOKU.boxDims(lv.N)[1] === 0 && c > 0) { cls = cls + ' box-l'; }
-      if (skill.given[i]) { cls = cls + ' given'; }
-      if (i === skill.selected) { cls = cls + ' selected'; }
-      if (st && st.hl && st.hl.indexOf(i) >= 0) { cls = cls + ' peer'; }  // 高亮目标宫格（同教具浅蓝）
-      if (i === skill.selected && st && st.cell === i) { cls = cls + ' target'; } // 目标格加强
+      // 外层：宫界线（box-t/box-l）+ 目标格蓝框（选中且为目标格时以外层蓝框替代内层橙框，避免双重高亮）
+      var cls = 'cell';
+      if (r % dims[0] === 0 && r > 0) { cls += ' box-t'; }
+      if (c % dims[1] === 0 && c > 0) { cls += ' box-l'; }
+      var isTarget = (i === skill.selected && st && st.cell === i);
+      if (isTarget) { cls += ' target'; }
       cell.className = cls;
+      // 内层：已知格浅灰底 + 同行/列/宫高亮浅蓝 + 选中橙框（目标格不叠加 selected）
+      var icls = 'cell-inner';
+      if (skill.given[i]) { icls += ' given'; }
+      if (st && st.hl && st.hl.indexOf(i) >= 0) { icls += ' peer'; }
+      if (i === skill.selected && !isTarget) { icls += ' selected'; }
+      inner.className = icls;
       clearNode(inner);
       var v = skill.board[i];
       if (v) { inner.appendChild(makeEl('span', 'skill-num', '' + v)); }
@@ -1209,8 +1285,8 @@
       skill.board[i] = v;
       skill.selected = -1;
       sndCorrect();
+      skill.step++;              // 先推进步进，再刷新高亮（否则高亮停留在上一步约束组）
       refreshSkillCells();
-      skill.step++;
       if (skill.step >= lv.steps.length) {
         // 教学关完成：点亮徽章
         store.skills[lv.key] = true;
@@ -1228,7 +1304,7 @@
     } else {
       // 非目标：温和提示，不计错
       sndWrong();
-      showSkillMsg('看高亮的这个宫：已经有哪几个数？缺的就是答案哦');
+      showSkillMsg('看高亮的地方：已经有哪几个数？缺的就是答案哦');
       refreshSkillCells();
     }
   }
@@ -1236,7 +1312,9 @@
     var msgEl = document.getElementById('skill-msg');
     if (msgEl) { msgEl.textContent = text; }
   }
-  function openSkill(k) {
+  function openSkill(k, from) {
+    if (SKILLS[k].locked) { return; } // 锁定占位卡（徽章墙灰卡）不可打开
+    badgeFrom = from || 'difficulty'; // 记录返回去向：徽章墙进入 → 教学完返回徽章墙
     hideOverlay();
     state.playing = false; // 教学关不是普通局：键盘不响应
     var lv = SKILLS[k];
@@ -1252,10 +1330,12 @@
     renderSkillView();
   }
   function exitSkill() {
+    // 按进入来源返回：徽章墙进入 → 回首徽章墙；其余 → 难度页
     hideOverlay();
     skill.active = false;
     skill.idx = -1;
-    showDifficultyView();
+    if (badgeFrom === 'badgewall') { showBadgeWallView(); }
+    else { showDifficultyView(); }
   }
 
   /* ---------- 打卡 ---------- */
