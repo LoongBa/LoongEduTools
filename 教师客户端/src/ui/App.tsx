@@ -25,6 +25,13 @@ type View =
   | "login"
   | "settings";
 
+type ThemeMode = "light" | "dark" | "system";
+
+function currentTheme(): ThemeMode {
+  const v = document.documentElement.dataset.theme;
+  return v === "light" || v === "dark" ? v : "system";
+}
+
 function App() {
   const [view, setView] = useState<View>("apps");
   const [packages, setPackages] = useState<InstalledPackage[]>([]);
@@ -34,6 +41,14 @@ function App() {
   const [loadingPkg, setLoadingPkg] = useState<string | null>(null);
   const [auth, setAuth] = useState<AuthStatus | null>(null);
   const [updates, setUpdates] = useState<StoreItem[]>([]);
+  const [theme, setTheme] = useState<ThemeMode>(currentTheme);
+
+  // 主题切换：写 dataset 即时生效 + localStorage 持久化（首页渲染前由 main.tsx 引导读取）
+  function applyTheme(t: ThemeMode) {
+    setTheme(t);
+    document.documentElement.dataset.theme = t;
+    localStorage.setItem("theme", t);
+  }
 
   // P3 白名单上报：content:progress 监听 + 启动冲刷（壳内零 AI · A01 §5.1）
   useContentProgressReporting();
@@ -331,6 +346,26 @@ function App() {
               </dd>
               <dt>设备指纹</dt>
               <dd className="mono">{auth?.device_id || "-"}</dd>
+              <dt>主题</dt>
+              <dd>
+                <div className="tab-row">
+                  {(
+                    [
+                      { v: "light", label: "浅色" },
+                      { v: "dark", label: "深色" },
+                      { v: "system", label: "跟随系统" },
+                    ] as const
+                  ).map((opt) => (
+                    <button
+                      key={opt.v}
+                      className={`tab${theme === opt.v ? " active" : ""}`}
+                      onClick={() => applyTheme(opt.v)}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </dd>
             </dl>
             <p className="hint">
               零采集：本客户端不上传任何学生数据；进度仅存本地 config.json。
