@@ -72,7 +72,8 @@
     errMarks: null,   // 回放标记（v1.6）：错题本回放时上次填错的位置（下标数组），普通局为 null
     hintExpl: null,   // 提示讲解（v1.6）：{kind,i,hl,have,miss}，3 秒后或下次操作清除
     replayFrom: null, // 回放来源（v1.6）：'mistake' 错题本 / 'favorite' 收藏本 / null 普通局
-    replayMsgShown: false // v1.6：错题回放提示行是否已显示（仅首次进入提示）
+    replayMsgShown: false, // v1.6：错题回放提示行是否已显示（仅首次进入提示）
+    createdFrom: 'normal'  // 题目来源（v1.7）：'normal' 普通局（含回放，正常计成绩）/ 'import' 导入题（不计成绩、不打卡）
   };
 
   /* ---------- 持久化（redtools.shudurumen.v1） ---------- */
@@ -512,7 +513,8 @@
     topbar.appendChild(btnBack);
     var title = makeEl('span', 'level-title', lv.name);
     title.appendChild(makeEl('small', '',
-      state.N + '×' + state.N + ' · 已知 ' + state.givensCount + ' 格'));
+      state.N + '×' + state.N + ' · 已知 ' + state.givensCount + ' 格' +
+      (state.createdFrom === 'import' ? ' · 导入题' : ''))); // v1.7：导入题顶栏标记
     topbar.appendChild(title);
     timerEl = makeEl('span', 'top-timer', '⏱ 00.0');
     topbar.appendChild(timerEl);
@@ -881,33 +883,43 @@
     state.ms = performance.now() - state.startMs;
     sndWin();
     commitMistake('win'); // v1.6：通关提交错题本（0 错 0 提示重练 → 消除同盘面旧记录）
-    var key = state.level;
-    var ms = Math.round(state.ms);
-    var errors = state.errors;
-    var hints = state.hints;
-    var stars = calcStars(hints, errors);
-    var isNewBest = false;
-    var best = store.best[key];
-    if (!best || betterThan(stars, ms, best.stars, best.ms)) {
-      store.best[key] = { ms: ms, errors: errors, hints: hints, stars: stars, date: fmtDate(new Date()) };
-      isNewBest = true;
+    if (state.createdFrom !== 'import') {
+      // v1.7：导入题不计成绩——跳过 best/历史/打卡/新纪录
+      var key = state.level;
+      var ms = Math.round(state.ms);
+      var errors = state.errors;
+      var hints = state.hints;
+      var stars = calcStars(hints, errors);
+      var isNewBest = false;
+      var best = store.best[key];
+      if (!best || betterThan(stars, ms, best.stars, best.ms)) {
+        store.best[key] = { ms: ms, errors: errors, hints: hints, stars: stars, date: fmtDate(new Date()) };
+        isNewBest = true;
+      }
+      winNewBest = isNewBest;
+      store.recent[key] = ms;
+      store.history.push({ date: fmtDate(new Date()), level: key, ms: ms, errors: errors, hints: hints, stars: stars });
+      while (store.history.length > 30) { store.history.shift(); }
+      doCheckin();
+    } else {
+      winNewBest = false; // v1.7：导入题不产生新纪录
     }
-    winNewBest = isNewBest;
-    store.recent[key] = ms;
-    store.history.push({ date: fmtDate(new Date()), level: key, ms: ms, errors: errors, hints: hints, stars: stars });
-    while (store.history.length > 30) { store.history.shift(); }
-    doCheckin();
     clearCur();   // 通关后断局快照作废
     saveStore();
     buildWinOverlay();
   }
   function buildWinOverlay() {
     // v1.6：结算浮层独立成函数，收藏切换后可重建（同一局成绩展示不变）
-    var notes = [
-      { cls: 'checkin-line', text: '✅ 今日已打卡 · 连续 ' + (store.checkin.streak || 0) + ' 天' }
-    ];
+    var notes = [];
+    if (state.createdFrom === 'import') {
+      // v1.7：导入题通关不计成绩、不打卡——浮层提示来源
+      notes.push({ cls: 'checkin-line', text: '📥 导入题 · 不计入成绩' });
+    } else {
+      notes.push({ cls: 'checkin-line', text: '✅ 今日已打卡 · 连续 ' + (store.checkin.streak || 0) + ' 天' });
+    }
     var fav = isFav(state.origPuzzle);
     var btns = [
+      { text: '📤 分享这题', cls: 'btn-ghost', act: function () { openSharePuzzleOverlay(); } }, // v1.7：导出题目文本 / 打印图片
       { text: fav ? '💛 取消收藏' : '⭐ 收藏这局', cls: 'btn-ghost', act: function () { toggleFav(); } },
       { text: '再来一局', cls: 'btn-main', act: function () { restartRound(); } },
       { text: '选难度', cls: 'btn-ghost', act: function () { backToDifficulty(); } },
@@ -986,6 +998,13 @@
     favBtn.setAttribute('aria-label', '打开收藏本');
     favBtn.addEventListener('click', showFavoriteView);
     viewEl.appendChild(favBtn);
+    // 导入题目入口（v1.7）：粘贴别人分享的题目文本直接玩
+    var importBtn = makeEl('button', 'teach-btn book-btn');
+    importBtn.appendChild(makeEl('span', 'teach-btn-head', '📥 导入题目'));
+    importBtn.appendChild(makeEl('span', 'teach-btn-sub', '粘贴别人分享的数独直接玩'));
+    importBtn.setAttribute('aria-label', '导入分享的题目');
+    importBtn.addEventListener('click', openImportOverlay);
+    viewEl.appendChild(importBtn);
     // 断局恢复入口（v1.2）：有未完成对局时显示
     if (store.cur && isValidCur(store.cur)) {
       var lv = findLevel(store.cur.level);
@@ -1207,6 +1226,7 @@
     state.penMode = false;
     state.hintExpl = null;
     state.replayMsgShown = false;
+    state.createdFrom = 'normal'; // v1.7：回放按普通局计成绩
     state.startMs = 0;
     state.ms = 0;
     // 错题本回放：标记上次填错的位置（浅红，非错误计数）
@@ -1320,6 +1340,322 @@
     back.addEventListener('click', showDifficultyView);
     viewEl.appendChild(back);
   }
+  /* ---------- 分享题（v1.7）：题目文本导出/导入 + 打印图片 ---------- */
+  function countNonZero(board) {
+    // 统计盘面非空格数（题目已知格数）
+    var c = 0;
+    var i;
+    for (i = 0; i < board.length; i++) { if (board[i] !== 0) { c++; } }
+    return c;
+  }
+  function solveBoard(board, N) {
+    // 本地回溯求唯一解（同 solver.js solveCount 的尝试顺序：先 cellValid 后落子——cellValid 假定目标格为空）；
+    // 无解/多解返回 null（导入题已通过 solveCount 唯一解校验，此处解必然存在）
+    var b = board.slice();
+    var sol = null;
+    function bt(pos) {
+      if (sol) { return; }
+      while (pos < N * N && b[pos] !== 0) { pos++; }
+      if (pos === N * N) { sol = b.slice(); return; }
+      var r = Math.floor(pos / N);
+      var c = pos % N;
+      var v;
+      for (v = 1; v <= N; v++) {
+        if (SUDOKU.cellValid(b, N, r, c, v)) {
+          b[pos] = v;
+          bt(pos + 1);
+          b[pos] = 0;
+        }
+        if (sol) { return; }
+      }
+    }
+    bt(0);
+    return sol;
+  }
+  function puzzleText(board, N, givensCount) {
+    // 题目导出文本：一行标题 + 一行 SD{N}: 数据 + 一行使用说明
+    return '数独侦探 · ' + N + '×' + N + ' · 已知 ' + givensCount + ' 格\n' +
+      'SD' + N + ':' + board.join(',') + '\n' +
+      '（空格填 0；复制后在数独侦探「📥 导入题目」粘贴）';
+  }
+  function shareTextForCurrent() {
+    // 当前局分享文本：优先原始盘面（题面），退化用当前盘面
+    var board = state.origPuzzle || state.puzzle;
+    return puzzleText(board, state.N, countNonZero(board));
+  }
+  function parsePuzzleText(raw) {
+    // 导入解析：找 SD{N}: 行 → 校验 N/长度/取值 → 唯一解校验
+    // 成功返回 {N, board}；失败返回 {error}（错误文案用于界面提示）
+    if (!raw) { return { error: '格式不对，请按 SD4:… 的格式粘贴' }; }
+    var lines = String(raw).split('\n');
+    var i, line, m, N = 0, payload = null;
+    for (i = 0; i < lines.length; i++) {
+      line = lines[i].replace(/\s+$/, '').trim();
+      if (!line) { continue; }
+      m = /^SD(\d+):/.exec(line);
+      if (m) {
+        N = Number(m[1]);
+        payload = line.slice(m[0].length).trim();
+        break;
+      }
+    }
+    if (!payload) { return { error: '格式不对，请按 SD4:… 的格式粘贴' }; }
+    if (N !== 4 && N !== 6 && N !== 9) { return { error: '不是 4×4 / 6×6 / 9×9 的题目' }; }
+    var parts = payload.split(/[,\s]+/);
+    var clean = [];
+    for (i = 0; i < parts.length; i++) {
+      if (parts[i] === '') { continue; }
+      clean.push(parts[i]);
+    }
+    if (clean.length !== N * N) { return { error: '题目缺数，需要 ' + N * N + ' 个数字' }; }
+    var board = [];
+    for (i = 0; i < clean.length; i++) {
+      if (!/^\d+$/.test(clean[i])) { return { error: '数字必须是 0~' + N }; }
+      var v = Number(clean[i]);
+      if (v < 0 || v > N) { return { error: '数字必须是 0~' + N }; }
+      board.push(v);
+    }
+    // 唯一解校验（solveCount 限 2 个解即可判定）
+    if (SUDOKU.solveCount(board, N, 2) !== 1) { return { error: '这道题没有唯一解，换一道试试' }; }
+    return { N: N, board: board };
+  }
+  function copyTextViaExecCommand(ta) {
+    // 兼容复制：选中 textarea → execCommand('copy')，返回是否成功
+    try {
+      ta.focus();
+      ta.select();
+      var ok = document.execCommand('copy');
+      return !!ok;
+    } catch (err) {
+      return false;
+    }
+  }
+  var toastEl = null;
+  function toast(msg) {
+    // 轻提示（复制/保存反馈）：固定居中灰条，2.6 秒自动消失（同贪吃蛇 share.js）
+    if (toastEl && toastEl.parentNode) { toastEl.parentNode.removeChild(toastEl); }
+    toastEl = makeEl('div', 'toast', msg);
+    document.body.appendChild(toastEl);
+    window.setTimeout(function () {
+      if (toastEl && toastEl.parentNode) { toastEl.parentNode.removeChild(toastEl); }
+      toastEl = null;
+    }, 2600);
+  }
+  var shareShowAnswer = false; // 分享浮层：是否显示答案版图片（题面/答案切换）
+  function drawPuzzleImage(showAnswer) {
+    // 打印图片：canvas 绘制「标题 + 盘面 + 页脚」，仅题面不含答案（showAnswer 时空格显示答案）
+    var N = state.N;
+    var board = state.origPuzzle || state.puzzle;
+    var solution = state.solution || [];
+    var cell = Math.round(720 / N);
+    var W = N * cell;
+    var H = N * cell;
+    var HEADER = 90;
+    var cv = document.createElement('canvas');
+    cv.width = W;
+    cv.height = H + HEADER;
+    var ctx = cv.getContext('2d');
+    // 白底
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H + HEADER);
+    // 标题
+    ctx.fillStyle = '#2a3a4a';
+    ctx.font = 'bold 28px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('数独侦探 · ' + N + '×' + N + (showAnswer ? '（答案）' : ''), W / 2, 32);
+    ctx.textAlign = 'left';
+    // 盘面网格（标题下方偏移 HEADER）
+    var dims = SUDOKU.boxDims(N);
+    var br = dims[0];
+    var bc = dims[1];
+    var x, y, i, r, c, v;
+    // 细线（所有格线）
+    ctx.strokeStyle = '#9db4c8';
+    ctx.lineWidth = 2;
+    for (i = 0; i <= N; i++) {
+      ctx.beginPath();
+      ctx.moveTo(i * cell, HEADER);
+      ctx.lineTo(i * cell, HEADER + H);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, HEADER + i * cell);
+      ctx.lineTo(W, HEADER + i * cell);
+      ctx.stroke();
+    }
+    // 粗线（宫界线）
+    ctx.strokeStyle = '#2a3a4a';
+    ctx.lineWidth = 5;
+    for (r = 0; r <= N; r += br) {
+      ctx.beginPath();
+      ctx.moveTo(0, HEADER + r * cell);
+      ctx.lineTo(W, HEADER + r * cell);
+      ctx.stroke();
+    }
+    for (c = 0; c <= N; c += bc) {
+      ctx.beginPath();
+      ctx.moveTo(c * cell, HEADER);
+      ctx.lineTo(c * cell, HEADER + H);
+      ctx.stroke();
+    }
+    // 数字
+    for (i = 0; i < N * N; i++) {
+      r = Math.floor(i / N);
+      c = i % N;
+      v = board[i];
+      if (v === 0 && showAnswer) { v = solution[i] || 0; }
+      if (v === 0) { continue; }
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      if (board[i] !== 0) {
+        // 题面已知格：加粗深色
+        ctx.fillStyle = '#2a3a4a';
+        ctx.font = 'bold ' + Math.round(cell * 0.55) + 'px sans-serif';
+      } else {
+        // 答案格：天蓝浅色
+        ctx.fillStyle = '#4aa8ff';
+        ctx.font = Math.round(cell * 0.55) + 'px sans-serif';
+      }
+      ctx.fillText('' + v, c * cell + cell / 2, HEADER + r * cell + cell / 2);
+    }
+    // 页脚
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#8ba4bd';
+    ctx.font = '14px sans-serif';
+    ctx.fillText('龙爸乐学 · 数独侦探', W / 2, H + HEADER - 18);
+    return cv;
+  }
+  function openSharePuzzleOverlay() {
+    // 分享浮层：题目文本复制 + 打印图片（题面/答案切换）；返回结算可重建
+    hideOverlay();
+    var ov = makeEl('div', 'overlay');
+    var card = makeEl('div', 'overlay-card');
+    card.appendChild(makeEl('div', 'overlay-title', '📤 分享这题'));
+    // 区块 A：题目文本
+    var ta = makeEl('textarea', 'export-zone', shareTextForCurrent());
+    ta.readOnly = true;
+    ta.setAttribute('aria-label', '分享的题目文本');
+    card.appendChild(ta);
+    var copyBtn = makeEl('button', 'btn-main', '复制题目');
+    copyBtn.setAttribute('aria-label', '复制题目文本');
+    copyBtn.addEventListener('click', function () {
+      if (copyTextViaExecCommand(ta)) {
+        toast('✅ 题目已复制，去粘贴给朋友吧');
+      } else {
+        toast('复制失败，请长按文本手动复制');
+      }
+    });
+    card.appendChild(copyBtn);
+    // 区块 B：打印图片（题面无答案）
+    shareShowAnswer = false;
+    var img = makeEl('img', 'share-img');
+    img.src = drawPuzzleImage(shareShowAnswer).toDataURL('image/png');
+    img.setAttribute('alt', '数独打印题面');
+    card.appendChild(img);
+    card.appendChild(makeEl('div', 'share-hint', '📸 长按保存图片 · 打印练习（题面无答案）'));
+    var ansBtn = makeEl('button', 'btn-ghost', '查看答案版');
+    ansBtn.setAttribute('aria-label', '查看答案版图片');
+    ansBtn.addEventListener('click', function () {
+      shareShowAnswer = !shareShowAnswer;
+      img.src = drawPuzzleImage(shareShowAnswer).toDataURL('image/png');
+      ansBtn.textContent = shareShowAnswer ? '返回题面版' : '查看答案版';
+      img.setAttribute('alt', shareShowAnswer ? '数独答案版' : '数独打印题面');
+    });
+    card.appendChild(ansBtn);
+    // 底部
+    var backBtn = makeEl('button', 'btn-ghost', '返回结算');
+    backBtn.setAttribute('aria-label', '返回结算');
+    backBtn.style.marginTop = '10px';
+    backBtn.addEventListener('click', buildWinOverlay);
+    card.appendChild(backBtn);
+    ov.appendChild(card);
+    document.body.appendChild(ov);
+    overlayEl = ov;
+  }
+  function openImportOverlay() {
+    // 导入浮层：粘贴 SD{N}: 文本 → 校验 → 开始导入局
+    hideOverlay();
+    var ov = makeEl('div', 'overlay');
+    var card = makeEl('div', 'overlay-card');
+    card.appendChild(makeEl('div', 'overlay-title', '📥 导入题目'));
+    card.appendChild(makeEl('div', 'overlay-sub', '粘贴别人分享的题目文本（以 SD4:/SD6:/SD9: 开头）'));
+    var ta = makeEl('textarea', 'import-zone', '');
+    ta.rows = 4;
+    ta.placeholder = 'SD4:1,0,3,4,3,4,0,2,2,1,4,3,4,3,2,1';
+    ta.setAttribute('aria-label', '导入的题目文本');
+    card.appendChild(ta);
+    var err = makeEl('div', '', '');
+    err.id = 'import-err';
+    card.appendChild(err);
+    var goBtn = makeEl('button', 'btn-main', '导入并开始');
+    goBtn.setAttribute('aria-label', '导入并开始对局');
+    goBtn.addEventListener('click', function () {
+      var parsed = parsePuzzleText(ta.value);
+      if (parsed.error) {
+        err.textContent = parsed.error;
+        return;
+      }
+      var sol = solveBoard(parsed.board, parsed.N);
+      if (!sol) {
+        err.textContent = '这道题没有唯一解，换一道试试';
+        return;
+      }
+      startImportedGame(parsed.N, parsed.board, sol);
+    });
+    card.appendChild(goBtn);
+    var cancelBtn = makeEl('button', 'btn-ghost', '取消');
+    cancelBtn.setAttribute('aria-label', '取消导入');
+    cancelBtn.addEventListener('click', hideOverlay);
+    cancelBtn.style.marginTop = '8px';
+    card.appendChild(cancelBtn);
+    ov.appendChild(card);
+    document.body.appendChild(ov);
+    overlayEl = ov;
+  }
+  function startImportedGame(N, board, solution) {
+    // 导入题开局：初始化对齐 replayRecord（盘面给定，答案用唯一解）
+    hideOverlay();
+    stopTimer();
+    state.won = false;
+    state.playing = true;
+    state.replayFrom = null;
+    state.createdFrom = 'import'; // v1.7：导入题不计成绩、不打卡
+    var lv = findLevel(String(N));
+    state.level = lv.key;
+    state.N = lv.N;
+    state.givens = lv.givens;
+    state.puzzle = board.slice();
+    state.solution = solution.slice();
+    var given = [];
+    var i;
+    var givensCount = 0;
+    for (i = 0; i < board.length; i++) {
+      given.push(board[i] !== 0);
+      if (board[i] !== 0) { givensCount++; }
+    }
+    state.given = given;
+    state.givensCount = givensCount;
+    state.origPuzzle = board.slice();
+    state.errLog = [];
+    state.hintIdx = [];
+    var pencils = [];
+    for (i = 0; i < board.length; i++) { pencils.push([]); }
+    state.pencils = pencils;
+    state.undoStack = [];
+    state.hints = 0;
+    state.errors = 0;
+    state.selected = -1;
+    state.penMode = false;
+    state.errMarks = null;
+    state.hintExpl = null;
+    state.replayMsgShown = false;
+    state.startMs = 0;
+    state.ms = 0;
+    renderGameView();
+    renderGameFooter();
+    startTimer();
+    saveCur();
+  }
   function newRound(levelKey) {
     clearCur(); // 新局生成：旧断局快照作废
     var lv = findLevel(levelKey);
@@ -1352,6 +1688,7 @@
     state.errMarks = null;
     state.hintExpl = null;
     state.replayFrom = null;
+    state.createdFrom = 'normal'; // v1.7：新生成局为普通来源（正常计成绩）
   }
   function startGame(levelKey) {
     if (!SUDOKU) {
@@ -1377,6 +1714,7 @@
     state.errMarks = null;
     state.hintExpl = null;
     state.replayFrom = null;
+    state.createdFrom = 'normal'; // v1.7：断局恢复按普通局计成绩（cur 快照不存 createdFrom）
     renderGameView();
     renderGameFooter();
     startTimer();

@@ -769,6 +769,65 @@ body {
 
 .btn-ghost:active { background: #cfe8fd; }
 
+/* 分享题（v1.7）：题目文本导入/导出 + 打印图片 */
+.overlay-card { max-height: 88vh; overflow-y: auto; }
+
+.share-img {
+  display: block;
+  width: 100%;
+  max-height: 420px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: #ffffff;
+  margin: 8px 0;
+}
+
+.share-hint {
+  font-size: 12px;
+  color: #8ba4bd;
+  margin: 4px 0 10px;
+}
+
+.export-zone,
+.import-zone {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 64px;
+  border: 2px dashed #9fc8f0;
+  border-radius: 10px;
+  padding: 8px;
+  font-size: 13px;
+  color: #33475b;
+  background: #f7fbff;
+  resize: vertical;
+  font-family: monospace;
+}
+
+#import-err {
+  color: #e06c6c;
+  font-size: 13px;
+  margin-top: 6px;
+  min-height: 16px;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 90px;
+  -webkit-transform: translateX(-50%);
+  transform: translateX(-50%);
+  z-index: 99;
+  max-width: 260px;
+  padding: 10px 18px;
+  border-radius: 20px;
+  background: rgba(30, 45, 60, 0.9);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  pointer-events: none;
+}
+
 /* ---------- 打卡日历 ---------- */
 
 .calendar {
