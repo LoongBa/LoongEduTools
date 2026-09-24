@@ -566,6 +566,56 @@ body {
 }
 .teach-btn.badge-card.locked:active { background: #f0f2f5; }
 
+/* 错题本 / 收藏本（v1.6）：回放标记 + 列表卡片 + 迷你盘面缩略图 */
+
+.cell-inner.replay-mark { background: #ffecec; }
+
+.book-card { text-align: left; }
+
+.book-thumb {
+  display: inline-block;
+  width: 72px;
+  height: 72px;
+  float: right;
+  border: 1px solid #dce8f5;
+  border-radius: 6px;
+  padding: 4px;
+  background: #ffffff;
+  margin-left: 10px;
+}
+
+.book-thumb .mini-cell {
+  display: inline-block;
+  box-sizing: border-box;
+  vertical-align: top;
+  color: #3a5a7a;
+  font-weight: 700;
+}
+
+.book-act {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 4px 12px;
+  border-radius: 8px;
+  background: #ecf5ff;
+  color: #4aa8ff;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid #cfe4f8;
+}
+
+.book-act:active { background: #dceefe; }
+
+.book-btn {
+  /* 复用 teach-btn 虚线卡片族，无需额外区分 */
+}
+
+.book-empty {
+  padding: 24px;
+  text-align: center;
+  color: #8ba4bd;
+}
+
 /* 底栏：打卡入口 / 返回 */
 
 .btn-checkin {

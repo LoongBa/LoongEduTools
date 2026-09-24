@@ -6,8 +6,10 @@
    玩法：点选空格 → 底部数字条点数字填数（非九宫格，低龄友好）
          - 合法（行/列/宫不冲突）：绿色确认，静默接受（答错不惩罚）
          - 不合法（冲突）：红闪 400ms + 温和提示，错误计数 +1
-         工具：橡皮（清选中格）/ 撤销（恢复上一步）/ 提示（提示一次，星级封顶 2★）
-         全部填满且无冲突即过关。
+          工具：橡皮（清选中格）/ 撤销（恢复上一步）/ 提示（提示一次，星级封顶 2★）
+          全部填满且无冲突即过关。
+    v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）；
+          错题本（通关/退出自动记录，可回放重练）与收藏本（通关后可收藏）
    星级：hints===0 && errors===0 → 3★；hints<=1 && errors<=3 → 2★；否则 1★
    难度：双参数（盘面尺寸 × 目标已知格）4×4→10、6×6→21、9×9→33
    设计约束（对齐 series/益智/设计文档.md §5）：
@@ -63,7 +65,14 @@
     playing: false,   // 是否在游戏页（实体键盘仅游戏页响应）
     startMs: 0,
     ms: 0,
-    timerId: 0
+    timerId: 0,
+    origPuzzle: null, // 原始盘面快照（v1.6）：本局题目初始盘面，永不随填数变化；旧版断局恢复时为 null（不追踪错题）
+    errLog: [],       // 本局冲突记录（v1.6）：[{idx, wrong}] 填错的位置与数字，错题本/回放标记用
+    hintIdx: [],      // 本局提示过的格子下标（v1.6）：错题记录用
+    errMarks: null,   // 回放标记（v1.6）：错题本回放时上次填错的位置（下标数组），普通局为 null
+    hintExpl: null,   // 提示讲解（v1.6）：{kind,i,hl,have,miss}，3 秒后或下次操作清除
+    replayFrom: null, // 回放来源（v1.6）：'mistake' 错题本 / 'favorite' 收藏本 / null 普通局
+    replayMsgShown: false // v1.6：错题回放提示行是否已显示（仅首次进入提示）
   };
 
   /* ---------- 持久化（redtools.shudurumen.v1） ---------- */
@@ -77,7 +86,9 @@
       checkin: { dates: [], streak: 0 },
       history: [],                  // 滚动 30 条 {date,level,ms,errors,hints,stars}
       skills: {},                   // 技巧徽章（v1.4）：{ boxElim: true, ... } 教学关完成点亮
-      cur: null                     // 断局快照（v1.2）：未完成对局，{level,N,givensCount,puzzle,solution,given,pencils,undoStack,hints,errors,selected,penMode,ms,startStamp}
+      mistakes: [],                 // 错题本（v1.6）：[{id,ts,level,board,solution,errors,hintIdx,result,stars}] 通关/中途退出记录，上限 50 条
+      favorites: [],                // 收藏本（v1.6）：[{id,ts,level,board,solution}] 通关后可收藏的想再练题目
+      cur: null                     // 断局快照（v1.2）：未完成（level,N,givensCount,puzzle,solution,given,pencils,undoStack,hints,errors,selected,penMode,ms,startStamp,origPuzzle)
     };
   }
   function loadStore() {
@@ -91,6 +102,8 @@
           if (!obj.checkin) { obj.checkin = { dates: [], streak: 0 }; }
           if (!obj.history) { obj.history = []; }
           if (!obj.skills) { obj.skills = {}; }
+          if (!obj.mistakes) { obj.mistakes = []; }   // v1.6：旧存档无错题本字段 → 补空
+          if (!obj.favorites) { obj.favorites = []; } // v1.6：旧存档无收藏本字段 → 补空
           if (!obj.cur) { obj.cur = null; }
           if (obj.history.length > 30) { obj.history = obj.history.slice(-30); }
           return obj;
@@ -126,6 +139,7 @@
       pencils: pens, undoStack: undos,
       hints: state.hints, errors: state.errors, selected: state.selected,
       penMode: state.penMode, won: false,
+      origPuzzle: state.origPuzzle, // v1.6：原始盘面快照（断局恢复后仍可追踪错题）
       ms: state.ms, startStamp: Date.now()
     };
     saveStore();
@@ -403,6 +417,10 @@
         cls += ' same';
       }
     }
+    // v1.6：提示讲解高亮（复用 peer 浅蓝教学色）
+    if (state.hintExpl && state.hintExpl.hl && state.hintExpl.hl.indexOf(i) >= 0) { cls += ' peer'; }
+    // v1.6：错题回放标记（浅红，不计入错误）
+    if (state.errMarks && state.errMarks.indexOf(i) >= 0) { cls += ' replay-mark'; }
     return cls;
   }
   function cellInner(i) {
@@ -473,7 +491,11 @@
     return c;
   }
   function checkHintBtn() {
-    if (hintBtnEl) { hintBtnEl.disabled = (countEmpty() === 0); }
+    if (!hintBtnEl) { return; }
+    // v1.6：盘面填满或提示次数达上限时禁用（4×4 不限；6×6 限 3；9×9 限 2）
+    var limitReached = (state.N === 6 && state.hints >= 3) || (state.N === 9 && state.hints >= 2);
+    hintBtnEl.disabled = (countEmpty() === 0) || limitReached;
+    if (limitReached) { hintBtnEl.title = '本局提示次数已用完'; }
   }
 
   /* ---------- 渲染：游戏视图 ---------- */
@@ -527,6 +549,11 @@
     // 提示行
     var msgEl = makeEl('div', 'sudoku-msg', '点空格 → 选数字，行/列/宫不重复就过关！');
     msgEl.id = 'sudoku-msg';
+    // v1.6：错题回放首次进入时提示浅红格含义
+    if (state.errMarks && state.replayFrom === 'mistake' && !state.replayMsgShown) {
+      msgEl.textContent = '本局来自错题本：浅红格是上次填错的位置';
+      state.replayMsgShown = true;
+    }
     viewEl.appendChild(msgEl);
 
     // 数字条（底部点按输入，非九宫格）+ 工具条
@@ -594,6 +621,7 @@
   function onPenTap(v) {
     // 铅笔模式：在选中空格切换候选笔记
     if (state.won) { return; }
+    state.hintExpl = null; // v1.6：用户记笔记 → 清除提示讲解高亮
     if (state.selected < 0) { showMsg('先点一个空格子，再记候选数哦', true); return; }
     var i = state.selected;
     if (state.given[i]) { showMsg('这是题目给的格子，不用填', true); return; }
@@ -637,6 +665,7 @@
     var cur = state.puzzle[i];
     if (cur === v) { showMsg(''); return; }
     if (state.penMode) { onPenTap(v); return; }
+    state.hintExpl = null; // v1.6：用户填数 → 清除提示讲解高亮
     var r = Math.floor(i / state.N);
     var c = i % state.N;
     // 记住本格原笔记（撤销时恢复）
@@ -660,6 +689,7 @@
       // 冲突：红闪 400ms，错误 +1，温和提示，不改变盘面
       state.puzzle[i] = cur;
       state.errors++;
+      state.errLog.push({ idx: i, wrong: v }); // v1.6：记录冲突位置（错题本/回放标记用）
       sndWrong();
       flashWrong(i);
       showMsg('行 / 列 / 宫里已经有这个数啦，换一个试试', true);
@@ -675,6 +705,7 @@
     var hadPen = (state.pencils[i] || []).slice();
     var hadVal = state.puzzle[i];
     if (hadVal === 0 && hadPen.length === 0) { showMsg(''); sndClick(); return; }
+    state.hintExpl = null; // v1.6：用户擦除 → 清除提示讲解高亮
     state.undoStack.push({ i: i, val: hadVal, pen: hadPen });
     if (state.undoStack.length > 200) { state.undoStack.shift(); }
     state.puzzle[i] = 0;
@@ -690,6 +721,7 @@
     if (state.won) { return; }
     var m = state.undoStack.pop();
     if (!m) { showMsg('没有可以撤销的操作', true); return; }
+    state.hintExpl = null; // v1.6：撤销 → 清除提示讲解高亮
     state.puzzle[m.i] = m.val;
     if (m.pen) { state.pencils[m.i] = m.pen.slice(); }
     sndClick();
@@ -721,9 +753,55 @@
     }
     return best;
   }
+  /* v1.6：提示讲解——在行/列/宫中找到「已填 N-1 个不同数字、恰缺解」的一处，解释为什么填 v；
+     找到即返回 {kind,i,hl,have,miss}，找不到返回 null（退化回旧提示文案） */
+  function explainHint(N, puzzle, solution, r, c) {
+    var i = r * N + c;
+    var v = solution[i];
+    var dims = SUDOKU.boxDims(N);
+    var br = dims[0];
+    var bc = dims[1];
+    var units = [
+      { kind: 'row', idxs: [] },
+      { kind: 'col', idxs: [] },
+      { kind: 'box', idxs: [] }
+    ];
+    var j, idx, val;
+    // 行（固定行 r）
+    for (j = 0; j < N; j++) { units[0].idxs.push(r * N + j); }
+    // 列（固定列 c）
+    for (j = 0; j < N; j++) { units[1].idxs.push(j * N + c); }
+    // 宫（boxDims 返回 [宫行数, 宫列数]）
+    var rs = Math.floor(r / br) * br;
+    var cs = Math.floor(c / bc) * bc;
+    var rr, cc;
+    for (rr = rs; rr < rs + br; rr++) {
+      for (cc = cs; cc < cs + bc; cc++) { units[2].idxs.push(rr * N + cc); }
+    }
+    // 逐个单元判定：单元内已有 N-1 个不同数字且恰缺解 → 该格必填解
+    var u;
+    for (u = 0; u < units.length; u++) {
+      var seen = [];
+      for (j = 0; j < units[u].idxs.length; j++) {
+        idx = units[u].idxs[j];
+        val = puzzle[idx];
+        if (val !== 0 && seen.indexOf(val) === -1) { seen.push(val); }
+      }
+      if (seen.length === N - 1 && seen.indexOf(v) === -1) {
+        seen.sort(function (a, b) { return a - b; });
+        return { kind: units[u].kind, i: i, hl: units[u].idxs.slice(), have: seen, miss: v };
+      }
+    }
+    return null;
+  }
   function useHint() {
     if (state.won) { return; }
     if (countEmpty() === 0) { showMsg('盘面已填满啦', true); return; }
+    // v1.6：提示次数限制——4×4 不限；6×6 每局限 3 次；9×9 每局限 2 次
+    if ((state.N === 6 && state.hints >= 3) || (state.N === 9 && state.hints >= 2)) {
+      showMsg('提示次数用完了（' + state.N + '×' + state.N + ' 每局限 ' + (state.N === 6 ? 3 : 2) + ' 次），先试试自己找', true);
+      return;
+    }
     var pick = pickHintCell();
     if (!pick) {
       showMsg('有格子被填错了，先用橡皮擦掉，再试试提示', true);
@@ -731,16 +809,31 @@
     }
     var i = pick.i;
     var v = state.solution[i];
+    var ex = explainHint(state.N, state.puzzle, state.solution, pick.r, pick.c); // v1.6：尝试生成讲解
     state.undoStack.push({ i: i, val: 0, pen: (state.pencils[i] || []).slice() });
     if (state.undoStack.length > 200) { state.undoStack.shift(); }
     state.puzzle[i] = v;
     state.pencils[i] = [];
     erasePenInUnit(i, v); // 提示也触发自动铅笔清理
     state.hints++;
+    state.hintIdx.push(i); // v1.6：记录提示过的格子
+    state.hintExpl = ex || null; // v1.6：先设置讲解高亮，再刷新渲染（若后置则高亮不显示）
     sndCorrect();
     refreshCells();
     checkHintBtn();
-    showMsg('提示：第 ' + (pick.r + 1) + ' 行第 ' + (pick.c + 1) + ' 列 填数字 ' + v);
+    if (ex) {
+      // v1.6：讲解型提示——指出所在行/列/宫已有数与缺数，并高亮该单元
+      showMsg('提示：看' + (ex.kind === 'row' ? '第 ' + (pick.r + 1) + ' 行' : ex.kind === 'col' ? '第 ' + (pick.c + 1) + ' 列' : '这个宫') + '：已经有 ' + ex.have.join('、') + '，缺 ' + ex.miss + '——这格只能填 ' + v);
+    } else {
+      showMsg('提示：第 ' + (pick.r + 1) + ' 行第 ' + (pick.c + 1) + ' 列 填数字 ' + v);
+    }
+    // v1.6：讲解高亮 3 秒后自动消失（尽力而为；下一次用户操作也会清除）
+    setTimeout(function () {
+      if (state.playing && !state.won && state.hintExpl) {
+        state.hintExpl = null;
+        refreshCells();
+      }
+    }, 3000);
     checkWin();
     saveCur();
   }
@@ -780,12 +873,14 @@
     }
     onWin();
   }
+  var winNewBest = false; // v1.6：本局是否新纪录（收藏切换后重建结算浮层时保留提示）
   function onWin() {
     if (state.won) { return; }
     state.won = true;
     stopTimer();
     state.ms = performance.now() - state.startMs;
     sndWin();
+    commitMistake('win'); // v1.6：通关提交错题本（0 错 0 提示重练 → 消除同盘面旧记录）
     var key = state.level;
     var ms = Math.round(state.ms);
     var errors = state.errors;
@@ -797,25 +892,31 @@
       store.best[key] = { ms: ms, errors: errors, hints: hints, stars: stars, date: fmtDate(new Date()) };
       isNewBest = true;
     }
+    winNewBest = isNewBest;
     store.recent[key] = ms;
     store.history.push({ date: fmtDate(new Date()), level: key, ms: ms, errors: errors, hints: hints, stars: stars });
     while (store.history.length > 30) { store.history.shift(); }
     doCheckin();
     clearCur();   // 通关后断局快照作废
     saveStore();
-    // 结算浮层
+    buildWinOverlay();
+  }
+  function buildWinOverlay() {
+    // v1.6：结算浮层独立成函数，收藏切换后可重建（同一局成绩展示不变）
     var notes = [
       { cls: 'checkin-line', text: '✅ 今日已打卡 · 连续 ' + (store.checkin.streak || 0) + ' 天' }
     ];
+    var fav = isFav(state.origPuzzle);
     var btns = [
+      { text: fav ? '💛 取消收藏' : '⭐ 收藏这局', cls: 'btn-ghost', act: function () { toggleFav(); } },
       { text: '再来一局', cls: 'btn-main', act: function () { restartRound(); } },
       { text: '选难度', cls: 'btn-ghost', act: function () { backToDifficulty(); } },
       { text: '📅 打卡日历', cls: 'btn-ghost', act: function () { showCheckinView(); } }
     ];
-    var sub = '用时 ' + fmtTime(ms) + ' 秒 · 错误 ' + errors + ' 次 · 提示 ' + hints + ' 次';
+    var sub = '用时 ' + fmtTime(Math.round(state.ms)) + ' 秒 · 错误 ' + state.errors + ' 次 · 提示 ' + state.hints + ' 次';
     showOverlay('🎉 数独完成！', sub, notes, btns);
-    showStarsInOverlay(stars);
-    if (isNewBest) { showRecordBadge(); }
+    showStarsInOverlay(calcStars(state.hints, state.errors));
+    if (winNewBest) { showRecordBadge(); }
   }
   function showStarsInOverlay(stars) {
     if (!overlayEl) { return; }
@@ -868,6 +969,23 @@
     badgeBtn.setAttribute('aria-label', '打开技巧徽章墙');
     badgeBtn.addEventListener('click', showBadgeWallView);
     viewEl.appendChild(badgeBtn);
+    // 错题本入口（v1.6）：有错题时显示
+    if (store.mistakes && store.mistakes.length > 0) {
+      var misBtn = makeEl('button', 'teach-btn book-btn');
+      misBtn.appendChild(makeEl('span', 'teach-btn-head', '📕 错题本'));
+      misBtn.appendChild(makeEl('span', 'teach-btn-sub', '重练错题 · 共 ' + store.mistakes.length + ' 条'));
+      misBtn.setAttribute('aria-label', '打开错题本，共 ' + store.mistakes.length + ' 条');
+      misBtn.addEventListener('click', showMistakeView);
+      viewEl.appendChild(misBtn);
+    }
+    // 收藏本入口（v1.6）：常驻展示
+    var favBtn = makeEl('button', 'teach-btn book-btn');
+    favBtn.appendChild(makeEl('span', 'teach-btn-head', '⭐ 收藏本'));
+    favBtn.appendChild(makeEl('span', 'teach-btn-sub',
+      store.favorites && store.favorites.length > 0 ? '共 ' + store.favorites.length + ' 条' : '收藏想再练的题目'));
+    favBtn.setAttribute('aria-label', '打开收藏本');
+    favBtn.addEventListener('click', showFavoriteView);
+    viewEl.appendChild(favBtn);
     // 断局恢复入口（v1.2）：有未完成对局时显示
     if (store.cur && isValidCur(store.cur)) {
       var lv = findLevel(store.cur.level);
@@ -933,6 +1051,275 @@
     back.addEventListener('click', showDifficultyView);
     viewEl.appendChild(back);
   }
+  /* ---------- 错题本 / 收藏本（v1.6） ---------- */
+  function renderMiniBoard(container, board, N) {
+    // 迷你盘面缩略图（列表卡片用）：给定数字可见，空格留白，不可交互
+    clearNode(container);
+    var pct = colPct(N);
+    var font = (N === 4 ? '14px' : (N === 6 ? '11px' : '8px'));
+    var cs = 72 / N; // 缩略图固定 72px 高，每格边长（配合 .book-thumb 高度）
+    var i;
+    for (i = 0; i < N * N; i++) {
+      (function (idx) {
+        var cell = makeEl('span', 'mini-cell');
+        cell.style.width = pct;
+        cell.style.height = pct;
+        var v = board[idx];
+        if (v !== 0) {
+          cell.textContent = '' + v;
+          cell.style.fontSize = font;
+          cell.style.lineHeight = cs + 'px';
+          cell.style.textAlign = 'center';
+        }
+        container.appendChild(cell);
+      })(i);
+    }
+  }
+  function mistakeBoardKey(board) {
+    // 盘面唯一键（逗号拼接，数字 0-9 无歧义）
+    return board.join(',');
+  }
+  function upsertMistake(rec) {
+    // 同盘面错题记录：整条替换（更新 ts/errors/hintIdx/result/stars），否则追加；上限 50 条
+    var key = mistakeBoardKey(rec.board);
+    var i;
+    for (i = 0; i < store.mistakes.length; i++) {
+      if (mistakeBoardKey(store.mistakes[i].board) === key) {
+        store.mistakes[i] = rec;
+        saveStore();
+        return;
+      }
+    }
+    store.mistakes.push(rec);
+    while (store.mistakes.length > 50) { store.mistakes.shift(); }
+    saveStore();
+  }
+  function commitMistake(result) {
+    // 通关/中途退出时提交错题记录；无原始盘面（v1.6 之前旧快照）不追踪
+    if (!state.origPuzzle) { return; }
+    var errCount = state.errors;
+    var hintCount = state.hints;
+    var key = mistakeBoardKey(state.origPuzzle);
+    if (result === 'win') {
+      if (errCount === 0 && hintCount === 0) {
+        // 掌握重练：0 错 0 提示通关 → 消除错题本中同盘面的旧记录
+        var j;
+        for (j = 0; j < store.mistakes.length; j++) {
+          if (mistakeBoardKey(store.mistakes[j].board) === key) {
+            store.mistakes.splice(j, 1);
+            saveStore();
+            break;
+          }
+        }
+        return;
+      }
+      if (errCount > 0 || hintCount > 0) {
+        upsertMistake({
+          id: 'm_' + Date.now(), ts: Date.now(), level: state.level,
+          board: state.origPuzzle.slice(), solution: state.solution.slice(),
+          errors: state.errLog.slice(), hintIdx: state.hintIdx.slice(),
+          result: 'win', stars: calcStars(errCount, hintCount)
+        });
+      }
+    } else if (result === 'quit') {
+      if (errCount > 0) {
+        upsertMistake({
+          id: 'm_' + Date.now(), ts: Date.now(), level: state.level,
+          board: state.origPuzzle.slice(), solution: state.solution.slice(),
+          errors: state.errLog.slice(), hintIdx: state.hintIdx.slice(),
+          result: 'quit', stars: -1
+        });
+      }
+    }
+    state.errLog = [];
+    state.hintIdx = [];
+  }
+  function isFav(board) {
+    // 当前盘面是否已在收藏本
+    if (!board) { return false; }
+    var key = mistakeBoardKey(board);
+    var i;
+    for (i = 0; i < store.favorites.length; i++) {
+      if (mistakeBoardKey(store.favorites[i].board) === key) { return true; }
+    }
+    return false;
+  }
+  function toggleFav() {
+    // 通关结算：收藏/取消收藏当前盘面，并重建结算浮层
+    if (!state.origPuzzle) { return; }
+    var key = mistakeBoardKey(state.origPuzzle);
+    var i;
+    for (i = 0; i < store.favorites.length; i++) {
+      if (mistakeBoardKey(store.favorites[i].board) === key) {
+        store.favorites.splice(i, 1);
+        saveStore();
+        buildWinOverlay();
+        return;
+      }
+    }
+    store.favorites.push({
+      id: 'f_' + Date.now(), ts: Date.now(), level: state.level,
+      board: state.origPuzzle.slice(), solution: state.solution.slice()
+    });
+    saveStore();
+    buildWinOverlay();
+  }
+  function removeBook(list, rec) {
+    // 按 id 删除错题/收藏记录（删除后由调用方重渲染视图）
+    var i;
+    for (i = 0; i < list.length; i++) {
+      if (list[i].id === rec.id) { list.splice(i, 1); saveStore(); return; }
+    }
+  }
+  function replayRecord(rec, src) {
+    // 错题本/收藏本回放：从记录重建对局（盘面只读起点，可再次通关/收藏）——初始化对齐 resumeGame
+    hideOverlay();
+    stopTimer();
+    state.won = false;
+    state.playing = true;
+    state.replayFrom = src;
+    var lv = findLevel(rec.level);
+    state.level = lv.key;
+    state.N = lv.N;
+    state.givens = lv.givens;
+    var board = rec.board.slice();
+    state.puzzle = board;
+    state.solution = (rec.solution || []).slice();
+    var given = [];
+    var i;
+    var givensCount = 0;
+    for (i = 0; i < board.length; i++) {
+      given.push(board[i] !== 0);
+      if (board[i] !== 0) { givensCount++; }
+    }
+    state.given = given;
+    state.givensCount = givensCount;
+    state.origPuzzle = board.slice();
+    state.errLog = [];
+    state.hintIdx = [];
+    var pencils = [];
+    for (i = 0; i < board.length; i++) { pencils.push([]); }
+    state.pencils = pencils;
+    state.undoStack = [];
+    state.hints = 0;
+    state.errors = 0;
+    state.selected = -1;
+    state.penMode = false;
+    state.hintExpl = null;
+    state.replayMsgShown = false;
+    state.startMs = 0;
+    state.ms = 0;
+    // 错题本回放：标记上次填错的位置（浅红，非错误计数）
+    state.errMarks = (src === 'mistake' && rec.errors) ? rec.errors.map(function (e) { return e.idx; }) : null;
+    renderGameView();
+    renderGameFooter();
+    startTimer();
+    saveCur();
+  }
+  function showMistakeView() {
+    // 错题本视图（v1.6）：错题卡片 + 重练/删除 + 清空 + 返回
+    hideOverlay();
+    stopTimer();
+    state.won = false;
+    state.playing = false;
+    renderHeader('错题本');
+    clearNode(viewEl);
+    viewEl.appendChild(makeEl('div', 'page-title', '错题本'));
+    viewEl.appendChild(makeEl('div', 'home-hint', '把做错的题目记下来，重练到全对为止'));
+    var recs = store.mistakes || [];
+    if (recs.length === 0) {
+      viewEl.appendChild(makeEl('div', 'book-empty', '还没有错题，继续加油'));
+    } else {
+      var i;
+      for (i = 0; i < recs.length; i++) {
+        (function (rec, idx) {
+          var lv = findLevel(rec.level);
+          var card = makeEl('div', 'teach-btn book-card');
+          var thumb = makeEl('span', 'book-thumb');
+          renderMiniBoard(thumb, rec.board, lv.N);
+          card.appendChild(thumb);
+          card.appendChild(makeEl('span', 'teach-btn-head', '第 ' + (idx + 1) + ' 题 · ' + lv.name + ' ' + rec.level + '×' + rec.level));
+          card.appendChild(makeEl('span', 'teach-btn-sub',
+            (rec.result === 'win' ? '通关 ' + rec.stars + '★' : '未通关') +
+            ' · 错 ' + (rec.errors ? rec.errors.length : 0) +
+            ' · 提示 ' + (rec.hintIdx ? rec.hintIdx.length : 0) +
+            ' · ' + fmtDate(new Date(rec.ts))));
+          var act = makeEl('span', 'book-act', '▶ 重练');
+          act.addEventListener('click', function () { replayRecord(rec, 'mistake'); });
+          card.appendChild(act);
+          var del = makeEl('span', 'book-act', '🗑');
+          del.addEventListener('click', function () { removeBook(store.mistakes, rec); showMistakeView(); });
+          card.appendChild(del);
+          viewEl.appendChild(card);
+        })(recs[i], i);
+      }
+      var clearBtn = makeEl('button', 'btn-checkin', '清空错题本');
+      clearBtn.style.marginTop = '4px';
+      clearBtn.addEventListener('click', function () {
+        showOverlay('清空错题本', '将删除全部 ' + store.mistakes.length + ' 条错题记录', [],
+          [
+            { text: '确认清空', cls: 'btn-main', act: function () { store.mistakes = []; saveStore(); hideOverlay(); showMistakeView(); } },
+            { text: '取消', cls: 'btn-ghost', act: hideOverlay }
+          ]);
+      });
+      viewEl.appendChild(clearBtn);
+    }
+    var back = makeEl('button', 'btn-checkin', '← 返回');
+    back.setAttribute('aria-label', '返回难度选择');
+    back.style.marginTop = '4px';
+    back.addEventListener('click', showDifficultyView);
+    viewEl.appendChild(back);
+  }
+  function showFavoriteView() {
+    // 收藏本视图（v1.6）：收藏卡片 + 重练/删除 + 清空 + 返回
+    hideOverlay();
+    stopTimer();
+    state.won = false;
+    state.playing = false;
+    renderHeader('收藏本');
+    clearNode(viewEl);
+    viewEl.appendChild(makeEl('div', 'page-title', '收藏本'));
+    viewEl.appendChild(makeEl('div', 'home-hint', '通关后点「⭐ 收藏这局」，想练的题都在这里'));
+    var recs = store.favorites || [];
+    if (recs.length === 0) {
+      viewEl.appendChild(makeEl('div', 'book-empty', '还没有收藏，通关后点「⭐ 收藏这局」'));
+    } else {
+      var i;
+      for (i = 0; i < recs.length; i++) {
+        (function (rec, idx) {
+          var lv = findLevel(rec.level);
+          var card = makeEl('div', 'teach-btn book-card');
+          var thumb = makeEl('span', 'book-thumb');
+          renderMiniBoard(thumb, rec.board, lv.N);
+          card.appendChild(thumb);
+          card.appendChild(makeEl('span', 'teach-btn-head', '第 ' + (idx + 1) + ' 题 · ' + lv.name + ' ' + rec.level + '×' + rec.level));
+          card.appendChild(makeEl('span', 'teach-btn-sub', '错 0/提示 0 均可 · 收藏于 ' + fmtDate(new Date(rec.ts))));
+          var act = makeEl('span', 'book-act', '▶ 重练');
+          act.addEventListener('click', function () { replayRecord(rec, 'favorite'); });
+          card.appendChild(act);
+          var del = makeEl('span', 'book-act', '🗑');
+          del.addEventListener('click', function () { removeBook(store.favorites, rec); showFavoriteView(); });
+          card.appendChild(del);
+          viewEl.appendChild(card);
+        })(recs[i], i);
+      }
+      var clearBtn = makeEl('button', 'btn-checkin', '清空收藏本');
+      clearBtn.style.marginTop = '4px';
+      clearBtn.addEventListener('click', function () {
+        showOverlay('清空收藏本', '将删除全部 ' + store.favorites.length + ' 条收藏记录', [],
+          [
+            { text: '确认清空', cls: 'btn-main', act: function () { store.favorites = []; saveStore(); hideOverlay(); showFavoriteView(); } },
+            { text: '取消', cls: 'btn-ghost', act: hideOverlay }
+          ]);
+      });
+      viewEl.appendChild(clearBtn);
+    }
+    var back = makeEl('button', 'btn-checkin', '← 返回');
+    back.setAttribute('aria-label', '返回难度选择');
+    back.style.marginTop = '4px';
+    back.addEventListener('click', showDifficultyView);
+    viewEl.appendChild(back);
+  }
   function newRound(levelKey) {
     clearCur(); // 新局生成：旧断局快照作废
     var lv = findLevel(levelKey);
@@ -958,6 +1345,13 @@
     state.playing = true;
     state.startMs = 0;
     state.ms = 0;
+    // v1.6：会话字段重置（新局从零追踪）
+    state.origPuzzle = state.puzzle.slice(); // 原始盘面快照（错题本/收藏本追踪依据）
+    state.errLog = [];
+    state.hintIdx = [];
+    state.errMarks = null;
+    state.hintExpl = null;
+    state.replayFrom = null;
   }
   function startGame(levelKey) {
     if (!SUDOKU) {
@@ -976,11 +1370,20 @@
       return;
     }
     if (!restoreCur()) { showDifficultyView(); return; }
+    // v1.6：断局恢复会话字段（旧版快照无 origPuzzle → null，错题提交自动跳过）
+    state.origPuzzle = (store.cur && store.cur.origPuzzle) ? store.cur.origPuzzle.slice() : null;
+    state.errLog = [];
+    state.hintIdx = [];
+    state.errMarks = null;
+    state.hintExpl = null;
+    state.replayFrom = null;
     renderGameView();
     renderGameFooter();
     startTimer();
   }
   function backToDifficulty() {
+    // v1.6：离开未完成的普通对局 → 提交错题记录（win 后不重复提交）
+    if (state.playing && !state.won && state.origPuzzle) { commitMistake('quit'); }
     hideOverlay();
     stopTimer();
     showDifficultyView();
