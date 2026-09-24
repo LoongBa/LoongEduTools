@@ -228,7 +228,9 @@ function App() {
           />
         )}
 
-        {view === "discipline" && <DisciplineView />}
+        {view === "discipline" && (
+          <DisciplineView onOpenRoster={() => setView("roster")} />
+        )}
 
         {view === "roster" && <RosterView initialTab="draw" />}
 
