@@ -589,7 +589,7 @@ body {
 .block-param-toggle.active { background: #722ed1; color: #fff; border-color: #722ed1; }
 .block-edit-param-hint { font-size: 12px; color: #a07bd1; margin-left: 8px; }
 
-/* 块编辑器 body 中参数化 steps chip（➡N步(N)） */
+/* 块编辑器 body 中参数化 steps chip（v1.12：➡?步——? 占位符浅紫 highlight） */
 .cmd-chip.param-step { background: #f3e8fd; border-color: #c9a8e8; color: #722ed1; }
 .cmd-chip.param-step .chip-x { color: #a07bd1; }
 

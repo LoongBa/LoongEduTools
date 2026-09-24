@@ -550,7 +550,7 @@
     });
     paramRow.appendChild(paramToggle);
     if (editBlockHasParam) {
-      paramRow.appendChild(makeEl('div', 'block-edit-param-hint', '块里「➡N步(N)」的距离由调用时传入（1-9）'));
+      paramRow.appendChild(makeEl('div', 'block-edit-param-hint', '块里的「➡?步」都走同一个距离，由调用时传入（1-9）'));
     }
     wrap.appendChild(paramRow);
     // body 指令 chips（单栏）
@@ -608,7 +608,7 @@
     var isSteps = cmd.id === 'steps';
     var isParamSteps = isSteps && cmd.steps === null;   // v1.11：参数化 steps（调用时传距离）
     var lbl;
-    if (isParamSteps) { lbl = '➡N步(N)'; }   // 参数版显示（区别于固定 ➡走3步）
+    if (isParamSteps) { lbl = '➡?步'; }   // v1.12 N2：定义态 ? 占位（距离由调用时传入；调用态显示具体数字）
     else { lbl = cmd.id === 'fwd' ? '↑' : (cmd.id === 'left' ? '↰' : (cmd.id === 'right' ? '↱' : (cmd.id === 'block' ? '🧱' : (cmd.id === 'steps' ? '➡走' + (cmd.steps || 1) + '步' : '?')))); }
     var repTxt = (!isSteps && cmd.rep && cmd.rep > 1) ? ('×' + cmd.rep) : '';
     var chip = makeEl('span', 'cmd-chip' + (repTxt ? ' loop' : '') + (isParamSteps ? ' param-step' : ''), (i + 1) + '.' + lbl + repTxt);
@@ -640,7 +640,10 @@
     return chip;
   }
 
-  /* v1.11：参数 toggle——开 → body 第一条 steps 参数化（steps:null）；关 → 参数化恢复固定。
+  /* v1.11：参数 toggle——开 → 全部 steps 参数化（steps:null）；关 → 参数化恢复固定。
+     v1.12 N1（Oracle 审核）：v1.11 仅第一条参数化 → 放开为全部参数化（一个参数 N 贯穿块内所有 steps，
+     execCall 副本已支持全部 steps:null 填同一 param，执行层零改动）。
+     I1 注释（Oracle）：v1.11 存量 1-param 块在此 toggle off→on 后升级为 all-param（数据变但语义更一致，可接受）。
      返回错误消息（null=成功）；提示由调用方在 renderBlockEdit 重建后设置（防旧元素被清） */
   function toggleBlockHasParam() {
     if (editBlockHasParam) {
@@ -653,14 +656,14 @@
       editBlockHasParam = false;
       return null;
     } else {
-      // 开：需要 body 有 steps；第一条 steps 参数化
+      // 开：需要 body 有 steps；全部参数化（v1.12 放开为全部）
       var hasSteps = false;
       for (var j = 0; j < editBlockBody.length; j++) {
         if (editBlockBody[j].id === 'steps') { hasSteps = true; break; }
       }
       if (!hasSteps) { return '😅 先加一条 ➡N步，才能带参数'; }   // 保持 off
       for (var k = 0; k < editBlockBody.length; k++) {
-        if (editBlockBody[k].id === 'steps') { editBlockBody[k].steps = null; break; }   // 第一条参数化
+        if (editBlockBody[k].id === 'steps') { editBlockBody[k].steps = null; }   // v1.12：全部参数化
       }
       editBlockHasParam = true;
       return null;
@@ -1369,7 +1372,7 @@
         if (c.id === 'left') { return '↰'; }
         if (c.id === 'right') { return '↱'; }
         if (c.id === 'block') { return '🧱'; }
-        if (c.id === 'steps') { return c.steps === null ? '➡N步' : '➡' + c.steps + '步'; }   // v1.11 参数版
+        if (c.id === 'steps') { return c.steps === null ? '➡?步' : '➡' + c.steps + '步'; }   // v1.12 N2：预览 ? 占位   // v1.11 参数版
         return '?';
       }).join(' '));
       item.appendChild(prev);
