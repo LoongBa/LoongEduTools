@@ -12,3 +12,5 @@ dist/
 # 冒烟临时文件（SMS 验证码捕获）
 scripts/sms_code.txt
 scripts/sms_code.history
+# Node 双入口本地数据（app.db / r2 文件系统模拟，不入库）
+data/
