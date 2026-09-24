@@ -94,6 +94,16 @@
     }
     return null;
   }
+  // v1.11 块参数：hasParam 派生（B2 Oracle 修订）——body 含参数化 steps（steps:null）即带参数
+  function blockHasParam(id) {
+    var def = getCustomBlock(id);
+    if (!def || !def.body) { return false; }
+    for (var i = 0; i < def.body.length; i++) {
+      var c = def.body[i];
+      if (c.id === 'steps' && c.steps === null) { return true; }
+    }
+    return false;
+  }
   // 名称唯一校验：editingId 传 null（新建）或自身 id（编辑时排除自身）
   function blockNameTaken(name, editingId) {
     for (var i = 0; i < customBlocks.length; i++) {
@@ -415,6 +425,8 @@
   var editBlockName = '';
   var editBlockBody = [];
   var editBlockReturn = 'list';
+  // v1.11 N-3 修复（B1）：块库来源记忆——'game'=从游戏选择面板进入（返回游戏）/ 'home'=首页卡片进入（返回首页）
+  var blockListReturn = 'home';
 
   function viewBlockList() {
     stopTimer();
@@ -452,8 +464,20 @@
     if (customBlocks.length >= MAX_BLOCKS) {
       wrap.appendChild(makeEl('p', 'custom-limit', '⚠ 已达上限 8 个块，删除后可再新建'));
     }
-    var back = makeEl('button', 'btn', '‹ 返回首页');
-    back.addEventListener('click', function () { viewHome(); });
+    // v1.11 N-3 修复（B1）：按来源显示返回按钮——'game' → 返回游戏（renderGame + 计时衔接）
+    var back;
+    if (blockListReturn === 'game') {
+      back = makeEl('button', 'btn', '‹ 返回游戏');
+      back.addEventListener('click', function () {
+        blockListReturn = 'home';
+        renderGame();
+        renderSeq();   // v1.11：renderGame 不重建序列 chips——补渲染
+        if (!state.finished) { state.startMs = Date.now() - state.elapsed; startTimer(); }
+      });
+    } else {
+      back = makeEl('button', 'btn', '‹ 返回首页');
+      back.addEventListener('click', function () { viewHome(); });
+    }
     wrap.appendChild(back);
     viewEl.appendChild(wrap);
     renderFooter('');
@@ -462,6 +486,8 @@
   /* ---------- v1.10 块编辑器视图 ---------- */
   // body 指令：fwd/left/right/block/steps（含 rep/steps 参数）；不含 if/loop/call（决策 B）
   var BLOCK_BODY_CMDS = [CMD_FWD, CMD_L, CMD_R, CMD_BLOCK, CMD_STEPS];
+  // v1.11：编辑态参数开关（toggle 状态从 body 派生，B2）
+  var editBlockHasParam = false;
 
   function viewBlockEdit(id) {
     stopTimer();
@@ -483,8 +509,9 @@
           if (c.steps !== undefined) { nc.steps = c.steps; }
           return nc;
         });
+        editBlockHasParam = blockHasParam(id);   // v1.11：编辑态参数开关从 body 派生（B2）
       }
-    }
+    } else { editBlockHasParam = false; }
     // I-4 修订：块编辑器为独立视图（clearNode 全屏替换），主视图控件已被销毁天然隔离，
     // 无需 setCmdLocked——若锁会误禁块编辑器自身添加按钮（.cmd-add 同选择器）
     renderBlockEdit();
@@ -509,6 +536,23 @@
     nameInput.addEventListener('input', function () { editBlockName = nameInput.value; });
     nameRow.appendChild(nameInput);
     wrap.appendChild(nameRow);
+    // v1.11：参数 toggle（带参数：走 N 步）——开 → body 第一条 steps 变 steps:null（参数化）
+    var paramRow = makeEl('div', 'block-edit-param');
+    var paramToggle = makeEl('button', 'cmd-add block-param-toggle' + (editBlockHasParam ? ' active' : ''), '🔢 带参数：走 N 步');
+    paramToggle.addEventListener('click', function () {
+      var errMsg = toggleBlockHasParam();
+      renderBlockEdit();
+      // 提示需在重建后设置（toggle 内旧元素会被 renderBlockEdit 清掉）
+      if (errMsg) {
+        var fbT = document.getElementById('block-edit-feedback');
+        if (fbT) { fbT.textContent = errMsg; fbT.className = 'editor-feedback miss'; }
+      }
+    });
+    paramRow.appendChild(paramToggle);
+    if (editBlockHasParam) {
+      paramRow.appendChild(makeEl('div', 'block-edit-param-hint', '块里「➡N步(N)」的距离由调用时传入（1-9）'));
+    }
+    wrap.appendChild(paramRow);
     // body 指令 chips（单栏）
     var bodyBox = makeEl('div', 'seq-box active');
     bodyBox.id = 'block-body-box';
@@ -562,12 +606,16 @@
   /* 块 body chip 渲染（复用 renderSeq chip 交互：fwd 等 cycleRep、steps cycleSteps、✕ 删除） */
   function renderBlockBodyChip(cmd, i) {
     var isSteps = cmd.id === 'steps';
-    var lbl = cmd.id === 'fwd' ? '↑' : (cmd.id === 'left' ? '↰' : (cmd.id === 'right' ? '↱' : (cmd.id === 'block' ? '🧱' : (cmd.id === 'steps' ? '➡走' + (cmd.steps || 1) + '步' : '?'))));
+    var isParamSteps = isSteps && cmd.steps === null;   // v1.11：参数化 steps（调用时传距离）
+    var lbl;
+    if (isParamSteps) { lbl = '➡N步(N)'; }   // 参数版显示（区别于固定 ➡走3步）
+    else { lbl = cmd.id === 'fwd' ? '↑' : (cmd.id === 'left' ? '↰' : (cmd.id === 'right' ? '↱' : (cmd.id === 'block' ? '🧱' : (cmd.id === 'steps' ? '➡走' + (cmd.steps || 1) + '步' : '?')))); }
     var repTxt = (!isSteps && cmd.rep && cmd.rep > 1) ? ('×' + cmd.rep) : '';
-    var chip = makeEl('span', 'cmd-chip' + (repTxt ? ' loop' : ''), (i + 1) + '.' + lbl + repTxt);
+    var chip = makeEl('span', 'cmd-chip' + (repTxt ? ' loop' : '') + (isParamSteps ? ' param-step' : ''), (i + 1) + '.' + lbl + repTxt);
     chip.addEventListener('click', function (ev) {
       ev.stopPropagation();
       if (isSteps) {
+        if (cmd.steps === null) { return; }   // I3：参数版 no-op（距离由调用时决定）
         cmd.steps = ((cmd.steps || 1) % 9) + 1;
       } else {
         cmd.rep = ((cmd.rep || 1) % 4) + 1;
@@ -578,14 +626,49 @@
     x.addEventListener('click', function (ev) {
       ev.stopPropagation();
       editBlockBody.splice(i, 1);
+      // v1.11 B2：删除参数化 steps → editBlockHasParam 从 body 重新派生（toggle 自动 off）
+      if (editBlockHasParam) {
+        var stillHas = false;
+        for (var pi = 0; pi < editBlockBody.length; pi++) {
+          if (editBlockBody[pi].id === 'steps' && editBlockBody[pi].steps === null) { stillHas = true; break; }
+        }
+        editBlockHasParam = stillHas;
+      }
       renderBlockEdit();
     });
     chip.appendChild(x);
     return chip;
   }
 
+  /* v1.11：参数 toggle——开 → body 第一条 steps 参数化（steps:null）；关 → 参数化恢复固定。
+     返回错误消息（null=成功）；提示由调用方在 renderBlockEdit 重建后设置（防旧元素被清） */
+  function toggleBlockHasParam() {
+    if (editBlockHasParam) {
+      // 关：参数化 steps（steps:null）恢复固定 steps:1
+      for (var i = 0; i < editBlockBody.length; i++) {
+        if (editBlockBody[i].id === 'steps' && editBlockBody[i].steps === null) {
+          editBlockBody[i].steps = 1;
+        }
+      }
+      editBlockHasParam = false;
+      return null;
+    } else {
+      // 开：需要 body 有 steps；第一条 steps 参数化
+      var hasSteps = false;
+      for (var j = 0; j < editBlockBody.length; j++) {
+        if (editBlockBody[j].id === 'steps') { hasSteps = true; break; }
+      }
+      if (!hasSteps) { return '😅 先加一条 ➡N步，才能带参数'; }   // 保持 off
+      for (var k = 0; k < editBlockBody.length; k++) {
+        if (editBlockBody[k].id === 'steps') { editBlockBody[k].steps = null; break; }   // 第一条参数化
+      }
+      editBlockHasParam = true;
+      return null;
+    }
+  }
+
   function addBlockBodyCmd(id) {
-    if (id === 'steps') { editBlockBody.push({ id: id, steps: 1 }); }
+    if (id === 'steps') { editBlockBody.push({ id: id, steps: editBlockHasParam ? null : 1 }); }   // v1.11：参数态新增 steps 直接参数化
     else { editBlockBody.push({ id: id, rep: 1 }); }
     renderBlockEdit();
   }
@@ -595,6 +678,7 @@
     // I-4 修订：独立视图无需解锁（主视图控件已重建为默认可用态）；仅游戏来源需恢复计时
     if (editBlockReturn === 'game') {
       renderGame();
+      renderSeq();   // v1.11 修复：renderGame 不重建序列 chips——补渲染（N-3 返回游戏暴露）
       // 计时衔接：进入编辑器已 stopTimer；按已累计 elapsed 补偿 startMs 续跑（编辑耗时不计入解题计时）
       if (!state.finished) { state.startMs = Date.now() - state.elapsed; startTimer(); }
     }
@@ -908,6 +992,7 @@
 
   /* ---------- 视图：首页 ---------- */
   function viewHome() {
+    blockListReturn = 'home';   // v1.11 B1：兜底重置（覆盖页头 home / 任意逃逸路径）
     state.finished = false;
     stopTimer();
     renderHeader();
@@ -937,7 +1022,7 @@
     var blockCard = makeEl('button', 'level-card block-card');
     blockCard.appendChild(makeEl('div', 'level-name', '🧩 我的块 (' + customBlocks.length + ')'));
     blockCard.appendChild(makeEl('div', 'level-best', '把重复动作打包！'));
-    blockCard.addEventListener('click', function () { viewBlockList(); });
+    blockCard.addEventListener('click', function () { blockListReturn = 'home'; viewBlockList(); });
     wrap.appendChild(blockCard);
 
     var checkinBtn = makeEl('button', 'btn btn-checkin', store.checkin.dates.indexOf(todayStr()) >= 0 ? '✅ 今日已打卡' : '📅 今日打卡');
@@ -1174,19 +1259,28 @@
       var lbl;
       if (isCall) {
         // v1.10 自定义块引用：name 渲染查块库取最新（I-3）；块已删除 → 灰显 + 「块已删除」标记（N-3）
+        // v1.11：参数块显示 (N)——有参数块 chip 显示 🧩名(N)，点击调参（cycleCallParam）
         var defC = getCustomBlock(cmd.bid);
-        if (defC) { lbl = '🧩' + defC.name; cmd.name = defC.name; }
+        var isParamCall = defC && blockHasParam(cmd.bid);
+        if (defC) {
+          lbl = '🧩' + defC.name + (isParamCall ? '(' + (cmd.param || 3) + ')' : '');
+          cmd.name = defC.name;
+        }
         else { lbl = '🧩' + (cmd.name || '已删除') + '❌'; }
       } else {
         lbl = cmd.id === 'fwd' ? '↑' : (cmd.id === 'left' ? '↰' : (cmd.id === 'right' ? '↱' : (cmd.id === 'block' ? '🧱' : (cmd.id === 'steps' ? '➡走' + (cmd.steps || 1) + '步' : (cmd.id === 'loop' ? '🔁×' + (cmd.rep || 2) : '❓if')))));
       }
       var repTxt = (!isIf && !isSteps && !isLoop && !isCall && cmd.rep && cmd.rep > 1) ? ('×' + cmd.rep) : '';
-      // 指令 chip：单击循环次数/参数递增/打开编辑区（if 分支 or 循环块 or 块引用）；✕ 角标删除
-      var chip = makeEl('span', 'cmd-chip' + (repTxt ? ' loop' : '') + (isIf ? ' if' : '') + (isLoop ? ' loopb' : '') + (isCall ? (defC ? ' call' : ' call deleted') : ''), (i + 1) + '.' + lbl + repTxt);
+      // 指令 chip：单击循环次数/参数递增/打开编辑区（if 分支 or 循环块 or 块引用调参）；✕ 角标删除
+      var chip = makeEl('span', 'cmd-chip' + (repTxt ? ' loop' : '') + (isIf ? ' if' : '') + (isLoop ? ' loopb' : '') + (isCall ? (defC ? (isParamCall ? ' call param-call' : ' call') : ' call deleted') : ''), (i + 1) + '.' + lbl + repTxt);
       chip.addEventListener('click', function (ev) {
         ev.stopPropagation();
         if (isIf || isLoop) { openEditCtx(i, cmd); }
-        else if (isCall) { if (defC && !state.execLock) { viewBlockEditFromGame(cmd.bid); } }
+        else if (isCall) {
+          if (!defC || state.execLock) { return; }   // 孤儿/执行中不可点
+          if (isParamCall) { cycleCallParam(i); }    // v1.11：参数块点击 → 调参
+          else { viewBlockEditFromGame(cmd.bid); }   // 无参数块 → 进块编辑器（v1.10 保持）
+        }
         else if (isSteps) { cycleSteps(i); }
         else { cycleRep(i); }
       });
@@ -1218,7 +1312,16 @@
     if (state.execLock) { return; }
     var cmd = state.cmds[i];
     if (!cmd || cmd.id !== 'steps') { return; }
+    if (cmd.steps === null) { return; }   // v1.11 I3：参数化 steps 点击 no-op（距离由调用时决定）
     cmd.steps = ((cmd.steps || 1) % 9) + 1;
+    renderSeq();
+  }
+  // v1.11：块引用参数递增——参数块 chip 点击 3→4→…→9→1→…→2→3（对齐 steps 1-9 循环）
+  function cycleCallParam(i) {
+    if (state.execLock) { return; }
+    var cmd = state.cmds[i];
+    if (!cmd || cmd.id !== 'call') { return; }
+    cmd.param = ((cmd.param || 3) % 9) + 1;
     renderSeq();
   }
 
@@ -1257,21 +1360,24 @@
     }
     customBlocks.forEach(function (b) {
       var item = makeEl('div', 'block-picker-item');
-      var lbl = makeEl('span', 'block-picker-name', '🧩 ' + b.name);
+      var hasParam = blockHasParam(b.id);   // v1.11：参数块显示 (N)
+      var lbl = makeEl('span', 'block-picker-name', '🧩 ' + b.name + (hasParam ? ' (3)' : ''));
       item.appendChild(lbl);
-      // N-2：body 预览（指令 chips 缩略，强化"封装可见"教学）
+      // N-2：body 预览（指令 chips 缩略，强化"封装可见"教学；参数版 steps 显示 N）
       var prev = makeEl('span', 'block-picker-preview', b.body.map(function (c) {
         if (c.id === 'fwd') { return '↑' + (c.rep && c.rep > 1 ? '×' + c.rep : ''); }
         if (c.id === 'left') { return '↰'; }
         if (c.id === 'right') { return '↱'; }
         if (c.id === 'block') { return '🧱'; }
-        if (c.id === 'steps') { return '➡' + (c.steps || 1) + '步'; }
+        if (c.id === 'steps') { return c.steps === null ? '➡N步' : '➡' + c.steps + '步'; }   // v1.11 参数版
         return '?';
       }).join(' '));
       item.appendChild(prev);
       item.addEventListener('click', function () {
         if (state.execLock) { return; }
-        state.cmds.push({ id: 'call', bid: b.id, name: b.name });
+        // v1.11：参数块追加带默认参数 3；无参数块不设 param
+        if (hasParam) { state.cmds.push({ id: 'call', bid: b.id, name: b.name, param: 3 }); }
+        else { state.cmds.push({ id: 'call', bid: b.id, name: b.name }); }
         hideBlockPicker();
         renderSeq();
       });
@@ -1279,7 +1385,12 @@
     });
     var mgr = makeEl('div', 'block-picker-mgr');
     var mgrBtn = makeEl('button', 'cmd-add', '🧩 管理块');
-    mgrBtn.addEventListener('click', function () { setCmdLocked(false); viewBlockList(); });
+    mgrBtn.addEventListener('click', function () {
+      blockListReturn = 'game';   // N-3 修复（B1）：记住从游戏进入
+      hideBlockPicker();
+      setCmdLocked(false);
+      viewBlockList();
+    });
     mgr.appendChild(mgrBtn);
     p.appendChild(mgr);
   }
@@ -1402,25 +1513,26 @@
         // v1.8：内层 loop chip 打开嵌套编辑区（同 if）
         if (isIf) { openNestedEditCtx(bc); }
         else if (isLoop) { openNestedEditCtx(bc); }
-        else if (isSteps) {
-          bc.steps = ((bc.steps || 1) % 9) + 1;
-          renderEditCtx();
-        }
-        else {
-          var next = ((bc.rep || 1) % 4) + 1;
-          bc.rep = next;
-          renderEditCtx();
-        }
-      });
-      var x = makeEl('span', 'chip-x', '✕');
-      x.addEventListener('click', function (ev) {
-        ev.stopPropagation();
-        if (state.execLock) { return; }
-        if (isIf && !window.confirm('删除内层 if 分支块？')) { return; }
-        if (isLoop && !window.confirm('删除内层循环块？')) { return; }
-        loopCmd.body.splice(bi, 1);
+      else if (isSteps) {
+        if (bc.steps === null) { return; }   // v1.11 I3：参数化 steps no-op
+        bc.steps = ((bc.steps || 1) % 9) + 1;
         renderEditCtx();
-      });
+      }
+      else {
+        var next = ((bc.rep || 1) % 4) + 1;
+        bc.rep = next;
+        renderEditCtx();
+      }
+    });
+    var x = makeEl('span', 'chip-x', '✕');
+    x.addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      if (state.execLock) { return; }
+      if (isIf && !window.confirm('删除内层 if 分支块？')) { return; }
+      if (isLoop && !window.confirm('删除内层循环块？')) { return; }
+      loopCmd.body.splice(bi, 1);
+      renderEditCtx();
+    });
       chip.appendChild(x);
       chipsWrap.appendChild(chip);
     });
@@ -1483,25 +1595,26 @@
       chip.addEventListener('click', function (ev) {
         ev.stopPropagation();
         if (state.execLock) { return; }
-        if (isIf) { openNestedEditCtx(bc); }
-        else if (isSteps) {
-          bc.steps = ((bc.steps || 1) % 9) + 1;
-          renderEditCtx();
-        }
-        else {
-          var next = ((bc.rep || 1) % 4) + 1;
-          bc.rep = next;
-          renderEditCtx();
-        }
-      });
-      var x = makeEl('span', 'chip-x', '✕');
-      x.addEventListener('click', function (ev) {
-        ev.stopPropagation();
-        if (state.execLock) { return; }
-        if (isIf && !window.confirm('删除内层 if 分支块？')) { return; }
-        arr.splice(bi, 1);
+      if (isIf) { openNestedEditCtx(bc); }
+      else if (isSteps) {
+        if (bc.steps === null) { return; }   // v1.11 I3：参数化 steps no-op
+        bc.steps = ((bc.steps || 1) % 9) + 1;
         renderEditCtx();
-      });
+      }
+      else {
+        var next = ((bc.rep || 1) % 4) + 1;
+        bc.rep = next;
+        renderEditCtx();
+      }
+    });
+    var x = makeEl('span', 'chip-x', '✕');
+    x.addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      if (state.execLock) { return; }
+      if (isIf && !window.confirm('删除内层 if 分支块？')) { return; }
+      arr.splice(bi, 1);
+      renderEditCtx();
+    });
       chip.appendChild(x);
       chipsWrap.appendChild(chip);
     });
@@ -1635,6 +1748,7 @@
   }
 
   /* v1.10 自定义指令块引用：同 execLoop 结构，body 来自块库（getCustomBlock(bid)） */
+  /* v1.11 参数注入：参数块生成运行时副本（steps:null 填 call.param，防污染块库共享引用） */
   function execCall(cmd) {
     var def = getCustomBlock(cmd.bid);
     if (!def || !def.body || !def.body.length) {
@@ -1651,12 +1765,25 @@
         return;
       }
     }
-    resetLoopLeft(def.body);                             // B1 同款：展开前清 body 执行期状态（共享引用污染防 bug）
-    for (var i = 0; i < def.body.length; i++) {
-      def.body[i]._execTop = cmd._execTop;               // I-new 同款：无条件继承父级 call 顶层下标（高亮/失败定位）
+    resetLoopLeft(def.body);   // B1 同款：展开前清 body 执行期状态（共享引用污染防 bug；I2：参数块副本全新为空操作，非参数块必需）
+    var runBody;
+    if (blockHasParam(cmd.bid)) {
+      // v1.11 运行时副本：参数化 steps（steps:null）填 call.param，其余指令浅拷贝——不同 call 不同参数互不污染
+      runBody = def.body.map(function (c) {
+        var nc = { id: c.id };
+        if (c.rep !== undefined) { nc.rep = c.rep; }
+        if (c.id === 'steps') { nc.steps = (c.steps === null) ? (cmd.param || 3) : c.steps; }
+        else if (c.steps !== undefined) { nc.steps = c.steps; }
+        return nc;
+      });
+    } else {
+      runBody = def.body;   // 无参数块：直接共享引用（v1.10 行为不变）
+    }
+    for (var i = 0; i < runBody.length; i++) {
+      runBody[i]._execTop = cmd._execTop;   // I-new 同款：无条件继承父级 call 顶层下标（高亮/失败定位）
     }
     state.execQueue.splice.apply(state.execQueue,
-      [state.queueIdx, 0].concat(def.body));
+      [state.queueIdx, 0].concat(runBody));
   }
 
   /* v1.6 共享前进一格逻辑：fwd/steps/block 三指令共用，返回 {moved, reason} */
@@ -2016,5 +2143,9 @@
   M.removeCustomBlock = removeCustomBlock;
   M.getCustomBlock = getCustomBlock;
   M.blockNameTaken = blockNameTaken;
+  // v1.11：块参数
+  M.blockHasParam = blockHasParam;
+  M.cycleCallParam = cycleCallParam;
+  M.toggleBlockHasParam = toggleBlockHasParam;
   window.M = M;
 })();

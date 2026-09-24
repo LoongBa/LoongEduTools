@@ -581,3 +581,19 @@ body {
 .block-card { background: -webkit-linear-gradient(135deg, #efdbff, #d3adf7); background: linear-gradient(135deg, #efdbff, #d3adf7); }
 .block-card:active { background: #e8d9fb; }
 
+/* ============ v1.11 块参数（函数参数化） ============ */
+
+/* 参数 toggle（块编辑器「🔢 带参数」） */
+.block-edit-param { display: -webkit-box; display: -webkit-flex; display: flex; -webkit-box-align: center; -webkit-align-items: center; align-items: center; margin-bottom: 10px; -webkit-flex-wrap: wrap; flex-wrap: wrap; }
+.block-param-toggle { -webkit-box-flex: 0; -webkit-flex: 0 0 auto; flex: 0 0 auto; margin: 2px; }
+.block-param-toggle.active { background: #722ed1; color: #fff; border-color: #722ed1; }
+.block-edit-param-hint { font-size: 12px; color: #a07bd1; margin-left: 8px; }
+
+/* 块编辑器 body 中参数化 steps chip（➡N步(N)） */
+.cmd-chip.param-step { background: #f3e8fd; border-color: #c9a8e8; color: #722ed1; }
+.cmd-chip.param-step .chip-x { color: #a07bd1; }
+
+/* 序列中参数块引用 chip（🧩名(N)——(N) 浅紫小字可调暗示） */
+.cmd-chip.call.param-call { background: #f3e8fd; border-color: #c9a8e8; color: #722ed1; font-weight: 600; }
+.cmd-chip.call.param-call .call-param-txt { color: #a07bd1; font-weight: 400; }
+
