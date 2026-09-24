@@ -1,12 +1,29 @@
 import { useCallback, useEffect, useState } from "react";
-import { AuthStatus, ClassProgress, InstalledPackage, api } from "./api";
+import { AuthStatus, ClassProgress, InstalledPackage, StoreItem, api } from "./api";
+import CheckinView from "./CheckinView";
+import ClassesView from "./ClassesView";
 import DisciplineView from "./DisciplineView";
 import LoginView from "./LoginView";
 import ProfileView from "./ProfileView";
+import RosterView from "./RosterView";
 import StoreView from "./StoreView";
+import TimerView from "./TimerView";
+import { useContentProgressReporting } from "./reportHook";
+import { checkPackageUpdates } from "./updateCheck";
 import "./App.css";
 
-type View = "apps" | "store" | "quickstart" | "discipline" | "profile" | "login" | "settings";
+type View =
+  | "apps"
+  | "store"
+  | "quickstart"
+  | "roster"
+  | "classes"
+  | "checkin"
+  | "timer"
+  | "discipline"
+  | "profile"
+  | "login"
+  | "settings";
 
 function App() {
   const [view, setView] = useState<View>("apps");
@@ -16,6 +33,10 @@ function App() {
   const [err, setErr] = useState<string | null>(null);
   const [loadingPkg, setLoadingPkg] = useState<string | null>(null);
   const [auth, setAuth] = useState<AuthStatus | null>(null);
+  const [updates, setUpdates] = useState<StoreItem[]>([]);
+
+  // P3 白名单上报：content:progress 监听 + 启动冲刷（壳内零 AI · A01 §5.1）
+  useContentProgressReporting();
 
   const refresh = useCallback(async () => {
     try {
@@ -47,6 +68,17 @@ function App() {
   useEffect(() => {
     if (auth?.state === "ok" && auth.api_configured && !auth.offline_grace) {
       api.authRefresh().catch(() => {});
+    }
+  }, [auth?.state, auth?.api_configured, auth?.offline_grace]);
+
+  // 启动在线时检查内容包更新（D05 §3 状态可视；每会话一次，静默失败）
+  useEffect(() => {
+    if (auth?.state === "ok" && auth.api_configured && !auth.offline_grace) {
+      checkPackageUpdates()
+        .then((list) => {
+          if (list.length > 0) setUpdates(list);
+        })
+        .catch(() => {});
     }
   }, [auth?.state, auth?.api_configured, auth?.offline_grace]);
 
@@ -98,6 +130,18 @@ function App() {
           <button className={navClass("quickstart")} onClick={() => setView("quickstart")}>
             一键开课
           </button>
+          <button className={navClass("roster")} onClick={() => setView("roster")}>
+            抽卡分组
+          </button>
+          <button className={navClass("classes")} onClick={() => setView("classes")}>
+            班级看板
+          </button>
+          <button className={navClass("checkin")} onClick={() => setView("checkin")}>
+            打卡单
+          </button>
+          <button className={navClass("timer")} onClick={() => setView("timer")}>
+            计时器
+          </button>
           <button className={navClass("discipline")} onClick={() => setView("discipline")}>
             纪律
           </button>
@@ -140,6 +184,20 @@ function App() {
             处于离线宽限中（7 天内有效），联网后将自动刷新凭证。
           </div>
         )}
+        {updates.length > 0 && view !== "store" && (
+          <div className="banner warn" onClick={() => setView("store")}>
+            {updates.length} 个内容包有新版本，前往内容商店更新（点击前往）。
+            <button
+              className="ghost-btn inline"
+              onClick={(e) => {
+                e.stopPropagation();
+                setUpdates([]);
+              }}
+            >
+              知道了
+            </button>
+          </div>
+        )}
 
         {view === "login" && (
           <LoginView
@@ -171,6 +229,16 @@ function App() {
         )}
 
         {view === "discipline" && <DisciplineView />}
+
+        {view === "roster" && <RosterView initialTab="draw" />}
+
+        {view === "classes" && (
+          <ClassesView recents={recents} onRefresh={refresh} />
+        )}
+
+        {view === "checkin" && <CheckinView />}
+
+        {view === "timer" && <TimerView />}
 
         {view === "store" && (
           <StoreView

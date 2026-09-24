@@ -115,7 +115,8 @@ fn client() -> Result<reqwest::Client, String> {
         .map_err(|e| format!("HTTP 客户端初始化失败: {e}"))
 }
 
-async fn post_json(
+/// pub：供 report.rs（P3 上报）复用，避免复制 license.rs 的内联 post 反模式
+pub async fn post_json(
     app: &tauri::AppHandle,
     path: &str,
     body: serde_json::Value,

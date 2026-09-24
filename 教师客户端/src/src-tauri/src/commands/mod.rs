@@ -3,5 +3,7 @@ pub mod fingerprint;
 pub mod license;
 pub mod package;
 pub mod recents;
+pub mod report;
+pub mod roster;
 pub mod store;
 pub mod window;

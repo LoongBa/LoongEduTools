@@ -94,6 +94,22 @@ export interface StoreList {
   packages: StoreItem[];
 }
 
+// ---- P3 抽卡/分组（roster.rs · D05 §2.4.1/§2.4.2）----
+
+export interface RosterStudent {
+  name: string;
+  /** "strong" | "weak" | null（不强求必填） */
+  tag: "strong" | "weak" | null;
+}
+
+export interface RosterData {
+  /** 创建时间，仅展示用（ISO 或秒级时间戳字符串） */
+  created_at: string;
+  students: RosterStudent[];
+  /** 分组结果本地留存（供纪律积分联动，D05 §2.4.2/§2.4.3） */
+  groups: string[][];
+}
+
 export const api = {
   listInstalled: () => invoke<InstalledPackage[]>("list_installed"),
   load: (packageId: string) => invoke<string>("load", { packageId }),
@@ -147,4 +163,18 @@ export const api = {
   storeImportUsb: (zipPath: string) =>
     invoke<InstalledPackage>("store_import_usb", { zipPath }),
   storeListAvailable: () => invoke<StoreList>("store_list_available"),
+
+  // ---- P3 抽卡/分组（roster.rs · D05 §2.4.1/§2.4.2）----
+  rosterSave: (rosterJson: string) => invoke<void>("roster_save", { rosterJson }),
+  rosterLoad: () => invoke<string | null>("roster_load"),
+
+  // ---- P3 白名单上报（report.rs · A01 §5.1 · 零儿童数据）----
+  reportProgress: (payload: {
+    package_id: string;
+    unit: string;
+    section: string;
+    detail: string;
+    ts: number;
+  }) => invoke<void>("report_progress", { payload }),
+  reportFlush: () => invoke<void>("report_flush"),
 };

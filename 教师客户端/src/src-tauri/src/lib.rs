@@ -2,7 +2,7 @@ mod commands;
 mod state;
 mod webview2;
 
-use crate::commands::{auth, license, package, recents, store, window};
+use crate::commands::{auth, license, package, recents, report, roster, store, window};
 use crate::state::AppState;
 use tauri::Manager as _;
 
@@ -58,6 +58,12 @@ pub fn run() {
             store::store_download,
             store::store_import_usb,
             store::store_list_available,
+            // P3 白名单上报（A01 §5.1 · 零儿童数据红线）
+            report::report_progress,
+            report::report_flush,
+            // P3 抽卡/分组 名单持久化（D05 §2.4.1/§2.4.2 · 本地 roster.json 零上报）
+            roster::roster_save,
+            roster::roster_load,
             // WebView2 状态查询（前端启动时调用，决定是否弹引导）
             test_webview2,
         ])
