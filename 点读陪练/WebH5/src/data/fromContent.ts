@@ -186,24 +186,6 @@ export function contentToUnit(pkg: ContentPackage, unitDir: string, no: number):
     }
   }
 
-  // 歌曲：用 story 段/句卡前 4 句拼（带 audio 供 mp3 优先播放）
-  const story = segments.find((x) => x.type === "story");
-  const storyLines: Song["lines"] = story?.lines?.slice(0, 4).map((l) => ({
-    en: l.text ?? "",
-    cn: l.zh ?? "",
-    ...(l.audio ? { audio: l.audio } : {}),
-  })) ?? [];
-  const songLines: Song["lines"] =
-    storyLines.length > 0
-      ? storyLines
-      : cards.slice(0, 4).map((c) => ({ en: c.en, cn: c.cn, ...(c.mp3 ? { audio: c.mp3 } : {}) }));
-  const song: Song = {
-    id: `${unitId}-song`,
-    title: pkg.title ?? unitDir,
-    cn: pkg.topic ?? pkg.title ?? unitDir,
-    kind: "lines",
-    lines: songLines,
-  };
   // 能力：abilities → SkillCheck
   const skills: SkillCheck[] = (pkg.abilities ?? []).map((ab, i) => {
     const retrain = ab.check?.retrain_segment ?? "";
@@ -233,7 +215,7 @@ export function contentToUnit(pkg: ContentPackage, unitDir: string, no: number):
     theme: pkg.topic ?? "",
     cards,
     words,
-    song,
+    // 歌曲不在此构造：原创儿歌/教材跟读由 loadCatalog 从 song.json/textbook_lyrics.json 注入（无歌单元保持 undefined）
     skills,
   };
 }

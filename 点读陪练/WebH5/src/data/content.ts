@@ -99,8 +99,8 @@ export interface Unit {
   theme: string;
   cards: SentenceCard[];
   words: WordCard[];
-  /** 主歌（原创儿歌优先；无则教材跟读）。点唱台列表请用 songs ?? [song] */
-  song: Song;
+  /** 主歌（原创儿歌优先；无则教材跟读；完全无歌素材时为 undefined）。点唱台列表请用 songs ?? [song] */
+  song?: Song;
   /** 完整歌曲列表（原创儿歌 + 教材跟读，并行任务的点唱台产物） */
   songs?: Song[];
   skills: SkillCheck[];

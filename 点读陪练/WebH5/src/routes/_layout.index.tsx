@@ -133,7 +133,7 @@ function HomePage() {
       {/* 次级入口：弱化处理 */}
       <nav aria-label="快捷入口" className="grid grid-cols-2 gap-3">
         <QuickLink to="/words" Icon={BookIcon} title="词卡收藏册" note={`已收集 ${stats.collected}`} />
-        <QuickLink to="/jukebox" Icon={MusicIcon} title="点唱台" note={`${unit.song.title}`} />
+        <QuickLink to="/jukebox" Icon={MusicIcon} title="点唱台" note={unit.song ? `${unit.song.title}` : "没有歌曲数据"} />
         <QuickLink to="/print" Icon={PrintIcon} title="打印小单" note="A4 黑白无屏版" />
         <QuickLink to="/card" Icon={StarIcon} title="成长卡" note={litDays.length >= 5 ? "本周可查看" : `本周已点亮 ${litDays.length} 天`} />
       </nav>

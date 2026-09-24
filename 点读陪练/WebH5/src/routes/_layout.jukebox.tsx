@@ -34,8 +34,30 @@ function JukeboxPage() {
           desc="点一句只唱那一句，也可以整首连着放。"
         />
         <ul className="flex flex-col gap-3">
-          {UNITS.flatMap((u) =>
-            (u.songs ?? [u.song]).map((s) => (
+          {UNITS.flatMap((u) => {
+            const unitSongs = u.songs ?? (u.song ? [u.song] : []);
+            if (unitSongs.length === 0) {
+              // 无任何歌曲素材：显示占位（不假装有原创歌）
+              return [
+                <li key={u.id}>
+                  <div className="tap-target flex w-full items-center gap-4 rounded-3xl border border-dashed px-5 py-4 text-left panel-border bg-card/60">
+                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-secondary text-muted-text">
+                      <MusicIcon className="h-5 w-5" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className="truncate text-[17px] font-bold leading-tight">{u.title}</span>
+                        <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-bold text-muted-text">
+                          Unit {u.no}
+                        </span>
+                      </span>
+                      <span className="mt-0.5 block text-[13px] text-muted-text">没有歌曲数据</span>
+                    </span>
+                  </div>
+                </li>,
+              ];
+            }
+            return unitSongs.map((s) => (
               <li key={s.id}>
                 <button
                   type="button"
@@ -75,7 +97,7 @@ function JukeboxPage() {
                             : "bg-warm-soft text-[var(--warm)]",
                         )}
                       >
-                        {s.kind === "textbook_lyrics" ? "教材跟读" : "原创歌曲"}
+                        {s.kind === "original_song" ? "原创歌曲" : "教材跟读"}
                       </span>
                     </span>
                     <span className="mt-0.5 block text-[13px] text-muted-text">
@@ -84,8 +106,8 @@ function JukeboxPage() {
                   </span>
                 </button>
               </li>
-            )),
-          )}
+            ));
+          })}
         </ul>
       </div>
     );
@@ -566,7 +588,7 @@ function Player({
                 : "bg-warm-soft text-[var(--warm)]",
             )}
           >
-            {song.kind === "textbook_lyrics" ? "教材跟读" : "原创歌曲"}
+            {song.kind === "original_song" ? "原创歌曲" : "教材跟读"}
           </span>
         }
         title={song.title}
