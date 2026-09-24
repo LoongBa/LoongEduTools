@@ -220,6 +220,46 @@ body {
 .cell-inner.given { background: #f2f6fa; color: #3a5a7a; }
 .cell-inner.user { color: #4aa8ff; }
 
+/* 候选笔记网格（铅笔模式）：内层绝对定位铺满，n×n 小格 */
+.cell-note {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-flex-wrap: wrap;
+  flex-wrap: wrap;
+  padding: 1px;
+}
+.cell-note .note-slot {
+  width: 33.3333%;
+  height: 33.3333%;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  color: transparent;
+}
+.cell-note .note-slot.on { color: #7a9cc2; }
+
+/* 橡皮/铅笔/撤销/提示 工具按钮激活态（铅笔模式开启时高亮） */
+.tool-btn.active {
+  background: #4aa8ff;
+  border-color: #4aa8ff;
+  color: #ffffff;
+}
+
 /* 选中：橙色描边；同行/列/宫：浅蓝 tint；同数字：浅橙 tint（教具高亮） */
 .cell-inner.selected {
   background: #fff3e0;

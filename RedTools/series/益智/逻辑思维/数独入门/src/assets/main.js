@@ -34,6 +34,7 @@
   var errorsEl = null;
   var overlayEl = null;
   var hintBtnEl = null;
+  var penBtnEl = null;
   var cellEls = [];   // 棋盘格子外层 DOM（按格下标索引）
 
   /* ---------- 难度定义（盘面尺寸 N × 目标已知格 givens） ---------- */
@@ -55,7 +56,9 @@
     selected: -1,     // 当前选中格下标（-1 = 无）
     hints: 0,         // 提示次数（用提示星级封顶 2★）
     errors: 0,        // 冲突次数（非法落子）
-    undoStack: [],    // 撤销栈 [{ i, val }]（含提示/橡皮入栈）
+    pencils: [],      // 候选笔记（铅笔模式）：每个空格一个数组，存该格候选数字（升序）
+    penMode: false,   // 是否铅笔（候选笔记）模式
+    undoStack: [],    // 撤销栈 [{ i, val, pen }]（含提示/橡皮入栈；pen=true 表示本步操作作用在笔记上）
     won: false,
     playing: false,   // 是否在游戏页（实体键盘仅游戏页响应）
     startMs: 0,
@@ -257,6 +260,42 @@
     var rj = Math.floor(j / n), cj = j % n;
     return Math.floor(ri / br) === Math.floor(rj / br) && Math.floor(ci / bc) === Math.floor(cj / bc);
   }
+  /* 候选数字是否与当前行/列/宫冲突（用于铅笔笔记标红校验） */
+  function penConflict(i, v) {
+    var n = state.N;
+    var r = Math.floor(i / n);
+    var c = i % n;
+    var j, rr, cc;
+    for (j = 0; j < n * n; j++) {
+      if (j === i) { continue; }
+      rr = Math.floor(j / n);
+      cc = j % n;
+      if (state.puzzle[j] !== v) { continue; }   // 只看已填数字
+      if (rr === r || cc === c || sameBox(i, j, n)) { return true; }
+    }
+    return false;
+  }
+  /* 铅笔模式：单元内删除候选数字（自动铅笔：落定/提示后同步清理） */
+  function erasePenInUnit(i, v) {
+    var n = state.N;
+    if (i < 0 || i >= n * n) { return; }
+    var r = Math.floor(i / n);
+    var c = i % n;
+    for (var k = 0; k < n * n; k++) {
+      if (k === i) { continue; }
+      var kr = Math.floor(k / n);
+      var kc = k % n;
+      var inSame = (kr === r || kc === c || sameBox(k, i, n));
+      if (!inSame) { continue; }
+      var pen = state.pencils[k];
+      if (pen) {
+        var idx = pen.indexOf(v);
+        if (idx !== -1) {
+          pen.splice(idx, 1);
+        }
+      }
+    }
+  }
   function innerClass(i) {
     var n = state.N;
     var r = Math.floor(i / n);
@@ -281,11 +320,39 @@
     if (!cell) { return null; }
     return cell.querySelector('.cell-inner');
   }
+  function buildNoteGrid(n) {
+    // 构建候选笔记网格：每个候选数字 1..N 一个槽（最多 9 个），flex-wrap 自动排布
+    var grid = document.createElement('div');
+    grid.className = 'cell-note';
+    for (var d = 1; d <= n; d++) {
+      var slot = document.createElement('span');
+      slot.className = 'note-slot';
+      slot.setAttribute('data-v', '' + d);
+      grid.appendChild(slot);
+    }
+    return grid;
+  }
   function refreshInner(i) {
     var inner = cellInner(i);
     if (!inner) { return; }
     inner.className = innerClass(i);
-    inner.textContent = state.puzzle[i] === 0 ? '' : '' + state.puzzle[i];
+    var val = state.puzzle[i];
+    var note = state.pencils[i];
+    // 先清空（保持结构：值 or 笔记网格）
+    clearNode(inner);
+    if (val !== 0) {
+      inner.appendChild(document.createTextNode('' + val));
+    } else if (note && note.length) {
+      var grid = buildNoteGrid(state.N);
+      var slots = grid.childNodes;
+      var k;
+      for (k = 0; k < slots.length; k++) {
+        var d = Number(slots[k].getAttribute('data-v'));
+        slots[k].textContent = '' + d;
+        if (note.indexOf(d) !== -1) { slots[k].className = 'note-slot on'; }
+      }
+      inner.appendChild(grid);
+    }
   }
   function refreshCells() {
     for (var i = 0; i < state.N * state.N; i++) { refreshInner(i); }
@@ -386,8 +453,13 @@
     kbd.appendChild(row);
     var tools = makeEl('div', 'tools');
     var btnErase = makeEl('button', 'tool-btn', '橡皮');
-    btnErase.setAttribute('aria-label', '擦掉选中格子的数字');
+    btnErase.setAttribute('aria-label', '擦掉选中格子的数字或候选笔记');
     btnErase.addEventListener('click', eraseSelected);
+    var btnPen = makeEl('button', 'tool-btn', '✏️ 笔记');
+    btnPen.setAttribute('aria-label', '铅笔模式：在格子里记候选数字');
+    btnPen.addEventListener('click', togglePenMode);
+    penBtnEl = btnPen;
+    syncPenBtn();
     var btnUndo = makeEl('button', 'tool-btn', '撤销');
     btnUndo.setAttribute('aria-label', '撤销上一步');
     btnUndo.addEventListener('click', undoLast);
@@ -396,6 +468,7 @@
     btnHint.addEventListener('click', useHint);
     hintBtnEl = btnHint;
     tools.appendChild(btnErase);
+    tools.appendChild(btnPen);
     tools.appendChild(btnUndo);
     tools.appendChild(btnHint);
     kbd.appendChild(tools);
@@ -407,6 +480,19 @@
     updateTimerUI();
   }
 
+  function syncPenBtn() {
+    if (penBtnEl) { penBtnEl.className = 'tool-btn' + (state.penMode ? ' active' : ''); }
+  }
+  function togglePenMode() {
+    if (state.won) { return; }
+    state.penMode = !state.penMode;
+    sndClick();
+    showMsg(state.penMode
+      ? '✏ 铅笔模式：点数字在格子里记候选数，再点一下取消'
+      : '');
+    syncPenBtn();
+  }
+
   /* ---------- 交互 ---------- */
   function selectCell(i) {
     if (state.won) { return; }
@@ -414,22 +500,62 @@
     refreshCells();
     sndClick();
   }
+  function onPenTap(v) {
+    // 铅笔模式：在选中空格切换候选笔记
+    if (state.won) { return; }
+    if (state.selected < 0) { showMsg('先点一个空格子，再记候选数哦', true); return; }
+    var i = state.selected;
+    if (state.given[i]) { showMsg('这是题目给的格子，不用填', true); return; }
+    if (state.puzzle[i] !== 0) { showMsg('这格已填数字，先用橡皮擦掉再记笔记', true); return; }
+    var pen = state.pencils[i];
+    var has = pen.indexOf(v) !== -1;
+    if (has && penConflict(i, v)) {
+      // 该数字在行/列/宫已存在 → 不允许保留该笔记（温和提示，标红由视觉承担）
+      showMsg('行 / 列 / 宫里已经有 ' + v + ' 啦，这个候选不对', true);
+      sndWrong();
+      flashWrong(i);
+      return;
+    }
+    // 切换笔记（含撤销记录：清空整格笔记再回填 = 记录全量笔记快照）
+    var prevPen = pen.slice();
+    if (has) {
+      pen.splice(pen.indexOf(v), 1);
+    } else {
+      if (penConflict(i, v)) {
+        showMsg('行 / 列 / 宫里已经有 ' + v + ' 啦，这个候选不对', true);
+        sndWrong();
+        flashWrong(i);
+        return;
+      }
+      pen.push(v);
+      pen.sort(function (a, b) { return a - b; });
+    }
+    state.undoStack.push({ i: i, val: 0, pen: prevPen });
+    if (state.undoStack.length > 200) { state.undoStack.shift(); }
+    sndClick();
+    refreshCells();
+    showMsg('');
+  }
   function onNumTap(v) {
     sndClick();
     if (state.won) { return; }
     if (state.selected < 0) { showMsg('先点一个空格子，再选数字哦', true); return; }
     var i = state.selected;
     if (state.given[i]) { showMsg('这是题目给的格子，不用填', true); return; }
-    if (state.puzzle[i] === v) { showMsg(''); return; }
     var cur = state.puzzle[i];
+    if (cur === v) { showMsg(''); return; }
+    if (state.penMode) { onPenTap(v); return; }
     var r = Math.floor(i / state.N);
     var c = i % state.N;
+    // 记住本格原笔记（撤销时恢复）
+    var prevPen = (state.pencils[i] || []).slice();
     state.puzzle[i] = 0; // 先清空自身再判定冲突（cellValid 检查含自身行）
     var legal = SUDOKU.cellValid(state.puzzle, state.N, r, c, v);
     if (legal) {
-      // 合法：接受（答错不惩罚，绿色确认），撤销栈记录原值
+      // 合法：接受（答错不惩罚，绿色确认），撤销栈记录原值+原笔记；并做自动铅笔清理
       state.puzzle[i] = v;
-      state.undoStack.push({ i: i, val: cur });
+      erasePenInUnit(i, v);
+      state.undoStack.push({ i: i, val: cur, pen: prevPen });
       if (state.undoStack.length > 200) { state.undoStack.shift(); }
       sndCorrect();
       refreshCells();
@@ -452,10 +578,14 @@
     var i = state.selected;
     if (i < 0) { showMsg('先点一个格子，再擦数字哦', true); return; }
     if (state.given[i]) { showMsg('题目给的格子不能擦', true); return; }
-    if (state.puzzle[i] === 0) { showMsg(''); sndClick(); return; }
-    state.undoStack.push({ i: i, val: state.puzzle[i] });
+    var hadPen = (state.pencils[i] || []).slice();
+    var hadVal = state.puzzle[i];
+    if (hadVal === 0 && hadPen.length === 0) { showMsg(''); sndClick(); return; }
+    state.undoStack.push({ i: i, val: hadVal, pen: hadPen });
     if (state.undoStack.length > 200) { state.undoStack.shift(); }
     state.puzzle[i] = 0;
+    state.pencils[i] = [];
+    state.pencils[i].sort(function (a, b) { return a - b; });
     sndClick();
     refreshCells();
     checkHintBtn();
@@ -466,6 +596,7 @@
     var m = state.undoStack.pop();
     if (!m) { showMsg('没有可以撤销的操作', true); return; }
     state.puzzle[m.i] = m.val;
+    if (m.pen) { state.pencils[m.i] = m.pen.slice(); }
     sndClick();
     refreshCells();
     checkHintBtn();
@@ -504,9 +635,11 @@
     }
     var i = pick.i;
     var v = state.solution[i];
-    state.undoStack.push({ i: i, val: 0 });
+    state.undoStack.push({ i: i, val: 0, pen: (state.pencils[i] || []).slice() });
     if (state.undoStack.length > 200) { state.undoStack.shift(); }
     state.puzzle[i] = v;
+    state.pencils[i] = [];
+    erasePenInUnit(i, v); // 提示也触发自动铅笔清理
     state.hints++;
     sndCorrect();
     refreshCells();
@@ -641,6 +774,10 @@
     var given = [];
     for (var i = 0; i < g.puzzle.length; i++) { given.push(g.puzzle[i] !== 0); }
     state.given = given;
+    var pencils = [];
+    for (var j = 0; j < g.puzzle.length; j++) { pencils.push([]); } // 铅笔笔记：初始全空
+    state.pencils = pencils;
+    state.penMode = false;
     state.selected = -1;
     state.hints = 0;
     state.errors = 0;
