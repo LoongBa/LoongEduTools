@@ -10,9 +10,9 @@ export const TOTAL_UNITS = 6;
 /** 每单元小节数（进度百分比按 (unit-1 + section 小数) / 6 估算，取 4 为典型值） */
 export const SECTIONS_PER_UNIT = 4;
 
-/** 解析 unit 字段：取首位整数并夹在 1..TOTAL_UNITS，非法回退 1 */
+/** 解析 unit 字段：容忍 "3" / "U3" / "u3"（D05 进度条 U1-U6 语义），取首位整数夹在 1..TOTAL_UNITS，非法回退 1 */
 export function parseUnit(unit: string): number {
-  const n = parseInt(unit, 10);
+  const n = parseInt(unit.replace(/^[uU]/, ""), 10);
   if (Number.isNaN(n)) return 1;
   return Math.min(TOTAL_UNITS, Math.max(1, n));
 }
