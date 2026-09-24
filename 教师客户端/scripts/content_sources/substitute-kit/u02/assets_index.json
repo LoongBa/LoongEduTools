@@ -1,0 +1,17 @@
+{
+  "unit": "u02",
+  "vocab": [
+    {"word": "maths book", "zh": "数学书", "tts_key": "u02_maths_book"},
+    {"word": "English book", "zh": "英语书", "tts_key": "u02_english_book"},
+    {"word": "Chinese book", "zh": "语文书", "tts_key": "u02_chinese_book"},
+    {"word": "storybook", "zh": "故事书", "tts_key": "u02_storybook"},
+    {"word": "schoolbag", "zh": "书包", "tts_key": "u02_schoolbag"}
+  ],
+  "sentence": {
+    "q": "What's in your schoolbag?",
+    "a": "An English book, a maths book.",
+    "tts_key": "u02_s_qa"
+  },
+  "images": [],
+  "note": "配图走壳端本地包；此处仅索引，不复制教材页。"
+}

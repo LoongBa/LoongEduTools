@@ -1,0 +1,17 @@
+{
+  "unit": "u01",
+  "vocab": [
+    {"word": "door", "zh": "门", "tts_key": "u01_door"},
+    {"word": "window", "zh": "窗户", "tts_key": "u01_window"},
+    {"word": "picture", "zh": "图画", "tts_key": "u01_picture"},
+    {"word": "board", "zh": "黑板", "tts_key": "u01_board"},
+    {"word": "light", "zh": "灯", "tts_key": "u01_light"}
+  ],
+  "sentence": {
+    "q": "What's this?",
+    "a": "It's a door.",
+    "tts_key": "u01_s_qa"
+  },
+  "images": [],
+  "note": "配图走壳端本地包；此处仅索引，不复制教材页。"
+}

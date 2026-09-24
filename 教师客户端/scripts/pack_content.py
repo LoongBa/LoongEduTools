@@ -10,71 +10,37 @@ pack_content.py — 内容包打包脚本（D04 / S01 Schema v1.0）
   python pack_content.py --source <输入zip或目录> --package-id pep-reader \
       --version 1.3.3 --type app --name "教材点读" --out <输出目录>
 
-P0 说明:
-  - 加密: 逐文件 AES-256-GCM（16B IV 前置，iv|ct|tag），HKDF-SHA256 派生密钥
-  - 签名: ed25519 自签（开发密钥，P1 换服务端真实签名）
-  - 密钥派生 IKM: P0 用开发期口令（DEV_PASSPHRASE），P1 换课堂口令
+说明（P2 重构为薄入口，逻辑在同目录模块）：
+  - crypto_out.py / gen_manifest.py / gen_package_json.py = 加密·签名·清单
+  - pack_app.py / pack_data.py = 按类型入口（本文件保留全参数 CLI）
+  - verify_pack.py = QA（D04 §5）；publish_pack.py = 发布（D04 §6）
+  - 加密: 逐文件 AES-256-GCM（16B IV 前置），HKDF-SHA256（S01 §2.5）
 """
+from __future__ import annotations
+
 import argparse
 import hashlib
 import json
-import os
 import shutil
 import sys
-import tempfile
 import zipfile
-from datetime import date
 from pathlib import Path
 
+# 同目录模块
+sys.path.insert(0, str(Path(__file__).parent))
+
 try:
-    from cryptography.hazmat.primitives import hashes, serialization
-    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-    from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+    from crypto_out import DEV_PASSPHRASE, derive_key, encrypt_bytes, load_or_create_dev_key
+    from gen_manifest import SCHEMA_VERSION, build_manifest, dumps as manifest_dumps, sign_manifest
+    from gen_package_json import build_file_index, build_package_json, dumps as pkg_dumps
 except ImportError:
     print("[ERR] 需安装 cryptography: python -m pip install cryptography", file=sys.stderr)
     sys.exit(2)
 
-SCHEMA_VERSION = "1.0"
-SHELL_VERSION = "0.1.0"          # min_shell_version 默认
-DEV_PASSPHRASE = b"loongedu-dev-passphrase-v1"  # P0 开发期口令（P1 换课堂口令）
+SHELL_VERSION = "0.1.0"  # min_shell_version 默认
+# 保持向后兼容的常量（旧代码/文档可能 import）
 SIGN_KEY_ID = "dev-sign-2026"
 DEV_KEY_PATH = Path(__file__).parent / "keys" / "dev-sign.key"
-
-
-# ------------------------------------------------------------------ 密钥/加密
-def derive_key(package_id: str, version: str, passphrase: bytes) -> bytes:
-    """HKDF-SHA256 → 32B 内容包密钥（salt = id+version, info = content-pack-v1）"""
-    hkdf = HKDF(
-        algorithm=hashes.SHA256(),
-        length=32,
-        salt=f"{package_id}+{version}".encode("utf-8"),
-        info=b"content-pack-v1",
-    )
-    return hkdf.derive(passphrase)
-
-
-def encrypt_bytes(data: bytes, key: bytes) -> bytes:
-    """AES-256-GCM：返回 iv(16) | ciphertext | tag"""
-    iv = os.urandom(16)
-    ct = AESGCM(key).encrypt(iv, data, None)
-    return iv + ct
-
-
-def load_or_create_dev_key() -> Ed25519PrivateKey:
-    """加载/生成开发签名密钥（不入库；P0 自签用）"""
-    if DEV_KEY_PATH.exists():
-        return serialization.load_pem_private_key(DEV_KEY_PATH.read_bytes(), password=None)
-    DEV_KEY_PATH.parent.mkdir(parents=True, exist_ok=True)
-    key = Ed25519PrivateKey.generate()
-    DEV_KEY_PATH.write_bytes(
-        key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption(),
-        )
-    )
-    return key
 
 
 # ------------------------------------------------------------------ 输入收集
@@ -100,11 +66,7 @@ def collect_source(source: Path) -> dict[str, bytes]:
 
 def normalize_app(files: dict[str, bytes]) -> dict[str, bytes]:
     """app 型：规整到 data/app/ 下（保留相对路径）"""
-    out: dict[str, bytes] = {}
-    for rel, data in files.items():
-        # 去掉可能的顶层目录包裹，保持 index.html 在 app 根
-        out[f"app/{rel}"] = data
-    return out
+    return {f"app/{rel}": data for rel, data in files.items()}
 
 
 def normalize_data(files: dict[str, bytes]) -> dict[str, bytes]:
@@ -113,81 +75,53 @@ def normalize_data(files: dict[str, bytes]) -> dict[str, bytes]:
 
 
 # ------------------------------------------------------------------ 打包
-def build_package(args) -> Path:
+def build_package(args: argparse.Namespace) -> Path:
     source = Path(args.source).resolve()
     files = collect_source(source)
 
     payload = normalize_app(files) if args.type == "app" else normalize_data(files)
 
-    # 定位入口（app 型校验 index.html）
     if args.type == "app" and "app/index.html" not in payload:
         raise SystemExit("[ERR] app 型内容包必须在 data/app/index.html 提供入口")
 
     key = None if args.plain else derive_key(args.package_id, args.version, DEV_PASSPHRASE)
 
-    # ---- 构建 data/（plain=明文；默认 AES-256-GCM 逐文件加密）----
-    file_index = []
+    # 明文 file_index + 总大小（package.json 用明文 hash）
+    file_index, total_size = build_file_index(payload)
+
+    # data/ 存储 blob（加密或明文）
     stored_blobs: dict[str, bytes] = {}
-    total_size = 0
     for rel, raw in sorted(payload.items()):
-        sha = hashlib.sha256(raw).hexdigest()
-        file_index.append({"path": rel, "sha256": sha})
-        total_size += len(raw)
-        stored_blobs[rel] = raw if args.plain else encrypt_bytes(raw, key)
+        stored_blobs[rel] = raw if args.plain else encrypt_bytes(raw, key)  # type: ignore[arg-type]
 
-    package_json = {
-        "package_id": args.package_id,
-        "package_version": args.version,
-        "file_count": len(file_index),
-        "total_size": total_size,
-        "encrypted": not args.plain,
-        "enc_alg": "none" if args.plain else "AES-256-GCM",
-        "file_index": file_index,
-    }
-    pkg_json_bytes = json.dumps(package_json, ensure_ascii=False, indent=2).encode("utf-8")
+    package_json = build_package_json(
+        args.package_id, args.version, file_index, total_size, encrypted=not args.plain
+    )
+    pkg_json_bytes = pkg_dumps(package_json)
 
-    # ---- manifest.json（签名前）----
+    # content_hash = data/ 存储区整体 SHA-256（S01 §2.2 — 按存储序）
     data_hash = hashlib.sha256(
         b"".join(stored_blobs[r] for r in sorted(stored_blobs))
     ).hexdigest()
 
-    manifest = {
-        "schema_version": SCHEMA_VERSION,
-        "package_id": args.package_id,
-        "package_type": args.type,
-        "name": args.name,
-        "display_name": args.display_name or args.name,
-        "icon": args.icon,
-        "package_version": args.version,
-        "content_hash": f"sha256:{data_hash}",
-        "size_bytes": total_size,
-        "min_shell_version": args.min_shell,
-        "required_license_level": args.level,
-        "categories": args.categories.split(",") if args.categories else [],
-        "description": args.description or "",
-        "release_date": date.today().isoformat(),
-        "author": "LoongBa",
-        "download_url": f"/api/edu/packages/{args.package_id}/{args.version}",
-        "checksum": "",  # zip 本体 hash，最后回填
-        "min_free_version": None,
-    }
+    manifest = build_manifest(
+        package_id=args.package_id,
+        package_type=args.type,
+        name=args.name,
+        display_name=args.display_name or args.name,
+        icon=args.icon,
+        version=args.version,
+        data_hash_hex=data_hash,
+        total_size=total_size,
+        min_shell=args.min_shell,
+        required_license_level=args.level,
+        categories=args.categories.split(",") if args.categories else [],
+        description=args.description or "",
+        download_url=f"/api/edu/packages/{args.package_id}/{args.version}",
+    )
+    sign_manifest(manifest)
+    manifest_bytes = manifest_dumps(manifest)
 
-    # ---- 签名（ed25519；签名覆盖除 signature/checksum 外的全部字段——
-    #      checksum 依赖 zip 本体 hash，存在循环依赖，不入签名）----
-    key_priv = load_or_create_dev_key()
-    sign_view = {k: v for k, v in manifest.items() if k not in ("signature", "checksum")}
-    canon = json.dumps(sign_view, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    sig = key_priv.sign(canon)
-    manifest["signature"] = {
-        "alg": "ed25519",
-        "key_id": SIGN_KEY_ID,
-        "nonce": hashlib.sha256(os.urandom(16)).hexdigest()[:16],
-        "signed_payload_hash": "sha256:" + hashlib.sha256(canon).hexdigest(),
-        "sig": sig.hex(),
-    }
-    manifest_bytes = json.dumps(manifest, ensure_ascii=False, indent=2).encode("utf-8")
-
-    # ---- 输出：解包目录（--dir-out，预装用）或 zip（默认）----
     out_dir = Path(args.out).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -197,7 +131,6 @@ def build_package(args) -> Path:
             shutil.rmtree(pkg_dir)
         pkg_dir.mkdir(parents=True)
         for rel, blob in sorted(stored_blobs.items()):
-            # rel 相对 data/ 区（如 app/index.html）→ 落盘为 <pkg>/data/<rel>，对齐 zip 模式
             target = pkg_dir / "data" / rel
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(blob)
@@ -207,9 +140,7 @@ def build_package(args) -> Path:
             digest.update(rel.encode("utf-8"))
             digest.update(stored_blobs[rel])
         manifest["checksum"] = "sha256:" + digest.hexdigest()
-        (pkg_dir / "manifest.json").write_bytes(
-            json.dumps(manifest, ensure_ascii=False, indent=2).encode("utf-8")
-        )
+        (pkg_dir / "manifest.json").write_bytes(manifest_dumps(manifest))
         print(f"[OK] 内容包目录: {pkg_dir}")
         print(f"     files={len(file_index)} size={total_size} bytes plain={args.plain}")
         return pkg_dir
@@ -221,24 +152,41 @@ def build_package(args) -> Path:
         for rel, blob in sorted(stored_blobs.items()):
             zf.writestr(f"data/{rel}", blob)
 
-    # ---- 回填 checksum（zip 本体 hash），写旁路 meta（不改 zip 避免破坏 hash）----
     zip_sha = hashlib.sha256(zip_path.read_bytes()).hexdigest()
     manifest["checksum"] = f"sha256:{zip_sha}"
     (out_dir / f"content-pack-{args.package_id}-{args.version}.meta.json").write_bytes(
-        json.dumps(manifest, ensure_ascii=False, indent=2).encode("utf-8")
+        manifest_dumps(manifest)
     )
+
+    # registry.json 版本记录（verify_pack §7）
+    reg_path = out_dir / "registry.json"
+    entries = []
+    if reg_path.is_file():
+        try:
+            reg = json.loads(reg_path.read_text(encoding="utf-8"))
+            entries = reg if isinstance(reg, list) else reg.get("entries", [])
+        except Exception:  # noqa: BLE001
+            entries = []
+    entries = [
+        e
+        for e in entries
+        if not (e.get("package_id") == args.package_id and e.get("version") == args.version)
+    ]
+    entries.append({"package_id": args.package_id, "version": args.version, "sha256": zip_sha})
+    reg_path.write_text(json.dumps(entries, ensure_ascii=False, indent=2), encoding="utf-8")
 
     print(f"[OK] 内容包: {zip_path}")
     print(f"     files={len(file_index)} size={total_size} bytes sha256={zip_sha[:16]}...")
     return zip_path
 
 
-def main():
+def make_parser(default_type: str = "app") -> argparse.ArgumentParser:
+    """共享 CLI（pack_app/pack_data 薄封装也用）"""
     ap = argparse.ArgumentParser(description="内容包打包（S01 Schema v1.0）")
     ap.add_argument("--source", required=True, help="输入源（zip 或目录）")
     ap.add_argument("--package-id", required=True)
     ap.add_argument("--version", required=True)
-    ap.add_argument("--type", choices=["app", "data"], default="app")
+    ap.add_argument("--type", choices=["app", "data"], default=default_type)
     ap.add_argument("--name", required=True)
     ap.add_argument("--display-name", default="")
     ap.add_argument("--icon", default=None)
@@ -247,8 +195,21 @@ def main():
     ap.add_argument("--categories", default="")
     ap.add_argument("--description", default="")
     ap.add_argument("--plain", action="store_true", help="P0 明文模式（不加密，壳 P0 直读）")
-    ap.add_argument("--dir-out", action="store_true", help="输出解包目录（预装 packages-embedded 用）而非 zip")
+    ap.add_argument(
+        "--dir-out",
+        action="store_true",
+        help="输出解包目录（预装 packages-embedded 用）而非 zip",
+    )
     ap.add_argument("--out", default="./dist")
+    return ap
+
+
+def build_package_from_ns(args: argparse.Namespace) -> Path:
+    return build_package(args)
+
+
+def main() -> None:
+    ap = make_parser()
     args = ap.parse_args()
     build_package(args)
 

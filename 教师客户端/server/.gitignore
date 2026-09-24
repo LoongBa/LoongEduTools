@@ -9,3 +9,6 @@ node_modules/
 # 构建产物
 dist/
 *.log
+# 冒烟临时文件（SMS 验证码捕获）
+scripts/sms_code.txt
+scripts/sms_code.history

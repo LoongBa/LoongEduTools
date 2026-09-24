@@ -1,0 +1,23 @@
+# -*- coding: utf-8 -*-
+"""config.example.json — 打包参数模板（D04 §3.1）
+
+复制为 config.json 后按需修改；api_key 只放引用位，真实密钥经环境变量传入。
+"""
+{
+  "source": "content_sources/substitute-kit",
+  "package_id": "substitute-kit",
+  "version": "1.0.0",
+  "type": "data",
+  "name": "代课应急包",
+  "display_name": "代课应急",
+  "level": 1,
+  "categories": ["代课", "应急"],
+  "description": "单元应急教案（5 分钟流程/板书/备用活动）",
+  "min_shell": "0.1.0",
+  "out": "dist",
+  "publish": {
+    "base": "http://127.0.0.1:8787",
+    "api_key_env": "PKG_ADMIN_KEY",
+    "api_key": ""
+  }
+}

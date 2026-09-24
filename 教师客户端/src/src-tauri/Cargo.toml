@@ -28,6 +28,10 @@ serde_json = "1"
 # D02 Oracle 评审：内容包 hash 校验（sha256）
 sha2 = "0.10"
 
+# P2 内容分发：最小 zip 解包（自写 central directory 解析 + raw deflate 解压）
+# flate2 已在 Cargo.lock（png 传递依赖）——零新增下载，不引入 zip 库
+flate2 = "1"
+
 # P1 认证/口令（D01 §7.2）：HTTPS 调 Workers、凭证 AES-GCM、设备随机数
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 aes-gcm = "0.10"

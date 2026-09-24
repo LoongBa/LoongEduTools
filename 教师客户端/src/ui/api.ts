@@ -56,6 +56,44 @@ export interface LicenseStatus {
   machine_fp: string;
 }
 
+// ---- P2 内容商店（store.rs · A01 §4）----
+
+export interface RemotePkg {
+  package_id: string;
+  package_version: string;
+  name: string;
+  package_type: string;
+  required_license_level: number;
+  min_shell_version: string;
+  size_bytes: number | null;
+  checksum: string | null;
+  download_url: string | null;
+}
+
+export interface StoreManifest {
+  updated_at: string;
+  packages: RemotePkg[];
+}
+
+export interface StoreItem {
+  package_id: string;
+  package_version: string;
+  name: string;
+  package_type: string;
+  required_license_level: number;
+  min_shell_version: string;
+  size_bytes: number | null;
+  checksum: string | null;
+  installed: boolean;
+  installed_version: string | null;
+  update_available: boolean;
+}
+
+export interface StoreList {
+  updated_at: string;
+  packages: StoreItem[];
+}
+
 export const api = {
   listInstalled: () => invoke<InstalledPackage[]>("list_installed"),
   load: (packageId: string) => invoke<string>("load", { packageId }),
@@ -101,4 +139,12 @@ export const api = {
   licenseRenew: (semester?: string) =>
     invoke<LicenseStatus>("license_renew", { semester: semester ?? null }),
   licenseBindCurrent: () => invoke<unknown>("license_bind_current"),
+
+  // ---- P2 内容商店（store.rs · A01 §4 / S01 §2.4）----
+  storeManifest: () => invoke<StoreManifest>("store_manifest"),
+  storeDownload: (packageId: string, version: string) =>
+    invoke<InstalledPackage>("store_download", { packageId, version }),
+  storeImportUsb: (zipPath: string) =>
+    invoke<InstalledPackage>("store_import_usb", { zipPath }),
+  storeListAvailable: () => invoke<StoreList>("store_list_available"),
 };

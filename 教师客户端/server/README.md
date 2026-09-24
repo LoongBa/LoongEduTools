@@ -22,6 +22,27 @@ curl http://127.0.0.1:8787/api/edu/health
 npm run typecheck   # tsc --noEmit
 ```
 
+## 本地冒烟（D04 §6 · E2E）
+
+前置：已 `npm install`；`.dev.vars` 不存在则从 `.dev.vars.example` 复制（或手工创建）。
+
+```powershell
+# 方式 A：一键（起 wrangler + 抓 SMS 验证码 + 跑 13 步断言）
+.\scripts\dev_local.ps1
+# 另开终端：
+node scripts\smoke.mjs --api-key local-dev-pkg-admin-key `
+  --zip "..\scripts\dist\content-pack-substitute-kit-1.0.0.zip" `
+  --package-id substitute-kit --version 1.0.0
+
+# 方式 B：手动（已有 wrangler dev 在跑）
+node scripts\smoke.mjs --api-key local-dev-pkg-admin-key
+```
+
+冒烟覆盖：health → sms send/verify 登录 → 错密 401 → license renew/pack →
+multipart 上传 201 → manifest 含条目 → download 200 → 错 key 403 → 无 JWT 401（manifest/download）。
+SMS 验证码优先从 wrangler 日志（`%TEMP%\wrangler_dev.out` 的 `[SMS_MOCK] phone => code`）抓取，
+避免与手发验证码互顶。预期 **13 passed, 0 failed**。
+
 ## 部署（Cloudflare）
 
 ```powershell

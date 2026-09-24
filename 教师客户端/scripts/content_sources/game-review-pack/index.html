@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>游戏复习</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #f4f6fb;
+      color: #1a1f36;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 24px;
+    }
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin: 0 0 8px;
+      letter-spacing: 0.02em;
+    }
+    .subtitle {
+      color: #5b6478;
+      font-size: 0.95rem;
+      margin: 0 0 32px;
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+      width: 100%;
+      max-width: 640px;
+    }
+    .card {
+      display: block;
+      background: #ffffff;
+      border: 1px solid #e3e8f2;
+      border-radius: 16px;
+      padding: 24px 20px;
+      text-align: center;
+      text-decoration: none;
+      color: inherit;
+      box-shadow: 0 4px 14px rgba(26, 31, 54, 0.06);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .card:hover, .card:focus-visible {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 22px rgba(26, 31, 54, 0.12);
+      outline: none;
+    }
+    .card .icon {
+      font-size: 2.4rem;
+      display: block;
+      margin-bottom: 12px;
+    }
+    .card .title {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .card .desc {
+      font-size: 0.88rem;
+      color: #5b6478;
+      line-height: 1.5;
+    }
+    .back {
+      margin-top: 36px;
+      font-size: 0.9rem;
+      color: #5b6478;
+    }
+    /* 载入游戏时全屏 iframe */
+    body.playing .launcher { display: none; }
+    body.playing .stage { display: block; }
+    .stage { display: none; width: 100%; flex: 1; min-height: calc(100vh - 64px); }
+    .stage iframe {
+      width: 100%;
+      height: 100%;
+      min-height: calc(100vh - 64px);
+      border: 1px solid #e3e8f2;
+      border-radius: 12px;
+      background: #fff;
+    }
+    .stage .close {
+      display: inline-block;
+      margin-bottom: 12px;
+      padding: 8px 18px;
+      border: none;
+      border-radius: 8px;
+      background: #1a1f36;
+      color: #fff;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="launcher">
+    <h1>游戏复习</h1>
+    <p class="subtitle">选择一款小游戏，放松中巩固所学（本地运行 · 无联网 · 无排行）</p>
+    <div class="cards">
+      <a class="card" href="games/idiom-match/index.html" data-game>
+        <span class="icon">🧩</span>
+        <div class="title">成语配对</div>
+        <div class="desc">把成语与释义正确配对，锻炼阅读与联想</div>
+      </a>
+      <a class="card" href="games/antonym-match/index.html" data-game>
+        <span class="icon">↔️</span>
+        <div class="title">反义词配对</div>
+        <div class="desc">找出互为反义的词对，强化词义辨析</div>
+      </a>
+    </div>
+    <p class="back">标准答案模式 · 无 PK · 儿童数据零采集</p>
+  </div>
+
+  <div class="stage">
+    <button type="button" class="close" id="btn-close">← 返回选择</button>
+    <iframe id="game-frame" title="游戏" sandbox="allow-scripts allow-same-origin" src="about:blank"></iframe>
+  </div>
+
+  <script>
+    (function () {
+      var frame = document.getElementById("game-frame");
+      var closeBtn = document.getElementById("btn-close");
+      document.querySelectorAll("[data-game]").forEach(function (el) {
+        el.addEventListener("click", function (e) {
+          e.preventDefault();
+          frame.src = el.getAttribute("href");
+          document.body.classList.add("playing");
+          window.scrollTo(0, 0);
+        });
+      });
+      closeBtn.addEventListener("click", function () {
+        document.body.classList.remove("playing");
+        frame.src = "about:blank";
+      });
+    })();
+  </script>
+</body>
+</html>

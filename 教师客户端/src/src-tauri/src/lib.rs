@@ -2,7 +2,7 @@ mod commands;
 mod state;
 mod webview2;
 
-use crate::commands::{auth, license, package, recents, window};
+use crate::commands::{auth, license, package, recents, store, window};
 use crate::state::AppState;
 use tauri::Manager as _;
 
@@ -28,7 +28,7 @@ pub fn run() {
             }
             // ② 初始化 AppState + 扫描内容包
             let state = AppState::default();
-            let _ = package::scan_packages(&state);
+            let _ = package::scan_packages(app.handle(), &state);
             app.manage(state);
             Ok(())
         })
@@ -53,6 +53,11 @@ pub fn run() {
             license::license_status,
             license::license_renew,
             license::license_bind_current,
+            // P2 内容商店（云端下载 + U 盘导入 · A01 §4 / S01 §2.4）
+            store::store_manifest,
+            store::store_download,
+            store::store_import_usb,
+            store::store_list_available,
             // WebView2 状态查询（前端启动时调用，决定是否弹引导）
             test_webview2,
         ])

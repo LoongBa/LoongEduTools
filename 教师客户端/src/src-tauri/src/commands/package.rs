@@ -11,6 +11,8 @@ const TEMP_PREFIX: &str = "loongedu-";
 
 /// 扫描预装 + 磁盘内容包目录，构建可用索引
 /// P0 简化：直接扫描 packages-embedded/ 与 packages/ 下每个子目录，读取 manifest.json
+/// 目录源：exe 同目录（resource_dir）+ 当前工作目录（开发期）双源去重（store.rs 落盘的
+/// packages/{id}-{ver}/ 即写入 exe 同目录 packages/，必须被本扫描覆盖）
 #[tauri::command]
 pub fn list_installed(state: tauri::State<'_, AppState>) -> Result<Vec<InstalledPackage>, String> {
     Ok(state.packages.lock().unwrap().clone())
@@ -83,25 +85,35 @@ pub fn unload(app: tauri::AppHandle) -> Result<(), String> {
 
 // ---------------------------------------------------------------- 内部工具
 
-/// 启动时扫描内容包目录并填充 AppState.packages
-pub fn scan_packages(state: &AppState) -> Result<usize, String> {
+/// 启动/刷新时扫描内容包目录并填充 AppState.packages
+/// 需要 AppHandle 以用 exe_dir() 定位 exe 同目录（store.rs 下载/导入均落盘到该 packages/）
+pub fn scan_packages(app: &tauri::AppHandle, state: &AppState) -> Result<usize, String> {
     let mut list: Vec<InstalledPackage> = Vec::new();
 
-    // 内容包根：默认 exe 同目录（resource_dir），开发期回退当前目录
-    let app_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    for sub in ["packages-embedded", "packages"] {
-        let dir = app_dir.join(sub);
-        if !dir.is_dir() {
-            continue;
-        }
-        for entry in fs::read_dir(&dir).map_err(|e| format!("读取 {sub} 失败: {e}"))? {
-            let entry = entry.map_err(|e| format!("目录项错误: {e}"))?;
-            let path = entry.path();
-            if !path.is_dir() {
+    // 内容包根：exe 同目录（resource_dir）+ 当前工作目录（开发期）双源去重
+    let mut bases: Vec<PathBuf> = Vec::new();
+    if let Ok(ed) = crate::commands::recents::exe_dir(app) {
+        bases.push(ed);
+    }
+    let cd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    if !bases.iter().any(|b| b == &cd) {
+        bases.push(cd);
+    }
+    for base in &bases {
+        for sub in ["packages-embedded", "packages"] {
+            let dir = base.join(sub);
+            if !dir.is_dir() {
                 continue;
             }
-            if let Ok(pkg) = read_manifest(&path) {
-                list.push(pkg);
+            for entry in fs::read_dir(&dir).map_err(|e| format!("读取 {sub} 失败: {e}"))? {
+                let entry = entry.map_err(|e| format!("目录项错误: {e}"))?;
+                let path = entry.path();
+                if !path.is_dir() {
+                    continue;
+                }
+                if let Ok(pkg) = read_manifest(&path) {
+                    list.push(pkg);
+                }
             }
         }
     }
@@ -110,7 +122,8 @@ pub fn scan_packages(state: &AppState) -> Result<usize, String> {
 }
 
 /// 读取 pad 内 manifest.json（P0 简化：不验签，见 D02；P1 换真实签名校验）
-fn read_manifest(dir: &Path) -> Result<InstalledPackage, String> {
+/// pub：store.rs 下载/导入解包后复用其校验与解析
+pub fn read_manifest(dir: &Path) -> Result<InstalledPackage, String> {
     let manifest_path = dir.join("manifest.json");
     if !manifest_path.exists() {
         return Err(format!("{} 无 manifest.json（跳过）", dir.display()));
@@ -166,7 +179,8 @@ fn read_manifest(dir: &Path) -> Result<InstalledPackage, String> {
 }
 
 /// 语义化版本比较：a < b 为 true
-fn version_lt(a: &str, b: &str) -> bool {
+/// pub：store.rs 复用（manifest min_shell_version / 更新标记判断）
+pub fn version_lt(a: &str, b: &str) -> bool {
     let pa: Vec<u64> = a
         .split('.')
         .map(|x| x.parse().unwrap_or(0))

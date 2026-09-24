@@ -1,5 +1,8 @@
 # 临时构建目录（TTS 音频/组装源）
 .build/
+# Python 缓存
+__pycache__/
+*.pyc
 # 开发签名私钥（不入库）
 keys/*.key
 

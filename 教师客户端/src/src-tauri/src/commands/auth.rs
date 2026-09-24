@@ -98,7 +98,8 @@ struct ApiErrorBody {
 // ------------------------------------------------------------------ 配置
 
 /// 读 config.json 的 api_base（空 = P0 模式）
-fn api_base(app: &tauri::AppHandle) -> String {
+/// pub：供 store.rs（内容商店）复用，避免重复实现读取逻辑
+pub fn api_base(app: &tauri::AppHandle) -> String {
     let path = crate::commands::recents::config_path(app).unwrap_or_default();
     std::fs::read_to_string(path)
         .ok()

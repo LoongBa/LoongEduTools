@@ -3,9 +3,10 @@ import { AuthStatus, ClassProgress, InstalledPackage, api } from "./api";
 import DisciplineView from "./DisciplineView";
 import LoginView from "./LoginView";
 import ProfileView from "./ProfileView";
+import StoreView from "./StoreView";
 import "./App.css";
 
-type View = "apps" | "quickstart" | "discipline" | "profile" | "login" | "settings";
+type View = "apps" | "store" | "quickstart" | "discipline" | "profile" | "login" | "settings";
 
 function App() {
   const [view, setView] = useState<View>("apps");
@@ -91,6 +92,9 @@ function App() {
           <button className={navClass("apps")} onClick={() => setView("apps")}>
             应用
           </button>
+          <button className={navClass("store")} onClick={() => setView("store")}>
+            内容商店
+          </button>
           <button className={navClass("quickstart")} onClick={() => setView("quickstart")}>
             一键开课
           </button>
@@ -167,6 +171,14 @@ function App() {
         )}
 
         {view === "discipline" && <DisciplineView />}
+
+        {view === "store" && (
+          <StoreView
+            auth={auth}
+            onGoLogin={() => setView("login")}
+            onInstalled={() => refresh()}
+          />
+        )}
 
         {view === "apps" && (
           <section>
