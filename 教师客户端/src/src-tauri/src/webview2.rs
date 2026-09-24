@@ -16,7 +16,9 @@ const MIN_MAJOR: u64 = 108;
 pub fn check_webview2() -> (bool, Option<String>) {
     #[cfg(windows)]
     {
-        match winreg_read_pv() {
+        // 注册表优先；miss（Win11 inbox 版常见：EdgeUpdate Clients 键缺失但目录实存）
+        // 回退扫描固定安装目录，避免假阴性误报（用户实测：4 条注册表路径全 miss + 153.x 实存）
+        match winreg_read_pv().or_else(dir_read_version) {
             Some(ver) => {
                 let major = ver
                     .split('.')
@@ -63,6 +65,55 @@ fn winreg_read_pv() -> Option<String> {
         }
     }
     None
+}
+
+/// 注册表 miss 时的目录回退：evergreen WebView2 固定装在
+/// `%ProgramFiles(x86)%\Microsoft\EdgeWebView\Application\<版本>\`
+/// （Win11 inbox 分发常见注册表键缺失、目录实存）。取最高版本号。
+#[cfg(windows)]
+fn dir_read_version() -> Option<String> {
+    let mut bases: Vec<std::path::PathBuf> = Vec::new();
+    if let Ok(pf) = std::env::var("ProgramFiles(x86)") {
+        bases.push(
+            std::path::PathBuf::from(pf)
+                .join("Microsoft")
+                .join("EdgeWebView")
+                .join("Application"),
+        );
+    }
+    if let Ok(pf) = std::env::var("ProgramFiles") {
+        bases.push(
+            std::path::PathBuf::from(pf)
+                .join("Microsoft")
+                .join("EdgeWebView")
+                .join("Application"),
+        );
+    }
+
+    let mut best: Option<(u64, String)> = None;
+    for base in bases {
+        let Ok(rd) = std::fs::read_dir(&base) else {
+            continue;
+        };
+        for entry in rd.flatten() {
+            if !entry.path().is_dir() {
+                continue;
+            }
+            let name = entry.file_name().to_string_lossy().into_owned();
+            let major = name
+                .split('.')
+                .next()
+                .and_then(|s| s.parse::<u64>().ok())
+                .unwrap_or(0);
+            if major == 0 {
+                continue;
+            }
+            if best.as_ref().map(|(m, _)| major > *m).unwrap_or(true) {
+                best = Some((major, name));
+            }
+        }
+    }
+    best.map(|(_, v)| v)
 }
 
 /// 启动期检测入口：返回错误消息时前端弹 dialog 引导装 WebView2

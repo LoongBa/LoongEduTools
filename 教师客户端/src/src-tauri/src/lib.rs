@@ -9,6 +9,9 @@ use tauri::Manager as _;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // ---- 状态注册（Builder 级：先于 config 窗口创建与 setup，杜绝
+        // "state not managed" 窗口期；tauri 2.11 app.rs:2524 窗口先于 setup 创建）----
+        .manage(AppState::default())
         // ---- 插件注册（D02 §3.2 Oracle 必改）----
         // 单实例：防教师双击开两实例争抢 config.json（Oracle G-2）
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
@@ -26,10 +29,9 @@ pub fn run() {
                 eprintln!("[WebView2] {msg}");
                 // P0：检测失败仅警告不阻断（开发机已装；Win7 目标机由前端读结果弹引导）
             }
-            // ② 初始化 AppState + 扫描内容包
-            let state = AppState::default();
-            let _ = package::scan_packages(app.handle(), &state);
-            app.manage(state);
+            // ② 扫描内容包 → 填充已注册的 AppState（Builder 级 manage 已完成注册）
+            let state = app.state::<AppState>();
+            let _ = package::scan_packages(app.handle(), state.inner());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
