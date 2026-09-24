@@ -76,6 +76,53 @@
   }
   var customLevels = loadCustomLevels();
 
+  /* ---------- v1.10 自定义指令块库（抽象/函数概念） ---------- */
+  // 存储：storage.set('customBlocks') → localStorage 'redtools.jiqirenzoumi.customBlocks'（无 .v1. 段）
+  // value: [{ id, name(≤6字，唯一), body: [基础指令数组], createdAt }]
+  var MAX_BLOCKS = 8;         // 块数量上限
+  var MAX_BODY = 8;           // 块 body 指令上限（防整关塞一块 + 抽象粒度）
+  function loadCustomBlocks() {
+    var arr = LX_SHARED.storage.get('customBlocks');
+    return (arr && Array.isArray(arr)) ? arr : [];
+  }
+  function saveCustomBlocks(arr) {
+    LX_SHARED.storage.set('customBlocks', arr);
+  }
+  function getCustomBlock(id) {
+    for (var i = 0; i < customBlocks.length; i++) {
+      if (customBlocks[i].id === id) { return customBlocks[i]; }
+    }
+    return null;
+  }
+  // 名称唯一校验：editingId 传 null（新建）或自身 id（编辑时排除自身）
+  function blockNameTaken(name, editingId) {
+    for (var i = 0; i < customBlocks.length; i++) {
+      if (customBlocks[i].name === name && customBlocks[i].id !== editingId) { return true; }
+    }
+    return false;
+  }
+  function addCustomBlock(name, body) {
+    if (customBlocks.length >= MAX_BLOCKS) { return null; }
+    var item = {
+      id: Date.now() + '-' + Math.random().toString(36).slice(2, 5),
+      name: name,
+      body: body,
+      createdAt: Date.now()
+    };
+    customBlocks.push(item);
+    saveCustomBlocks(customBlocks);
+    return item.id;
+  }
+  function updateCustomBlock(id, name, body) {
+    var def = getCustomBlock(id);
+    if (def) { def.name = name; def.body = body; saveCustomBlocks(customBlocks); }
+  }
+  function removeCustomBlock(id) {
+    customBlocks = customBlocks.filter(function (c) { return c.id !== id; });
+    saveCustomBlocks(customBlocks);
+  }
+  var customBlocks = loadCustomBlocks();
+
   /* ---------- 难度档（关卡区段） ---------- */
   var LEVELS_CFG = {
     easy:   { key: 'easy',   label: '简单', from: 0, to: 30 },    // 1-30 关（入门渐进）
@@ -92,6 +139,7 @@
   var CMD_IF = { id: 'if', label: '❓if墙' };       // v1.5 条件分支：有墙→then / 无墙→else
   var CMD_STEPS = { id: 'steps', label: '➡N步' };      // v1.6 参数化移动：直线移动 N 格（参数=距离）
   var CMD_LOOP = { id: 'loop', label: '🔁循环' };      // v1.7 显式循环块：一组指令重复 N 次（循环=自动化）
+  var CMD_CALL = { id: 'call', label: '🧩块' };        // v1.10 自定义指令块引用：执行时展开为块的 body（抽象/函数）
   var DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]]; // 右/下/左/上
 
   /* ---------- 状态 ---------- */
@@ -358,6 +406,213 @@
   function fmtDate(ts) {
     var d = new Date(ts);
     return (d.getMonth() + 1) + '月' + d.getDate() + '日';
+  }
+
+  /* ---------- v1.10 自定义指令块：块库视图 ---------- */
+  // 块编辑态：editBlockId(=null 新建)/editBlockName/editBlockBody（指令对象数组）
+  // editBlockReturn：编辑完成后返回目标视图（'game'=从游戏 call chip 进入 → 回 renderGame；'list'=从块库进入 → 回 viewBlockList）
+  var editBlockId = null;
+  var editBlockName = '';
+  var editBlockBody = [];
+  var editBlockReturn = 'list';
+
+  function viewBlockList() {
+    stopTimer();
+    renderHeader();
+    clearNode(viewEl);
+    var wrap = makeEl('div', 'custom-wrap');
+    wrap.appendChild(makeEl('h2', 'custom-title', '🧩 我的块'));
+    if (!customBlocks.length) {
+      wrap.appendChild(makeEl('p', 'custom-empty', '还没有自定义块，把重复动作打包成一个块吧！'));
+    }
+    customBlocks.forEach(function (b) {
+      var row = makeEl('div', 'custom-row');
+      var info = makeEl('div', 'custom-info');
+      info.appendChild(makeEl('div', 'custom-name', '🧩 ' + b.name));
+      info.appendChild(makeEl('div', 'custom-meta', '指令 ' + b.body.length + ' 条 · ' + fmtDate(b.createdAt)));
+      row.appendChild(info);
+      var btns = makeEl('div', 'custom-btns');
+      var editBtn = makeEl('button', 'btn btn-sm', '✏ 编辑');
+      editBtn.addEventListener('click', function () { viewBlockEdit(b.id); });
+      btns.appendChild(editBtn);
+      var delBtn = makeEl('button', 'btn btn-sm btn-danger', '🗑');
+      delBtn.addEventListener('click', function () {
+        if (window.confirm('删除块「' + b.name + '」？使用它的指令会变灰。')) {
+          removeCustomBlock(b.id);
+          viewBlockList();
+        }
+      });
+      btns.appendChild(delBtn);
+      row.appendChild(btns);
+      wrap.appendChild(row);
+    });
+    var newBtn = makeEl('button', 'btn btn-primary', '+ 新建块');
+    newBtn.addEventListener('click', function () { viewBlockEdit(null); });
+    wrap.appendChild(newBtn);
+    if (customBlocks.length >= MAX_BLOCKS) {
+      wrap.appendChild(makeEl('p', 'custom-limit', '⚠ 已达上限 8 个块，删除后可再新建'));
+    }
+    var back = makeEl('button', 'btn', '‹ 返回首页');
+    back.addEventListener('click', function () { viewHome(); });
+    wrap.appendChild(back);
+    viewEl.appendChild(wrap);
+    renderFooter('');
+  }
+
+  /* ---------- v1.10 块编辑器视图 ---------- */
+  // body 指令：fwd/left/right/block/steps（含 rep/steps 参数）；不含 if/loop/call（决策 B）
+  var BLOCK_BODY_CMDS = [CMD_FWD, CMD_L, CMD_R, CMD_BLOCK, CMD_STEPS];
+
+  function viewBlockEdit(id) {
+    stopTimer();
+    renderHeader();
+    clearNode(viewEl);
+    editBlockId = id || null;
+    editBlockName = '';
+    editBlockBody = [];
+    editBlockReturn = 'list';   // 默认返回块库（viewBlockList 进入）
+    if (id) {
+      var def = getCustomBlock(id);
+      if (def) {
+        editBlockName = def.name;
+        // 深拷贝（map 复制指令对象——slice 仅浅拷贝数组，指令对象与块库共享引用：
+        // 编辑步骤 cycleRep/cycleSteps 改 rep/steps 会污染块库原对象，即使取消保存也被改）
+        editBlockBody = def.body.map(function (c) {
+          var nc = { id: c.id };
+          if (c.rep !== undefined) { nc.rep = c.rep; }
+          if (c.steps !== undefined) { nc.steps = c.steps; }
+          return nc;
+        });
+      }
+    }
+    // I-4 修订：块编辑器为独立视图（clearNode 全屏替换），主视图控件已被销毁天然隔离，
+    // 无需 setCmdLocked——若锁会误禁块编辑器自身添加按钮（.cmd-add 同选择器）
+    renderBlockEdit();
+  }
+  // v1.10：从游戏 call chip 点击进入块编辑（I-3）——编辑完成后返回游戏视图
+  function viewBlockEditFromGame(bid) {
+    viewBlockEdit(bid);
+    editBlockReturn = 'game';
+  }
+
+  function renderBlockEdit() {
+    clearNode(viewEl);
+    var wrap = makeEl('div', 'editor-wrap');
+    wrap.appendChild(makeEl('h2', 'editor-title', editBlockId ? '🧩 编辑块' : '🧩 新建块'));
+    // 名称输入
+    var nameRow = makeEl('div', 'editor-name-row');
+    nameRow.appendChild(makeEl('label', 'editor-name-label', '名字：'));
+    var nameInput = makeEl('input', 'editor-name-input');
+    nameInput.type = 'text';
+    nameInput.maxLength = 6;
+    nameInput.value = editBlockName || ('我的块 ' + (customBlocks.length + 1));
+    nameInput.addEventListener('input', function () { editBlockName = nameInput.value; });
+    nameRow.appendChild(nameInput);
+    wrap.appendChild(nameRow);
+    // body 指令 chips（单栏）
+    var bodyBox = makeEl('div', 'seq-box active');
+    bodyBox.id = 'block-body-box';
+    if (!editBlockBody.length) { bodyBox.textContent = '（空——先加几条指令）'; }
+    else {
+      editBlockBody.forEach(function (cmd, i) {
+        var bc = renderBlockBodyChip(cmd, i);
+        bodyBox.appendChild(bc);
+      });
+    }
+    wrap.appendChild(bodyBox);
+    // 添加按钮（仅基础指令）
+    var addRow = makeEl('div', 'cmd-bar');
+    BLOCK_BODY_CMDS.forEach(function (cmd) {
+      var btn = makeEl('button', 'cmd-add', cmd.label);
+      btn.addEventListener('click', function () {
+        if (editBlockBody.length >= MAX_BODY) {
+          var fbx = document.getElementById('block-edit-feedback');
+          if (fbx) { fbx.textContent = '⚠ 一个块最多 ' + MAX_BODY + ' 条指令'; fbx.className = 'editor-feedback miss'; }
+          return;
+        }
+        addBlockBodyCmd(cmd.id);
+      });
+      addRow.appendChild(btn);
+    });
+    wrap.appendChild(addRow);
+    // 操作按钮
+    var actions = makeEl('div', 'editor-actions');
+    var saveBtn = makeEl('button', 'btn btn-primary', '💾 保存');
+    saveBtn.addEventListener('click', function () { doSaveBlock(); });
+    actions.appendChild(saveBtn);
+    var clearBtn = makeEl('button', 'btn', '↺ 清空');
+    clearBtn.addEventListener('click', function () {
+      if (window.confirm('清空这个块的所有指令？')) {
+        editBlockBody = [];
+        renderBlockEdit();
+      }
+    });
+    actions.appendChild(clearBtn);
+    var cancelBtn = makeEl('button', 'btn', '‹ 取消');
+    cancelBtn.addEventListener('click', function () { exitBlockEdit(); });
+    actions.appendChild(cancelBtn);
+    wrap.appendChild(actions);
+    var feedback = makeEl('div', 'editor-feedback', '');
+    feedback.id = 'block-edit-feedback';
+    wrap.appendChild(feedback);
+    viewEl.appendChild(wrap);
+    renderFooter('');
+  }
+
+  /* 块 body chip 渲染（复用 renderSeq chip 交互：fwd 等 cycleRep、steps cycleSteps、✕ 删除） */
+  function renderBlockBodyChip(cmd, i) {
+    var isSteps = cmd.id === 'steps';
+    var lbl = cmd.id === 'fwd' ? '↑' : (cmd.id === 'left' ? '↰' : (cmd.id === 'right' ? '↱' : (cmd.id === 'block' ? '🧱' : (cmd.id === 'steps' ? '➡走' + (cmd.steps || 1) + '步' : '?'))));
+    var repTxt = (!isSteps && cmd.rep && cmd.rep > 1) ? ('×' + cmd.rep) : '';
+    var chip = makeEl('span', 'cmd-chip' + (repTxt ? ' loop' : ''), (i + 1) + '.' + lbl + repTxt);
+    chip.addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      if (isSteps) {
+        cmd.steps = ((cmd.steps || 1) % 9) + 1;
+      } else {
+        cmd.rep = ((cmd.rep || 1) % 4) + 1;
+      }
+      renderBlockEdit();
+    });
+    var x = makeEl('span', 'chip-x', '✕');
+    x.addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      editBlockBody.splice(i, 1);
+      renderBlockEdit();
+    });
+    chip.appendChild(x);
+    return chip;
+  }
+
+  function addBlockBodyCmd(id) {
+    if (id === 'steps') { editBlockBody.push({ id: id, steps: 1 }); }
+    else { editBlockBody.push({ id: id, rep: 1 }); }
+    renderBlockEdit();
+  }
+
+  /* v1.10：退出块编辑器（保存/取消共用）——按来源返回游戏或块库 */
+  function exitBlockEdit() {
+    // I-4 修订：独立视图无需解锁（主视图控件已重建为默认可用态）；仅游戏来源需恢复计时
+    if (editBlockReturn === 'game') {
+      renderGame();
+      // 计时衔接：进入编辑器已 stopTimer；按已累计 elapsed 补偿 startMs 续跑（编辑耗时不计入解题计时）
+      if (!state.finished) { state.startMs = Date.now() - state.elapsed; startTimer(); }
+    }
+    else { viewBlockList(); }
+  }
+
+  function doSaveBlock() {
+    var fb = document.getElementById('block-edit-feedback');
+    var name = (editBlockName || '').trim();
+    if (!name) { fb.textContent = '😅 先给块起个名字（≤6 字）'; fb.className = 'editor-feedback miss'; return; }
+    if (blockNameTaken(name, editBlockId)) { fb.textContent = '😅 这个名字已有块啦，换个名字吧'; fb.className = 'editor-feedback miss'; return; }
+    if (!editBlockBody.length) { fb.textContent = '😅 块里还没有指令，先加几条吧'; fb.className = 'editor-feedback miss'; return; }
+    if (editBlockId) { updateCustomBlock(editBlockId, name, editBlockBody); }
+    else {
+      var id = addCustomBlock(name, editBlockBody);
+      if (!id) { fb.textContent = '⚠ 已达上限 8 个块，删除旧块再保存'; fb.className = 'editor-feedback miss'; return; }
+    }
+    exitBlockEdit();
   }
 
   /* 打开编辑器：idx>=0 编辑已有；idx=-1 新建 */
@@ -678,6 +933,13 @@
     customCard.addEventListener('click', function () { viewCustomList(); });
     wrap.appendChild(customCard);
 
+    // v1.10：我的块（自定义指令块）入口——抽象/封装教学
+    var blockCard = makeEl('button', 'level-card block-card');
+    blockCard.appendChild(makeEl('div', 'level-name', '🧩 我的块 (' + customBlocks.length + ')'));
+    blockCard.appendChild(makeEl('div', 'level-best', '把重复动作打包！'));
+    blockCard.addEventListener('click', function () { viewBlockList(); });
+    wrap.appendChild(blockCard);
+
     var checkinBtn = makeEl('button', 'btn btn-checkin', store.checkin.dates.indexOf(todayStr()) >= 0 ? '✅ 今日已打卡' : '📅 今日打卡');
     checkinBtn.addEventListener('click', function () { doCheckin(checkinBtn); });
     wrap.appendChild(checkinBtn);
@@ -731,7 +993,9 @@
       if (window.confirm('确定清除所有练习数据？此操作不可恢复。')) {
         LX_SHARED.storage.remove('v1');
         LX_SHARED.storage.remove('customLevels');   // v1.9：一并清除自建关卡（B5）
+        LX_SHARED.storage.remove('customBlocks');   // v1.10：一并清除自定义块（I-5/N-6；关卡中残留 call 走灰显+执行兜底）
         customLevels = [];
+        customBlocks = [];
         store = loadStore();
         saveStore();
         viewHome();
@@ -830,12 +1094,17 @@
     // 指令区
     var cmdBar = makeEl('div', 'cmd-bar');
     cmdBar.id = 'cmd-bar';
-    [CMD_FWD, CMD_L, CMD_R, CMD_BLOCK, CMD_STEPS, CMD_IF, CMD_LOOP].forEach(function (cmd) {
-      var btn = makeEl('button', 'cmd-add', cmd.label);
+    [CMD_FWD, CMD_L, CMD_R, CMD_BLOCK, CMD_STEPS, CMD_IF, CMD_LOOP, CMD_CALL].forEach(function (cmd) {
+      var btn = makeEl('button', 'cmd-add' + (cmd.id === 'call' ? ' cmd-add-call' : ''), cmd.label);
       btn.addEventListener('click', function () { addCmd(cmd.id); });
       cmdBar.appendChild(btn);
     });
     wrap.appendChild(cmdBar);
+    // v1.10：块选择面板（[🧩块] 点击 → 列出自定义块追加引用）
+    var blockPicker = makeEl('div', 'block-picker');
+    blockPicker.id = 'block-picker';
+    blockPicker.style.display = 'none';
+    wrap.appendChild(blockPicker);
 
     // 指令序列（可删除）
     var seqWrap = makeEl('div', 'seq-wrap');
@@ -901,13 +1170,23 @@
       var isIf = cmd.id === 'if';
       var isSteps = cmd.id === 'steps';
       var isLoop = cmd.id === 'loop';
-      var lbl = cmd.id === 'fwd' ? '↑' : (cmd.id === 'left' ? '↰' : (cmd.id === 'right' ? '↱' : (cmd.id === 'block' ? '🧱' : (cmd.id === 'steps' ? '➡走' + (cmd.steps || 1) + '步' : (cmd.id === 'loop' ? '🔁×' + (cmd.rep || 2) : '❓if')))));
-      var repTxt = (!isIf && !isSteps && !isLoop && cmd.rep && cmd.rep > 1) ? ('×' + cmd.rep) : '';
-      // 指令 chip：单击循环次数/参数递增/打开编辑区（if 分支 or 循环块）；✕ 角标删除
-      var chip = makeEl('span', 'cmd-chip' + (repTxt ? ' loop' : '') + (isIf ? ' if' : '') + (isLoop ? ' loopb' : ''), (i + 1) + '.' + lbl + repTxt);
+      var isCall = cmd.id === 'call';
+      var lbl;
+      if (isCall) {
+        // v1.10 自定义块引用：name 渲染查块库取最新（I-3）；块已删除 → 灰显 + 「块已删除」标记（N-3）
+        var defC = getCustomBlock(cmd.bid);
+        if (defC) { lbl = '🧩' + defC.name; cmd.name = defC.name; }
+        else { lbl = '🧩' + (cmd.name || '已删除') + '❌'; }
+      } else {
+        lbl = cmd.id === 'fwd' ? '↑' : (cmd.id === 'left' ? '↰' : (cmd.id === 'right' ? '↱' : (cmd.id === 'block' ? '🧱' : (cmd.id === 'steps' ? '➡走' + (cmd.steps || 1) + '步' : (cmd.id === 'loop' ? '🔁×' + (cmd.rep || 2) : '❓if')))));
+      }
+      var repTxt = (!isIf && !isSteps && !isLoop && !isCall && cmd.rep && cmd.rep > 1) ? ('×' + cmd.rep) : '';
+      // 指令 chip：单击循环次数/参数递增/打开编辑区（if 分支 or 循环块 or 块引用）；✕ 角标删除
+      var chip = makeEl('span', 'cmd-chip' + (repTxt ? ' loop' : '') + (isIf ? ' if' : '') + (isLoop ? ' loopb' : '') + (isCall ? (defC ? ' call' : ' call deleted') : ''), (i + 1) + '.' + lbl + repTxt);
       chip.addEventListener('click', function (ev) {
         ev.stopPropagation();
         if (isIf || isLoop) { openEditCtx(i, cmd); }
+        else if (isCall) { if (defC && !state.execLock) { viewBlockEditFromGame(cmd.bid); } }
         else if (isSteps) { cycleSteps(i); }
         else { cycleRep(i); }
       });
@@ -953,8 +1232,56 @@
     if (id === 'if') { state.cmds.push({ id: id, then: [], else: [] }); }
     else if (id === 'steps') { state.cmds.push({ id: id, steps: 1 }); }
     else if (id === 'loop') { state.cmds.push({ id: id, rep: 2, body: [] }); }
+    else if (id === 'call') { toggleBlockPicker(); return; }   // v1.10：[🧩块] 展开/收起块选择面板
     else { state.cmds.push({ id: id, rep: 1 }); }
+    hideBlockPicker();
     renderSeq();
+  }
+  /* v1.10：块选择面板（cmd-bar [🧩块] → 列出自定义块追加引用） */
+  function toggleBlockPicker() {
+    var p = document.getElementById('block-picker');
+    if (!p) { return; }
+    if (p.style.display === 'none') { renderBlockPicker(); p.style.display = 'block'; }
+    else { p.style.display = 'none'; }
+  }
+  function hideBlockPicker() {
+    var p = document.getElementById('block-picker');
+    if (p) { p.style.display = 'none'; }
+  }
+  function renderBlockPicker() {
+    var p = document.getElementById('block-picker');
+    if (!p) { return; }
+    clearNode(p);
+    if (!customBlocks.length) {
+      p.appendChild(makeEl('div', 'block-picker-empty', '先到首页 🧩 我的块 建一个块吧'));
+    }
+    customBlocks.forEach(function (b) {
+      var item = makeEl('div', 'block-picker-item');
+      var lbl = makeEl('span', 'block-picker-name', '🧩 ' + b.name);
+      item.appendChild(lbl);
+      // N-2：body 预览（指令 chips 缩略，强化"封装可见"教学）
+      var prev = makeEl('span', 'block-picker-preview', b.body.map(function (c) {
+        if (c.id === 'fwd') { return '↑' + (c.rep && c.rep > 1 ? '×' + c.rep : ''); }
+        if (c.id === 'left') { return '↰'; }
+        if (c.id === 'right') { return '↱'; }
+        if (c.id === 'block') { return '🧱'; }
+        if (c.id === 'steps') { return '➡' + (c.steps || 1) + '步'; }
+        return '?';
+      }).join(' '));
+      item.appendChild(prev);
+      item.addEventListener('click', function () {
+        if (state.execLock) { return; }
+        state.cmds.push({ id: 'call', bid: b.id, name: b.name });
+        hideBlockPicker();
+        renderSeq();
+      });
+      p.appendChild(item);
+    });
+    var mgr = makeEl('div', 'block-picker-mgr');
+    var mgrBtn = makeEl('button', 'cmd-add', '🧩 管理块');
+    mgrBtn.addEventListener('click', function () { setCmdLocked(false); viewBlockList(); });
+    mgr.appendChild(mgrBtn);
+    p.appendChild(mgr);
   }
   function removeCmd(i) {
     if (state.execLock) { return; }
@@ -1307,6 +1634,31 @@
       [state.queueIdx, 0].concat(cmd.body));
   }
 
+  /* v1.10 自定义指令块引用：同 execLoop 结构，body 来自块库（getCustomBlock(bid)） */
+  function execCall(cmd) {
+    var def = getCustomBlock(cmd.bid);
+    if (!def || !def.body || !def.body.length) {
+      // 块被删/空 → 外部（execStep call 分支）已有反馈，无 body 直接返回
+      return;
+    }
+    // I-2 采纳（oracle 评审）：防递归爆栈——块定义 body 含 call（数据被篡改/导入异常数据）→ 反馈终止
+    for (var k = 0; k < def.body.length; k++) {
+      if (def.body[k].id === 'call') {
+        state.execDone = true;
+        var fbI = document.getElementById('game-feedback');
+        if (fbI) { fbI.textContent = '⚠ 块「' + (def.name || '?') + '」定义异常（含嵌套引用），已停止'; fbI.className = 'game-feedback miss'; }
+        state.execLock = false; stopTimer(); clearExecHighlight();
+        return;
+      }
+    }
+    resetLoopLeft(def.body);                             // B1 同款：展开前清 body 执行期状态（共享引用污染防 bug）
+    for (var i = 0; i < def.body.length; i++) {
+      def.body[i]._execTop = cmd._execTop;               // I-new 同款：无条件继承父级 call 顶层下标（高亮/失败定位）
+    }
+    state.execQueue.splice.apply(state.execQueue,
+      [state.queueIdx, 0].concat(def.body));
+  }
+
   /* v1.6 共享前进一格逻辑：fwd/steps/block 三指令共用，返回 {moved, reason} */
   function tryMoveFwd() {
     var pr = state.player % state.w, pc = Math.floor(state.player / state.w);
@@ -1371,6 +1723,18 @@
     } else if (cmd.id === 'loop') {
       // v1.7 显式循环块：轮数已由 rep-on-cmd 处理（loop.rep），此处只插入 body
       execLoop(cmd);
+    } else if (cmd.id === 'call') {
+      // v1.10 自定义块引用：查块库 → 展开 body（execCall 内含 I-2 防递归校验）
+      var defCall = getCustomBlock(cmd.bid);
+      if (!defCall) {
+        // 块已删除：反馈 + 终止（防 null 崩溃）
+        state.execDone = true;
+        var fbD = document.getElementById('game-feedback');
+        if (fbD) { fbD.textContent = '🧩 块「' + (cmd.name || '?') + '」已删除，先移除这条指令吧'; fbD.className = 'game-feedback miss'; }
+        state.execLock = false; stopTimer(); clearExecHighlight();
+        return;
+      }
+      execCall(cmd);
     } else if (cmd.id === 'steps') {
       // v1.6 参数化移动：逐格动画（工作队列复用，撞墙即停不记失败，除非第一步）
       if (cmd._stepsLeft === undefined) { cmd._stepsLeft = cmd.steps || 1; cmd._stepsMoved = 0; }
@@ -1473,9 +1837,9 @@
       } else { chips[i].classList.remove('err'); }
     }
   }
-  // 执行锁定：指令按钮/序列灰显不可点（含 v1.5 editCtx 控件）
+  // 执行锁定：指令按钮/序列灰显不可点（含 v1.5 editCtx 控件 + v1.10 块编辑/选择面板）
   function setCmdLocked(locked) {
-    var bars = document.querySelectorAll('.cmd-add, .seq-clear, .cmd-chip, .cmd-add-sm, .btn-close-edit');
+    var bars = document.querySelectorAll('.cmd-add, .seq-clear, .cmd-chip, .cmd-add-sm, .btn-close-edit, .editor-name-input, .block-picker-item, .editor-tools .btn, .editor-actions .btn');
     for (var i = 0; i < bars.length; i++) {
       if (locked) { bars[i].setAttribute('disabled', 'disabled'); }
       else { bars[i].removeAttribute('disabled'); }
@@ -1485,6 +1849,7 @@
   /* 编写量（v1.5：if 块计 1 条 + 分支内指令数；普通指令按 rep 展开步数）——星级基准 */
   function totalSteps(cmds) {
     var n = 0;
+    var seenBlockIds = {};   // v1.10：本关已计数的块 bid 集合（body 仅计一次，I-1 oracle 修订）
     cmds.forEach(function (c) {
       if (c.id === 'if') {
         n += 1;
@@ -1492,6 +1857,14 @@
         n += (c.then ? totalSteps(c.then) : 0) + (c.else ? totalSteps(c.else) : 0);
       } else if (c.id === 'loop') {
         n += 1 + (c.body ? totalSteps(c.body) : 0);   // 循环块计 1 + body 递归（不乘 rep）
+      } else if (c.id === 'call') {
+        // v1.10 自定义块引用：每次引用计 1（调用开销）+ body 仅计一次（同 loop 不乘 rep 的编写量口径）
+        n += 1;
+        if (!seenBlockIds[c.bid]) {
+          seenBlockIds[c.bid] = true;
+          var bd = getCustomBlock(c.bid);
+          if (bd) { n += totalSteps(bd.body); }
+        }
       } else {
         n += (c.rep || 1);
       }
@@ -1628,5 +2001,20 @@
     customLevels = loadCustomLevels();
     return customLevels;
   };
+  // v1.10：重载 customBlocks（test/调试用）
+  M.reloadCustomBlocks = function () {
+    customBlocks = loadCustomBlocks();
+    return customBlocks;
+  };
+  M.viewBlockList = viewBlockList;
+  M.viewBlockEdit = viewBlockEdit;
+  M.viewBlockEditFromGame = viewBlockEditFromGame;
+  M.exitBlockEdit = exitBlockEdit;
+  M.doSaveBlock = doSaveBlock;
+  M.addCustomBlock = addCustomBlock;
+  M.updateCustomBlock = updateCustomBlock;
+  M.removeCustomBlock = removeCustomBlock;
+  M.getCustomBlock = getCustomBlock;
+  M.blockNameTaken = blockNameTaken;
   window.M = M;
 })();

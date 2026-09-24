@@ -534,3 +534,50 @@ body {
 .editor-feedback.ok { background: #e8ffea; color: #00b42a; }
 .editor-feedback.miss { background: #ffece8; color: #f53f3f; }
 
+/* ============ v1.10 自定义指令块（抽象/函数概念） ============ */
+
+/* 块选择按钮（cmd-bar [🧩块]）——紫色系，与普通指令区分 */
+.cmd-add-call { background: #f3e8fd; border-color: #c9a8e8; color: #722ed1; }
+.cmd-add-call:active { background: #e8d9fb; }
+
+/* 序列中块引用 chip——紫色 .call（与 loop 绿 / if 橙区分） */
+.cmd-chip.call {
+  background: #f3e8fd;
+  border-color: #c9a8e8;
+  color: #722ed1;
+  font-weight: 600;
+}
+.cmd-chip.call.deleted { background: #f2f3f5; border-color: #c9cdd4; color: #86909c; }
+.cmd-chip.call .chip-x { color: #a07bd1; }
+
+/* 块选择面板（cmd-bar 下方内联） */
+.block-picker {
+  border: 2px dashed #c9a8e8;
+  border-radius: 10px;
+  background: #fdfaff;
+  padding: 8px;
+  margin-bottom: 10px;
+}
+.block-picker-empty { font-size: 13px; color: #86909c; padding: 6px 2px; }
+.block-picker-item {
+  display: -webkit-box; display: -webkit-flex; display: flex;
+  -webkit-box-orient: vertical; -webkit-box-direction: normal;
+  -webkit-flex-direction: column; flex-direction: column;
+  -webkit-box-align: start; -webkit-align-items: flex-start; align-items: flex-start;
+  background: #f3e8fd;
+  border: 1px solid #c9a8e8;
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  cursor: pointer;
+}
+.block-picker-item:active { background: #e8d9fb; }
+.block-picker-name { font-size: 14px; color: #722ed1; font-weight: 600; }
+.block-picker-preview { font-size: 12px; color: #a07bd1; margin-top: 2px; }
+.block-picker-mgr { margin-top: 6px; }
+.block-picker-mgr .cmd-add { -webkit-box-flex: 0; -webkit-flex: 0 0 auto; flex: 0 0 auto; }
+
+/* 首页「我的块」卡片——紫色系 */
+.block-card { background: -webkit-linear-gradient(135deg, #efdbff, #d3adf7); background: linear-gradient(135deg, #efdbff, #d3adf7); }
+.block-card:active { background: #e8d9fb; }
+
