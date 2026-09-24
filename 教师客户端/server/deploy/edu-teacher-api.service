@@ -1,0 +1,32 @@
+# edu-teacher-api · systemd 单元（腾讯云轻量机 Ubuntu · D03 附录 A）
+# 安装（root 或 sudo）：
+#   cp edu-teacher-api.service /etc/systemd/system/
+#   systemctl daemon-reload && systemctl enable --now edu-teacher-api
+# 日志：journalctl -u edu-teacher-api -f
+[Unit]
+Description=edu-teacher-api (Teacher Client API, Node/SQLite)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# APP_DIR = 仓库内 教师客户端/server 目录（按实际路径修改）
+WorkingDirectory=/opt/loongedutools/教师客户端/server
+# 生产密钥（chmod 600，见 edu-teacher-api.env.example）
+EnvironmentFile=/etc/edu-teacher-api.env
+# 只监听本机，由 Caddy/nginx 反代出 443（main.ts 固定 127.0.0.1）
+Environment=PORT=8787
+Environment=NODE_ENV=production
+# tsx 为 devDependency：npm ci 默认含 devDeps；若用 --omit=dev 需改 ExecStart 为编译产物
+ExecStart=/usr/bin/npx tsx src/node/main.ts
+Restart=always
+RestartSec=3
+# 数据目录（app.db / r2）已在 WorkingDirectory/data 下，勿放 /tmp
+# 加固
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/opt/loongedutools/教师客户端/server/data
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,28 @@
+# Caddy 反代示例 — edu-teacher-api（D03 附录 A.4）
+# Caddy 自动 HTTPS（Let's Encrypt），比 nginx 省证书维护。
+# 前置：域名 A 记录指向轻量机 IP；80/443 已在腾讯云安全组放行。
+#
+# 安装：apt install caddy，替换 /etc/caddy/Caddyfile 后 systemctl reload caddy
+#
+# 壳端 api_base 填 https://<你的域名>
+
+api.example.com {
+	encode gzip
+
+	# A01 全部接口在 /api/edu/* 下
+	handle /api/edu/* {
+		# main.ts 只监听 127.0.0.1:8787（固定），无需改
+		reverse_proxy 127.0.0.1:8787
+	}
+
+	# 其余路径一律 404（服务端自身也有前缀校验，双保险）
+	handle {
+		respond "not found" 404
+	}
+
+	# 安全头（A01 §6）
+	header {
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+	}
+}
