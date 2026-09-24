@@ -1,8 +1,8 @@
-# 数独入门 — 工具说明
+# 数独侦探 — 工具说明
 
-> 益智系列 · 逻辑思维子系列第 4 款（P1 数独入门，产品矩阵 §3.4，对标洪恩数独）。
+> 益智系列 · 逻辑思维子系列第 4 款（P1 数独侦探，产品矩阵 §3.4，对标洪恩数独）。
 > 适用 K1-3–K4-6（L2–L3）。数字符号，v1.5（行列排除/区块排除技巧教学关 + 技巧徽章墙 + 单宫排除技巧教学关 + 规则教学三步 + 候选笔记铅笔模式 + 断局恢复；无图标版）。
-> 设计/使用文档见 `docs/教育小程序/益智/逻辑思维/数独/数独入门-{设计,使用}文档.md`。
+> 设计/使用文档见 `docs/教育小程序/益智/逻辑思维/数独/数独侦探-{设计,使用}文档.md`。
 
 ## 玩法
 
@@ -47,7 +47,7 @@
 ## 目录
 
 ```
-数独入门/
+数独侦探/
 ├── src/
 │   ├── index.html          # 入口（data.js → solver.js → main.js）
 │   └── assets/
@@ -63,8 +63,8 @@
 ## 构建与测试
 
 ```bash
-python build_all.py --tool 数独入门
-python .skill/minitool-zip-builder/scripts/audit_artifact.py dist/益智/数独入门
+python build_all.py --tool 数独侦探
+python .skill/minitool-zip-builder/scripts/audit_artifact.py dist/益智/数独侦探
 # 算法单测：node C:\Users\coffe\AppData\Local\Temp\opencode\pw-smoke\test_sudoku.js
 ```
 

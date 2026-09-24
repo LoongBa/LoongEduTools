@@ -1,5 +1,5 @@
 /* ============================================================
-   数独入门 — 主逻辑（ES2017 经典脚本，Chrome 61 基线）
+   数独侦探 — 主逻辑（ES2017 经典脚本，Chrome 61 基线）
    ------------------------------------------------------------
    数据：window.SUDOKU（solver.js 注入，数独核心算法）
         window.APP_DATA（data.js 注入，build 生成 meta，可缺失）
@@ -307,7 +307,7 @@
     icon.alt = '';
     icon.src = './assets/icon.png';
     brand.appendChild(icon);
-    var name = APP.meta && APP.meta.name ? APP.meta.name : '数独入门';
+    var name = APP.meta && APP.meta.name ? APP.meta.name : '数独侦探';
     brand.appendChild(makeEl('span', 'header-title', title || name));
     if (APP.meta && APP.meta.version) {
       brand.appendChild(makeEl('span', 'header-ver', 'v' + APP.meta.version));
@@ -1174,7 +1174,7 @@
     icon.alt = '';
     icon.src = './assets/icon.png';
     brand.appendChild(icon);
-    brand.appendChild(makeEl('span', 'header-title', title || (APP.meta && APP.meta.name ? APP.meta.name : '数独入门')));
+      brand.appendChild(makeEl('span', 'header-title', title || (APP.meta && APP.meta.name ? APP.meta.name : '数独侦探')));
     if (APP.meta && APP.meta.version) {
       brand.appendChild(makeEl('span', 'header-ver', 'v' + APP.meta.version));
     }

@@ -293,13 +293,13 @@ TOOLS: dict[str, ToolConfig] = {
         free_units=2,
         default_unit=0,
     ),
-    "数独入门": ToolConfig(
+    "数独侦探": ToolConfig(
         series="益智",
-        subgroup="逻辑思维",   # 子系列目录：series/益智/逻辑思维/数独入门/
-        tool="数独入门",
+        subgroup="逻辑思维",   # 子系列目录：series/益智/逻辑思维/数独侦探/
+        tool="数独侦探",
         version="1.5",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
-        app_name="数独入门",
+        app_name="数独侦探",
         modes=["offline", "online"],
         free_units=1,
         default_unit=0,
@@ -364,7 +364,7 @@ TOOLS: dict[str, ToolConfig] = {
         series="益智",
         subgroup="编程教学",     # 子系列目录：series/益智/编程教学/机器人走迷宫/
         tool="机器人走迷宫",
-        version="1.10",       # v1.10：自定义指令块（🧩 我的块：把重复动作封装成命名块复用——抽象/函数概念）
+        version="1.11",       # v1.11：块参数（🔢 带参数：走 N 步——同一块不同参数不同行为，函数参数化抽象进阶）+ N-3 修复（管理块返回游戏）
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="机器人走迷宫",
         modes=["offline", "online"],

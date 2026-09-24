@@ -177,7 +177,7 @@
     return -1;
   }
 
-  /* ---------- 音效（Web Audio 合成，同数独入门/分类整理） ---------- */
+  /* ---------- 音效（Web Audio 合成，同数独侦探/分类整理） ---------- */
   var actx = null;
   function ensureAudio() {
     try {
