@@ -76,6 +76,7 @@
       recent: {},                   // 各难度最近用时 ms
       checkin: { dates: [], streak: 0 },
       history: [],                  // 滚动 30 条 {date,level,ms,errors,hints,stars}
+      skills: {},                   // 技巧徽章（v1.4）：{ boxElim: true, ... } 教学关完成点亮
       cur: null                     // 断局快照（v1.2）：未完成对局，{level,N,givensCount,puzzle,solution,given,pencils,undoStack,hints,errors,selected,penMode,ms,startStamp}
     };
   }
@@ -89,6 +90,7 @@
           if (!obj.recent) { obj.recent = {}; }
           if (!obj.checkin) { obj.checkin = { dates: [], streak: 0 }; }
           if (!obj.history) { obj.history = []; }
+          if (!obj.skills) { obj.skills = {}; }
           if (!obj.cur) { obj.cur = null; }
           if (obj.history.length > 30) { obj.history = obj.history.slice(-30); }
           return obj;
@@ -845,6 +847,19 @@
     teachBtn.setAttribute('aria-label', '打开规则教学，三步看懂数独规则');
     teachBtn.addEventListener('click', openTeach);
     viewEl.appendChild(teachBtn);
+    // 技巧教学入口（v1.4）：教学关完成点亮徽章
+    for (var si = 0; si < SKILLS.length; si++) {
+      (function (s) {
+        var skBtn = makeEl('button', 'teach-btn skill-btn');
+        skBtn.appendChild(makeEl('span', 'teach-btn-head',
+          (store.skills[s.key] ? '✅ ' : '🎯 ') + s.name + '技巧'));
+        skBtn.appendChild(makeEl('span', 'teach-btn-sub',
+          store.skills[s.key] ? '已点亮徽章 · 可再练一次' : '学一个技巧，点亮一个徽章'));
+        skBtn.setAttribute('aria-label', '打开' + s.name + '技巧教学关');
+        skBtn.addEventListener('click', function () { openSkill(SKILLS.indexOf(s)); });
+        viewEl.appendChild(skBtn);
+      })(SKILLS[si]);
+    }
     // 断局恢复入口（v1.2）：有未完成对局时显示
     if (store.cur && isValidCur(store.cur)) {
       var lv = findLevel(store.cur.level);
@@ -1054,6 +1069,193 @@
     teachEls.prev = prev;
     teachEls.next = next;
     showTeachStep();
+  }
+
+  /* ---------- 技巧教学关（v1.4） ---------- */
+  // 内嵌教学盘面（独立于普通局）：单宫排除——宫内有 N-1 种数字 → 剩余格唯一可填
+  // 盘面唯一解已验证：空格 (0,1)=2（宫0 有 1,3,4 缺 2）、(1,2)=1（宫1 有 3,4,2 缺 1）
+  var SKILLS = [
+    {
+      key: 'boxElim',
+      name: '单宫排除',
+      tip: '看一个宫：已经有 1、2、3，缺哪个就填哪个',
+      N: 4,
+      board: [1, 0, 3, 4, 3, 4, 0, 2, 2, 1, 4, 3, 4, 3, 2, 1],
+      steps: [
+        { text: '看左上这个宫（粗线框）：已经有 1、3、4，缺 2！点这个空格，再点数字 2。', cell: 1, num: 2, hl: [0, 1, 4, 5] },
+        { text: '再看右上这个宫：已经有 3、4、2，缺 1！点这个空格，再点数字 1。', cell: 6, num: 1, hl: [2, 3, 6, 7] }
+      ],
+      done: '太棒啦！你学会了「单宫排除」——看一个宫里缺哪个数，就填哪个！'
+    }
+  ];
+  var skill = {
+    active: false,
+    idx: -1,        // SKILLS 下标
+    step: 0,        // 当前引导步
+    board: [],      // 教学关盘面（可填状态）
+    given: [],      // 已知格标记
+    selected: -1,   // 当前选中格
+    cells: []       // 教学关格子 DOM
+  };
+  function skillLevel() { return SKILLS[skill.idx]; }
+  function renderSkillHeader(title) {
+    clearNode(headerEl);
+    var brand = makeEl('div', 'header-brand');
+    var icon = makeEl('img', 'header-icon');
+    icon.alt = '';
+    icon.src = './assets/icon.png';
+    brand.appendChild(icon);
+    brand.appendChild(makeEl('span', 'header-title', title || (APP.meta && APP.meta.name ? APP.meta.name : '数独入门')));
+    if (APP.meta && APP.meta.version) {
+      brand.appendChild(makeEl('span', 'header-ver', 'v' + APP.meta.version));
+    }
+    headerEl.appendChild(brand);
+  }
+  function renderSkillView() {
+    clearNode(viewEl);
+    var lv = skillLevel();
+    skill.cells = [];
+    // 顶栏：返回 + 技巧名
+    var topbar = makeEl('div', 'topbar');
+    var btnBack = makeEl('button', 'btn-ghost-sm', '← 返回');
+    btnBack.setAttribute('aria-label', '返回难度选择');
+    btnBack.addEventListener('click', function () { exitSkill(); });
+    topbar.appendChild(btnBack);
+    var title = makeEl('span', 'level-title', '🎯 ' + lv.name);
+    title.appendChild(makeEl('small', '', '教学关 · 不计入进度'));
+    topbar.appendChild(title);
+    viewEl.appendChild(topbar);
+    // 棋盘
+    var card = makeEl('div', 'board-card');
+    var board = makeEl('div', 'board');
+    board.id = 'skill-board';
+    var pct = colPct(lv.N);
+    var br = SUDOKU.boxDims(lv.N)[0];
+    var bc = SUDOKU.boxDims(lv.N)[1];
+    for (var i = 0; i < lv.N * lv.N; i++) {
+      (function (idx) {
+        var r = Math.floor(idx / lv.N);
+        var c = idx % lv.N;
+        var cell = makeEl('div', 'cell');
+        cell.style.width = pct;
+        cell.style.paddingBottom = pct;
+        if (r % br === 0 && r > 0) { cell.className = 'cell box-t'; }
+        if (c % bc === 0 && c > 0) { cell.className = cell.className + ' box-l'; }
+        var inner = makeEl('div', 'cell-inner');
+        inner.style.fontSize = cellFont(lv.N);
+        cell.appendChild(inner);
+        cell.addEventListener('click', function () { skillSelect(idx); });
+        skill.cells[idx] = cell;
+        board.appendChild(cell);
+      })(i);
+    }
+    card.appendChild(board);
+    viewEl.appendChild(card);
+    // 引导文字
+    var msgEl = makeEl('div', 'sudoku-msg', lv.tip);
+    msgEl.id = 'skill-msg';
+    viewEl.appendChild(msgEl);
+    // 数字条（1..N）
+    var kbd = makeEl('div', 'num-kbd');
+    var row = makeEl('div', 'num-row');
+    for (var v = 1; v <= lv.N; v++) {
+      (function (val) {
+        var b = makeEl('button', 'num-btn', '' + val);
+        b.setAttribute('aria-label', '填数字 ' + val);
+        b.addEventListener('click', function () { skillNumTap(val); });
+        row.appendChild(b);
+      })(v);
+    }
+    kbd.appendChild(row);
+    viewEl.appendChild(kbd);
+    refreshSkillCells();
+  }
+  function refreshSkillCells() {
+    var lv = skillLevel();
+    var st = lv.steps[skill.step];
+    for (var i = 0; i < skill.cells.length; i++) {
+      var cell = skill.cells[i];
+      var inner = cell.firstChild;
+      var cls = 'cell';
+      var r = Math.floor(i / lv.N);
+      var c = i % lv.N;
+      if (r % SUDOKU.boxDims(lv.N)[0] === 0 && r > 0) { cls = 'cell box-t'; }
+      if (c % SUDOKU.boxDims(lv.N)[1] === 0 && c > 0) { cls = cls + ' box-l'; }
+      if (skill.given[i]) { cls = cls + ' given'; }
+      if (i === skill.selected) { cls = cls + ' selected'; }
+      if (st && st.hl && st.hl.indexOf(i) >= 0) { cls = cls + ' peer'; }  // 高亮目标宫格（同教具浅蓝）
+      if (i === skill.selected && st && st.cell === i) { cls = cls + ' target'; } // 目标格加强
+      cell.className = cls;
+      clearNode(inner);
+      var v = skill.board[i];
+      if (v) { inner.appendChild(makeEl('span', 'skill-num', '' + v)); }
+    }
+  }
+  function skillSelect(i) {
+    if (skill.given[i]) { showSkillMsg('这是题目给的格子，不用填'); return; }
+    if (skill.board[i] !== 0) { showSkillMsg('这格已填好，看下一步的格子哦'); return; }
+    skill.selected = (skill.selected === i) ? -1 : i;
+    refreshSkillCells();
+    sndClick();
+  }
+  function skillNumTap(v) {
+    var lv = skillLevel();
+    var st = lv.steps[skill.step];
+    if (skill.selected < 0) { showSkillMsg('先点一个空格子，再选数字哦'); return; }
+    var i = skill.selected;
+    if (skill.given[i]) { showSkillMsg('这是题目给的格子，不用填'); return; }
+    if (i === st.cell && v === st.num) {
+      // 引导目标：落子成功，推进下一步
+      skill.board[i] = v;
+      skill.selected = -1;
+      sndCorrect();
+      refreshSkillCells();
+      skill.step++;
+      if (skill.step >= lv.steps.length) {
+        // 教学关完成：点亮徽章
+        store.skills[lv.key] = true;
+        saveStore();
+        showSkillMsg(lv.done);
+        sndWin();
+        showOverlay('🎉 学会啦！', '「' + lv.name + '」徽章已点亮',
+          [{ cls: 'checkin-line', text: '🎯 技巧徽章 · ' + lv.name },
+           { cls: 'record-badge', text: '教学关完成，不计入普通进度' }],
+          [{ text: '再来一局', cls: 'btn-ghost', act: exitSkill },
+           { text: '返回难度', cls: 'btn-main', act: exitSkill }]);
+      } else {
+        showSkillMsg(lv.steps[skill.step].text);
+      }
+    } else {
+      // 非目标：温和提示，不计错
+      sndWrong();
+      showSkillMsg('看高亮的这个宫：已经有哪几个数？缺的就是答案哦');
+      refreshSkillCells();
+    }
+  }
+  function showSkillMsg(text) {
+    var msgEl = document.getElementById('skill-msg');
+    if (msgEl) { msgEl.textContent = text; }
+  }
+  function openSkill(k) {
+    hideOverlay();
+    state.playing = false; // 教学关不是普通局：键盘不响应
+    var lv = SKILLS[k];
+    skill.active = true;
+    skill.idx = k;
+    skill.step = 0;
+    skill.selected = -1;
+    skill.board = lv.board.slice();
+    var given = [];
+    for (var i = 0; i < lv.board.length; i++) { given.push(lv.board[i] !== 0); }
+    skill.given = given;
+    renderSkillHeader('技巧教学');
+    renderSkillView();
+  }
+  function exitSkill() {
+    hideOverlay();
+    skill.active = false;
+    skill.idx = -1;
+    showDifficultyView();
   }
 
   /* ---------- 打卡 ---------- */
