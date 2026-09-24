@@ -792,7 +792,7 @@ body {
 .import-zone {
   width: 100%;
   box-sizing: border-box;
-  min-height: 64px;
+  min-height: 116px;  /* v1.7.1：分享成绩文案 5 行完整展示（分享题 3-4 行共用） */
   border: 2px dashed #9fc8f0;
   border-radius: 10px;
   padding: 8px;

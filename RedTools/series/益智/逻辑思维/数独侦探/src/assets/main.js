@@ -8,9 +8,12 @@
          - 不合法（冲突）：红闪 400ms + 温和提示，错误计数 +1
           工具：橡皮（清选中格）/ 撤销（恢复上一步）/ 提示（提示一次，星级封顶 2★）
           全部填满且无冲突即过关。
-    v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）；
+v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）；
           错题本（通关/退出自动记录，可回放重练）与收藏本（通关后可收藏）
-   星级：hints===0 && errors===0 → 3★；hints<=1 && errors<=3 → 2★；否则 1★
+    v1.7：分享题（题目文本导出/导入 + 打印图片）；导入题不计成绩
+    v1.7.1：分享成绩（1080×1920 成绩卡图片 + 分享文案；无竞技对比，仅展示自
+          身表现——核心原则无竞技无排行）
+    星级：hints===0 && errors===0 → 3★；hints<=1 && errors<=3 → 2★；否则 1★
    难度：双参数（盘面尺寸 × 目标已知格）4×4→10、6×6→21、9×9→33
    设计约束（对齐 series/益智/设计文档.md §5）：
    - 不使用 import/export / type="module"
@@ -920,6 +923,7 @@
     var fav = isFav(state.origPuzzle);
     var btns = [
       { text: '📤 分享这题', cls: 'btn-ghost', act: function () { openSharePuzzleOverlay(); } }, // v1.7：导出题目文本 / 打印图片
+      { text: '📤 分享成绩', cls: 'btn-ghost', act: function () { openShareResultOverlay(); } }, // v1.7.1：成绩卡图片 + 分享文案
       { text: fav ? '💛 取消收藏' : '⭐ 收藏这局', cls: 'btn-ghost', act: function () { toggleFav(); } },
       { text: '再来一局', cls: 'btn-main', act: function () { restartRound(); } },
       { text: '选难度', cls: 'btn-ghost', act: function () { backToDifficulty(); } },
@@ -1655,6 +1659,191 @@
     renderGameFooter();
     startTimer();
     saveCur();
+  }
+  /* ---------- 分享成绩（v1.7.1）：1080×1920 成绩卡 + 分享文案（无竞技对比、无排行） ---------- */
+  function countLitSkills() {
+    // 已点亮技巧徽章数（store.skills 中为 true 的个数）
+    var n = 0;
+    var k;
+    for (k in store.skills) {
+      if (Object.prototype.hasOwnProperty.call(store.skills, k) && store.skills[k]) { n++; }
+    }
+    return n;
+  }
+  function drawResultCard() {
+    // 分享成绩卡：浅蓝渐变底 + 装饰圆点 + 难度/星级/数据 + 迷你完成盘面 + 徽章数 + 页脚
+    var W = 1080;
+    var H = 1920;
+    var cv = document.createElement('canvas');
+    cv.width = W;
+    cv.height = H;
+    var ctx = cv.getContext('2d');
+    // 浅蓝渐变背景（#eaf4ff → #ffffff）
+    var grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, '#eaf4ff');
+    grad.addColorStop(1, '#ffffff');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+    // 装饰圆点（顶部区域，浅蓝半透明，同贪吃蛇 share）
+    ctx.fillStyle = 'rgba(150, 200, 255, 0.35)';
+    var d;
+    for (d = 0; d < 14; d++) {
+      var rx = Math.random() * W;
+      var ry = 60 + Math.random() * 380;
+      ctx.beginPath();
+      ctx.arc(rx, ry, 6 + Math.random() * 14, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // 标题 / 副标题
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#2f6fbf';
+    ctx.font = 'bold 90px sans-serif';
+    ctx.fillText('数独侦探', W / 2, 320);
+    ctx.fillStyle = '#7a9ec0';
+    ctx.font = '40px sans-serif';
+    ctx.fillText('逻辑推理小达人', W / 2, 420);
+    // 中央成绩卡（白底圆角 + 浅边框）
+    var lv = findLevel(state.level);
+    var stars = calcStars(state.hints, state.errors);
+    ctx.fillStyle = '#ffffff';
+    // 圆角矩形（Chrome 61 无 ctx.roundRect，手动 path）
+    ctx.beginPath();
+    ctx.moveTo(110 + 24, 500);
+    ctx.lineTo(110 + 860 - 24, 500);
+    ctx.quadraticCurveTo(110 + 860, 500, 110 + 860, 500 + 24);
+    ctx.lineTo(110 + 860, 500 + 620 - 24);
+    ctx.quadraticCurveTo(110 + 860, 500 + 620, 110 + 860 - 24, 500 + 620);
+    ctx.lineTo(110 + 24, 500 + 620);
+    ctx.quadraticCurveTo(110, 500 + 620, 110, 500 + 620 - 24);
+    ctx.lineTo(110, 500 + 24);
+    ctx.quadraticCurveTo(110, 500, 110 + 24, 500);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#dce8f5';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // 难度行
+    ctx.fillStyle = '#2a3a4a';
+    ctx.font = 'bold 46px sans-serif';
+    ctx.fillText(lv.name + ' · ' + state.N + '×' + state.N, W / 2, 610);
+    // 星级（金色大字）
+    ctx.fillStyle = '#f5a623';
+    ctx.font = '100px sans-serif';
+    ctx.fillText(starsText(stars), W / 2, 770);
+    // 数据行
+    ctx.fillStyle = '#3a5a7a';
+    ctx.font = '44px sans-serif';
+    ctx.fillText(
+      '用时 ' + fmtTime(Math.round(state.ms)) + ' · 错误 ' + state.errors + ' 次 · 提示 ' + state.hints + ' 次',
+      W / 2, 920);
+    // 迷你完成盘面（state.solution 全量数字；已知格深色加粗，后填格天蓝）
+    var gridSize = 420;
+    var gx0 = (W - gridSize) / 2;
+    var gy0 = 1180;
+    var cell = gridSize / state.N;
+    var dims = SUDOKU.boxDims(state.N);
+    var br = dims[0];
+    var bc = dims[1];
+    var i, r, c, v;
+    ctx.strokeStyle = '#9db4c8';
+    ctx.lineWidth = 2;
+    for (i = 0; i <= state.N; i++) {
+      ctx.beginPath();
+      ctx.moveTo(gx0 + i * cell, gy0);
+      ctx.lineTo(gx0 + i * cell, gy0 + gridSize);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(gx0, gy0 + i * cell);
+      ctx.lineTo(gx0 + gridSize, gy0 + i * cell);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = '#2a3a4a';
+    ctx.lineWidth = 5;
+    for (r = 0; r <= state.N; r += br) {
+      ctx.beginPath();
+      ctx.moveTo(gx0, gy0 + r * cell);
+      ctx.lineTo(gx0 + gridSize, gy0 + r * cell);
+      ctx.stroke();
+    }
+    for (c = 0; c <= state.N; c += bc) {
+      ctx.beginPath();
+      ctx.moveTo(gx0 + c * cell, gy0);
+      ctx.lineTo(gx0 + c * cell, gy0 + gridSize);
+      ctx.stroke();
+    }
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (i = 0; i < state.N * state.N; i++) {
+      v = state.solution[i];
+      if (v === 0) { continue; }
+      r = Math.floor(i / state.N);
+      c = i % state.N;
+      if (state.given && state.given[i]) {
+        ctx.fillStyle = '#2a3a4a';
+        ctx.font = 'bold ' + Math.round(cell * 0.5) + 'px sans-serif';
+      } else {
+        ctx.fillStyle = '#4aa8ff';
+        ctx.font = Math.round(cell * 0.5) + 'px sans-serif';
+      }
+      ctx.fillText('' + v, gx0 + (c + 0.5) * cell, gy0 + (r + 0.5) * cell);
+    }
+    // 徽章行
+    ctx.fillStyle = '#2a3a4a';
+    ctx.font = '36px sans-serif';
+    ctx.fillText((countLitSkills() > 0 ? '已点亮 ' + countLitSkills() + ' 枚技巧徽章 🏆' : '技巧徽章待点亮 💪'), W / 2, 1710);
+    // 页脚
+    ctx.fillStyle = '#93a8bd';
+    ctx.font = '34px sans-serif';
+    ctx.fillText('龙爸乐学 · 数独侦探', W / 2, 1810);
+    ctx.fillText(fmtDate(new Date()), W / 2, 1855);
+    return cv;
+  }
+  function shareResultText() {
+    // 分享文案：仅展示自身表现（用时/错误/提示/徽章），无对比、无排行
+    var lv = findLevel(state.level);
+    var stars = starsText(calcStars(state.hints, state.errors));
+    return '🎉 我在「数独侦探」通关 ' + lv.name + ' ' + state.N + '×' + state.N + '！\n' +
+      stars + ' · 用时 ' + fmtTime(Math.round(state.ms)) + ' · 错 ' + state.errors + ' 次 · 提示 ' + state.hints + ' 次\n' +
+      (countLitSkills() > 0 ? '已点亮 ' + countLitSkills() + ' 枚技巧徽章 🏆' : '技巧徽章待点亮 💪') + '\n' +
+      '来一起破案吧～#数独 #小学生逻辑 #龙爸乐学';
+  }
+  function openShareResultOverlay() {
+    // 分享成绩浮层：成绩卡图片 + 分享文案（可手动复制兜底）；返回结算可重建
+    hideOverlay();
+    var ov = makeEl('div', 'overlay');
+    var card = makeEl('div', 'overlay-card');
+    card.appendChild(makeEl('div', 'overlay-title', '📤 分享成绩'));
+    // 成绩卡图片
+    var img = makeEl('img', 'share-img');
+    img.src = drawResultCard().toDataURL('image/png');
+    img.setAttribute('alt', '数独成绩分享卡');
+    card.appendChild(img);
+    card.appendChild(makeEl('div', 'share-hint', '📸 长按保存图片 · 分享到小红书 / 朋友圈'));
+    // 分享文案（只读，可手动复制兜底）
+    var ta = makeEl('textarea', 'export-zone', shareResultText());
+    ta.readOnly = true;
+    ta.setAttribute('aria-label', '分享成绩文案');
+    card.appendChild(ta);
+    var copyBtn = makeEl('button', 'btn-main', '复制分享文案');
+    copyBtn.setAttribute('aria-label', '复制分享文案');
+    copyBtn.addEventListener('click', function () {
+      if (copyTextViaExecCommand(ta)) {
+        toast('✅ 文案已复制，去粘贴发布吧');
+      } else {
+        toast('复制失败，请长按文本手动复制');
+      }
+    });
+    card.appendChild(copyBtn);
+    // 返回结算
+    var backBtn = makeEl('button', 'btn-ghost', '返回结算');
+    backBtn.setAttribute('aria-label', '返回结算');
+    backBtn.style.marginTop = '8px';
+    backBtn.addEventListener('click', buildWinOverlay);
+    card.appendChild(backBtn);
+    ov.appendChild(card);
+    document.body.appendChild(ov);
+    overlayEl = ov;
   }
   function newRound(levelKey) {
     clearCur(); // 新局生成：旧断局快照作废
