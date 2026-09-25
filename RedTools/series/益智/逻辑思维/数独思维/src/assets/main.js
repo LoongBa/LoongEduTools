@@ -1243,7 +1243,7 @@ dailyBtn.setAttribute('aria-label', dailyDone ? '今日每日挑战已完成' : 
     var mapComp = (store.mapProgress && store.mapProgress.completed) ? store.mapProgress.completed : [];
     var mapBtn = makeEl('button', 'teach-btn book-btn');
 mapBtn.appendChild(makeEl('span', 'teach-btn-head', '🗺️ 闯关地图'));
-    mapBtn.appendChild(makeEl('span', 'teach-btn-sub', '通关 ' + mapComp.length + ' / 9 关 · 掌握技巧 ' + litMapSkillCount() + ' / ' + SKILLS.length));
+    mapBtn.appendChild(makeEl('span', 'teach-btn-sub', '通关 ' + mapComp.length + ' / 9 关 · 掌握技巧 ' + litMapSkillCount() + ' / ' + mapSkillTotal()));
     mapBtn.setAttribute('aria-label', '打开闯关地图');
     mapBtn.addEventListener('click', showMapView);
     viewEl.appendChild(mapBtn);
@@ -1385,7 +1385,7 @@ mapBtn.appendChild(makeEl('span', 'teach-btn-head', '🗺️ 闯关地图'));
     { key: 'monthStreak', name: '月度坚持', desc: '连续打卡 30 天' },                 // v1.17
     { key: 'mapStreak',  name: '闯关达人', desc: '连续 7 天闯关' },                   // v1.18
     { key: 'favorite',   name: '小小收藏家', desc: '收藏 10 道好题' },                 // v1.18
-    { key: 'sixArts',    name: '六艺精通', desc: '点亮全部 6 枚技巧徽章（适龄 4 + 进阶 2）' },  // v1.21
+    { key: 'sixArts',    name: '六艺精通', desc: '点亮全部 7 枚技巧徽章（适龄 4 + 进阶 3）' },  // v1.20/v1.23
     { key: 'allStars',   name: '全档三星', desc: '4×4 / 6×6 / 9×9 各至少一次 ★★★ 通关' },      // v1.21
     { key: 'daily14',    name: '坚持两周', desc: '连续打卡 14 天' },                             // v1.21
     { key: 'advBoth',    name: '进阶双修', desc: '点亮唯一余数 + X-Wing 两枚进阶徽章' },          // v1.21
@@ -1416,7 +1416,7 @@ var checks = {
       monthStreak: streak >= 30, // v1.17
       mapStreak: mapStreakDays() >= 7, // v1.18 闯关连续 7 天（doneAt 派生）
       favorite: (store.favorites || []).length >= 10, // v1.18 收藏 10 道好题
-      sixArts: litMapSkillCount() >= SKILLS.length, // v1.20 六艺精通：点亮全部 6 枚技巧徽章（适龄 4 + 进阶 2，任一来源皆计）
+      sixArts: allSkillLit() >= SKILLS.length, // v1.20 六艺精通：点亮全部技巧徽章（v1.23 扩 7：适龄 4 + 进阶 3，任一来源皆计）
       allStars: !!store.best['4'] && !!store.best['6'] && !!store.best['9'] && store.best['4'].stars >= 3 && store.best['6'].stars >= 3 && store.best['9'].stars >= 3, // v1.21 全档三星（best 单档最佳只增不减，语义安全）
       daily14: streak >= 14, // v1.21 坚持两周
       advBoth: !!(store.advSkills && store.advSkills.uniqueElim && store.advSkills.xwing), // v1.21 进阶双修
@@ -2230,6 +2230,30 @@ function baseSkillCount() {
     }
     return lit;
   }
+  function mapSkillTotal() {
+    // v1.23：MAP_LEVELS 关卡涉及的技巧去重总数（= 6：boxElim/rowColElim/blockElim/crossElim/uniqueElim/xwing）
+    // ——闯关卡 sub / 成长卡 / 分享成绩卡「掌握技巧 Y / 6」分母（数对占位 nakedPair 属自由解题线，不计入闯关口径）
+    var seen = {};
+    var n = 0;
+    var i, sk;
+    for (i = 0; i < MAP_LEVELS.length; i++) {
+      sk = skillByKey(MAP_LEVELS[i].skill);
+      if (!sk || seen[sk.key]) { continue; }
+      seen[sk.key] = true;
+      n++;
+    }
+    return n;
+  }
+  function allSkillLit() {
+    // v1.23：全部 SKILLS 点亮数（base→store.skills，adv→store.advSkills），分母 SKILLS.length（v1.23 = 7）——六艺精通判定
+    var n = 0;
+    var i;
+    for (i = 0; i < SKILLS.length; i++) {
+      var sk = SKILLS[i];
+      if (sk.group === 'adv' ? !!store.advSkills[sk.key] : !!store.skills[sk.key]) { n++; }
+    }
+    return n;
+  }
   function buildWeekStreakCard() {
     // v1.18 每日挑战 streak 卡：连续打卡大字 + 今日状态 + 本周 7 日圆点（全派生 store.checkin.dates，零 schema）
     var dates = (store.checkin && store.checkin.dates) ? store.checkin.dates : [];
@@ -2271,6 +2295,27 @@ function baseSkillCount() {
     card.appendChild(right);
     card.appendChild(makeEl('div', 'streak-sub', '连续打卡 ' + streak + ' 天 · 明天继续哦'));
     return card;
+  }
+  function drawQRTo(ctx, text, x, y, size) {
+    // v1.23：在给定 canvas ctx 上绘制二维码（复用内嵌 qrcode.js；UTF-8 编码；4 模块静区）
+    if (!window.qrcode) { return; }
+    window.qrcode.stringToBytes = window.qrcode.stringToBytesFuncs['UTF-8'];
+    var qr = window.qrcode(0, 'L');
+    qr.addData(text);
+    qr.make();
+    var n = qr.getModuleCount();
+    var module = size / (n + 8);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(x, y, size, size);
+    ctx.fillStyle = '#2a3a4a';
+    var r, c;
+    for (r = 0; r < n; r++) {
+      for (c = 0; c < n; c++) {
+        if (qr.isDark(r, c)) {
+          ctx.fillRect(x + (c + 4) * module, y + (r + 4) * module, module + 0.5, module + 0.5);
+        }
+      }
+    }
   }
   function drawResultCard() {
     // 分享成绩卡：浅蓝渐变底 + 装饰圆点 + 难度/星级/数据 + 迷你完成盘面 + 徽章数 + 页脚
@@ -2390,10 +2435,15 @@ function baseSkillCount() {
       }
       ctx.fillText('' + v, gx0 + (c + 0.5) * cell, gy0 + (r + 0.5) * cell);
     }
+    // v1.23 二维码：盘面右侧（x 330-750 之外）编码题目 SD 文本——朋友扫码导入玩同款题
+    drawQRTo(ctx, shareTextForCurrent(), 850, 1240, 150);
+    ctx.fillStyle = '#93a8bd';
+    ctx.font = '22px sans-serif';
+    ctx.fillText('扫码玩同款题', 925, 1440);
     // 徽章行（v1.21：countLitSkills() base 口径 → litMapSkillCount() + SKILLS.length，对齐闯关卡 sub/成长卡口径）
     ctx.fillStyle = '#2a3a4a';
     ctx.font = '36px sans-serif';
-    ctx.fillText((litMapSkillCount() > 0 ? '掌握技巧 ' + litMapSkillCount() + ' / ' + SKILLS.length + ' 🏆' : '技巧徽章待点亮 💪'), W / 2, 1710);
+    ctx.fillText((litMapSkillCount() > 0 ? '掌握技巧 ' + litMapSkillCount() + ' / ' + mapSkillTotal() + ' 🏆' : '技巧徽章待点亮 💪'), W / 2, 1710);
     // 页脚
     ctx.fillStyle = '#93a8bd';
     ctx.font = '34px sans-serif';
@@ -2407,7 +2457,7 @@ function baseSkillCount() {
     var stars = starsText(calcStars(state.hints, state.errors));
     return '🎉 我在「数独思维」通关 ' + lv.name + ' ' + state.N + '×' + state.N + '！\n' +
       stars + ' · 用时 ' + fmtTime(Math.round(state.ms)) + ' · 错 ' + state.errors + ' 次 · 提示 ' + state.hints + ' 次\n' +
-      (litMapSkillCount() > 0 ? '掌握技巧 ' + litMapSkillCount() + ' / ' + SKILLS.length + ' 🏆' : '技巧徽章待点亮 💪') + '\n' +
+      (litMapSkillCount() > 0 ? '掌握技巧 ' + litMapSkillCount() + ' / ' + mapSkillTotal() + ' 🏆' : '技巧徽章待点亮 💪') + '\n' +
       '来一起练练脑吧～#数独 #小学生逻辑 #龙爸乐学';
   }
   function openShareResultOverlay() {
@@ -2761,6 +2811,20 @@ function baseSkillCount() {
         { text: '再看第 2 行：4 不能放刚才那格了，这一行只有这个位置能放 4 → 点它，再点数字 4。', cell: 9, num: 4, hl: [7, 8, 10, 11, 9] }
       ],
       done: '真厉害！你学会了「X-Wing」——用两行两列的矩形锁住一个数字，其它格子就知道排除它了！'
+    },
+    // 数对占位（v1.23，进阶 adv）：行内两格候选同为 {1,2} 数对占位 → 同行动掉 1/2 后唯一（唯一解已验证：idx20=4、idx23=1）
+    {
+      key: 'nakedPair',
+      name: '数对占位',
+      group: 'adv',
+      tip: '数对占位：一行里有两个格都只能填同样的两个数，那这一行其它格就不能再填它们了',
+      N: 6,
+      board: [1, 2, 3, 4, 5, 0, 0, 5, 6, 0, 2, 3, 0, 0, 0, 5, 6, 4, 5, 6, 0, 0, 3, 0, 0, 1, 2, 0, 4, 5, 0, 0, 5, 3, 1, 0],
+      steps: [
+        { text: '看这一行（浅蓝横排）：第 4、6 格都只能填 1 或 2——它们俩把 1、2「占位」了！那这一行其它格就不能再填 1、2。看第 3 格：它本来可以填 1、4，现在 1 被占 → 只能填 4！点这个空格，再点数字 4。', cell: 20, num: 4, hl: [18, 19, 20, 21, 22, 23] },
+        { text: '再看数对里的这个格子：它这一竖列已经有 6、3、4、5、2 → 只剩 1 能填！点这个空格，再点数字 1。', cell: 23, num: 1, hl: [18, 19, 20, 21, 22, 23] }
+      ],
+      done: '真棒！你学会了「数对占位」——两个格锁住同样的两个数，其它格就知道排除它们了！'
     }
   ];
   var skill = {
@@ -3130,7 +3194,7 @@ cardB.appendChild(makeEl('div', 'report-badge-line', skillParts.join(' ')));
     cardC.appendChild(makeEl('div', 'report-row', achParts));
     // 闯关地图行（当前进度关 + 档位）
     var mapDone = (store.mapProgress && store.mapProgress.completed) ? store.mapProgress.completed.length : 0;
-    var mapRow = '🗺️ 闯关地图 ' + mapDone + ' / ' + MAP_LEVELS.length + ' 关 · 掌握技巧 ' + litMapSkillCount() + ' / ' + SKILLS.length; // v1.20：闯关行补技巧掌握（对齐闯关卡 sub 口径）
+    var mapRow = '🗺️ 闯关地图 ' + mapDone + ' / ' + MAP_LEVELS.length + ' 关 · 掌握技巧 ' + litMapSkillCount() + ' / ' + mapSkillTotal(); // v1.20/v1.23：闯关行补技巧掌握（分母 = MAP 涉及技巧去重数，对齐闯关卡 sub 口径）
     if (mapDone >= MAP_LEVELS.length) {
       mapRow += ' · 已全部通关 🎉';
     } else {
@@ -3139,6 +3203,12 @@ cardB.appendChild(makeEl('div', 'report-badge-line', skillParts.join(' ')));
     }
     cardC.appendChild(makeEl('div', 'report-row', mapRow));
     viewEl.appendChild(cardC);
+    // v1.23 导出/打印（window.print + @media print CSS → 另存为 PDF，零依赖）
+    var printBtn = makeEl('button', 'btn-checkin', '🖨️ 导出/打印');
+    printBtn.setAttribute('aria-label', '导出或打印家长报告为 PDF');
+    printBtn.style.marginTop = '4px';
+    printBtn.addEventListener('click', function () { window.print(); });
+    viewEl.appendChild(printBtn);
     // 返回难度
     var back = makeEl('button', 'btn-checkin', '← 返回');
     back.setAttribute('aria-label', '返回难度选择');
