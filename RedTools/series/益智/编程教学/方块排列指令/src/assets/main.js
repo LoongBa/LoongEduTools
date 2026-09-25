@@ -110,16 +110,17 @@
     level: 'easy',
     pieces: [],        // 生成结果 [{type, rot, col}]（目标布局 + 最优解基准）
     placed: [],        // 已落定块 [{type, rot, col, row, cells:[idx]}]
-    curIdx: 0,         // 当前块下标（0..pieces.length-1）
-    cmds: [],          // 当前块指令序列 [{id, val}]
-    cmdCounts: [],     // 每块实际指令条数（星级用，全部块落定后求和）
+    curIdx: 0,         // 执行中当前块下标（v1.1 全量执行 0..pieces.length-1）
+    curEditIdx: 0,     // v1.1 编辑态当前块（块 tab 切换 0..pieces.length-1；startGame/reset/nextLevel 重置 0）
+    blockCmds: [],     // v1.1 每块独立指令序列 [[{id,val},...], ...]（整体编排——全部编完统一执行）
     execLock: false,   // 执行中锁定
     execDone: false,
     won: false,
     targetCells: {},   // 目标布局格子集合 {idx: true}
     gridW: 0, gridH: 0,
     startMs: 0, elapsed: 0, timerId: null,
-    finished: false
+    finished: false,
+    stepTimer: null    // v1.1 N-6：执行 setTimeout 句柄（reset/nextLevel/startGame 清理防幻影执行）
   };
 
   /* ---------- 小工具 ---------- */
@@ -341,16 +342,50 @@
   }
 
   /* ---------- 视图：练习页 ---------- */
+  // v1.1 已编块数（有指令的块）
+  function countEditedBlocks() {
+    var n = 0;
+    for (var i = 0; i < state.blockCmds.length; i++) {
+      if (state.blockCmds[i] && state.blockCmds[i].length > 0) { n += 1; }
+    }
+    return n;
+  }
+  // v1.1 块 tab 行刷新（当前编辑块高亮 + 已编 ✓ 标记；addCmd/removeCmd/tab 切换后调用）
+  function renderBlockTabs() {
+    var tabs = document.getElementById('block-tabs');
+    if (!tabs) { return; }
+    clearNode(tabs);
+    state.pieces.forEach(function (pc, ti) {
+      var tab = makeEl('button', 'block-tab' + (ti === state.curEditIdx ? ' active' : ''), '第 ' + (ti + 1) + ' 块');
+      tab.setAttribute('data-bidx', ti);
+      tab.appendChild(makeEl('span', 'tab-piece-dot', TYPE_NAMES[pc.type]));
+      if (state.blockCmds[ti] && state.blockCmds[ti].length > 0) { tab.appendChild(makeEl('span', 'tab-done', '✓')); }
+      tab.addEventListener('click', function () {
+        if (state.execLock) { return; }
+        state.curEditIdx = ti;
+        renderBlockTabs();
+        renderSeq();
+        renderPreview();
+      });
+      tabs.appendChild(tab);
+    });
+    // 进度「已编 X/K」随 tab 更新
+    var prog = document.getElementById('game-prog');
+    if (prog && !state.execLock) { prog.textContent = LEVELS_CFG[state.level].label + ' · 已编 ' + countEditedBlocks() + '/' + state.pieces.length + ' 块'; }
+  }
+
   function startGame(level) {
     state.level = level;
     state.finished = false;
     state.execLock = false; state.execDone = false; state.won = false;
-    state.cmds = [];
-    state.cmdCounts = [];
     state.placed = [];
     state.curIdx = 0;
+    state.curEditIdx = 0;
+    if (state.stepTimer) { clearTimeout(state.stepTimer); state.stepTimer = null; }
     var res = genLevel(level);
     if (!res) { genLevel(level); } // 极罕见：二次生成
+    // v1.1：blockCmds 初始化（每块独立序列）+ 清理执行定时器（N-6）
+    state.blockCmds = state.pieces.map(function () { return []; });
     renderGame();
     state.startMs = Date.now();
     startTimer();
@@ -403,7 +438,7 @@
     var back = makeEl('button', 'game-back', '‹ 返回');
     back.addEventListener('click', function () { viewHome(); });
     top.appendChild(back);
-    var lvEl = makeEl('div', 'game-prog', LEVELS_CFG[state.level].label + ' · 第 ' + (state.curIdx + 1) + ' 块 / 共 ' + state.pieces.length + ' 块');
+    var lvEl = makeEl('div', 'game-prog', LEVELS_CFG[state.level].label + ' · 已编 ' + countEditedBlocks() + '/' + state.pieces.length + ' 块');
     lvEl.id = 'game-prog';
     top.appendChild(lvEl);
     var timerEl = makeEl('div', 'game-timer', '⏱ 00.0');
@@ -412,6 +447,27 @@
     var hint = makeEl('div', 'game-hint', '目标：把方块排成橙色图案');
     top.appendChild(hint);
     wrap.appendChild(top);
+
+    // v1.1 块 tab 行：每块一个 tab（第N块），当前编辑块高亮；点击切换 curEditIdx
+    var tabs = makeEl('div', 'block-tabs');
+    tabs.id = 'block-tabs';
+    state.pieces.forEach(function (pc, ti) {
+      var tab = makeEl('button', 'block-tab' + (ti === state.curEditIdx ? ' active' : ''), '第 ' + (ti + 1) + ' 块');
+      tab.setAttribute('data-bidx', ti);
+      // 类型色块小图标
+      tab.appendChild(makeEl('span', 'tab-piece-dot', TYPE_NAMES[pc.type]));
+      // 已编提示（有指令的块显示 ✓）
+      if (state.blockCmds[ti] && state.blockCmds[ti].length > 0) { tab.appendChild(makeEl('span', 'tab-done', '✓')); }
+      tab.addEventListener('click', function () {
+        if (state.execLock) { return; }   // 执行中禁用 tab（I-1）
+        state.curEditIdx = ti;
+        renderBlockTabs();
+        renderSeq();
+        renderPreview();
+      });
+      tabs.appendChild(tab);
+    });
+    wrap.appendChild(tabs);
 
     // 盘面
     var board = makeEl('div', 'board');
@@ -434,7 +490,7 @@
     });
     wrap.appendChild(cmdBar);
 
-    // 指令序列（当前块，可删除/循环参数递增）
+    // 指令序列（v1.1：当前编辑块 curEditIdx 的指令，可删除/循环参数递增）
     var seqWrap = makeEl('div', 'seq-wrap');
     seqWrap.id = 'seq-wrap';
     var seqBox = makeEl('div', 'seq-box');
@@ -442,7 +498,7 @@
     seqBox.textContent = '（空指令）';
     seqWrap.appendChild(seqBox);
     var clearBtn = makeEl('button', 'seq-clear', '↺ 清空');
-    clearBtn.addEventListener('click', function () { state.cmds = []; renderSeq(); });
+    clearBtn.addEventListener('click', function () { state.blockCmds[state.curEditIdx] = []; renderSeq(); renderBlockTabs(); });   // v1.1 Oracle N-1：清空后同步 tab ✓/进度
     seqWrap.appendChild(clearBtn);
     wrap.appendChild(seqWrap);
 
@@ -455,12 +511,14 @@
     var resetBtn = makeEl('button', 'btn', '⟲ 重置');
     resetBtn.addEventListener('click', function () {
       state.execLock = false; state.execDone = false; state.won = false;
-      state.cmds = []; state.cmdCounts = [];
       state.placed = []; state.curIdx = 0;
+      state.curEditIdx = 0;   // v1.1：编辑态重置
+      if (state.stepTimer) { clearTimeout(state.stepTimer); state.stepTimer = null; }   // N-6：防幻影执行
       state.diffCells = null;
       setCmdLocked(false);
       var res = genLevel(state.level);
       if (!res) { genLevel(state.level); }
+      state.blockCmds = state.pieces.map(function () { return []; });   // v1.1：blockCmds 全清 + 对应新关
       renderGame();
     });
     ctrl.appendChild(resetBtn);
@@ -472,7 +530,7 @@
     wrap.appendChild(ctrl);
 
     // 反馈
-    var fb = makeEl('div', 'game-feedback', '给第 1 块编指令，再点执行！');
+    var fb = makeEl('div', 'game-feedback', '给每块编指令，再点执行全部！');
     fb.id = 'game-feedback';
     wrap.appendChild(fb);
 
@@ -484,14 +542,15 @@
   function renderSeq() {
     var box = document.getElementById('seq-box');
     if (!box) { return; }
-    if (!state.cmds.length) {
+    var cmds = state.blockCmds[state.curEditIdx] || [];   // v1.1：当前编辑块
+    if (!cmds.length) {
       box.textContent = '（空指令）';
       box.className = 'seq-box';
       return;
     }
     box.className = 'seq-box active';
     clearNode(box);
-    state.cmds.forEach(function (cmd, i) {
+    cmds.forEach(function (cmd, i) {
       var lbl = cmd.id === 'rot' ? '↻' : (cmd.id === 'left' ? '⬅' : (cmd.id === 'right' ? '➡' : '⬇'));
       var valTxt = (cmd.id === 'drop') ? '' : ('×' + cmd.val);
       var chip = makeEl('span', 'cmd-chip', (i + 1) + '.' + lbl + valTxt);
@@ -512,7 +571,8 @@
   // 参数递增：rot 1→2→3→1；移动 1→2→…→max→1；drop 固定 1
   function cycleParam(i) {
     if (state.execLock) { return; }
-    var cmd = state.cmds[i];
+    var cmds = state.blockCmds[state.curEditIdx] || [];
+    var cmd = cmds[i];
     if (!cmd) { return; }
     var max = cmd.id === 'rot' ? 3 : (state.gridW - 1);
     var next = cmd.val + 1;
@@ -530,28 +590,44 @@
     if (state.execLock) { return; }
     if (state.execDone || state.won) { return; }
     var val = (id === 'drop') ? 1 : 1;
-    state.cmds.push({ id: id, val: val });
+    if (!state.blockCmds[state.curEditIdx]) { state.blockCmds[state.curEditIdx] = []; }
+    state.blockCmds[state.curEditIdx].push({ id: id, val: val });   // v1.1：当前编辑块
     renderSeq();
+    renderBlockTabs();   // ✓ 标记 + 进度更新
   }
   function removeCmd(i) {
     if (state.execLock) { return; }
-    state.cmds.splice(i, 1);
+    state.blockCmds[state.curEditIdx].splice(i, 1);   // v1.1：当前编辑块
     renderSeq();
+    renderBlockTabs();
   }
 
-  /* ---------- 执行器（编程核心） ---------- */
-  // 单块执行：按 cmds 指令序列执行（固定顺序旋转→移动→落下，动画逐步）
+  /* ---------- 执行器（编程核心，v1.1 整体编排） ---------- */
+  // v1.1：一次性执行全部 K 块（每块按 blockCmds[i] 顺序执行，统一判定）
   function execRun() {
     if (state.execLock || state.execDone || state.won) { return; }
-    if (!state.cmds.length) { return; }
+    // I-2（Oracle）：全空守卫——非静默，提示先编指令；首块空不阻塞（endBlock 原位落定续跑）
+    var total = 0;
+    for (var bi = 0; bi < state.blockCmds.length; bi++) {
+      if (state.blockCmds[bi]) { total += state.blockCmds[bi].length; }
+    }
+    if (total === 0) {
+      var fb0 = document.getElementById('game-feedback');
+      if (fb0) { fb0.textContent = '😅 先给至少一块编指令，再点执行！'; fb0.className = 'game-feedback miss'; }
+      return;
+    }
+    // I-4（Oracle）：全量执行前置重置——curIdx=0 + placed=[]（防重玩残留）+ 清理执行定时器（N-6）
+    state.curIdx = 0;
+    state.placed = [];
+    if (state.stepTimer) { clearTimeout(state.stepTimer); state.stepTimer = null; }
     state.execLock = true;
     state.diffCells = null;
     setCmdLocked(true);
     var fb = document.getElementById('game-feedback');
-    if (fb) { fb.textContent = '第 ' + (state.curIdx + 1) + ' 块执行中…'; fb.className = 'game-feedback'; }
+    if (fb) { fb.textContent = '第 1/' + state.pieces.length + ' 块执行中…'; fb.className = 'game-feedback'; }
     renderSeq();
-    // 当前块的执行快照
-    var pc = state.pieces[state.curIdx];
+    // 第 0 块的执行快照
+    var pc = state.pieces[0];
     state.cur = {
       type: pc.type,
       rot: 0,
@@ -562,69 +638,29 @@
     execCmdStep();
   }
 
+  // v1.1（Oracle I-1 修订）：当前块逐条执行指令；耗尽 → endBlock 落定 → 续下一块（整体编排不中断）
   function execCmdStep() {
-    if (state.cmdProg >= state.cmds.length) {
-      // 本块指令执行完：落下落定 → 加入 placed
-      var cur = state.cur;
-      var pc = state.pieces[state.curIdx];
-      // 落下：从当前 col 顶部下落触底（复用 dropRowFor）
-      var placedCells = [];
-      for (var p = 0; p < state.placed.length; p++) {
-        placedCells.push({ cells: state.placed[p].cells });
-      }
-      var row = dropRowFor(cur.type, cur.rot, cur.col, placedCells);
-      if (row < 0) { row = 0; }
-      cur.row = row;
-      cur.cells = absCells(cur.type, cur.rot, cur.col, row);
-      state.placed.push({ type: cur.type, rot: cur.rot, col: cur.col, row: row, cells: cur.cells });
-      state.cmdCounts.push(state.cmds.length);   // 记录本块指令条数（星级）
-      state.curIdx += 1;
-      state.execLock = false;
-      setCmdLocked(false);
-      state.cmds = [];
-      renderBoardOnly();
-      var prog = document.getElementById('game-prog');
-      if (prog) { prog.textContent = LEVELS_CFG[state.level].label + ' · 第 ' + (state.curIdx + 1) + ' 块 / 共 ' + state.pieces.length + ' 块'; }
-      // 判定
-      if (state.curIdx >= state.pieces.length) {
-        state.execDone = true;
-        checkWin();
-      } else {
-        renderSeq();
-        var fb = document.getElementById('game-feedback');
-        // V1.0 逐块即时差格检查（oracle UX 建议）：本块落定后，
-        // 检查已放格是否有「不在目标布局中」的多余格（放偏了）→ 立即提示
-        var excess = calcExcessCells();
-        if (excess && excess.length > 0) {
-          state.diffCells = excess;
-          if (fb) { fb.textContent = '✗ 这一块有 ' + excess.length + ' 格放偏了（红色标记），调整再试（点 ⟲ 重置）'; fb.className = 'game-feedback miss'; }
-          renderBoardOnly();
-        } else {
-          if (fb) { fb.textContent = '第 ' + (state.curIdx + 1) + ' 块落定！给下一块编指令'; fb.className = 'game-feedback ok'; }
-        }
-        renderPreview();
-      }
-      return;
-    }
-    var cmd = state.cmds[state.cmdProg];
+    var cmdsThis = state.blockCmds[state.curIdx] || [];
+    if (state.cmdProg >= cmdsThis.length) { endBlock(); return; }   // 本块完成（含空块 0>=0 直接落定）
+    var cmd = cmdsThis[state.cmdProg];
     state.cmdProg += 1;
     var cur = state.cur;
     if (cmd.id === 'rot') {
       cur.rot = (cur.rot + cmd.val) % 4;
       renderPreview();
-      setTimeout(execCmdStep, 300);
+      state.stepTimer = setTimeout(execCmdStep, 300);   // N-6：存句柄
     } else if (cmd.id === 'left') {
       cur.col -= cmd.val;
       if (cur.col < 0) { cur.col = 0; flashEdge(); }
       renderBoardOnly(); renderPreview();
-      setTimeout(execCmdStep, 300);
+      state.stepTimer = setTimeout(execCmdStep, 300);
     } else if (cmd.id === 'right') {
       var info = pieceInfo(cur.type, cur.rot);
       var maxCol = state.gridW - info.w;
       cur.col += cmd.val;
       if (cur.col > maxCol) { cur.col = maxCol; flashEdge(); }
       renderBoardOnly(); renderPreview();
-      setTimeout(execCmdStep, 300);
+      state.stepTimer = setTimeout(execCmdStep, 300);
     } else if (cmd.id === 'drop') {
       // 落下动画：逐步下落（简化：直接落定）
       var placedCells = [];
@@ -634,13 +670,56 @@
       var row2 = dropRowFor(cur.type, cur.rot, cur.col, placedCells);
       cur.row = row2 < 0 ? 0 : row2;
       cur.cells = absCells(cur.type, cur.rot, cur.col, cur.row);
-      setTimeout(execCmdStep, 300);
+      state.stepTimer = setTimeout(execCmdStep, 300);
     }
   }
 
-  // 执行锁定：指令按钮/序列灰显不可点
+  // v1.1（Oracle I-1 修订）：块结束状态机——落定 + 续下一块（或统一判定）
+  //   6 处变更（对照 v1.0）：① 删 cmdCounts.push（星级改 Σ blockCmds）② 删 execLock=false（多块续跑保持锁定）
+  //   ③ 删 setCmdLocked(false)（保持 UI 锁定防切 tab）④ 删 cmds=[]（blockCmds 持久）
+  //   ⑤ 新增 state.cur 重建（下一块快照）⑥ 新增 setTimeout 续跑（含空块 300ms 视觉过渡，N-2）
+  function endBlock() {
+    var cur = state.cur;
+    var placedCells = [];
+    for (var p = 0; p < state.placed.length; p++) {
+      placedCells.push({ cells: state.placed[p].cells });
+    }
+    var row = dropRowFor(cur.type, cur.rot, cur.col, placedCells);
+    if (row < 0) { row = 0; }
+    cur.row = row;
+    cur.cells = absCells(cur.type, cur.rot, cur.col, row);
+    state.placed.push({ type: cur.type, rot: cur.rot, col: cur.col, row: row, cells: cur.cells });
+    state.curIdx += 1;
+    renderBoardOnly();
+    var prog = document.getElementById('game-prog');
+    if (prog) { prog.textContent = LEVELS_CFG[state.level].label + ' · 执行中 ' + state.curIdx + '/' + state.pieces.length + ' 块'; }
+    // 判定（全部块落完 → 统一 checkWin）
+    if (state.curIdx >= state.pieces.length) {
+      state.execDone = true;
+      state.execLock = false;
+      setCmdLocked(false);
+      checkWin();
+      return;
+    }
+    // 逐块差格即时提示（不中断执行——整体编排语义）
+    var fb = document.getElementById('game-feedback');
+    var excess = calcExcessCells();
+    if (excess && excess.length > 0) {
+      state.diffCells = excess;
+      if (fb) { fb.textContent = '块 ' + state.curIdx + ' 落定（有 ' + excess.length + ' 格放偏，执行完再调整）'; fb.className = 'game-feedback miss'; }
+      renderBoardOnly();
+    } else if (fb) { fb.textContent = '第 ' + state.curIdx + ' 块落定，继续执行…'; fb.className = 'game-feedback ok'; }
+    // ⑤⑥ 下一块执行快照重建 + 短延迟续跑（空块也走此路径——原位落定）
+    var pcN = state.pieces[state.curIdx];
+    state.cur = { type: pcN.type, rot: 0, col: Math.floor(state.gridW / 2), cells: null };
+    state.cmdProg = 0;
+    renderPreview();
+    state.stepTimer = setTimeout(execCmdStep, 300);   // N-6：存句柄
+  }
+
+  // 执行锁定：指令按钮/序列灰显不可点（v1.1 I-3：含块 tab）
   function setCmdLocked(locked) {
-    var bars = document.querySelectorAll('.cmd-add, .seq-clear, .cmd-chip');
+    var bars = document.querySelectorAll('.cmd-add, .seq-clear, .cmd-chip, .block-tab');
     for (var i = 0; i < bars.length; i++) {
       if (locked) { bars[i].setAttribute('disabled', 'disabled'); }
       else { bars[i].removeAttribute('disabled'); }
@@ -651,9 +730,9 @@
   function renderPreview() {    var box = document.getElementById('piece-preview');
     if (!box) { return; }
     if (!state.cur || state.execDone) {
-      // 未执行：显示生成器的目标块
-      if (state.curIdx < state.pieces.length) {
-        var pc = state.pieces[state.curIdx];
+      // 未执行：显示生成器的目标块（v1.1 I-3：编辑态用 curEditIdx——tab 切换预览换块）
+      if (state.curEditIdx < state.pieces.length) {
+        var pc = state.pieces[state.curEditIdx];
         var info = pieceInfo(pc.type, 0);
         var cs2 = 22;
         var svg = '<svg class="preview-svg" viewBox="0 0 ' + (info.w * cs2) + ' ' + (info.h * cs2) + '">';
@@ -737,9 +816,11 @@
 
   /* ---------- 星级 / 结算 ---------- */
   function finishLevel() {
-    // 全部块指令条数总和（每块 cmds.length 记录于 cmdCounts）
+    // v1.1：星级 Σ blockCmds[i].length（空块 0；blockCmds 全程持久）
     var total = 0;
-    for (var i = 0; i < state.cmdCounts.length; i++) { total += state.cmdCounts[i]; }
+    for (var i = 0; i < state.blockCmds.length; i++) {
+      if (state.blockCmds[i]) { total += state.blockCmds[i].length; }
+    }
     var stars = 1;
     if (total <= state.optimal * 1.5) { stars = 3; }
     else if (total <= state.optimal * 2.5) { stars = 2; }
@@ -759,13 +840,14 @@
 
   function nextLevel() {
     state.execLock = false; state.execDone = false; state.won = false;
-    state.cmds = [];
-    state.cmdCounts = [];
     state.placed = [];
     state.curIdx = 0;
+    state.curEditIdx = 0;   // v1.1：编辑态重置
+    if (state.stepTimer) { clearTimeout(state.stepTimer); state.stepTimer = null; }   // N-6：防幻影执行
     state.diffCells = null;
     var res = genLevel(state.level);
     if (!res) { genLevel(state.level); }
+    state.blockCmds = state.pieces.map(function () { return []; });   // v1.1：blockCmds 重置
     renderGame();
   }
 
@@ -795,5 +877,7 @@
   M.startGame = startGame;
   M.state = state;
   M.genLevel = genLevel;
+  M.renderBlockTabs = renderBlockTabs;   // v1.1：测试/调试友好导出
+  M.renderSeq = renderSeq;
   window.M = M;
 })();

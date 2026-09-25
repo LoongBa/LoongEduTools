@@ -203,6 +203,45 @@ body {
 
 .game-hint { font-size: 12px; color: #86909c; }
 
+/* v1.1 块 tab 行：整体编排——块切换编辑 */
+.block-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.block-tab {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  margin: 0 6px 6px 0;   /* Chrome 61：不用 flex gap，用 margin */
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 12px;
+  color: #4e5969;
+  cursor: pointer;
+}
+.block-tab.active {
+  background: #5a8df5;
+  border-color: #5a8df5;
+  color: #ffffff;
+  font-weight: 600;
+}
+.block-tab[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.tab-piece-dot {
+  font-size: 10px;
+  opacity: 0.8;
+  margin-right: 4px;   /* Chrome 61：无 flex gap */
+}
+.block-tab.active .tab-piece-dot { opacity: 1; }
+.tab-done {
+  font-size: 10px;
+}
+.block-tab.active .tab-done { color: #ffffff; }
+
 .board {
   background: #ffffff;
   border-radius: 14px;
