@@ -22,6 +22,8 @@ tauri = { version = "2", features = [] }
 tauri-plugin-store = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-single-instance = "2"
+# D08 §2.2（Oracle 点头 B1）：跨窗口全局热键（Alt+T 计时浮层）——本迭代唯一新增 Rust 依赖
+tauri-plugin-global-shortcut = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 

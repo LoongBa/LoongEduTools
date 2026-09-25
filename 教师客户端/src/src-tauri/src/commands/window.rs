@@ -34,3 +34,24 @@ pub fn print_content(app: tauri::AppHandle) -> Result<(), String> {
     }
     w.eval("window.print()").map_err(|e| e.to_string())
 }
+
+/// 计时器浮层呼出/收起（D05 tool.timer 预留 · D08 §3.3#4）
+///
+/// 全局快捷键 Alt+T 失效时的壳内降级入口（F3）；对静态窗口 `timer-overlay`
+/// 执行 show+set_focus / hide 切换。返回 `Ok(true)`=已显示 / `Ok(false)`=已收起；
+/// 窗口不存在 → Err。生命周期遵守 D08 M-4：只 show/hide，**绝不 destroy**
+/// （静态窗口 destroy 后无法重建，且丢浮层内 React 状态）。
+#[tauri::command]
+pub fn tool_timer(app: tauri::AppHandle) -> Result<bool, String> {
+    let w = app
+        .get_webview_window("timer-overlay")
+        .ok_or_else(|| "计时器浮层窗口不存在".to_string())?;
+    if w.is_visible().map_err(|e| e.to_string())? {
+        w.hide().map_err(|e| e.to_string())?;
+        Ok(false)
+    } else {
+        w.show().map_err(|e| e.to_string())?;
+        let _ = w.set_focus();
+        Ok(true)
+    }
+}

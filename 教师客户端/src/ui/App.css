@@ -2123,3 +2123,98 @@ code {
     color: var(--print-ink);
   }
 }
+
+/* ---------- D08 M3 计时器浮层（OverlayView · timer-overlay 窗口 320×140）----------
+ * 深色面板铺底（F7 防首次 show 白闪）：--timer-stage-bg 两主题恒深色，浅/深主题下均可读；
+ * 全部引用主题令牌，不写死 hex；单向只读展示（大号剩余时间 + 状态词 + 细进度条）。 */
+.timer-overlay {
+  height: 100vh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px 12px;
+  background: var(--timer-stage-bg);
+  color: var(--timer-stage-text);
+  text-align: center;
+  overflow: hidden;
+  user-select: none;
+}
+
+.timer-overlay-time {
+  font-size: 48px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: 1px;
+  font-variant-numeric: tabular-nums;
+  color: var(--timer-stage-text);
+}
+
+.timer-overlay-status {
+  font-size: 13px;
+  color: var(--timer-status);
+}
+
+.timer-overlay-track {
+  width: 100%;
+  max-width: 240px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--timer-ring-track);
+  overflow: hidden;
+}
+
+.timer-overlay-fill {
+  height: 100%;
+  background: var(--timer-ring-fill);
+  border-radius: 999px;
+  transition: width 0.25s linear;
+}
+
+.timer-overlay-empty {
+  font-size: 14px;
+  color: var(--timer-status);
+}
+
+/* 最后 10s 警示 / 到时 配色与主计时器舞台一致（D05 §2.4.4） */
+.timer-overlay.warn .timer-overlay-time {
+  color: var(--timer-warn-digits);
+}
+
+.timer-overlay.warn .timer-overlay-status {
+  color: var(--timer-warn-status);
+}
+
+.timer-overlay.done .timer-overlay-time {
+  color: var(--timer-done-digits);
+}
+
+.timer-overlay.done .timer-overlay-status {
+  color: var(--timer-done-status);
+  font-weight: 700;
+  animation: overlay-pulse 1s ease-in-out infinite;
+}
+
+@keyframes overlay-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* 动效降级（沿现有 prefers-reduced-motion 惯例 · D05 §3） */
+@media (prefers-reduced-motion: reduce) {
+  .timer-overlay.done .timer-overlay-status {
+    animation: none;
+  }
+
+  .timer-overlay-fill {
+    transition: none;
+  }
+}
+
