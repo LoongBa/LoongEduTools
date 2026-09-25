@@ -5,6 +5,7 @@ import ClassesView from "./ClassesView";
 import DisciplineView from "./DisciplineView";
 import LoginView from "./LoginView";
 import ProfileView from "./ProfileView";
+import ReflectionView from "./ReflectionView";
 import RosterView from "./RosterView";
 import StoreView from "./StoreView";
 import TimerView from "./TimerView";
@@ -19,6 +20,7 @@ type View =
   | "roster"
   | "classes"
   | "checkin"
+  | "reflection"
   | "timer"
   | "discipline"
   | "profile"
@@ -157,6 +159,9 @@ function App() {
           <button className={navClass("checkin")} onClick={() => setView("checkin")}>
             打卡单
           </button>
+          <button className={navClass("reflection")} onClick={() => setView("reflection")}>
+            反思本
+          </button>
           <button className={navClass("timer")} onClick={() => setView("timer")}>
             计时器
           </button>
@@ -257,6 +262,8 @@ function App() {
         )}
 
         {view === "checkin" && <CheckinView />}
+
+        {view === "reflection" && <ReflectionView />}
 
         {view === "timer" && <TimerView />}
 

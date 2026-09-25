@@ -1993,6 +1993,158 @@ code {
   }
 }
 
+/* ---------- D08 M4 R16 教学反思记录本（ReflectionView · D08 §3.4）----------
+ * 列表 + 单条详情（编辑表单）；打印 scope = .view-reflection（见文件末尾打印块）。 */
+.reflection {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.reflection-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.reflection-head h2 {
+  margin: 0;
+}
+
+.reflection-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* 列表 */
+.reflection-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reflection-list-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reflection-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  font-size: 14px;
+  text-align: left;
+  min-width: 0;
+}
+
+.reflection-item:hover {
+  border-color: var(--primary);
+}
+
+.reflection-item-date {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  font-size: 13px;
+  white-space: nowrap;
+  min-width: 92px;
+}
+
+.reflection-item-class {
+  font-weight: 600;
+  white-space: nowrap;
+  min-width: 84px;
+}
+
+.reflection-item-unit {
+  color: var(--primary);
+  white-space: nowrap;
+  min-width: 120px;
+}
+
+.reflection-item-snippet {
+  flex: 1;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reflection-del {
+  line-height: 1;
+  padding: 2px 8px;
+}
+
+/* 详情（编辑表单） */
+.reflection-detail {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.reflection-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.reflection-row .reflection-field {
+  flex: 1;
+  min-width: 160px;
+}
+
+.reflection-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.reflection-field span {
+  font-weight: 600;
+}
+
+.reflection-field input,
+.reflection-field textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: var(--surface);
+  color: var(--text);
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+.reflection-field input:focus,
+.reflection-field textarea:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+/* 打印专用元素：屏幕隐藏（@media print 中显示，见文件末尾打印块） */
+.reflection-print-head {
+  display: none;
+}
+
 /* ==================== 打印形态（R18 打卡单 · D08 §3.1） ====================
  * ⚠️ Oracle M-6：全部规则按视图 scope——.view-checkin 前缀，或 body:has(.view-checkin)
  *    作用域写法。禁止裸全局选择器（如 .sidebar{display:none}）：.sidebar/.banner/.content
@@ -2121,6 +2273,99 @@ code {
     font-weight: 700;
     line-height: 1;
     color: var(--print-ink);
+  }
+
+  /* ---- R16 教学反思本视图 scope（D08 §3.4：仅单条详情打印，列表摘要打印不做） ----
+   * 与打卡单段并列的独立 scope：全部规则以 .view-reflection / body:has(.view-reflection)
+   * 前缀，禁止裸全局选择器（Oracle M-6）；颜色一律引用 --print-ink/--print-paper。 */
+  body:has(.view-reflection) {
+    background: var(--print-paper);
+    color: var(--print-ink);
+  }
+
+  body:has(.view-reflection) .sidebar,
+  body:has(.view-reflection) .banner {
+    display: none !important;
+  }
+
+  body:has(.view-reflection) .content {
+    padding: 0;
+    overflow: visible;
+  }
+
+  /* 列表页不放打印按钮；列表本身随详情条件渲染被替换，无需额外隐藏规则。
+   * 详情页隐藏：操作按钮区（打印/保存/返回）、h2 标题（纸面标题由打印页眉承担）、
+   * 错误横幅、提示脚注。 */
+  .view-reflection .reflection-actions,
+  .view-reflection .reflection-head h2,
+  .view-reflection .banner,
+  .view-reflection .hint {
+    display: none !important;
+  }
+
+  /* 打印页眉：屏幕隐藏；点击「打印/导出 PDF」时经 ref 写入「教学反思 · 班级 · 当天日期」 */
+  .view-reflection .reflection-print-head {
+    display: block;
+    margin-bottom: 8mm;
+    text-align: center;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--print-ink);
+  }
+
+  /* 详情表单纸面化：去背景 / 去边框圆角 / 去阴影 */
+  .view-reflection .reflection-detail {
+    background: var(--print-paper);
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  /* 字段标签 + 输入内容：黑字白底；输入控件打印时输出其 value——去掉边框与外观 */
+  .view-reflection .reflection-field {
+    color: var(--print-ink);
+  }
+
+  .view-reflection .reflection-field span {
+    color: var(--print-ink);
+  }
+
+  .view-reflection .reflection-field input,
+  .view-reflection .reflection-field textarea {
+    border: none;
+    background: transparent;
+    -webkit-appearance: none;
+    box-shadow: none;
+    outline: none;
+    color: var(--print-ink);
+    padding: 0;
+    border-radius: 0;
+    width: 100%;
+  }
+
+  /* 隐藏日期控件的内置日历图标（打印时只留纯文本 value；-webkit-appearance:none 不覆盖该伪元素） */
+  .view-reflection .reflection-field input::-webkit-calendar-picker-indicator {
+    display: none !important;
+  }
+
+  /* textarea 内容完整展示（含换行、不分页截断、高度自适应内容）——
+   * textarea 是滚动容器，overflow 会被浏览器 clamp 成 auto（规范行为）；配合
+   * field-sizing: content 让高度随内容撑开（Chrome 123+，本机 WebView2 基线之上），
+   * 保证多行内容在纸上完整呈现而不裁切。 */
+  .view-reflection .reflection-field textarea {
+    white-space: pre-wrap;
+    overflow: visible;
+    height: auto;
+    resize: none;
+    min-height: 0;
+    field-sizing: content;
+  }
+
+  /* 字段块不跨页截断 */
+  .view-reflection .reflection-detail .reflection-field,
+  .view-reflection .reflection-detail .reflection-row {
+    break-inside: avoid;
   }
 }
 
