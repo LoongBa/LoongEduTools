@@ -1,10 +1,20 @@
 use crate::state::{AppState, InstalledPackage};
+use ring::signature::{UnparsedPublicKey, ED25519};
+use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tauri::{Emitter, Manager};
 
 /// 当前壳版本（对齐 S01 min_shell_version 语义化比较）
 pub const SHELL_VERSION: &str = "0.1.0";
+
+/// 内容包 manifest 签名公钥表（key_id → ed25519 公钥 hex · S01 §2.2 signature.key_id）
+/// dev-sign-2026 = scripts/keys/dev-sign.key（gitignored；管线签名钥，D04 §3.4）。
+/// 换钥轮转：追加新条目即可（旧包旧钥可验、新包新钥可验，双轨兼容）。
+const SIGN_PUBKEYS: &[(&str, &str)] = &[(
+    "dev-sign-2026",
+    "caa4223fd49da00764decc4982dd7a102705232c9079e3bb1fcd7c16802caf7d",
+)];
 
 /// 会话临时目录前缀（解密区，D02 §3.4：系统 TEMP 下 loongedu-<id>-<session>）
 const TEMP_PREFIX: &str = "loongedu-";
@@ -121,7 +131,7 @@ pub fn scan_packages(app: &tauri::AppHandle, state: &AppState) -> Result<usize, 
     Ok(list.len())
 }
 
-/// 读取 pad 内 manifest.json（P0 简化：不验签，见 D02；P1 换真实签名校验）
+/// 读取 pad 内 manifest.json（B1：严格验签——S01 §2.2 签名缺失 / 未知 key_id / 验签失败即 Err）
 /// pub：store.rs 下载/导入解包后复用其校验与解析
 pub fn read_manifest(dir: &Path) -> Result<InstalledPackage, String> {
     let manifest_path = dir.join("manifest.json");
@@ -131,6 +141,9 @@ pub fn read_manifest(dir: &Path) -> Result<InstalledPackage, String> {
     let raw = fs::read_to_string(&manifest_path).map_err(|e| e.to_string())?;
     let v: serde_json::Value =
         serde_json::from_str(&raw).map_err(|e| format!("manifest 解析失败: {e}"))?;
+
+    // B1 壳端验签（S01 §2.2 · D04 §3.1）：签名缺失/未知 key_id/验签失败 → 拒绝加载
+    verify_manifest_signature(&v).map_err(|e| format!("manifest 签名校验失败: {e}"))?;
 
     let package_id = v
         .get("package_id")
@@ -199,9 +212,134 @@ pub fn version_lt(a: &str, b: &str) -> bool {
     false
 }
 
+/// 验签 manifest（S01 §2.2 · D04 §3.1）：剔除 signature/checksum 后规范化 JSON（对齐
+/// scripts/gen_manifest.py：sort_keys + separators=(",",":") + ensure_ascii=False），
+/// 用 key_id 对应公钥验 ed25519；另校 signed_payload_hash = sha256(canon)。
+/// 签名缺失 / key_id 不在表 / 验签失败 / hash 不符 → Err。
+pub fn verify_manifest_signature(v: &serde_json::Value) -> Result<(), String> {
+    let sig_obj = v.get("signature").ok_or("缺少 signature 块（S01 §2.2）")?;
+    let alg = sig_obj
+        .get("alg")
+        .and_then(|x| x.as_str())
+        .ok_or("signature.alg 缺失")?;
+    if alg != "ed25519" {
+        return Err(format!("不支持的签名算法: {alg}"));
+    }
+    let key_id = sig_obj
+        .get("key_id")
+        .and_then(|x| x.as_str())
+        .ok_or("signature.key_id 缺失")?;
+    let pub_hex = SIGN_PUBKEYS
+        .iter()
+        .find(|(k, _)| *k == key_id)
+        .map(|(_, h)| *h)
+        .ok_or_else(|| format!("未知签名公钥 key_id: {key_id}"))?;
+    let sig_hex = sig_obj
+        .get("sig")
+        .and_then(|x| x.as_str())
+        .ok_or("signature.sig 缺失")?;
+    let payload_hash = sig_obj
+        .get("signed_payload_hash")
+        .and_then(|x| x.as_str())
+        .ok_or("signature.signed_payload_hash 缺失")?;
+
+    let canon = canonical_json_sign_view(v);
+    let canon_bytes = canon.as_bytes();
+
+    // signed_payload_hash 复核（sha256:hex，与 gen_manifest.py 同式）
+    let expect_hash = format!("sha256:{}", hex_lower(&Sha256::digest(canon_bytes)));
+    if payload_hash != expect_hash {
+        return Err("signed_payload_hash 与规范化 JSON 不符".into());
+    }
+
+    // ed25519 验签（ring，零新增依赖——已在 Cargo.lock 经 rustls 传递）
+    let pub_bytes = hex_bytes(pub_hex)?;
+    let sig_bytes = hex_bytes(sig_hex)?;
+    let key = UnparsedPublicKey::new(&ED25519, &pub_bytes);
+    key.verify(canon_bytes, &sig_bytes)
+        .map_err(|_| "ed25519 验签失败（内容被篡改或非本管线签发）".to_string())
+}
+
+/// 规范化 JSON：剔除 signature/checksum 后递归排序键、紧凑分隔符、非 ASCII 原样 UTF-8
+/// （对齐 scripts/gen_manifest.py line 63：ensure_ascii=False, sort_keys=True, separators=(",",":")）
+pub fn canonical_json_sign_view(v: &serde_json::Value) -> String {
+    fn esc(s: &str) -> String {
+        // serde_json 字符串转义与 Python ensure_ascii=False 对齐：
+        // \b \f \n \r \t 快捷键 + 其它控制符 \u00xx（小写）+ 非 ASCII 原样 UTF-8
+        serde_json::to_string(s).unwrap_or_default()
+    }
+    fn write(v: &serde_json::Value, out: &mut String) {
+        match v {
+            serde_json::Value::Null => out.push_str("null"),
+            serde_json::Value::Bool(b) => out.push_str(if *b { "true" } else { "false" }),
+            serde_json::Value::Number(n) => out.push_str(&n.to_string()),
+            serde_json::Value::String(s) => out.push_str(&esc(s)),
+            serde_json::Value::Array(a) => {
+                out.push('[');
+                for (i, x) in a.iter().enumerate() {
+                    if i > 0 {
+                        out.push(',');
+                    }
+                    write(x, out);
+                }
+                out.push(']');
+            }
+            serde_json::Value::Object(m) => {
+                let mut pairs: Vec<(&str, &serde_json::Value)> =
+                    m.iter().map(|(k, val)| (k.as_str(), val)).collect();
+                pairs.sort_by(|a, b| a.0.cmp(b.0));
+                out.push('{');
+                for (i, (k, x)) in pairs.iter().enumerate() {
+                    if i > 0 {
+                        out.push(',');
+                    }
+                    out.push_str(&esc(k));
+                    out.push(':');
+                    write(x, out);
+                }
+                out.push('}');
+            }
+        }
+    }
+    // 剔除 signature / checksum 构造 sign_view（对齐 gen_manifest.py）
+    let mut sign_view = serde_json::Map::new();
+    if let serde_json::Value::Object(m) = v {
+        for (k, val) in m {
+            if k == "signature" || k == "checksum" {
+                continue;
+            }
+            sign_view.insert(k.clone(), val.clone());
+        }
+    }
+    let view = serde_json::Value::Object(sign_view);
+    let mut out = String::new();
+    write(&view, &mut out);
+    out
+}
+
+/// hex 字符串 → 字节（小写/大写均可）
+pub fn hex_bytes(s: &str) -> Result<Vec<u8>, String> {
+    if s.len() % 2 != 0 {
+        return Err("hex 长度必须为偶数".into());
+    }
+    let mut out = Vec::with_capacity(s.len() / 2);
+    for i in (0..s.len()).step_by(2) {
+        let b = u8::from_str_radix(&s[i..i + 2], 16).map_err(|_| "hex 解析失败".to_string())?;
+        out.push(b);
+    }
+    Ok(out)
+}
+
+fn hex_lower(bytes: &[u8]) -> String {
+    let mut s = String::with_capacity(bytes.len() * 2);
+    for b in bytes {
+        s.push_str(&format!("{b:02x}"));
+    }
+    s
+}
+
 /// 供 lib.rs 使用：事件上报（占位，M3 深化）
-trait ContentProgress {
-    fn emit_content_progress(
+trait ContentProgress {    fn emit_content_progress(
         &self,
         package_id: &str,
         unit: &str,
@@ -237,4 +375,57 @@ fn chrono_like_now() -> u64 {
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 用真实管线签名钥（scripts/keys/dev-sign.key）签出的 fixture（gen_manifest.py，
+    /// 2026-09-26 生成）——锁定 canonical/hash/ring 与 Python 侧字节级一致
+    const SIGNED_FIXTURE: &str = r#"{"schema_version":"1.0","package_id":"test-fixture","package_type":"app","name":"测试包","display_name":"Fixture 测试","icon":null,"package_version":"1.0.0","content_hash":"sha256:abababababababababababababababababababababababababababababababab","size_bytes":1024,"min_shell_version":"0.1.0","required_license_level":1,"categories":["教材","英语"],"description":"单元测试 fixture","release_date":"2026-09-26","author":"LoongBa","download_url":"/x","checksum":"","min_free_version":null,"signature":{"alg":"ed25519","key_id":"dev-sign-2026","nonce":"62c3f6561174dca2","signed_payload_hash":"sha256:fb594facba20b84ea89669f540b1c9f7a51da4b8a0432b7ba0df097b43b6daec","sig":"046377b10a98808dafcb701596facefc6d5967967fd752b8e55e9a3d33a92f223b151f933e15842833fb96046c38a6b6439c40313d9a8770ed924bdc87969e03"}}"#;
+
+    fn fixture_value() -> serde_json::Value {
+        serde_json::from_str(SIGNED_FIXTURE).expect("fixture 合法 JSON")
+    }
+
+    #[test]
+    fn canonical_json_matches_python() {
+        let v = serde_json::json!({
+            "z": 1,
+            "a": {"y": [true, null, "中文"], "b": "x\u{1}y\n\t"},
+            "m": "测试"
+        });
+        assert_eq!(
+            canonical_json_sign_view(&v),
+            r#"{"a":{"b":"x\u0001y\n\t","y":[true,null,"中文"]},"m":"测试","z":1}"#
+        );
+    }
+
+    #[test]
+    fn signed_fixture_verifies_ok() {
+        let v = fixture_value();
+        verify_manifest_signature(&v).expect("管线签名 fixture 应验签通过");
+    }
+
+    #[test]
+    fn tampered_manifest_fails_verify() {
+        let mut v = fixture_value();
+        v["display_name"] = serde_json::json!("被篡改");
+        assert!(verify_manifest_signature(&v).is_err(), "篡改后必须验签失败");
+    }
+
+    #[test]
+    fn unknown_key_id_fails() {
+        let mut v = fixture_value();
+        v["signature"]["key_id"] = serde_json::json!("pkg-sign-9999");
+        assert!(verify_manifest_signature(&v).is_err());
+    }
+
+    #[test]
+    fn hex_roundtrip() {
+        assert_eq!(hex_bytes("0aBc0d").unwrap(), vec![0x0a, 0xbc, 0x0d]);
+        assert!(hex_bytes("abc").is_err());
+        assert!(hex_bytes("zz").is_err());
+    }
 }

@@ -34,6 +34,10 @@ sha2 = "0.10"
 # flate2 已在 Cargo.lock（png 传递依赖）——零新增下载，不引入 zip 库
 flate2 = "1"
 
+# B1 壳端 ed25519 验签（D04 §3.1 签名链 · S01 §2.2）：ring 已在 Cargo.lock
+# （rustls 传递依赖）——零新增下载，对齐 flate2 先例
+ring = "0.17"
+
 # P1 认证/口令（D01 §7.2）：HTTPS 调 Workers、凭证 AES-GCM、设备随机数
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 aes-gcm = "0.10"
