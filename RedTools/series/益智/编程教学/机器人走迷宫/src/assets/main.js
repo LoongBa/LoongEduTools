@@ -135,16 +135,22 @@
     }
     return false;
   }
-  // v1.14 B3（Oracle 修订）：块 body 深拷贝统一递归（顶层 body / loop.body 同用）——
-  // 逐字段复制 id/rep/steps/paramIdx + loop.body 递归；不做顶层/loop.body 特殊区分（防编辑态污染块库）
+  // v1.14 B3（Oracle 修订）：块 body 深拷贝统一递归（顶层 body / loop.body / v1.15 if 分支同用）——
+  // 逐字段复制 id/rep/steps/paramIdx + loop.body 递归；不做特殊区分（防编辑态污染块库）
   // v1.13 B1：顶层补 paramIdx 防编辑即销毁槽位；v1.14 递归 loop.body（含 loop.body 内指令 paramIdx）
-  function cloneBlockBody(arr) {
+  // v1.15 B3（Oracle）：paramCmd 统一入口——执行副本传 call cmd（resolveStep 参数注入），编辑器深拷贝传 null（不注入）；
+  //   if.then/else 递归（条件×参数：分支内 steps:null → resolveStep）
+  function cloneBlockBody(arr, paramCmd) {
     return (arr || []).map(function (c) {
       var nc = { id: c.id };
       if (c.rep !== undefined) { nc.rep = c.rep; }
-      if (c.steps !== undefined) { nc.steps = c.steps; }
+      if (c.id === 'steps') {
+        // v1.15：统一入口——paramCmd 有则 resolveStep（参数注入），编辑器深拷贝保持占位；steps 缺失兜底 1（防异常数据）
+        nc.steps = (c.steps !== undefined) ? (paramCmd ? resolveStep(paramCmd, c) : c.steps) : 1;
+      } else if (c.steps !== undefined) { nc.steps = c.steps; }
       if (c.paramIdx !== undefined) { nc.paramIdx = c.paramIdx; }
-      if (c.id === 'loop') { nc.body = cloneBlockBody(c.body); }   // B3：递归 loop.body
+      if (c.id === 'loop') { nc.body = cloneBlockBody(c.body, paramCmd); }   // B3：递归 loop.body
+      if (c.id === 'if') { nc.then = cloneBlockBody(c.then, paramCmd); nc.else = cloneBlockBody(c.else, paramCmd); }   // v1.15：if 分支递归（B3 统一入口）
       return nc;
     });
   }
@@ -529,13 +535,16 @@
 
   /* ---------- v1.10 块编辑器视图 ---------- */
   // body 指令：fwd/left/right/block/steps（含 rep/steps 参数）；不含 if/loop/call（决策 B）
-  var BLOCK_BODY_CMDS = [CMD_FWD, CMD_L, CMD_R, CMD_BLOCK, CMD_STEPS, CMD_LOOP];   // v1.14：+🔁循环（块体含 loop——控制流抽象渐进）
+  var BLOCK_BODY_CMDS = [CMD_FWD, CMD_L, CMD_R, CMD_BLOCK, CMD_STEPS, CMD_LOOP, CMD_IF];   // v1.15：+❓if（条件抽象渐进——块体含 if）
   // v1.14 I2（Oracle）：loop.body 添加行指令集 = 基础指令不含 loop/if/call（单层约束——入口隔离，防止创建嵌套）
   var BLOCK_BODY_LOOP_CMDS = [CMD_FWD, CMD_L, CMD_R, CMD_BLOCK, CMD_STEPS];
   // v1.11：编辑态参数开关（toggle 状态从 body 派生，B2）
   var editBlockHasParam = false;
   // v1.14：块内 loop 编辑态目标（非 null = 正在编辑该 loop 的 body；null = 块体编辑态）
   var editBlockLoopTarget = null;
+  // v1.15：块内 if 编辑态目标（非 null = 正在编辑该 if 的 then/else 双栏；null = 块体编辑态）
+  // B1（Oracle）：双状态互斥（保留 editBlockLoopTarget 零改动 + 新增 editBlockIfTarget）——进入一方清空另一方
+  var editBlockIfTarget = null;
   // v1.13 I-new-3：长按触发后 click 抑制标志（函数级作用域——跨 chip 重建存活）
   // 长按触发固定⇌参数切换后 500ms 内的 click 是长按的收尾（不落在新 chip 上），抑制防槽位/数值二次切换
   var suppressChipClickUntil = 0;
@@ -549,6 +558,7 @@
     editBlockBody = [];
     editBlockReturn = 'list';   // 默认返回块库（viewBlockList 进入）
     editBlockLoopTarget = null;   // v1.14：进块编辑器重置 loop 编辑态
+    editBlockIfTarget = null;     // v1.15：进块编辑器重置 if 编辑态（双状态互斥——v1.14 loop 零改动）
     if (id) {
       var def = getCustomBlock(id);
       if (def) {
@@ -645,6 +655,40 @@
       renderFooter('');
       return;
     }
+    // v1.15：块内 if 编辑态（editBlockIfTarget 非 null）——渲染 then/else 双栏（B1 双状态：loop 分支零改动）
+    if (editBlockIfTarget) {
+      var ifCmd = editBlockIfTarget;
+      wrap.appendChild(makeEl('h2', 'editor-title', '❓ if前方有墙 — 分支编辑'));
+      var row = makeEl('div', 'block-edit-row');
+      row.appendChild(renderBlockBranchInBlock('then', '✅ then（有墙）', ifCmd.then));
+      row.appendChild(renderBlockBranchInBlock('else', '❌ else（无墙）', ifCmd.else));
+      wrap.appendChild(row);
+      // 操作按钮（返回块体 / 删除此 if）
+      var actionsIf = makeEl('div', 'editor-actions');
+      var backBtnIf = makeEl('button', 'btn', '‹ 返回块体');
+      backBtnIf.addEventListener('click', function () {
+        editBlockIfTarget = null;
+        renderBlockEdit();
+      });
+      actionsIf.appendChild(backBtnIf);
+      var delBtnIf = makeEl('button', 'btn', '✕ 删除此分支');
+      delBtnIf.addEventListener('click', function () {
+        for (var diIf = 0; diIf < editBlockBody.length; diIf++) {
+          if (editBlockBody[diIf] === ifCmd) { editBlockBody.splice(diIf, 1); break; }
+        }
+        editBlockIfTarget = null;
+        editBlockHasParam = hasEditBodyParam();
+        renderBlockEdit();
+      });
+      actionsIf.appendChild(delBtnIf);
+      wrap.appendChild(actionsIf);
+      var feedbackIf = makeEl('div', 'editor-feedback', '');
+      feedbackIf.id = 'block-edit-feedback';
+      wrap.appendChild(feedbackIf);
+      viewEl.appendChild(wrap);
+      renderFooter('');
+      return;
+    }
     wrap.appendChild(makeEl('h2', 'editor-title', editBlockId ? '🧩 编辑块' : '🧩 新建块'));
     // 名称输入
     var nameRow = makeEl('div', 'editor-name-row');
@@ -733,11 +777,15 @@
      - I-new-3：长按触发后 click 抑制（suppressChipClickUntil 函数级标志）
      v1.14 扩展：
      - loop chip 显示 N.🔁×M（.loopb 灰底，对齐主序列 loop 视觉）；单击 → 进入块内 loop 编辑态
-     - arr 参数化：目标指令数组（块体 editBlockBody / loop 编辑态 loop.body 复用）——✕ 删除作用于 arr */
+     - arr 参数化：目标指令数组（块体 editBlockBody / loop 编辑态 loop.body 复用）——✕ 删除作用于 arr
+     v1.15 扩展：
+     - if chip 显示 N.❓if（.if 紫底，对齐主序列 if 视觉）；单击 → 进入块内 if 编辑态（双栏 then/else）
+     - B1（Oracle）：双状态互斥——进入 if 编辑态清空 editBlockLoopTarget */
   function renderBlockBodyChip(cmd, i, arr) {
-    var targetArr = arr || editBlockBody;   // v1.14：目标数组（loop 编辑态传 loop.body）
+    var targetArr = arr || editBlockBody;   // v1.14：目标数组（loop 编辑态传 loop.body / if 编辑态传 then/else）
     var isSteps = cmd.id === 'steps';
     var isLoop = cmd.id === 'loop';
+    var isIf = cmd.id === 'if';
     var isParamSteps = isSteps && cmd.steps === null;   // v1.11：参数化 steps（调用时传距离）
     var slotIdx = isParamSteps ? (cmd.paramIdx || 0) : -1;   // v1.13：参数槽位（缺省 #0）
     var lbl;
@@ -745,10 +793,11 @@
       lbl = slotIdx === 1 ? '➡?₂步' : '➡?₁步';   // v1.13：槽位下标显示（?₁=?₁ / ?₂=?₂）——多参数独立视觉
     }
     else if (isLoop) { lbl = '🔁×' + (cmd.rep || 2); }   // v1.14：loop chip（对齐主序列 loop 视觉）
+    else if (isIf) { lbl = '❓if'; }   // v1.15：if chip（对齐主序列 if 视觉）
     else { lbl = cmd.id === 'fwd' ? '↑' : (cmd.id === 'left' ? '↰' : (cmd.id === 'right' ? '↱' : (cmd.id === 'block' ? '🧱' : (cmd.id === 'steps' ? '➡走' + (cmd.steps || 1) + '步' : '?')))); }
-    var repTxt = (!isSteps && !isLoop && cmd.rep && cmd.rep > 1) ? ('×' + cmd.rep) : '';
-    var chip = makeEl('span', 'cmd-chip' + (repTxt ? ' loop' : '') + (isLoop ? ' loopb' : '') + (isParamSteps ? ' param-step' : ''), (i + 1) + '.' + lbl + repTxt);
-    chip.setAttribute('title', isLoop ? '单击进入循环编辑' : isSteps ? (isParamSteps ? '单击换参数·长按变固定' : '单击调步数·长按变参数') : '单击调次数');
+    var repTxt = (!isSteps && !isLoop && !isIf && cmd.rep && cmd.rep > 1) ? ('×' + cmd.rep) : '';
+    var chip = makeEl('span', 'cmd-chip' + (repTxt ? ' loop' : '') + (isLoop ? ' loopb' : '') + (isIf ? ' if' : '') + (isParamSteps ? ' param-step' : ''), (i + 1) + '.' + lbl + repTxt);
+    chip.setAttribute('title', isLoop ? '单击进入循环编辑' : isIf ? '单击进入分支编辑' : isSteps ? (isParamSteps ? '单击换参数·长按变固定' : '单击调步数·长按变参数') : '单击调次数');
     // 长按切换（I1）：pointerdown 起 350ms 定时器 → 触发 fixed⇌param；pointerup/pointercancel 早取消（I-new-2）
     var lpTimer = null, lpFired = false;
     chip.addEventListener('pointerdown', function (ev) {
@@ -772,7 +821,17 @@
         // v1.14：loop chip 单击 → 进入块内 loop 编辑态（仅块体层可进；loop 编辑态内 loop.body 不嵌 loop——单层约束）
         if (editBlockLoopTarget) { return; }
         editBlockLoopTarget = cmd;
+        editBlockIfTarget = null;   // v1.15 B1：双状态互斥（清空 if 编辑态）
         suppressChipClickUntil = 0;   // I1：进入 loop 编辑态重置去抖标志（防块体残留抑制 loop.body 首次交互）
+        renderBlockEdit();
+        return;
+      }
+      if (isIf) {
+        // v1.15：if chip 单击 → 进入块内 if 编辑态（仅块体层可进；if 分支内不嵌 if/loop——单层约束）
+        if (editBlockIfTarget) { return; }
+        editBlockIfTarget = cmd;
+        editBlockLoopTarget = null;   // v1.15 B1：双状态互斥（清空 loop 编辑态）
+        suppressChipClickUntil = 0;   // I1：进入 if 编辑态重置去抖标志
         renderBlockEdit();
         return;
       }
@@ -790,13 +849,45 @@
     var x = makeEl('span', 'chip-x', '✕');
     x.addEventListener('click', function (ev) {
       ev.stopPropagation();
-      targetArr.splice(i, 1);   // v1.14：作用于目标数组（块体 or loop.body）
+      targetArr.splice(i, 1);   // v1.14：作用于目标数组（块体 or loop.body / v1.15 or if.then/else）
       // v1.11 B2：删除参数化 steps → editBlockHasParam 从 body 重新派生（toggle 自动 off；v1.14 递归 loop.body 派生）
       editBlockHasParam = hasEditBodyParam();
       renderBlockEdit();
     });
     chip.appendChild(x);
     return chip;
+  }
+  /* v1.15：块内 if 分支双栏渲染（I1 Oracle——复用 .block-edit-col 布局类 + BLOCK_BODY_LOOP_CMDS 添加行
+     目标数组 = if.then / if.else；chips 复用 renderBlockBodyChip 三态交互（参数化 ?₁ 可放分支内）） */
+  function renderBlockBranchInBlock(type, label, arr) {
+    var col = makeEl('div', 'block-edit-col');
+    col.appendChild(makeEl('div', 'block-edit-label', label));
+    var chipsWrap = makeEl('div', 'block-edit-chips');
+    chipsWrap.id = 'branch-chips-' + type;
+    if (!arr || !arr.length) { chipsWrap.textContent = '（空——先加几条）'; }
+    else {
+      arr.forEach(function (bc, bi) {
+        chipsWrap.appendChild(renderBlockBodyChip(bc, bi, arr));
+      });
+    }
+    col.appendChild(chipsWrap);
+    // 添加行（I2：仅基础指令——if 分支不嵌 if/loop/call，单层约束入口隔离）
+    var addWrap = makeEl('div', 'block-edit-add');
+    BLOCK_BODY_LOOP_CMDS.forEach(function (bc) {
+      var btn = makeEl('button', 'cmd-add-sm', '+ ' + bc.label);
+      btn.addEventListener('click', function () {
+        if (state.execLock) { return; }
+        if ((arr || []).length >= MAX_BODY) {
+          var fbx = document.getElementById('block-edit-feedback');
+          if (fbx) { fbx.textContent = '⚠ 分支里最多 ' + MAX_BODY + ' 条指令'; fbx.className = 'editor-feedback miss'; }
+          return;
+        }
+        addBlockBodyCmd(bc.id, arr);
+      });
+      addWrap.appendChild(btn);
+    });
+    col.appendChild(addWrap);
+    return col;
   }
   // v1.13 固定⇌参数双向切换（I1 长按/shift+单击共用；混合态创建入口）：
   //  固定 steps → 参数化槽#0（steps:null）；参数化 steps → 恢复固定（steps:1，清槽位）
@@ -883,12 +974,13 @@
   }
 
   function addBlockBodyCmd(id, targetArr) {
-    var arr = targetArr || editBlockBody;   // v1.14：loop 编辑态传 loop.body
+    var arr = targetArr || editBlockBody;   // v1.14：loop 编辑态传 loop.body；v1.15：if 编辑态传 then/else
     if (id === 'steps') {
       // v1.11：参数态新增 steps 直接参数化（槽#0）；v1.13 显式 paramIdx:0（一致性，缺省亦同义）
       arr.push({ id: id, steps: editBlockHasParam ? null : 1, paramIdx: editBlockHasParam ? 0 : undefined });
     }
     else if (id === 'loop') { arr.push({ id: id, rep: 2, body: [] }); }   // v1.14：块内循环块（单层）
+    else if (id === 'if') { arr.push({ id: id, then: [], else: [] }); }   // v1.15：块内 if（单层——then/else 不嵌 if/loop/call）
     else { arr.push({ id: id, rep: 1 }); }
     renderBlockEdit();
   }
@@ -922,7 +1014,9 @@
     }
     exitBlockEdit();
   }
-  // v1.14 I2（Oracle）：递归检查 loop.body 是否含非法嵌套（loop/if/call）——防御异常数据
+  // v1.14 I2（Oracle）：递归检查 loop.body / v1.15 if 分支是否含非法嵌套（loop/if/call）——防御异常数据
+  // v1.15（Oracle B4）：双重保险——块内 if 分支不嵌 if/loop/call（决策 A 单层约束）；与 hasCallInBlock（执行时）互补
+  // 修复（测试暴露）：if 分支须直接查子数组指令类型（递归 hasIllegalNested 会漏检嵌套 if——它查的是子 if 内部而非分支层）
   function hasIllegalNested(arr) {
     for (var i = 0; i < arr.length; i++) {
       var c = arr[i];
@@ -932,6 +1026,18 @@
           if (c.body[j].id === 'loop' || c.body[j].id === 'if' || c.body[j].id === 'call') { return true; }
         }
       }
+      if (c.id === 'if') {
+        // v1.15：if.then/else 不嵌 if/loop/call（单层约束——决策 A）——直接查分支数组指令类型
+        if (c.then && hasForbiddenNested(c.then)) { return true; }
+        if (c.else && hasForbiddenNested(c.else)) { return true; }
+      }
+    }
+    return false;
+  }
+  // v1.15：分支数组内是否含禁止嵌套指令（loop/if/call）——与 loop.body 检查同模式
+  function hasForbiddenNested(arr) {
+    for (var i = 0; i < arr.length; i++) {
+      if (arr[i].id === 'loop' || arr[i].id === 'if' || arr[i].id === 'call') { return true; }
     }
     return false;
   }
@@ -1652,6 +1758,29 @@
       wrapSrc.appendChild(document.createTextNode('}'));
       return wrapSrc;
     }
+    if (c.id === 'if') {
+      // v1.15（I3 Oracle）：if 摘要——.pv-if 紫底 + {then…|else…} 包裹；分支内复用 .pv-steps/.pv-param
+      // 单层约束下无嵌套，无需递归（then/else 仅基础 + 参数化 steps）
+      var buildBranch = function (arr, label) {
+        var b = makeEl('span', 'pv-inner', '');
+        b.appendChild(document.createTextNode(label + ' '));
+        var ba = arr || [];
+        var bShown = ba.slice(0, 3);
+        bShown.forEach(function (bc, bi) {
+          if (bi > 0) { b.appendChild(document.createTextNode(' ')); }
+          b.appendChild(pickerPreviewSpan(bc));
+        });
+        if (ba.length > 3) { b.appendChild(document.createTextNode(' …')); }
+        return b;
+      };
+      var wrapIf = makeEl('span', 'pv-if', '');
+      wrapIf.appendChild(document.createTextNode('❓if{'));
+      wrapIf.appendChild(buildBranch(c.then, '✅'));
+      wrapIf.appendChild(document.createTextNode(' | '));
+      wrapIf.appendChild(buildBranch(c.else, '❌'));
+      wrapIf.appendChild(document.createTextNode('}'));
+      return wrapIf;
+    }
     return makeEl('span', 'pv-base', '?');
   }
   function renderBlockPicker() {
@@ -2061,7 +2190,9 @@
      - needsCopy = blockHasParam（递归版——blockParamCount 已递归 loop.body）——副本必要性与 _loopLeft 无关
        （顺序队列无共享污染，Oracle 逐帧验证），纯粹因为参数化 steps 需按 call 参数解析 + loop.body 需递归拷贝
      - resolveStep 提取独立函数：顶层 body 与 loop.body 统一调用（B2 拷贝时同步解析，execLoop 保持纯粹职责）
-     - loop.body 递归拷贝 + 参数注入（参数×循环：块内「走 ?₁ 步 ×N 次」） */
+     - loop.body 递归拷贝 + 参数注入（参数×循环：块内「走 ?₁ 步 ×N 次」）
+     v1.15 B3（Oracle）：统一入口——execCall 用 cloneBlockBody(def.body, cmd)（paramCmd=cmd：顶层/loop.body/if 分支
+       统一参数注入 + if.then/else 递归拷贝——条件×参数）；无参数化块共享引用（B2 逐帧确认 execIf 展开插入不改原数组） */
   function execCall(cmd) {
     var def = getCustomBlock(cmd.bid);
     if (!def || !def.body || !def.body.length) {
@@ -2079,29 +2210,10 @@
     resetLoopLeft(def.body);   // B1 同款：展开前清 body 执行期状态（共享引用污染防 bug；I2：参数块副本全新为空操作，非参数块必需）
     var runBody;
     if (blockHasParam(cmd.bid)) {
-      // v1.11 运行时副本：参数化 steps（steps:null）填 call.param，其余指令浅拷贝——不同 call 不同参数互不污染
-      // v1.13 B2（Oracle 修订）：槽位感知回退链——params[slot] 优先；param 仅对槽#0 有效；槽#1 直接兜底 3
-      // v1.14 B2（Oracle）：loop.body 递归拷贝 + 参数注入（resolveStep 统一调用）
-      runBody = def.body.map(function (c) {
-        if (c.id === 'loop') {
-          var nlp = { id: 'loop', rep: c.rep, body: (c.body || []).map(function (lb) {
-            var nlb = { id: lb.id };
-            if (lb.rep !== undefined) { nlb.rep = lb.rep; }
-            if (lb.steps !== undefined) { nlb.steps = resolveStep(cmd, lb); }   // 参数×循环：loop.body 内参数化注入
-            else if (lb.steps === undefined && lb.id === 'steps') { nlb.steps = 1; }
-            if (lb.paramIdx !== undefined && lb.steps !== null) { nlb.paramIdx = lb.paramIdx; }
-            return nlb;
-          }) };
-          return nlp;
-        }
-        var nc = { id: c.id };
-        if (c.rep !== undefined) { nc.rep = c.rep; }
-        if (c.id === 'steps') { nc.steps = resolveStep(cmd, c); }
-        else if (c.steps !== undefined) { nc.steps = c.steps; }
-        return nc;
-      });
+      // v1.15 B3：统一入口——cloneBlockBody(paramCmd=cmd) 递归拷贝顶层/loop.body/if 分支 + resolveStep 参数注入
+      runBody = cloneBlockBody(def.body, cmd);
     } else {
-      runBody = def.body;   // 无参数无参数化块：直接共享引用（v1.10 行为不变；v1.14 B1 确认顺序队列无 _loopLeft 污染）
+      runBody = def.body;   // 无参数无参数化块：直接共享引用（v1.10 行为不变；v1.14 B1 + v1.15 B2 逐帧确认无污染）
     }
     for (var i = 0; i < runBody.length; i++) {
       runBody[i]._execTop = cmd._execTop;   // I-new 同款：无条件继承父级 call 顶层下标（高亮/失败定位）
@@ -2109,7 +2221,7 @@
     state.execQueue.splice.apply(state.execQueue,
       [state.queueIdx, 0].concat(runBody));
   }
-  // v1.14 B2（Oracle）：参数解析独立函数——B2 槽位感知回退链（顶层 body 与 loop.body 统一调用）
+  // v1.14 B2（Oracle）：参数解析独立函数——B2 槽位感知回退链（顶层 body 与 loop.body / v1.15 if 分支统一调用）
   // 固定 steps（steps !== null）原样返回；仅 steps:null（参数化）才解析——
   // params[slot] 优先；param 仅对槽#0 有效；槽#1 直接兜底 3（防存量 param:5 升双参后槽#1 错误继承）
   function resolveStep(cmd, step) {

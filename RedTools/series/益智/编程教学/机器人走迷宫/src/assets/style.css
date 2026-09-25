@@ -580,6 +580,7 @@ body {
 .block-picker-preview .pv-param { background: #f3e8fd; color: #722ed1; border-radius: 3px; padding: 0 2px; margin: 0 1px; font-weight: 600; }
 .block-picker-preview .pv-loop { display: inline-block; border: 1px solid #ccc; border-radius: 3px; padding: 0 2px; margin: 0 1px; color: #555; }
 .block-picker-preview .pv-inner { white-space: nowrap; }
+.block-picker-preview .pv-if { display: inline-block; background: #f0e6ff; border: 1px solid #c9a8e8; color: #722ed1; border-radius: 3px; padding: 0 2px; margin: 0 1px; font-weight: 600; }
 .block-picker-mgr { margin-top: 6px; }
 .block-picker-mgr .cmd-add { -webkit-box-flex: 0; -webkit-flex: 0 0 auto; flex: 0 0 auto; }
 
