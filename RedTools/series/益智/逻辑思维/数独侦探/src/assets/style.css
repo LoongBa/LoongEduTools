@@ -909,6 +909,9 @@ body {
   padding: 6px 0;
 }
 
+/* E5 自适应难度（v1.10）：建议降档档位高亮 */
+.diff-btn.suggested { border: 2px solid #ff8c42; }
+
 /* ---------- 响应式：大屏微调 / 小屏收紧 ---------- */
 
 @media (min-width: 400px) {

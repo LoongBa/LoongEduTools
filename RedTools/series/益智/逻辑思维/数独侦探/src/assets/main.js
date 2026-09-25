@@ -15,6 +15,8 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
           身表现——核心原则无竞技无排行）
     v1.9：家长报告（今日反馈 / 近 7 天 / 技巧掌握度，数据只存本地不上传）
           + 9×9 小屏适配（窄屏缩字号 + 竖屏横屏提示一次；双指缩放 P2 不做）
+    v1.10：自由解题（进阶技巧教学：唯一余数 / X-Wing，独立 advSkills 徽章，不吹适龄
+          徽章）+ E5 自适应难度（连败两局自动建议降档，不扣分）
     星级：hints===0 && errors===0 → 3★；hints<=1 && errors<=3 → 2★；否则 1★
    难度：双参数（盘面尺寸 × 目标已知格）4×4→10、6×6→21、9×9→33
    设计约束（对齐 series/益智/设计文档.md §5）：
@@ -51,6 +53,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     { key: '6', name: '普通', N: 6, givens: 21 },
     { key: '9', name: '困难', N: 9, givens: 33 }
   ];
+  var suggestedName = null; // E5 自适应难度（v1.10）：最近两局连败 → 建议降档档名；非持久化，进入任一局即清除
 
   /* ---------- 状态 ---------- */
   var state = {
@@ -93,6 +96,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
       checkin: { dates: [], streak: 0 },
       history: [],                  // 滚动 30 条 {date,level,ms,errors,hints,stars}
       skills: {},                   // 技巧徽章（v1.4）：{ boxElim: true, ... } 教学关完成点亮
+      advSkills: {},                // 进阶技巧徽章（v1.10）：{ uniqueElim: true, xwing: true } 独立于 base skills，零迁移
       mistakes: [],                 // 错题本（v1.6）：[{id,ts,level,board,solution,errors,hintIdx,result,stars}] 通关/中途退出记录，上限 50 条
       favorites: [],                // 收藏本（v1.6）：[{id,ts,level,board,solution}] 通关后可收藏的想再练题目
       cur: null                     // 断局快照（v1.2）：未完成（level,N,givensCount,puzzle,solution,given,pencils,undoStack,hints,errors,selected,penMode,ms,startStamp,origPuzzle)
@@ -109,6 +113,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
           if (!obj.checkin) { obj.checkin = { dates: [], streak: 0 }; }
           if (!obj.history) { obj.history = []; }
           if (!obj.skills) { obj.skills = {}; }
+          if (!obj.advSkills) { obj.advSkills = {}; } // v1.10：旧存档无进阶徽章字段 → 补空
           if (!obj.mistakes) { obj.mistakes = []; }   // v1.6：旧存档无错题本字段 → 补空
           if (!obj.favorites) { obj.favorites = []; } // v1.6：旧存档无收藏本字段 → 补空
           if (!obj.cur) { obj.cur = null; }
@@ -873,6 +878,22 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     for (var i = 0; i < 3; i++) { s += (i < n) ? '★' : '☆'; }
     return s;
   }
+  function suggestLevel() {
+    // E5 自适应难度（v1.10）：最近两局都「吃力」（错误+提示 ≥ 该档半数空格）→ 建议降一档；
+    // 历史不足 2 局 / 未吃力 / 已是最简单档 → 返回 null（不降）
+    var h = store.history;
+    if (!h || h.length < 2) { return null; }
+    var a = h[h.length - 2];
+    var b = h[h.length - 1];
+    var la = findLevel(a.level);
+    var lb = findLevel(b.level);
+    var halfA = Math.ceil((la.N * la.N - la.givens) / 2);
+    var halfB = Math.ceil((lb.N * lb.N - lb.givens) / 2);
+    if (a.errors + a.hints < halfA) { return null; }
+    if (b.errors + b.hints < halfB) { return null; }
+    var hi = Math.max(LEVELS.indexOf(la), LEVELS.indexOf(lb));
+    return (hi > 0) ? LEVELS[hi - 1] : null; // 已是最简单不降
+  }
   function checkWin() {
     var n = state.N;
     for (var i = 0; i < n * n; i++) {
@@ -917,6 +938,9 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
       store.history.push({ date: fmtDate(new Date()), level: key, ms: ms, errors: errors, hints: hints, stars: stars });
       while (store.history.length > 30) { store.history.shift(); }
       doCheckin();
+      // v1.10 E5：根据最近两局生成降档建议（import 局不进 history，不更新建议）
+      var sug = suggestLevel();
+      if (sug) { suggestedName = sug.name; } else { suggestedName = null; }
     } else {
       winNewBest = false; // v1.7：导入题不产生新纪录
     }
@@ -932,6 +956,10 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
       notes.push({ cls: 'checkin-line', text: '📥 导入题 · 不计入成绩' });
     } else {
       notes.push({ cls: 'checkin-line', text: '✅ 今日已打卡 · 连续 ' + (store.checkin.streak || 0) + ' 天' });
+    }
+    if (suggestedName) {
+      // v1.10 E5：连败降档建议（不扣分，仅提示）
+      notes.push({ cls: 'checkin-line', text: '🌱 最近两局有点吃力，下次建议从「' + suggestedName + '」练起（不扣分）' });
     }
     var fav = isFav(state.origPuzzle);
     var btns = [
@@ -970,6 +998,16 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     clearNode(viewEl);
     viewEl.appendChild(makeEl('div', 'page-title', '选择难度'));
     viewEl.appendChild(makeEl('div', 'home-hint', '点空格 → 选数字，每行每列每宫只出现一次，填满就过关！'));
+    // v1.10 E5：有降档建议时展示温和横幅（选任意难度即开始）
+    if (suggestedName) {
+      var sugBanner = makeEl('div', 'home-hint');
+        sugBanner.style.color = '#ff8c42';
+        sugBanner.style.fontWeight = '600';
+        sugBanner.textContent = '🌱 最近两局有点吃力，试试「' + suggestedName + '」更轻松吧（选任意难度即开始）';
+      sugBanner.style.color = '#ff8c42';
+      sugBanner.style.fontWeight = '600';
+      viewEl.appendChild(sugBanner);
+    }
     // 规则教学入口（v1.3）：三步看懂行/列/宫规则
     var teachBtn = makeEl('button', 'teach-btn');
     teachBtn.appendChild(makeEl('span', 'teach-btn-head', '📖 规则教学'));
@@ -980,6 +1018,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     // 技巧教学入口（v1.4）：教学关完成点亮徽章；locked 占位卡不在难度页展示
     for (var si = 0; si < SKILLS.length; si++) {
       if (SKILLS[si].locked) { continue; }
+      if (SKILLS[si].group === 'adv') { continue; } // v1.10：进阶技巧不占难度页 base 卡位（走「🧩 自由解题」）
       (function (s) {
         var skBtn = makeEl('button', 'teach-btn skill-btn');
         skBtn.appendChild(makeEl('span', 'teach-btn-head',
@@ -998,6 +1037,13 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     badgeBtn.setAttribute('aria-label', '打开技巧徽章墙');
     badgeBtn.addEventListener('click', showBadgeWallView);
     viewEl.appendChild(badgeBtn);
+    // 自由解题入口（v1.10）：进阶技巧教学关（独立 advSkills 徽章，不吹适龄徽章）
+    var advBtn = makeEl('button', 'teach-btn book-btn');
+    advBtn.appendChild(makeEl('span', 'teach-btn-head', '🧩 自由解题'));
+    advBtn.appendChild(makeEl('span', 'teach-btn-sub', '进阶技巧 · 自主探索'));
+    advBtn.setAttribute('aria-label', '自由解题，探索进阶技巧');
+    advBtn.addEventListener('click', showAdvView);
+    viewEl.appendChild(advBtn);
     // 错题本入口（v1.6）：有错题时显示
     if (store.mistakes && store.mistakes.length > 0) {
       var misBtn = makeEl('button', 'teach-btn book-btn');
@@ -1046,6 +1092,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     for (var i = 0; i < LEVELS.length; i++) {
       (function (l) {
         var btn = makeEl('button', 'diff-btn');
+        if (suggestedName && l.name === suggestedName) { btn.className = 'diff-btn suggested'; } // v1.10 E5：建议档高亮
         var head = makeEl('span', 'diff-head',
           '👉 ' + l.name + ' · ' + l.N + '×' + l.N + ' · 已知 ' + l.givens + ' 格');
         btn.appendChild(head);
@@ -1073,6 +1120,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     viewEl.appendChild(makeEl('div', 'page-title', '技巧徽章墙'));
     viewEl.appendChild(makeEl('div', 'home-hint', '每个技巧学会后点亮一枚徽章'));
     for (var bi = 0; bi < SKILLS.length; bi++) {
+      if (SKILLS[bi].group === 'adv') { continue; } // v1.10：进阶技巧不进适龄徽章墙
       (function (s, idx) {
         var lit = !!store.skills[s.key];
         var head = lit ? '✅ ' + s.name : (s.locked ? '🔒 ' + s.name : '🎯 ' + s.name);
@@ -1093,6 +1141,37 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     back.style.marginTop = '4px';
     back.addEventListener('click', showDifficultyView);
     viewEl.appendChild(back);
+  }
+  function showAdvView() {
+    // 自由解题（v1.10）：进阶技巧教学关入口（独立 advSkills 徽章，不吹适龄徽章）——仿徽章墙
+    hideOverlay();
+    stopTimer();
+    state.won = false;
+    state.playing = false;
+    renderHeader('自由解题');
+    clearNode(viewEl);
+    viewEl.appendChild(makeEl('div', 'page-title', '自由解题 · 进阶'));
+    viewEl.appendChild(makeEl('div', 'home-hint', '自主挑战高阶技巧（不吹适龄徽章）'));
+    for (var ai = 0; ai < SKILLS.length; ai++) {
+      if (SKILLS[ai].group !== 'adv') { continue; }
+      (function (s, idx) {
+        var lit = !!store.advSkills[s.key];
+        var head = lit ? '✨ ' + s.name : '💎 ' + s.name;
+        var sub = lit ? '进阶已点亮 · 可再练' : '去探索这个技巧';
+        var card = makeEl('button', 'teach-btn badge-card');
+        card.appendChild(makeEl('span', 'teach-btn-head', head));
+        card.appendChild(makeEl('span', 'teach-btn-sub', sub));
+        card.setAttribute('aria-label', head + '，' + sub);
+        card.addEventListener('click', function () { openSkill(idx, 'adv'); });
+        viewEl.appendChild(card);
+      })(SKILLS[ai], ai);
+    }
+    // 底部：返回难度（无计时器，直接回难度页）
+    var advBack = makeEl('button', 'btn-checkin', '← 返回');
+    advBack.setAttribute('aria-label', '返回难度选择');
+    advBack.style.marginTop = '4px';
+    advBack.addEventListener('click', showDifficultyView);
+    viewEl.appendChild(advBack);
   }
   /* ---------- 错题本 / 收藏本（v1.6） ---------- */
   function renderMiniBoard(container, board, N) {
@@ -1690,6 +1769,15 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     }
     return n;
   }
+  function baseSkillCount() {
+    // base 技巧总数（v1.10）：排除 group==='adv' 的进阶条目——报告/徽章墙仍显示 X/4
+    var n = 0;
+    var i;
+    for (i = 0; i < SKILLS.length; i++) {
+      if (SKILLS[i].group !== 'adv') { n++; }
+    }
+    return n;
+  }
   function drawResultCard() {
     // 分享成绩卡：浅蓝渐变底 + 装饰圆点 + 难度/星级/数据 + 迷你完成盘面 + 徽章数 + 页脚
     var W = 1080;
@@ -1904,6 +1992,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
       viewEl.textContent = '算法模块缺失，请检查 solver.js';
       return;
     }
+    suggestedName = null; // v1.10 E5：进入任一局即消费/清除降档建议
     newRound(levelKey);
     renderGameView();
     renderGameFooter();
@@ -2115,6 +2204,35 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
         { text: '再看这个格子：这一行缺 1、2，这一列缺 2、4，这个宫缺 1、2、4——只有 2 三个方向都缺！点这个空格，再点数字 2。', cell: 7, num: 2, hl: [3, 4, 5, 6, 7, 11, 15] }
       ],
       done: '太棒啦！你学会了「交叉排除」——行、列、宫三个方向一起看，交叉起来答案就出来了！'
+    },
+    // 唯一余数（v1.10，进阶 adv）：空格 2/11/21/30，解唯一已用求解器验证——三个方向线索交集只剩一个数
+    {
+      key: 'uniqueElim',
+      name: '唯一余数',
+      group: 'adv',
+      tip: '唯一余数：只看这一格——它所在的行、列、宫都不让它填别的数，那它就只能填那个数',
+      N: 6,
+      board: [1, 2, 0, 4, 5, 6, 4, 5, 6, 1, 2, 0, 2, 3, 1, 5, 6, 4, 5, 6, 4, 0, 3, 1, 3, 1, 2, 6, 4, 5, 0, 4, 5, 3, 1, 2],
+      steps: [
+        { text: '看这个格子（浅蓝）：它所在的这一行缺 2、这一列缺 2、这个宫也缺 2——三个方向的线索都指向同一个数字 2！点这个空格，再点数字 2。', cell: 21, num: 2, hl: [3, 9, 15, 18, 19, 22, 23, 21] },
+        { text: '再看这个格子：行、列、宫三个方向都缺 3，其它数字都被排除——填 3！点这个空格，再点数字 3。', cell: 2, num: 3, hl: [0, 1, 3, 4, 5, 8, 14, 20, 26, 32, 2] }
+      ],
+      done: '真棒！你学会了「唯一余数」——锁定一格的行、列、宫线索，唯一能填的数就出来了！'
+    },
+    // X-Wing（v1.10，进阶 adv）：数字 4 在第 1/4 行都被锁在第 1/3 列（矩形）→ 其它行排除；
+    // 完整解 2 个但教学按引导落子完成，不需全局唯一（引导即填即对）
+    {
+      key: 'xwing',
+      name: 'X-Wing',
+      group: 'adv',
+      tip: 'X-Wing：一个数字在两行都被锁在同样两列（矩形），其它行就能排除它',
+      N: 6,
+      board: [0, 5, 0, 6, 1, 2, 0, 6, 2, 0, 5, 3, 6, 2, 5, 1, 3, 4, 0, 1, 0, 2, 6, 5, 5, 4, 1, 3, 2, 6, 2, 3, 6, 5, 4, 1],
+      steps: [
+        { text: '看第 1 行和第 4 行（浅蓝矩形）：数字 4 在它们里都只能放在第 1 列或第 3 列 → 4 被锁在这两行两列的矩形里！那第 2 行这个格子，它这一竖列里 4 已经被矩形占住，所以它不能填 4 → 只能填 1！点这个空格，再点数字 1。', cell: 6, num: 1, hl: [0, 2, 18, 20] },
+        { text: '再看第 2 行：4 不能放刚才那格了，这一行只有这个位置能放 4 → 点它，再点数字 4。', cell: 9, num: 4, hl: [7, 8, 10, 11, 9] }
+      ],
+      done: '真厉害！你学会了「X-Wing」——用两行两列的矩形锁住一个数字，其它格子就知道排除它了！'
     }
   ];
   var skill = {
@@ -2249,16 +2367,25 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
       skill.step++;              // 先推进步进，再刷新高亮（否则高亮停留在上一步约束组）
       refreshSkillCells();
       if (skill.step >= lv.steps.length) {
-        // 教学关完成：点亮徽章
-        store.skills[lv.key] = true;
+        // 教学关完成：点亮徽章（进阶技巧写入独立 advSkills，不吹 base 适龄徽章）
+        if (lv.group === 'adv') { store.advSkills[lv.key] = true; } else { store.skills[lv.key] = true; }
         saveStore();
         showSkillMsg(lv.done);
         sndWin();
-        showOverlay('🎉 学会啦！', '「' + lv.name + '」徽章已点亮',
-          [{ cls: 'checkin-line', text: '🎯 技巧徽章 · ' + lv.name },
-           { cls: 'record-badge', text: '教学关完成，不计入普通进度' }],
-          [{ text: '再来一局', cls: 'btn-ghost', act: exitSkill },
-           { text: '返回难度', cls: 'btn-main', act: exitSkill }]);
+        if (lv.group === 'adv') {
+          // v1.10：进阶徽章弹窗（独立于适龄徽章体系）
+          showOverlay('🎉 学会啦！', '「' + lv.name + '」进阶徽章已点亮',
+            [{ cls: 'checkin-line', text: '💎 进阶技巧 · 不计入适龄徽章' },
+             { cls: 'record-badge', text: '教学关完成，不计入普通进度' }],
+            [{ text: '再来一局', cls: 'btn-ghost', act: exitSkill },
+             { text: '返回难度', cls: 'btn-main', act: exitSkill }]);
+        } else {
+          showOverlay('🎉 学会啦！', '「' + lv.name + '」徽章已点亮',
+            [{ cls: 'checkin-line', text: '🎯 技巧徽章 · ' + lv.name },
+             { cls: 'record-badge', text: '教学关完成，不计入普通进度' }],
+            [{ text: '再来一局', cls: 'btn-ghost', act: exitSkill },
+             { text: '返回难度', cls: 'btn-main', act: exitSkill }]);
+        }
       } else {
         showSkillMsg(lv.steps[skill.step].text);
       }
@@ -2291,11 +2418,12 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     renderSkillView();
   }
   function exitSkill() {
-    // 按进入来源返回：徽章墙进入 → 回首徽章墙；其余 → 难度页
+    // 按进入来源返回：徽章墙 → 徽章墙；自由解题 → 自由解题；其余 → 难度页
     hideOverlay();
     skill.active = false;
     skill.idx = -1;
     if (badgeFrom === 'badgewall') { showBadgeWallView(); }
+    else if (badgeFrom === 'adv') { showAdvView(); } // v1.10：进阶技巧返回「自由解题」
     else { showDifficultyView(); }
   }
 
@@ -2431,7 +2559,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
         skillParts.push((lit ? '✅ ' : '🎯 ') + SKILLS[li].name);
       }
       cardB.appendChild(makeEl('div', 'report-badge-line', skillParts.join(' ')));
-      cardB.appendChild(makeEl('div', 'report-row', countLitSkills() + '/' + SKILLS.length + ' 枚技巧徽章已点亮'));
+      cardB.appendChild(makeEl('div', 'report-row', countLitSkills() + '/' + baseSkillCount() + ' 枚技巧徽章已点亮'));
     }
     viewEl.appendChild(cardB);
     // 返回难度
