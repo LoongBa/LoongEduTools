@@ -941,6 +941,8 @@
     renderBlockEdit();
   }
   // v1.14：编辑态整棵树（顶层 + loop.body 递归）是否含参数化 steps——派生 toggle 状态
+  // v1.16.1（I1 修复）：补 if 分支递归——对齐 scanParamSteps（顶层 + loop.body + if.then/else）
+  // 消除 toggle UI 与执行派生不一致（v1.15 块内 if 起分支内可放参数化 steps）
   function hasEditBodyParam() {
     return hasParamInBody(editBlockBody);
   }
@@ -949,6 +951,10 @@
       var c = arr[pi];
       if (c.id === 'steps' && c.steps === null) { return true; }
       if (c.id === 'loop' && c.body && c.body.length && hasParamInBody(c.body)) { return true; }   // v1.14 递归 loop.body
+      if (c.id === 'if') {   // v1.16.1：补 if 分支递归（I1 对齐 scanParamSteps）
+        if (c.then && c.then.length && hasParamInBody(c.then)) { return true; }
+        if (c.else && c.else.length && hasParamInBody(c.else)) { return true; }
+      }
     }
     return false;
   }
@@ -961,6 +967,8 @@
      已参数化（含槽#1）保持不变——不破坏混合态/槽位；OFF = 全部恢复固定（v1.12 保持，含槽#1 一并清空）。
      v1.14 扩展（B1 Oracle）：递归作用于整棵树（顶层 + loop.body）——loop.body 内 steps 同样参数化/恢复固定
      （与 scanParamSteps 派生深度对齐，防「顶层有参数但 loop.body 无」的派生/操作不一致）。
+     v1.16.1（I1 Oracle：toggle 递归对齐）——补 if 分支：toggle 批量操作覆盖 if.then/else 内 steps
+     （与 scanParamSteps 派生深度全面对齐，消除分支内参数化 steps 时 UI/操作不一致）。
      返回错误消息（null=成功）；提示由调用方在 renderBlockEdit 重建后设置（防旧元素被清） */
   function toggleBlockHasParam() {
     if (editBlockHasParam) {
@@ -970,38 +978,58 @@
           editBlockBody[i].steps = 1;
           if (editBlockBody[i].paramIdx !== undefined) { delete editBlockBody[i].paramIdx; }
         } else if (editBlockBody[i].id === 'loop' && editBlockBody[i].body) { toggleStepsInArr(editBlockBody[i].body, false); }
+        else if (editBlockBody[i].id === 'if') {   // v1.16.1：补 if 分支（I1）
+          if (editBlockBody[i].then) { toggleStepsInArr(editBlockBody[i].then, false); }
+          if (editBlockBody[i].else) { toggleStepsInArr(editBlockBody[i].else, false); }
+        }
       }
       editBlockHasParam = false;
       return null;
     } else {
-      // 开：需要整棵树有 steps（顶层或 loop.body）；I2 幂等——仅未参数化 → 槽#0（已参数化含槽#1 保持）
+      // 开：需要整棵树有 steps（顶层 / loop.body / v1.16.1 if 分支）；I2 幂等——仅未参数化 → 槽#0（已参数化含槽#1 保持）
       var hasSteps = false;
       for (var j = 0; j < editBlockBody.length; j++) {
         if (editBlockBody[j].id === 'steps') { hasSteps = true; break; }
         if (editBlockBody[j].id === 'loop' && hasStepsInArr(editBlockBody[j].body)) { hasSteps = true; break; }
+        if (editBlockBody[j].id === 'if' && ((editBlockBody[j].then && hasStepsInArr(editBlockBody[j].then)) ||
+            (editBlockBody[j].else && hasStepsInArr(editBlockBody[j].else)))) { hasSteps = true; break; }   // v1.16.1（I1）
       }
       if (!hasSteps) { return '😅 先加一条 ➡N步，才能带参数'; }   // 保持 off
       for (var k = 0; k < editBlockBody.length; k++) {
         if (editBlockBody[k].id === 'steps' && editBlockBody[k].steps !== null) { editBlockBody[k].steps = null; }   // v1.13 I2：仅未参数化→槽#0
         else if (editBlockBody[k].id === 'loop' && editBlockBody[k].body) { toggleStepsInArr(editBlockBody[k].body, true); }   // v1.14 递归 loop.body
+        else if (editBlockBody[k].id === 'if') {   // v1.16.1：补 if 分支（I1）
+          if (editBlockBody[k].then) { toggleStepsInArr(editBlockBody[k].then, true); }
+          if (editBlockBody[k].else) { toggleStepsInArr(editBlockBody[k].else, true); }
+        }
       }
       editBlockHasParam = true;
       return null;
     }
   }
   // v1.14：数组内 steps 批量 参数化(true)/恢复固定(false)（loop.body 递归用；I2 幂等语义：仅改未参数化/参数化）
+  // v1.16.1（I1 修复）：补 if 分支递归——toggle 批量操作覆盖分支内 steps（对齐 scanParamSteps）
   function toggleStepsInArr(arr, toParam) {
     for (var i = 0; i < arr.length; i++) {
       if (arr[i].id === 'steps') {
         if (toParam && arr[i].steps !== null) { arr[i].steps = null; }
         else if (!toParam && arr[i].steps === null) { arr[i].steps = 1; if (arr[i].paramIdx !== undefined) { delete arr[i].paramIdx; } }
       } else if (arr[i].id === 'loop' && arr[i].body) { toggleStepsInArr(arr[i].body, toParam); }
+      else if (arr[i].id === 'if') {   // v1.16.1：补 if 分支递归（I1）
+        if (arr[i].then) { toggleStepsInArr(arr[i].then, toParam); }
+        if (arr[i].else) { toggleStepsInArr(arr[i].else, toParam); }
+      }
     }
   }
+  // v1.16.1（I1 修复）：补 if 分支递归——toggle ON 前置检查覆盖分支内 steps（防误报「先加一条 ➡N步」）
   function hasStepsInArr(arr) {
     for (var i = 0; i < arr.length; i++) {
       if (arr[i].id === 'steps') { return true; }
       if (arr[i].id === 'loop' && arr[i].body && hasStepsInArr(arr[i].body)) { return true; }
+      if (arr[i].id === 'if') {   // v1.16.1：补 if 分支递归（I1）
+        if (arr[i].then && hasStepsInArr(arr[i].then)) { return true; }
+        if (arr[i].else && hasStepsInArr(arr[i].else)) { return true; }
+      }
     }
     return false;
   }
