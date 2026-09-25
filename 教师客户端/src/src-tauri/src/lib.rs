@@ -43,6 +43,7 @@ pub fn run() {
             recents::recents_set,
             window::toggle_fullscreen,
             window::exit_fullscreen,
+            window::print_content,
             // P1 认证/口令（A01 / D05 §4）
             auth::auth_status,
             auth::auth_sms_send,

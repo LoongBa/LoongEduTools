@@ -42,6 +42,8 @@ function App() {
   const [auth, setAuth] = useState<AuthStatus | null>(null);
   const [updates, setUpdates] = useState<StoreItem[]>([]);
   const [theme, setTheme] = useState<ThemeMode>(currentTheme);
+  /** 当前已打开的内容包（R8 导出 PDF 显示条件：loadedPkg === 目标包，避免导错对象） */
+  const [loadedPkg, setLoadedPkg] = useState<string | null>(null);
 
   // 主题切换：写 dataset 即时生效 + localStorage 持久化（首页渲染前由 main.tsx 引导读取）
   function applyTheme(t: ThemeMode) {
@@ -101,6 +103,7 @@ function App() {
     setLoadingPkg(pkg.package_id);
     try {
       await api.load(pkg.package_id);
+      setLoadedPkg(pkg.package_id);
     } catch (e) {
       setErr(String(e));
     } finally {
@@ -288,6 +291,18 @@ function App() {
                       {p.is_embedded ? " · 预装" : ""}
                     </div>
                     <div className="card-id">{p.package_id}</div>
+                    {loadedPkg === p.package_id && (
+                      <span
+                        className="card-export"
+                        title="将当前打开的内容包导出为 PDF（打印对话框）"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          api.printContent().catch((e) => setErr(String(e)));
+                        }}
+                      >
+                        导出 PDF
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -312,6 +327,18 @@ function App() {
                       <span className="recent-pos">
                         {r.unit} / {r.section}
                       </span>
+                      {loadedPkg === r.package_id && (
+                        <span
+                          className="recent-export"
+                          title="将当前打开的内容包导出为 PDF（打印对话框）"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            api.printContent().catch((e) => setErr(String(e)));
+                          }}
+                        >
+                          导出 PDF
+                        </span>
+                      )}
                     </button>
                   </li>
                 ))}

@@ -130,6 +130,9 @@ export const api = {
     invoke<boolean>("toggle_fullscreen", { window }),
   exitFullscreen: (window: string) => invoke<void>("exit_fullscreen", { window }),
 
+  // ---- R8 内容包导出 PDF（print_content · D08 §3.2 方案 A：content 窗 window.print()）----
+  printContent: () => invoke<void>("print_content"),
+
   testWebview2: () => invoke<string | null>("test_webview2"),
 
   // ---- P1 auth ----

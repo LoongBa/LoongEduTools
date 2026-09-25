@@ -72,6 +72,10 @@
   --rank-silver: #94a3b8;
   --rank-bronze: #b45309;
   --on-accent: #1f2933;
+  /* ---- 打印纸面令牌（R18 · D08 §3.1：只在 :root 定义；深色主题块不覆盖
+   * → 深色主题下打印仍是黑白纸面；print 规则内颜色一律引用这两个 token）---- */
+  --print-ink: #000;
+  --print-paper: #fff;
   /* ---- 基面 / 文本（引用上方 token） ---- */
   font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
   color: var(--text);
@@ -371,6 +375,37 @@ code {
 .card-id {
   font-size: 11px;
   color: var(--text-faint);
+}
+
+/* ---------- R8 导出 PDF 入口（壳侧 · D08 §3.2）----------
+ * 应用卡片 / 一键开课最近行内动作：span 嵌于 <button>（button 内禁止再嵌 button，
+ * span 合法 HTML），onClick stopPropagation 避免触发卡片本体。 */
+.card-export,
+.recent-export {
+  display: inline-block;
+  padding: 4px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--primary);
+  background: var(--surface-2);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.card-export {
+  margin-top: 8px;
+}
+
+.recent-export {
+  margin-left: auto;
+}
+
+.card-export:hover,
+.recent-export:hover {
+  border-color: var(--primary);
+  color: var(--primary-hover);
+  background: var(--primary-soft);
 }
 
 /* ---------- 一键开课 ---------- */
@@ -1738,6 +1773,18 @@ code {
   justify-content: center;
 }
 
+/* 打印专用元素：屏幕隐藏（@media print 中显示，见文件末尾打印块） */
+.checkin-print-head {
+  display: none;
+}
+
+.checkin-prog-glyph {
+  display: none;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+}
+
 /* ---------- P3 计时器（TimerView · D05 §2.4.4）---------- */
 .timer {
   display: flex;
@@ -1943,5 +1990,136 @@ code {
   .classes-progress-fill,
   .checkin-prog-fill {
     transition: none;
+  }
+}
+
+/* ==================== 打印形态（R18 打卡单 · D08 §3.1） ====================
+ * ⚠️ Oracle M-6：全部规则按视图 scope——.view-checkin 前缀，或 body:has(.view-checkin)
+ *    作用域写法。禁止裸全局选择器（如 .sidebar{display:none}）：.sidebar/.banner/.content
+ *    是全视图共享选择器，裸规则会把打卡单打印样式泄漏到反思本等其它视图。
+ *    颜色一律引用 :root 的 --print-ink / --print-paper（深色主题块不覆盖，保证深色
+ *    主题下打印仍是黑白纸面）。本里程碑只做 .view-checkin 一个 scope。
+ * =========================================================================== */
+@page {
+  size: auto;
+  margin: 12mm;
+}
+
+@media print {
+  /* 纸面基色：黑白纸面（深色主题下打印也如此） */
+  body:has(.view-checkin) {
+    background: var(--print-paper);
+    color: var(--print-ink);
+  }
+
+  /* 壳框架隐藏：侧栏（含导航/品牌/底栏）、banner（含非 Tauri 环境 invoke 失败横幅
+   * ——打印样式必须把它们藏掉）——body:has() 作用域，仅当打卡单视图在场时生效 */
+  body:has(.view-checkin) .sidebar,
+  body:has(.view-checkin) .banner {
+    display: none !important;
+  }
+
+  /* 主区恢复纸面布局：去内边距 / 去滚动容器，表格全宽 */
+  body:has(.view-checkin) .content {
+    padding: 0;
+    overflow: visible;
+  }
+
+  /* ---- 打卡单视图 scope ---- */
+  /* 隐藏：屏幕页眉条（h2+操作按钮）、名单编辑区、批量操作列、空态、交互提示脚注 */
+  .view-checkin .checkin-head,
+  .view-checkin .checkin-editor,
+  .view-checkin .checkin-ops,
+  .view-checkin .checkin-th-ops,
+  .view-checkin .checkin-del,
+  .view-checkin .empty,
+  .view-checkin .hint {
+    display: none !important;
+  }
+
+  /* 打印页眉：屏幕隐藏；点击打印按钮时经 ref 写入当天日期（朗读打卡单 · 日期） */
+  .view-checkin .checkin-print-head {
+    display: block;
+    margin-bottom: 8mm;
+    text-align: center;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--print-ink);
+  }
+
+  /* 表格容器：去滚动 / 边框 / 圆角 / 高度限制 */
+  .view-checkin .checkin-scroll {
+    overflow: visible;
+    max-height: none;
+    border: none;
+    border-radius: 0;
+    background: var(--print-paper);
+  }
+
+  /* 表格：全宽、实线黑边框、无阴影圆角、黑白纸面 */
+  .view-checkin .checkin-table {
+    width: 100%;
+    min-width: 0;
+    border-collapse: collapse;
+    background: var(--print-paper);
+    box-shadow: none;
+  }
+
+  .view-checkin .checkin-table th,
+  .view-checkin .checkin-table td {
+    border: 1px solid var(--print-ink);
+    border-radius: 0;
+    box-shadow: none;
+    padding: 5px 7px;
+    color: var(--print-ink);
+    background: var(--print-paper);
+    vertical-align: middle;
+  }
+
+  /* 表头跨页重复 */
+  .view-checkin .checkin-table thead {
+    display: table-header-group;
+  }
+
+  /* 行内不截断（A4 分页） */
+  .view-checkin .checkin-table tr {
+    break-inside: avoid;
+  }
+
+  /* 学生打卡格：按钮变纯文本，○/◐/● 三态字符直接打印 */
+  .view-checkin .checkin-mark,
+  .view-checkin .checkin-mark.st0,
+  .view-checkin .checkin-mark.st1,
+  .view-checkin .checkin-mark.st2 {
+    width: auto;
+    height: auto;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    font-size: 18px;
+    line-height: 1;
+    color: var(--print-ink);
+    cursor: default;
+  }
+
+  /* 任务名 / 学生名 / 进度数字 统一墨色 */
+  .view-checkin .checkin-task-name,
+  .view-checkin .checkin-stu-name,
+  .view-checkin .checkin-stu-done,
+  .view-checkin .checkin-prog-num {
+    color: var(--print-ink);
+  }
+
+  /* 完成度：色块进度条隐藏 → 三态字符显示（未读 ○ / 部分 ◐ / 完成 ●） */
+  .view-checkin .checkin-prog-track {
+    display: none !important;
+  }
+
+  .view-checkin .checkin-prog-glyph {
+    display: inline-block;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--print-ink);
   }
 }

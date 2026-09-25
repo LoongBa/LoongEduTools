@@ -9,8 +9,15 @@
  * 模型：学生 × 朗读任务（课文/单元小节，教师自编）；单元格三态循环 ○(未读)→◐(在读)→●(读熟)。
  */
 import { useEffect, useMemo, useRef, useState } from "react";
+import { printCurrentPage } from "./printUtil";
 
 const LS_KEY = "loongedu.checkin.v1";
+
+/** 打印页眉日期（点击打印按钮时取当天，格式：2026年9月25日） */
+function todayLabel(): string {
+  const d = new Date();
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+}
 
 /** 三态：0 未读 / 1 在读 / 2 读熟 */
 type CellState = 0 | 1 | 2;
@@ -52,6 +59,14 @@ export default function CheckinView() {
   const [editOpen, setEditOpen] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const saveTimer = useRef<number | null>(null);
+  /** 打印页眉（屏幕隐藏、打印显示；日期在 onClick 里经 ref 直接写 DOM，避免 React 异步 state 带旧日期） */
+  const printHeadRef = useRef<HTMLDivElement>(null);
+
+  // 打印页眉默认日期（兜底：直接 Ctrl+P 时也有日期；点「打印打卡单」时 handlePrint 会重写为当天）
+  useEffect(() => {
+    const el = printHeadRef.current;
+    if (el) el.textContent = `朗读打卡单 · ${todayLabel()}`;
+  }, []);
 
   // 防抖持久化（≤500ms）
   useEffect(() => {
@@ -161,11 +176,22 @@ export default function CheckinView() {
 
   const hasStudents = data.students.length > 0;
 
+  /** 打印打卡单：先经 ref 写入当天日期（同步 DOM 写，再调 window.print()） */
+  function handlePrint() {
+    const el = printHeadRef.current;
+    if (el) el.textContent = `朗读打卡单 · ${todayLabel()}`;
+    printCurrentPage();
+  }
+
   return (
-    <section className="checkin">
+    <section className="checkin view-checkin">
+      <div className="checkin-print-head" ref={printHeadRef} />
       <header className="checkin-head">
         <h2>朗读打卡单</h2>
         <div className="checkin-actions">
+          <button className="ghost-btn inline" onClick={handlePrint}>
+            打印打卡单
+          </button>
           <button className="ghost-btn inline" onClick={() => setEditOpen((v) => !v)}>
             {editOpen ? "收起名单" : hasStudents ? "编辑名单" : "录入名单"}
           </button>
@@ -256,6 +282,9 @@ export default function CheckinView() {
                         <div className="checkin-prog-fill" style={{ width: `${pct}%` }} />
                       </div>
                       <span className="checkin-prog-num">{pct}%</span>
+                      <span className="checkin-prog-glyph" aria-hidden="true">
+                        {pct === 0 ? "○" : pct === 100 ? "●" : "◐"}
+                      </span>
                     </td>
                     {data.students.map((_, si) => {
                       const st = data.cells[cellKey(ti, si)] ?? 0;
