@@ -107,6 +107,13 @@ python .skill/minitool-zip-builder/scripts/audit_artifact.py publish/学科/新�
 - 素材（点读原始 book.json、_教材素材）不入库（仓库级约定，走素材库 / `PEP词库/data/diandu/book_data.zip` 分发；
   `PEP词库/data/vocab/pep_vocab.json` 词汇表规范化产物入库）。
 
+**并行会话边界（2026-09-26 确立，防交叉污染）**：每个会话**仅跟踪、维护、提交、推送本会话自己的更改**，
+避免影响并行任务——
+- 只 `git add` 本会话负责目录/文件的改动；暂存后 `git diff --cached --name-only` 复核，**确认未混入其它会话/任务的改动再提交**；
+- 不 stage / commit / push 其它会话的改动（如并行任务删除旧工具、重构共享文件、生成构建产物）；
+- 删除/移动/覆盖/影响他人产物前先列清单征得同意；不确定归属时停手先问；
+- 仓库级并行任务细则见根 `AGENTS.md`「并行任务规则」。
+
 ## 5. 进度维护规则
 
 - `RedTools/README.md` 顶部「全系列开发与交付进度清单」为**唯一权威清单**：
