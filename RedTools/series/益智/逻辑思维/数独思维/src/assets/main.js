@@ -26,6 +26,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     v1.14：设置面板（🔊 音效开关 / 🗑️ 清除本地进度 / ℹ️ 关于；数据只存本机）
     v1.15：更名「数独思维」（教育语境，避免「侦探」游戏感误会；成就/闯关称号同步
           中性化：十局小达人 / 思维高手）
+    v1.16：家长报告成长进度卡（每日挑战/成就/闯关地图进度，全派生零 schema）
     星级：hints===0 && errors===0 → 3★；hints<=1 && errors<=3 → 2★；否则 1★
    难度：双参数（盘面尺寸 × 目标已知格）4×4→10、6×6→21、9×9→33
    设计约束（对齐 series/益智/设计文档.md §5）：
@@ -2895,9 +2896,10 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
         distParts.push(LEVELS[li].name + ' ' + LEVELS[li].N + '×' + LEVELS[li].N + '：' + cnt + ' 局');
       }
       cardB.appendChild(makeEl('div', 'report-dist', distParts.join(' · ')));
-      // 技巧掌握度：4 枚徽章点亮状态（lit ✅ / 未点亮 🎯）
+      // 技巧掌握度：适龄 4 枚徽章点亮状态（lit ✅ / 未点亮 🎯；adv 进阶技巧不吹适龄徽章，仅列 base）
       var skillParts = [];
       for (li = 0; li < SKILLS.length; li++) {
+        if (SKILLS[li].group === 'adv') { continue; }
         var lit = !!store.skills[SKILLS[li].key];
         skillParts.push((lit ? '✅ ' : '🎯 ') + SKILLS[li].name);
       }
@@ -2905,6 +2907,39 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
       cardB.appendChild(makeEl('div', 'report-row', countLitSkills() + '/' + baseSkillCount() + ' 枚技巧徽章已点亮'));
     }
     viewEl.appendChild(cardB);
+    // 卡片 C：成长进度（v1.16）——每日挑战/成就/闯关地图，全派生零新 schema
+    var cardC = makeEl('div', 'report-card');
+    cardC.appendChild(makeEl('div', 'report-card-title', '📈 成长进度'));
+    // 每日挑战行
+    var dailyOk = !!(store.daily && store.daily.date === today);
+    var streakN = (store.checkin && store.checkin.streak) ? store.checkin.streak : 0;
+    cardC.appendChild(makeEl('div', 'report-row',
+      dailyOk ? '✅ 今日每日挑战已完成 · 连续打卡 ' + streakN + ' 天' : '🎯 今日每日挑战未完成'));
+    // 成就行（含最近解锁，取 store.achievements 日期最大者）
+    var achCount = countAchievements();
+    var achParts = '🏅 已解锁成就 ' + achCount + ' / ' + ACHIEVEMENTS.length + ' 枚';
+    if (achCount > 0) {
+      var latestName = '';
+      var latestTs = 0;
+      var ai2;
+      for (ai2 = 0; ai2 < ACHIEVEMENTS.length; ai2++) {
+        var aTs = store.achievements[ACHIEVEMENTS[ai2].key];
+        if (aTs && dsNum(aTs) > latestTs) { latestTs = dsNum(aTs); latestName = ACHIEVEMENTS[ai2].name; }
+      }
+      if (latestName) { achParts += ' · 最近：' + latestName; }
+    }
+    cardC.appendChild(makeEl('div', 'report-row', achParts));
+    // 闯关地图行（当前进度关 + 档位）
+    var mapDone = (store.mapProgress && store.mapProgress.completed) ? store.mapProgress.completed.length : 0;
+    var mapRow = '🗺️ 闯关地图 ' + mapDone + ' / ' + MAP_LEVELS.length + ' 关';
+    if (mapDone >= MAP_LEVELS.length) {
+      mapRow += ' · 已全部通关 🎉';
+    } else {
+      var curMl = MAP_LEVELS[mapDone];
+      mapRow += ' · 当前：' + curMl.name + '（' + (mapDone < 3 ? '简单' : mapDone < 6 ? '普通' : '困难') + '）';
+    }
+    cardC.appendChild(makeEl('div', 'report-row', mapRow));
+    viewEl.appendChild(cardC);
     // 返回难度
     var back = makeEl('button', 'btn-checkin', '← 返回');
     back.setAttribute('aria-label', '返回难度选择');

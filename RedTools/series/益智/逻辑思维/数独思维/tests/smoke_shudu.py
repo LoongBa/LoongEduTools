@@ -109,7 +109,7 @@ def main():
 
         # A. 首页
         check("A1 标题", page.locator(".header-title").inner_text() == "数独思维")
-        check("A2 版本", page.locator(".header-ver").inner_text().startswith("v1.15"))
+        check("A2 版本", page.locator(".header-ver").inner_text().startswith("v1.16"))
         check("A3 三张难度卡片", page.locator(".diff-btn").count() == 3)
         check("A4 打卡入口", page.locator(".btn-checkin").count() == 1)
 
@@ -265,6 +265,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
