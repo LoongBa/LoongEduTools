@@ -29,6 +29,8 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     v1.16：家长报告成长进度卡（每日挑战/成就/闯关地图进度，全派生零 schema）
     v1.17：每日挑战难度轮换（周1/2 简单→周3-5 普通→周6 困难→周日普通）+ 成就
           扩充 2 枚（闯关地图通关 / 月度坚持，6 → 8 枚）
+    v1.18：闯关×技巧徽章联动（每关 skill 字段，实战点亮 + 进阶关前置掌握门槛）
+          + 成就扩充 2 枚（闯关达人 / 小小收藏家，8 → 10 枚）+ 每日挑战 streak 卡
     星级：hints===0 && errors===0 → 3★；hints<=1 && errors<=3 → 2★；否则 1★
    难度：双参数（盘面尺寸 × 目标已知格）4×4→10、6×6→21、9×9→33
    设计约束（对齐 series/益智/设计文档.md §5）：
@@ -67,16 +69,17 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
   ];
   var suggestedName = null; // E5 自适应难度（v1.10）：最近两局连败 → 建议降档档名；非持久化，进入任一局即清除
   // 闯关地图（v1.13 X1）：3 档难度 × 每档 3 关 = 9 关线性推进；seedBase 固定 → 同关同题（可复玩）
-  var MAP_LEVELS = [
-    { i: 0, name: '1-1', levelKey: '4', seedBase: 10001, tip: '简单 4×4 · 初试身手' },
-    { i: 1, name: '1-2', levelKey: '4', seedBase: 10002, tip: '简单 4×4 · 小有心得' },
-    { i: 2, name: '1-3', levelKey: '4', seedBase: 10003, tip: '简单 4×4 · 轻松过关' },
-    { i: 3, name: '2-1', levelKey: '6', seedBase: 20001, tip: '普通 6×6 · 更进一步' },
-    { i: 4, name: '2-2', levelKey: '6', seedBase: 20002, tip: '普通 6×6 · 渐入佳境' },
-    { i: 5, name: '2-3', levelKey: '6', seedBase: 20003, tip: '普通 6×6 · 游刃有余' },
-    { i: 6, name: '3-1', levelKey: '9', seedBase: 30001, tip: '困难 9×9 · 挑战自我' },
-    { i: 7, name: '3-2', levelKey: '9', seedBase: 30002, tip: '困难 9×9 · 勇往直前' },
-    { i: 8, name: '3-3', levelKey: '9', seedBase: 30003, tip: '困难 9×9 · 思维高手' }
+var MAP_LEVELS = [
+    // v1.18：skill 字段映射到真实 SKILLS key（base 用 boxElim/rowColElim/blockElim/crossElim，adv 用 uniqueElim/xwing）
+    { i: 0, name: '1-1', levelKey: '4', seedBase: 10001, tip: '简单 4×4 · 初试身手', skill: 'boxElim' },
+    { i: 1, name: '1-2', levelKey: '4', seedBase: 10002, tip: '简单 4×4 · 小有心得', skill: 'boxElim' },
+    { i: 2, name: '1-3', levelKey: '4', seedBase: 10003, tip: '简单 4×4 · 轻松过关', skill: 'boxElim' },
+    { i: 3, name: '2-1', levelKey: '6', seedBase: 20001, tip: '普通 6×6 · 更进一步', skill: 'rowColElim' },
+    { i: 4, name: '2-2', levelKey: '6', seedBase: 20002, tip: '普通 6×6 · 渐入佳境', skill: 'rowColElim' },
+    { i: 5, name: '2-3', levelKey: '6', seedBase: 20003, tip: '普通 6×6 · 游刃有余', skill: 'blockElim' },
+    { i: 6, name: '3-1', levelKey: '9', seedBase: 30001, tip: '困难 9×9 · 挑战自我', skill: 'crossElim' },
+    { i: 7, name: '3-2', levelKey: '9', seedBase: 30002, tip: '困难 9×9 · 勇往直前', skill: 'uniqueElim' },
+    { i: 8, name: '3-3', levelKey: '9', seedBase: 30003, tip: '困难 9×9 · 思维高手', skill: 'xwing' }
   ];
   var pinchScale = 1;        // v1.11 双指缩放：当前缩放（1 = 原始）
   var pinchActive = false;   // 双指捏合进行中
@@ -1039,6 +1042,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
   }
   var winNewBest = false; // v1.6：本局是否新纪录（收藏切换后重建结算浮层时保留提示）
   var lastUnlocked = [];  // v1.12：本局新解锁成就名缓存（onWin 写入，buildWinOverlay 展示后清空）
+  var lastSkillLit = '';  // v1.18：本局闯关「实战点亮」的技巧名缓存（buildWinOverlay 展示后清空）
   function onWin() {
     if (state.won) { return; }
     state.won = true;
@@ -1069,10 +1073,22 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
       if (sug) { suggestedName = sug.name; } else { suggestedName = null; }
       // v1.12：每日挑战通关记录 + 成就结算（新解锁名缓存给结算浮层展示）
       if (state.isDaily) { store.daily = { date: fmtDate(new Date()), level: state.level }; } // v1.17：记录实际难度（周轮换）
-      // v1.13：闯关通关记录（线性解锁 → 按序 push，completed 含该关则不重复）
+// v1.13：闯关通关记录（线性解锁 → 按序 push，completed 含该关则不重复）
       if (state.fromMap >= 0) {
         var ml = MAP_LEVELS[state.fromMap];
-        if (store.mapProgress.completed.indexOf(ml.i) < 0) { store.mapProgress.completed.push(ml.i); }
+        if (!mapContains(store.mapProgress.completed, ml.i)) {
+          // v1.18：entry 改为 { i, doneAt }（旧数字项无 doneAt，读取时兜底跳过）
+          store.mapProgress.completed.push({ i: ml.i, doneAt: fmtDate(new Date()) });
+          // v1.18 实战点亮：首次通关且该关技巧徽章未点亮 → 点亮（adv→advSkills / base→skills）
+          var mk = skillByKey(ml.skill);
+          if (mk) {
+            var mLit = (mk.group === 'adv') ? !!store.advSkills[ml.skill] : !!store.skills[ml.skill];
+            if (!mLit) {
+              if (mk.group === 'adv') { store.advSkills[ml.skill] = true; } else { store.skills[ml.skill] = true; }
+              lastSkillLit = mk.name; // 结算浮层 note（buildWinOverlay 展示后清空）
+            }
+          }
+        }
       }
       lastUnlocked = checkAchievements();
     } else {
@@ -1095,12 +1111,17 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
       // v1.10 E5：连败降档建议（不扣分，仅提示）
       notes.push({ cls: 'checkin-line', text: '🌱 最近两局有点吃力，下次建议从「' + suggestedName + '」练起（不扣分）' });
     }
-    if (lastUnlocked && lastUnlocked.length > 0) {
+if (lastUnlocked && lastUnlocked.length > 0) {
       // v1.12：新解锁成就（一行一枚，展示后清空避免重复）
       for (var ai = 0; ai < lastUnlocked.length; ai++) {
         notes.push({ cls: 'checkin-line', text: '🏅 解锁成就：「' + lastUnlocked[ai] + '」' });
       }
       lastUnlocked = [];
+    }
+    if (lastSkillLit) {
+      // v1.18：闯关实战点亮技巧徽章（展示后清空避免重复）
+      notes.push({ cls: 'checkin-line', text: '🎓 实战点亮技巧徽章「' + lastSkillLit + '」' });
+      lastSkillLit = '';
     }
     var fav = isFav(state.origPuzzle);
     var btns = [
@@ -1213,14 +1234,16 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     dailyBtn.appendChild(makeEl('span', 'teach-btn-sub',
       dailyDone ? '今日已完成 ✅ 连续 ' + (store.checkin.streak || 0) + ' 天' :
         '今日一题 · ' + todayLv.name + ' ' + todayLv.N + '×' + todayLv.N + ' · 和全世界同题'));
-    dailyBtn.setAttribute('aria-label', dailyDone ? '今日每日挑战已完成' : '开始今日每日挑战');
+dailyBtn.setAttribute('aria-label', dailyDone ? '今日每日挑战已完成' : '开始今日每日挑战');
     dailyBtn.addEventListener('click', startDaily);
     viewEl.appendChild(dailyBtn);
+    // v1.18 每日挑战 streak 卡（连续打卡 + 本周 7 日圆点，全派生零 schema）
+    viewEl.appendChild(buildWeekStreakCard());
     // 闯关地图入口（v1.13 X1）：3 档 × 3 关线性推进，复用 seed 基建同关同题
     var mapComp = (store.mapProgress && store.mapProgress.completed) ? store.mapProgress.completed : [];
     var mapBtn = makeEl('button', 'teach-btn book-btn');
-    mapBtn.appendChild(makeEl('span', 'teach-btn-head', '🗺️ 闯关地图'));
-    mapBtn.appendChild(makeEl('span', 'teach-btn-sub', '通关 ' + mapComp.length + ' / 9 关'));
+mapBtn.appendChild(makeEl('span', 'teach-btn-head', '🗺️ 闯关地图'));
+    mapBtn.appendChild(makeEl('span', 'teach-btn-sub', '通关 ' + mapComp.length + ' / 9 关 · 掌握技巧 ' + litMapSkillCount() + ' / ' + SKILLS.length));
     mapBtn.setAttribute('aria-label', '打开闯关地图');
     mapBtn.addEventListener('click', showMapView);
     viewEl.appendChild(mapBtn);
@@ -1350,7 +1373,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     advBack.addEventListener('click', showDifficultyView);
     viewEl.appendChild(advBack);
   }
-/* ---------- 成就（v1.12 X3 / v1.17 扩 2 枚）：8 枚个人里程碑，无竞技无排行 ---------- */
+/* ---------- 成就（v1.12 X3 / v1.17 扩 2 / v1.18 扩 2）：10 枚个人里程碑，无竞技无排行 ---------- */
   var ACHIEVEMENTS = [
     { key: 'firstDaily', name: '每日挑战首通', desc: '完成一次每日挑战' },
     { key: 'daily3',     name: '连续打卡 3 天', desc: '连续 3 天完成打卡（含每日挑战）' },
@@ -1359,7 +1382,9 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     { key: 'allSkills',  name: '技巧大师', desc: '点亮全部 4 枚适龄技巧徽章' },
     { key: 'perfect3',   name: '三星完美', desc: '0 错 0 提示 ★★★ 通关一局' },
     { key: 'mapMaster',  name: '闯关地图通关', desc: '闯关地图全部 9 关通关' },      // v1.17
-    { key: 'monthStreak', name: '月度坚持', desc: '连续打卡 30 天' }                  // v1.17
+    { key: 'monthStreak', name: '月度坚持', desc: '连续打卡 30 天' },                 // v1.17
+    { key: 'mapStreak',  name: '闯关达人', desc: '连续 7 天闯关' },                   // v1.18
+    { key: 'favorite',   name: '小小收藏家', desc: '收藏 10 道好题' }                  // v1.18
   ];
   function countAchievements() {
     // 已解锁成就数（store.achievements 非空键个数）
@@ -1383,7 +1408,9 @@ var checks = {
       allSkills: countLitSkills() >= baseSkillCount(),
       perfect3: state.errors === 0 && state.hints === 0, // 3★（0 错 0 提示）
       mapMaster: (store.mapProgress && store.mapProgress.completed.length >= MAP_LEVELS.length), // v1.17
-      monthStreak: streak >= 30 // v1.17
+      monthStreak: streak >= 30, // v1.17
+      mapStreak: mapStreakDays() >= 7, // v1.18 闯关连续 7 天（doneAt 派生）
+      favorite: (store.favorites || []).length >= 10 // v1.18 收藏 10 道好题
     };
     var i;
     for (i = 0; i < ACHIEVEMENTS.length; i++) {
@@ -1439,22 +1466,43 @@ var checks = {
     if (doneCount >= MAP_LEVELS.length) {
       viewEl.appendChild(makeEl('div', 'map-done-banner', '🎉 闯关全部通关！点关卡可重玩'));
     }
-    var grid = makeEl('div', 'map-grid');
+var grid = makeEl('div', 'map-grid');
     for (var mi = 0; mi < MAP_LEVELS.length; mi++) {
       (function (ml) {
         var st = ml.i < doneCount ? 'done' : (ml.i === doneCount ? 'open' : 'locked');
         var emoji = st === 'done' ? '✅' : (st === 'open' ? '🔓' : '🔒');
+        // v1.18：技巧 tag——已点亮 💡 / 未点亮 🔒（base 查 store.skills、adv 查 store.advSkills）
+        var skObj = skillByKey(ml.skill);
+        var skIdx = -1;
+        var skLit = false;
+        var si;
+        if (skObj) {
+          for (si = 0; si < SKILLS.length; si++) { if (SKILLS[si].key === ml.skill) { skIdx = si; break; } }
+          skLit = (skObj.group === 'adv') ? !!store.advSkills[ml.skill] : !!store.skills[ml.skill];
+        }
         var node = makeEl('button', 'map-node' + (st === 'locked' ? ' locked' : ''));
         node.appendChild(makeEl('span', 'map-emoji', emoji));
         node.appendChild(makeEl('span', 'map-name', ml.name));
         node.appendChild(makeEl('span', 'map-tip', ml.tip));
+        if (skObj) {
+          // v1.18：技巧 tag——与徽章墙/教学入口视觉一致：已点亮 ✅ / 未点亮 🎯（base 查 store.skills、adv 查 store.advSkills；不用 🔒 避免与三态锁混淆）
+          node.appendChild(makeEl('span', 'map-skill-tag' + (skLit ? '' : ' off'),
+            (skLit ? '✅ ' : '🎯 ') + skObj.name));
+        }
         node.setAttribute('aria-label', ml.name + '，' + ml.tip);
         node.addEventListener('click', function () {
           if (st === 'locked') {
             toast('先通关上一关再解锁哦');
-          } else {
-            startMapLevel(ml.i); // 已通关可点击重玩（重玩通关不重复累计）
+            return;
           }
+          // v1.18：进阶技巧关未掌握 → 不直接开局，引导去「自由解题」学习
+          if (skObj && skObj.group === 'adv' && !skLit) {
+            toast('先到「自由解题」学一下「' + skObj.name + '」再挑战吧');
+            state.fromMap = -1; // 清掉残留闯关态，保证返回/重进不残留
+            openSkill(skIdx, 'adv');
+            return;
+          }
+          startMapLevel(ml.i); // 已通关可点击重玩（重玩通关不重复累计）
         });
         grid.appendChild(node);
       })(MAP_LEVELS[mi]);
@@ -2093,7 +2141,7 @@ var checks = {
     }
     return n;
   }
-  function baseSkillCount() {
+function baseSkillCount() {
     // base 技巧总数（v1.10）：排除 group==='adv' 的进阶条目——报告/徽章墙仍显示 X/4
     var n = 0;
     var i;
@@ -2101,6 +2149,99 @@ var checks = {
       if (SKILLS[i].group !== 'adv') { n++; }
     }
     return n;
+  }
+  /* ---------- 闯关×技巧徽章联动（v1.18 X1） ---------- */
+  function skillByKey(key) {
+    // 按 key 在 SKILLS 中查找技巧（base/adv 通用）；未找到返回 null
+    var i;
+    for (i = 0; i < SKILLS.length; i++) {
+      if (SKILLS[i].key === key) { return SKILLS[i]; }
+    }
+    return null;
+  }
+  function mapContains(comp, i) {
+    // completed 数组是否含关卡 i（兼容 v1.13 数字项与 v1.18 {i,doneAt} 对象项）
+    var k;
+    for (k = 0; k < comp.length; k++) {
+      var e = comp[k];
+      if (typeof e === 'number') { if (e === i) { return true; } }
+      else if (e && typeof e === 'object' && e.i === i) { return true; }
+    }
+    return false;
+  }
+  function mapStreakDays() {
+    // v1.18 闯关连续天数：completed 各 doneAt（旧数字项无该字段跳过）去重后，从今天（或昨天）回溯连续天数
+    var comp = (store.mapProgress && store.mapProgress.completed) ? store.mapProgress.completed : [];
+    var set = {};
+    var i;
+    for (i = 0; i < comp.length; i++) {
+      var e = comp[i];
+      if (e && typeof e === 'object' && typeof e.doneAt === 'string' && e.doneAt) { set[e.doneAt] = true; }
+    }
+    var cur = new Date();
+    cur.setHours(0, 0, 0, 0);
+    if (!set[fmtDate(cur)]) { cur.setDate(cur.getDate() - 1); }
+    var streak = 0;
+    while (set[fmtDate(cur)]) {
+      streak++;
+      cur.setDate(cur.getDate() - 1);
+    }
+    return streak;
+  }
+  function litMapSkillCount() {
+    // v1.18 闯关卡 sub「掌握技巧 Y / 6」：MAP_LEVELS 关卡涉及的技巧去重后已点亮数（分母 = SKILLS.length = 4 适龄 + 2 进阶，动态适配）
+    var seen = {};
+    var lit = 0;
+    var i, sk;
+    for (i = 0; i < MAP_LEVELS.length; i++) {
+      sk = skillByKey(MAP_LEVELS[i].skill);
+      if (!sk || seen[sk.key]) { continue; }
+      seen[sk.key] = true;
+      if (sk.group === 'adv' ? !!store.advSkills[sk.key] : !!store.skills[sk.key]) { lit++; }
+    }
+    return lit;
+  }
+  function buildWeekStreakCard() {
+    // v1.18 每日挑战 streak 卡：连续打卡大字 + 今日状态 + 本周 7 日圆点（全派生 store.checkin.dates，零 schema）
+    var dates = (store.checkin && store.checkin.dates) ? store.checkin.dates : [];
+    var set = {};
+    var di;
+    for (di = 0; di < dates.length; di++) { set[dates[di]] = true; }
+    var streak = calcStreak(dates);
+    var todayStr = fmtDate(new Date());
+    var todayChecked = !!set[todayStr];
+    var card = makeEl('div', 'streak-card');
+    var left = makeEl('div', 'streak-left');
+    left.appendChild(makeEl('div', 'streak-title', '📅 打卡日历'));
+    left.appendChild(makeEl('div', 'streak-num', '' + streak));
+    left.appendChild(makeEl('div', 'streak-today', todayChecked ? '✅ 今日已打卡' : '🎯 今日未完成'));
+    card.appendChild(left);
+    var right = makeEl('div', 'streak-week');
+    var todayZero = new Date();
+    todayZero.setHours(0, 0, 0, 0);
+    var mon = new Date(todayZero.getTime());
+    mon.setDate(todayZero.getDate() - ((todayZero.getDay() + 6) % 7)); // 本周一
+    var wd = ['一', '二', '三', '四', '五', '六', '日'];
+    for (var w = 0; w < 7; w++) {
+      (function (idx) {
+        var dd = new Date(mon.getTime());
+        dd.setDate(mon.getDate() + idx);
+        var ds = fmtDate(dd);
+        var isToday = (ds === todayStr);
+        var future = (dd.getTime() > todayZero.getTime());
+        var dotCls = 'streak-dot';
+        if (future) { dotCls += ' future'; }
+        else if (isToday) { dotCls += ' today' + (set[ds] ? ' lit' : ''); }
+        else if (set[ds]) { dotCls += ' lit'; }
+        var cell = makeEl('div', 'streak-day');
+        cell.appendChild(makeEl('span', dotCls, ''));
+        cell.appendChild(makeEl('span', 'streak-wd', wd[idx]));
+        right.appendChild(cell);
+      })(w);
+    }
+    card.appendChild(right);
+    card.appendChild(makeEl('div', 'streak-sub', '连续打卡 ' + streak + ' 天 · 明天继续哦'));
+    return card;
   }
   function drawResultCard() {
     // 分享成绩卡：浅蓝渐变底 + 装饰圆点 + 难度/星级/数据 + 迷你完成盘面 + 徽章数 + 页脚

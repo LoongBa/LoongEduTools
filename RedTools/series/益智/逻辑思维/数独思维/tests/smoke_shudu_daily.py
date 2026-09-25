@@ -2,11 +2,11 @@
 """数独思维 v1.12 冒烟：每日挑战（当日同题种子生成）+ 成就系统（X3，无竞技）
 
 用例：
-  A. 难度页：📅 每日挑战卡（未完成）+ 🏅 成就卡（0/6）
+  A. 难度页：📅 每日挑战卡（未完成）+ 🏅 成就卡（0/10）
   B. 每日挑战开局：6×6 + 顶栏「· 每日题」
   C. 通关 → store.daily 写入 + 结算浮层「🏅 解锁成就：每日挑战首通」
-  D. 返回难度：每日卡变「今日已完成 ✅」+ 成就卡（1/6）
-  E. 成就视图：6 卡（🏅 1 解锁 + 🔒 5 未解锁）+ 解锁日期
+  D. 返回难度：每日卡变「今日已完成 ✅」+ 成就卡（2/10）
+  E. 成就视图：10 卡（🏅 2 解锁 + 🔒 8 未解锁）+ 解锁日期
   F. 每日同题：再次进入每日挑战 → 盘面与首次完全一致
   G. 全程无 JS 报错
 """
@@ -86,7 +86,7 @@ def main():
         check("A1 每日挑战卡存在", page.locator("button:has-text('每日挑战')").count() == 1)
         daily_sub = page.locator("button:has-text('每日挑战') .teach-btn-sub").inner_text()
         check("A2 未完成 sub（今日一题）", "今日一题" in daily_sub, daily_sub)
-        check("A3 成就卡存在 0/8", "0 / 8" in page.locator("button:has-text('成就') .teach-btn-sub").inner_text())
+        check("A3 成就卡存在 0/10", "0 / 10" in page.locator("button:has-text('成就') .teach-btn-sub").inner_text())
 
         # B. 每日挑战开局
         first_board = None
@@ -112,17 +112,17 @@ def main():
         # D. 返回难度：每日卡已完成 + 成就 1/6
         daily_sub2 = page.locator("button:has-text('每日挑战') .teach-btn-sub").inner_text()
         check("D1 每日卡变「今日已完成 ✅」", "今日已完成" in daily_sub2 and "✅" in daily_sub2, daily_sub2)
-        check("D2 成就卡 2/8（首通+三星完美）", "2 / 8" in page.locator("button:has-text('成就') .teach-btn-sub").inner_text())
+        check("D2 成就卡 2/10（首通+三星完美）", "2 / 10" in page.locator("button:has-text('成就') .teach-btn-sub").inner_text())
 
         # E. 成就视图
         page.locator("button:has-text('成就')").click()
         page.wait_for_timeout(250)
         ach_cards = page.locator(".teach-btn.badge-card")
-        check("E1 成就卡 8 张", ach_cards.count() == 8)
+        check("E1 成就卡 10 张", ach_cards.count() == 10)
         check("E2 已解锁 🏅 2 枚",
               page.locator(".teach-btn.badge-card .teach-btn-head", has_text="🏅").count() == 2)
-        check("E3 未解锁 🔒 6 枚",
-              page.locator(".teach-btn.badge-card .teach-btn-head", has_text="🔒").count() == 6)
+        check("E3 未解锁 🔒 8 枚",
+              page.locator(".teach-btn.badge-card .teach-btn-head", has_text="🔒").count() == 8)
         unlocked_text = ach_cards.locator(".teach-btn-sub").all_inner_texts()
         check("E4 解锁卡含日期", any("解锁于" in s for s in unlocked_text), " | ".join(unlocked_text))
         page.locator("button:has-text('← 返回')").click()

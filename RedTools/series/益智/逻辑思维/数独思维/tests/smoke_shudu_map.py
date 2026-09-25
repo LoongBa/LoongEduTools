@@ -3,10 +3,11 @@
 
 用例：
   A. 难度页：🗺️ 闯关地图卡（0/9 关）
-  B. 地图视图：9 节点 3×3（🔓1 可玩 + 🔒8 锁定）+ 无竞技提示
+  B. 地图视图：9 节点 3×3（🔓1 可玩 + 🔒8 锁定）+ 无竞技提示 + 技巧 tag（9 🎯 未点亮）
   C. 开始 1-1（简单）：4×4 + 顶栏「· 关卡 1-1」+ 同关同题（再次进入盘面一致）
-  D. 通关 1-1 → store.mapProgress.completed=[0] + 地图卡 1/9
+  D. 通关 1-1 → store.mapProgress.completed=[{i:0,doneAt}] + 地图卡 1/9
   E. 地图视图：✅1 已通 + 🔓1 可玩（2-1）+ 🔒7 锁定；点锁定节点温和提示
+  G. adv 关 gate：注入前 7 关完成 → 3-2（uniqueElim 未掌握）点击 → 引导去自由解题 + 跳转教学关
   F. 全程无 JS 报错
 """
 from pathlib import Path
@@ -96,6 +97,9 @@ def main():
         check("B4 锁定 🔒 8 个", page.locator(".map-node", has_text="🔒").count() == 8)
         check("B5 无竞技提示", "无排行" in page.locator(".home-hint").inner_text()
               or "无竞技" in page.locator(".home-hint").inner_text())
+        # v1.18：技巧 tag——初始 9 关全部未点亮 🎯（不占用三态 🔒 计数）
+        check("B6 技巧 tag 9 个未点亮 🎯", page.locator(".map-skill-tag", has_text="🎯").count() == 9)
+        check("B7 技巧 tag 与三态不冲突（🔒 仍 8）", page.locator(".map-node", has_text="🔒").count() == 8)
 
         # C. 开始 1-1（第一个可玩节点）
         page.locator(".map-node", has_text="🔓").click()
@@ -118,7 +122,8 @@ def main():
         fill_board(page, solve_via_page(page, pz, size))
         page.wait_for_timeout(400)
         mp = page.evaluate("JSON.parse(localStorage.getItem('%s')).mapProgress" % STORE_KEY)
-        check("D1 store.mapProgress.completed=[0]", mp and mp["completed"] == [0], str(mp)[:60])
+        check("D1 store.mapProgress.completed 含 i=0（v1.18 {i,doneAt}）",
+              mp and len(mp["completed"]) == 1 and mp["completed"][0]["i"] == 0, str(mp)[:80])
         page.locator("button:has-text('选难度')").click()
         page.wait_for_timeout(300)
         map_sub2 = page.locator("button:has-text('闯关地图') .teach-btn-sub").inner_text()
@@ -127,7 +132,7 @@ def main():
         # E. 地图视图进度
         page.locator("button:has-text('闯关地图')").click()
         page.wait_for_timeout(250)
-        check("E1 已通 ✅ 1", page.locator(".map-node", has_text="✅").count() == 1)
+        check("E1 已通 ✅ 1（三态 emoji 精确）", page.locator(".map-node .map-emoji", has_text="✅").count() == 1)
         check("E2 可玩 🔓 1（下一关 1-2 线性推进）", page.locator(".map-node", has_text="🔓").count() == 1
               and "1-2" in page.locator(".map-node", has_text="🔓").inner_text(),
               " | ".join(page.locator(".map-node", has_text="🔓").all_inner_texts()))
@@ -139,13 +144,39 @@ def main():
         check("E4 锁定节点温和提示", "先通关" in view_text, view_text[:120])
         page.locator("button:has-text('← 返回')").click()
         page.wait_for_timeout(200)
+        check("E5 地图卡 1/9 + 掌握技巧 1/6（1-1 点亮 boxElim 去重）",
+              "1 / 9" in page.locator("button:has-text('闯关地图') .teach-btn-sub").inner_text()
+              and "掌握技巧 1 / 6" in page.locator("button:has-text('闯关地图') .teach-btn-sub").inner_text(),
+              page.locator("button:has-text('闯关地图') .teach-btn-sub").inner_text())
+
+        # G. v1.18 adv 关 gate：注入前 7 关完成 → 3-2（uniqueElim 进阶）未掌握 → 点击引导去自由解题
+        page.evaluate("""function () {
+          var s = JSON.parse(localStorage.getItem('redtools.shudurumen.v1'));
+          s.mapProgress = { completed: [] };
+          for (var n = 0; n < 7; n++) { s.mapProgress.completed.push({ i: n, doneAt: '20260920' }); }
+          localStorage.setItem('redtools.shudurumen.v1', JSON.stringify(s)); }""")
+        page.reload()
+        page.wait_for_timeout(600)
+        page.locator("button:has-text('闯关地图')").click()
+        page.wait_for_timeout(250)
+        # 3-2（i=7，uniqueElim）线性解锁 🔓 + 技巧未点亮 → 点时引导跳转自由解题
+        page.locator(".map-node", has_text="3-2").click()
+        page.wait_for_timeout(400)
+        g_text = page.locator("body").inner_text()
+        check("G1 adv 未掌握点击 → 引导去「自由解题」学技巧",
+              "学一下" in g_text and "自由解题" in g_text, g_text[:200])
+        check("G2 跳转唯一余数教学关", "唯一余数" in g_text, g_text[:160])
+        check("G3 mapProgress 未推进", 
+              page.evaluate("JSON.parse(localStorage.getItem('%s')).mapProgress.completed.length" % STORE_KEY) == 7)
+        page.locator("button:has-text('← 返回')").click()
+        page.wait_for_timeout(200)
 
         # F. 无 JS 报错
         check("F1 全程无 JS 报错", len(errors) == 0, "; ".join(errors))
 
         browser.close()
 
-    print("\n=== 结果：%d 项，失败 %d ===" % (16, len(FAILS)))
+    print("\n=== 结果：%d 项，失败 %d ===" % (23, len(FAILS)))
     if FAILS:
         print("失败项:", ", ".join(FAILS))
         raise SystemExit(1)
