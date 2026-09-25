@@ -223,6 +223,7 @@
     {
       "package_id": "pep-reader", "package_version": "1.3.3",
       "name": "教材点读", "package_type": "app",
+      "categories": ["扩展"],
       "required_license_level": 2, "min_shell_version": "0.1.0",
       "size_bytes": 52428800, "checksum": "sha256:...",
       "download_url": "/api/edu/packages/pep-reader/1.3.3"
@@ -232,7 +233,8 @@
 }
 ```
 
-> MVP 静态 JSON + R2 手工维护（简单配置）；内容包市场（搜索/分类/统计）为 P4 演进——manifest 结构预留 `categories`/`description` 字段（见 Schema §2.2）。
+> MVP 静态 JSON + R2 手工维护（简单配置）；内容包市场（搜索/分类/统计）为 P4 演进。
+> `categories` 字段**已实装**（R03 §3.2 方案 A：内容/扩展分区依据）：上传可选字段（CSV→数组），缺省空数组，向后兼容；`description` 仍为预留字段（见 Schema §2.2）。
 
 ### 4.2 下载内容包
 
@@ -254,10 +256,50 @@
 
 ```jsonc
 // 请求（X-Api-Key: <pkg-admin-key>，multipart/form-data）
-// field: package_id, version, license_level, min_shell_version, file(content-pack.zip)
+// field: package_id, version, license_level, min_shell_version, categories(可选, CSV→数组), file(content-pack.zip)
 // 响应 201
 { "package_id": "...", "version": "...", "checksum": "sha256:..." }
 ```
+
+### 4.4 工具箱清单（toolbox manifest）
+
+| 项 | 内容 |
+|---|---|
+| `GET /api/edu/toolbox/manifest` | 工具箱工具清单（Bearer JWT；R03 §4.4 服务端清单，静态 JSON + R2 手工维护，增删改只改服务端清单） |
+
+```jsonc
+// 响应 200
+{
+  "version": "1.0",
+  "updated_at": "2026-09-25T00:00:00Z",
+  "categories": [
+    { "id": "capture", "name": "截屏录屏" },
+    { "id": "annotate", "name": "屏幕标注" },
+    { "id": "keys", "name": "按键显示" },
+    { "id": "keyboard", "name": "虚拟键盘" }
+  ],
+  "tools": [{
+    "id": "keyviz",
+    "name": "Keyviz 按键显示",
+    "category": "keys",
+    "tags": ["按键", "快捷键", "演示"],
+    "description": "实时显示按键/鼠标操作，教学演示用",
+    "license": "MIT",
+    "homepage": "https://github.com/mulaRahul/keyviz",
+    "download_url": "https://github.com/mulaRahul/keyviz/releases",
+    "size_bytes": 1234567,        // 未知/未钉 asset 时为 0
+    "checksum": "sha256:...",     // 未知/未钉 asset 时为 ""
+    "portable": true,
+    "win7_ok": false,
+    "recommend": true,
+    "entry": "keyviz.exe"         // 落盘后的相对启动文件
+  }]
+}
+```
+
+- `recommend`：每类 ≥1 个推荐标记（"推荐"角标/筛选依据）；`win7_ok` 按工具自身平台要求标注（R03 §4.5 平台提醒，不强制工具本身 Win7）。
+- MVP `download_url` 指向官方 GitHub releases **页面**（或官网下载页），不钉深链 asset（避免 404）；`size_bytes`/`checksum` 在钉定 asset 后回填。
+- 首发目录（R03 §4.5 / 附录 A，7 工具 4 类）：截屏录屏 = SnipEasy（MIT，推荐）/ WinShot（BSD-3）/ Snipaste（免费闭源）；屏幕标注 = 智绘教 Inkeys（GPL-3.0，Win7 RTM+，推荐）/ MarkerOn（MIT）；按键显示 = Keyviz（开源，推荐）；虚拟键盘 = osk.exe（系统内置，零分发，推荐）。
 
 ---
 
@@ -322,6 +364,7 @@
 | GET | `/api/edu/packages/manifest` | 内容包清单 | ✅ |
 | GET | `/api/edu/packages/<id>/<ver>` | 下载内容包 | ✅ |
 | POST | `/api/edu/packages` | 服务端发新包（管理） | API Key |
+| GET | `/api/edu/toolbox/manifest` | 工具箱工具清单 | ✅ |
 | POST | `/api/edu/report/ingest` | 白名单上报 | ✅ |
 
 ---
