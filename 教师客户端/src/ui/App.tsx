@@ -137,7 +137,7 @@ function App() {
           <span className="brand-mark">龙</span>
           <div>
             <div className="brand-name">龙爸乐学</div>
-            <div className="brand-sub">教师助手 v0.1.0</div>
+            <div className="brand-sub">桃李助手 v0.2.0</div>
           </div>
         </div>
         <nav>
@@ -359,7 +359,7 @@ function App() {
             <h2>设置</h2>
             <dl className="kv">
               <dt>客户端版本</dt>
-              <dd>0.1.0</dd>
+              <dd>0.2.0</dd>
               <dt>WebView2</dt>
               <dd>
                 {wv2 === "checking"
