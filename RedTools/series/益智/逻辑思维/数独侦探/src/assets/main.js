@@ -19,6 +19,8 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
           徽章）+ E5 自适应难度（连败两局自动建议降档，不扣分）
     v1.11：分享题二维码（微信长按识别导入；qrcode.js MIT 内嵌，UTF-8 编码中文）
           + 双指缩放棋盘（E4 P2 捏合缩放 + 1:1 复位按钮）
+    v1.12：每日挑战（当日种子同题，solver.js 零改动——Math.random 注入）+ 成就系统
+          （X3：6 枚个人里程碑，无竞技无排行）
     星级：hints===0 && errors===0 → 3★；hints<=1 && errors<=3 → 2★；否则 1★
    难度：双参数（盘面尺寸 × 目标已知格）4×4→10、6×6→21、9×9→33
    设计约束（对齐 series/益智/设计文档.md §5）：
@@ -89,7 +91,8 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     hintExpl: null,   // 提示讲解（v1.6）：{kind,i,hl,have,miss}，3 秒后或下次操作清除
     replayFrom: null, // 回放来源（v1.6）：'mistake' 错题本 / 'favorite' 收藏本 / null 普通局
     replayMsgShown: false, // v1.6：错题回放提示行是否已显示（仅首次进入提示）
-    createdFrom: 'normal'  // 题目来源（v1.7）：'normal' 普通局（含回放，正常计成绩）/ 'import' 导入题（不计成绩、不打卡）
+    createdFrom: 'normal', // 题目来源（v1.7）：'normal' 普通局（含回放，正常计成绩）/ 'import' 导入题（不计成绩、不打卡）
+    isDaily: false         // 每日挑战局标记（v1.12）：顶栏追加「· 每日题」，通关记 store.daily
   };
 
   /* ---------- 持久化（redtools.shudurumen.v1） ---------- */
@@ -106,6 +109,8 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
       advSkills: {},                // 进阶技巧徽章（v1.10）：{ uniqueElim: true, xwing: true } 独立于 base skills，零迁移
       mistakes: [],                 // 错题本（v1.6）：[{id,ts,level,board,solution,errors,hintIdx,result,stars}] 通关/中途退出记录，上限 50 条
       favorites: [],                // 收藏本（v1.6）：[{id,ts,level,board,solution}] 通关后可收藏的想再练题目
+      daily: null,                  // 每日挑战完成记录（v1.12）：{ date:'YYYYMMDD', level:'6' }；未完成 null
+      achievements: {},             // 成就解锁（v1.12）：{ key: 'YYYYMMDD' }（6 枚个人里程碑，无竞技）
       cur: null                     // 断局快照（v1.2）：未完成（level,N,givensCount,puzzle,solution,given,pencils,undoStack,hints,errors,selected,penMode,ms,startStamp,origPuzzle)
     };
   }
@@ -123,6 +128,8 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
           if (!obj.advSkills) { obj.advSkills = {}; } // v1.10：旧存档无进阶徽章字段 → 补空
           if (!obj.mistakes) { obj.mistakes = []; }   // v1.6：旧存档无错题本字段 → 补空
           if (!obj.favorites) { obj.favorites = []; } // v1.6：旧存档无收藏本字段 → 补空
+          if (!('daily' in obj)) { obj.daily = null; } // v1.12：用 in 检查（null 也是合法值）
+          if (!obj.achievements) { obj.achievements = {}; } // v1.12：旧存档无成就字段 → 补空
           if (!obj.cur) { obj.cur = null; }
           if (obj.history.length > 30) { obj.history = obj.history.slice(-30); }
           return obj;
@@ -257,6 +264,19 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
       if (LEVELS[i].key === key) { return LEVELS[i]; }
     }
     return LEVELS[0];
+  }
+  function mulberry32(a) {
+    // v1.12：标准种子 PRNG（Chrome 28+ 支持 Math.imul）——每日挑战用固定种子生成同题
+    return function () {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      var t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function dailySeed() {
+    // v1.12：当日整数种子（YYYYMMDD → int）——同一天同 seed → 每日挑战同题；跨天换题
+    return parseInt(fmtDate(new Date()), 10);
   }
   /* 格子列宽/格内字体按盘面尺寸 */
   function colPct(n) {
@@ -588,7 +608,8 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     var title = makeEl('span', 'level-title', lv.name);
     title.appendChild(makeEl('small', '',
       state.N + '×' + state.N + ' · 已知 ' + state.givensCount + ' 格' +
-      (state.createdFrom === 'import' ? ' · 导入题' : ''))); // v1.7：导入题顶栏标记
+      (state.createdFrom === 'import' ? ' · 导入题' : '') +
+      (state.isDaily ? ' · 每日题' : ''))); // v1.7 导入题顶栏标记 / v1.12 每日题顶栏标记
     topbar.appendChild(title);
     timerEl = makeEl('span', 'top-timer', '⏱ 00.0');
     topbar.appendChild(timerEl);
@@ -984,6 +1005,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     onWin();
   }
   var winNewBest = false; // v1.6：本局是否新纪录（收藏切换后重建结算浮层时保留提示）
+  var lastUnlocked = [];  // v1.12：本局新解锁成就名缓存（onWin 写入，buildWinOverlay 展示后清空）
   function onWin() {
     if (state.won) { return; }
     state.won = true;
@@ -1012,6 +1034,9 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
       // v1.10 E5：根据最近两局生成降档建议（import 局不进 history，不更新建议）
       var sug = suggestLevel();
       if (sug) { suggestedName = sug.name; } else { suggestedName = null; }
+      // v1.12：每日挑战通关记录 + 成就结算（新解锁名缓存给结算浮层展示）
+      if (state.isDaily) { store.daily = { date: fmtDate(new Date()), level: '6' }; }
+      lastUnlocked = checkAchievements();
     } else {
       winNewBest = false; // v1.7：导入题不产生新纪录
     }
@@ -1031,6 +1056,13 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     if (suggestedName) {
       // v1.10 E5：连败降档建议（不扣分，仅提示）
       notes.push({ cls: 'checkin-line', text: '🌱 最近两局有点吃力，下次建议从「' + suggestedName + '」练起（不扣分）' });
+    }
+    if (lastUnlocked && lastUnlocked.length > 0) {
+      // v1.12：新解锁成就（一行一枚，展示后清空避免重复）
+      for (var ai = 0; ai < lastUnlocked.length; ai++) {
+        notes.push({ cls: 'checkin-line', text: '🏅 解锁成就：「' + lastUnlocked[ai] + '」' });
+      }
+      lastUnlocked = [];
     }
     var fav = isFav(state.origPuzzle);
     var btns = [
@@ -1132,6 +1164,23 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     favBtn.setAttribute('aria-label', '打开收藏本');
     favBtn.addEventListener('click', showFavoriteView);
     viewEl.appendChild(favBtn);
+    // 每日挑战入口（v1.12）：当日种子同题，计入普通成绩与打卡（无竞技）
+    var dToday = fmtDate(new Date());
+    var dailyDone = !!(store.daily && store.daily.date === dToday);
+    var dailyBtn = makeEl('button', 'teach-btn book-btn');
+    dailyBtn.appendChild(makeEl('span', 'teach-btn-head', '📅 每日挑战'));
+    dailyBtn.appendChild(makeEl('span', 'teach-btn-sub',
+      dailyDone ? '今日已完成 ✅ 连续 ' + (store.checkin.streak || 0) + ' 天' : '今日一题 · 6×6 · 和全世界同题'));
+    dailyBtn.setAttribute('aria-label', dailyDone ? '今日每日挑战已完成' : '开始今日每日挑战');
+    dailyBtn.addEventListener('click', startDaily);
+    viewEl.appendChild(dailyBtn);
+    // 成就入口（v1.12）：个人里程碑，无竞技无排行
+    var achBtn = makeEl('button', 'teach-btn book-btn');
+    achBtn.appendChild(makeEl('span', 'teach-btn-head', '🏅 成就'));
+    achBtn.appendChild(makeEl('span', 'teach-btn-sub', '已解锁 ' + countAchievements() + ' / ' + ACHIEVEMENTS.length + ' 枚'));
+    achBtn.setAttribute('aria-label', '打开成就墙');
+    achBtn.addEventListener('click', showAchievementView);
+    viewEl.appendChild(achBtn);
     // 家长报告入口（v1.9）：今日反馈 / 近 7 天 / 技巧掌握度（只读本地数据）
     var reportBtn = makeEl('button', 'teach-btn book-btn');
     reportBtn.appendChild(makeEl('span', 'teach-btn-head', '📊 家长报告'));
@@ -1243,6 +1292,76 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     advBack.style.marginTop = '4px';
     advBack.addEventListener('click', showDifficultyView);
     viewEl.appendChild(advBack);
+  }
+  /* ---------- 成就（v1.12 X3）：6 枚个人里程碑，无竞技无排行 ---------- */
+  var ACHIEVEMENTS = [
+    { key: 'firstDaily', name: '每日挑战首通', desc: '完成一次每日挑战' },
+    { key: 'daily3',     name: '连续打卡 3 天', desc: '连续 3 天完成打卡（含每日挑战）' },
+    { key: 'daily7',     name: '连续打卡 7 天', desc: '连续 7 天完成打卡' },
+    { key: 'games10',    name: '十局小侦探', desc: '累计完成 10 局' },
+    { key: 'allSkills',  name: '技巧大师', desc: '点亮全部 4 枚适龄技巧徽章' },
+    { key: 'perfect3',   name: '三星完美', desc: '0 错 0 提示 ★★★ 通关一局' }
+  ];
+  function countAchievements() {
+    // 已解锁成就数（store.achievements 非空键个数）
+    var n = 0;
+    var k;
+    for (k in store.achievements) {
+      if (Object.prototype.hasOwnProperty.call(store.achievements, k) && store.achievements[k]) { n++; }
+    }
+    return n;
+  }
+  function checkAchievements() {
+    // 结算成就：返回本局新解锁的名称数组（已解锁跳过，不重复写入；成就键值存解锁日期）
+    var unlocked = [];
+    var today = fmtDate(new Date());
+    var streak = store.checkin && store.checkin.streak ? store.checkin.streak : 0;
+    var checks = {
+      firstDaily: state.isDaily,
+      daily3: streak >= 3,
+      daily7: streak >= 7,
+      games10: store.history.length >= 10,
+      allSkills: countLitSkills() >= baseSkillCount(),
+      perfect3: state.errors === 0 && state.hints === 0 // 3★（0 错 0 提示）
+    };
+    var i;
+    for (i = 0; i < ACHIEVEMENTS.length; i++) {
+      var a = ACHIEVEMENTS[i];
+      if (checks[a.key] && !store.achievements[a.key]) {
+        store.achievements[a.key] = today;
+        unlocked.push(a.name);
+      }
+    }
+    return unlocked;
+  }
+  function showAchievementView() {
+    // 成就墙（v1.12）：仿徽章墙——已解锁 🏅 / 未解锁 🔒，个人里程碑
+    hideOverlay();
+    stopTimer();
+    state.won = false;
+    state.playing = false;
+    renderHeader('成就');
+    clearNode(viewEl);
+    viewEl.appendChild(makeEl('div', 'page-title', '成就墙 · 个人里程碑'));
+    viewEl.appendChild(makeEl('div', 'home-hint', '每个成就记录你的坚持（无排行无竞技）'));
+    for (var ac = 0; ac < ACHIEVEMENTS.length; ac++) {
+      (function (a) {
+        var got = store.achievements[a.key];
+        var head = got ? '🏅 ' + a.name : '🔒 ' + a.name;
+        var sub = got ? '解锁于 ' + got : a.desc;
+        var card = makeEl('button', 'teach-btn badge-card');
+        card.appendChild(makeEl('span', 'teach-btn-head', head));
+        card.appendChild(makeEl('span', 'teach-btn-sub', sub));
+        card.setAttribute('aria-label', head + '，' + sub);
+        viewEl.appendChild(card);
+      })(ACHIEVEMENTS[ac]);
+    }
+    // 底部：返回难度
+    var achBack = makeEl('button', 'btn-checkin', '← 返回');
+    achBack.setAttribute('aria-label', '返回难度选择');
+    achBack.style.marginTop = '4px';
+    achBack.addEventListener('click', showDifficultyView);
+    viewEl.appendChild(achBack);
   }
   /* ---------- 错题本 / 收藏本（v1.6） ---------- */
   function renderMiniBoard(container, board, N) {
@@ -1401,6 +1520,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     state.hintExpl = null;
     state.replayMsgShown = false;
     state.createdFrom = 'normal'; // v1.7：回放按普通局计成绩
+    state.isDaily = false;        // v1.12：回放非每日挑战
     state.startMs = 0;
     state.ms = 0;
     // 错题本回放：标记上次填错的位置（浅红，非错误计数）
@@ -1849,6 +1969,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     state.errMarks = null;
     state.hintExpl = null;
     state.replayMsgShown = false;
+    state.isDaily = false; // v1.12：导入局非每日挑战
     state.startMs = 0;
     state.ms = 0;
     renderGameView();
@@ -2050,10 +2171,19 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     document.body.appendChild(ov);
     overlayEl = ov;
   }
-  function newRound(levelKey) {
+  function newRound(levelKey, seed) {
     clearCur(); // 新局生成：旧断局快照作废
     var lv = findLevel(levelKey);
-    var g = SUDOKU.genPuzzle(lv.N, lv.givens);
+    // v1.12：seed 存在 → 临时替换 Math.random 为种子 PRNG（solver.js 零改动）；否则普通随机
+    var g;
+    if (seed) {
+      var origRandom = Math.random;
+      Math.random = mulberry32(seed);
+      try { g = SUDOKU.genPuzzle(lv.N, lv.givens); }
+      finally { Math.random = origRandom; }
+    } else {
+      g = SUDOKU.genPuzzle(lv.N, lv.givens);
+    }
     state.level = lv.key;
     state.N = lv.N;
     state.givens = lv.givens;
@@ -2083,6 +2213,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     state.hintExpl = null;
     state.replayFrom = null;
     state.createdFrom = 'normal'; // v1.7：新生成局为普通来源（正常计成绩）
+    state.isDaily = false;        // v1.12：新局非每日挑战（startDaily 在 newRound 之后置 true）
   }
   function startGame(levelKey) {
     if (!SUDOKU) {
@@ -2094,6 +2225,15 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     renderGameView();
     renderGameFooter();
     startTimer(); // 计时从游戏页渲染开始（数独整局计时）
+  }
+  function startDaily() {
+    // v1.12：每日挑战——固定 6×6 普通 + 当日种子同题（计入普通成绩打卡；无竞技）
+    suggestedName = null; // 每日挑战同样消费降档建议
+    newRound('6', dailySeed());
+    state.isDaily = true;
+    renderGameView();
+    renderGameFooter();
+    startTimer();
   }
   function resumeGame() {
     // 断局恢复：从 store.cur 还原并续玩
@@ -2110,6 +2250,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     state.hintExpl = null;
     state.replayFrom = null;
     state.createdFrom = 'normal'; // v1.7：断局恢复按普通局计成绩（cur 快照不存 createdFrom）
+    state.isDaily = false;        // v1.12：断局恢复非每日挑战
     renderGameView();
     renderGameFooter();
     startTimer();
