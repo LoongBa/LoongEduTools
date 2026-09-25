@@ -366,7 +366,8 @@ fn temp_zip_path(id: &str, ver: &str) -> PathBuf {
 }
 
 /// "sha256:<hex>" → 小写 hex（格式不对返回 None）
-fn parse_sha256_hex(cs: &str) -> Option<String> {
+/// pub(crate)：toolbox.rs 复用（工具箱工具 checksum 与内容包同式）
+pub(crate) fn parse_sha256_hex(cs: &str) -> Option<String> {
     let hex = cs.strip_prefix("sha256:")?.trim().to_ascii_lowercase();
     if hex.len() != 64 || !hex.chars().all(|c| c.is_ascii_hexdigit()) {
         return None;
@@ -666,7 +667,8 @@ fn entry_data(buf: &[u8], e: &ZipEntryInfo) -> Result<Vec<u8>, String> {
 }
 
 /// 解压全部条目到目标目录（跳过目录项；路径越界拒绝）
-fn extract_zip(buf: &[u8], dest: &Path) -> Result<(), String> {
+/// pub(crate)：toolbox.rs 复用（第三方工具 zip 同式解包）
+pub(crate) fn extract_zip(buf: &[u8], dest: &Path) -> Result<(), String> {
     let entries = parse_cd(buf)?;
     fs::create_dir_all(dest).map_err(|e| format!("创建目录失败: {e}"))?;
     for e in &entries {

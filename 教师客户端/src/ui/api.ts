@@ -131,6 +131,23 @@ export interface ToolboxManifest {
   tools: ToolboxTool[];
 }
 
+/** 本地快捷方式（R03 §4.4② 唯一本地业务状态） */
+export interface ToolboxShortcut {
+  tool_id: string;
+  /** 相对数据目录（download）或绝对路径（manual） */
+  path: string;
+  /** → 我的工具视图 */
+  pinned: boolean;
+  /** → 最近使用视图（ISO 时间戳，空 = 未用过） */
+  last_used: string;
+  /** "download"（按清单下载）| "manual"（手动添加） */
+  source: "download" | "manual";
+}
+
+export interface ToolboxDb {
+  shortcuts: ToolboxShortcut[];
+}
+
 // ---- P3 抽卡/分组（roster.rs · D05 §2.4.1/§2.4.2）----
 
 export interface RosterStudent {
@@ -212,8 +229,17 @@ export const api = {
     invoke<InstalledPackage>("store_import_usb", { zipPath }),
   storeListAvailable: () => invoke<StoreList>("store_list_available"),
 
-  // ---- v0.3 工具箱清单（toolbox.rs · R03 §4.4）----
+  // ---- v0.3 工具箱（toolbox.rs · R03 §4.4）----
   toolboxManifest: () => invoke<ToolboxManifest>("toolbox_manifest"),
+  toolboxList: () => invoke<ToolboxDb>("toolbox_list"),
+  toolboxSetPinned: (toolId: string, pinned: boolean) =>
+    invoke<ToolboxDb>("toolbox_set_pinned", { toolId, pinned }),
+  toolboxAddManual: (path: string) =>
+    invoke<ToolboxDb>("toolbox_add_manual", { path }),
+  toolboxDownload: (toolId: string) =>
+    invoke<ToolboxDb>("toolbox_download", { toolId }),
+  toolboxLaunch: (toolId: string) =>
+    invoke<ToolboxDb>("toolbox_launch", { toolId }),
 
   // ---- P3 抽卡/分组（roster.rs · D05 §2.4.1/§2.4.2）----
   rosterSave: (rosterJson: string) => invoke<void>("roster_save", { rosterJson }),

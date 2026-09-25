@@ -123,8 +123,13 @@ pub fn run() {
             store::store_download,
             store::store_import_usb,
             store::store_list_available,
-            // v0.3 工具箱清单（R03 §4.4 / A01 §4.4 · 纯数据流，UI 待设计稿）
+            // v0.3 工具箱（R03 §4.4 / A01 §4.4 · 清单 + 本地快捷方式 + 下载/启动）
             toolbox::toolbox_manifest,
+            toolbox::toolbox_list,
+            toolbox::toolbox_set_pinned,
+            toolbox::toolbox_add_manual,
+            toolbox::toolbox_download,
+            toolbox::toolbox_launch,
             // P3 白名单上报（A01 §5.1 · 零儿童数据红线）
             report::report_progress,
             report::report_flush,
