@@ -136,6 +136,11 @@ export const api = {
   // ---- D08 M3 计时器浮层呼出/收起（tool_timer · 全局快捷键 Alt+T 的壳内降级入口）----
   toolTimer: () => invoke<boolean>("tool_timer"),
 
+  // ---- v0.2 内容包空态三段流程（先探服务器可达 → 分支提示/打开页面/打开运行目录）----
+  serverPing: () => invoke<string>("server_ping"),
+  openRunDir: () => invoke<void>("open_run_dir"),
+  openServerPage: (url: string) => invoke<void>("open_server_page", { url }),
+
   testWebview2: () => invoke<string | null>("test_webview2"),
 
   // ---- P1 auth ----

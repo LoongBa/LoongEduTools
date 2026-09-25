@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AuthStatus, ClassProgress, InstalledPackage, StoreItem, api } from "./api";
 import CheckinView from "./CheckinView";
 import ClassesView from "./ClassesView";
@@ -46,6 +46,15 @@ function App() {
   const [theme, setTheme] = useState<ThemeMode>(currentTheme);
   /** 当前已打开的内容包（R8 导出 PDF 显示条件：loadedPkg === 目标包，避免导错对象） */
   const [loadedPkg, setLoadedPkg] = useState<string | null>(null);
+  /** 应用列表空态 · 内容服务器探测三段态（v0.2：先探服务器，再决定提示/自动打开页面） */
+  const [serverProbe, setServerProbe] = useState<
+    "idle" | "probing" | "reachable" | "unreachable"
+  >("idle");
+  const [serverBase, setServerBase] = useState<string | null>(null);
+  /** 可达时自动打开内容服务器页面——每会话只开一次，避免重复拉起浏览器 */
+  const serverPageAutoOpened = useRef(false);
+  /** 探测重入闸（「重新检测」连点防抖） */
+  const serverProbingRef = useRef(false);
 
   // 主题切换：写 dataset 即时生效 + localStorage 持久化（首页渲染前由 main.tsx 引导读取）
   function applyTheme(t: ThemeMode) {
@@ -70,6 +79,35 @@ function App() {
       setErr(String(e));
     }
   }, []);
+
+  // 应用列表空态 · 内容服务器探测（v0.2 三段流程）：
+  // 本地无内容包时先探服务端可达性——可达则自动打开服务器页面一次（内容包/扩展分区
+  // 由服务端承载），不可达才提示手动放入 packages/ 并给「打开运行目录」快捷方式；
+  // 本地有包时不探测不打扰。
+  const runServerProbe = useCallback(async () => {
+    if (serverProbingRef.current) return;
+    serverProbingRef.current = true;
+    setServerProbe("probing");
+    try {
+      const base = await api.serverPing();
+      setServerBase(base);
+      setServerProbe("reachable");
+      if (!serverPageAutoOpened.current) {
+        serverPageAutoOpened.current = true;
+        await api.openServerPage(base).catch((e) => setErr(String(e)));
+      }
+    } catch {
+      setServerProbe("unreachable");
+    } finally {
+      serverProbingRef.current = false;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (view === "apps" && packages.length === 0 && serverProbe === "idle") {
+      void runServerProbe();
+    }
+  }, [view, packages.length, serverProbe, runServerProbe]);
 
   useEffect(() => {
     refresh();
@@ -275,10 +313,66 @@ function App() {
           <section>
             <h2>应用列表</h2>
             {packages.length === 0 ? (
-              <p className="empty">
-                未发现内容包。把内容包目录放入 <code>packages/</code>（exe 同级）
-                或 <code>packages-embedded/</code>（预装）后重启。
-              </p>
+              <div className="empty">
+                {/* v0.2 三段流程：先探内容服务器 → 可达自动开页面 / 不可达才提示手动放入 */}
+                {serverProbe === "reachable" ? (
+                  <>
+                    <p>本地无内容包和扩展；内容服务器已连接。</p>
+                    <p>
+                      <button
+                        className="ghost-btn inline"
+                        disabled={!serverBase}
+                        onClick={() => {
+                          if (serverBase)
+                            api
+                              .openServerPage(serverBase)
+                              .catch((e) => setErr(String(e)));
+                        }}
+                      >
+                        打开内容服务器页面（内容包 · 扩展）
+                      </button>{" "}
+                      <button
+                        className="ghost-btn inline"
+                        onClick={() =>
+                          api.openRunDir().catch((e) => setErr(String(e)))
+                        }
+                      >
+                        打开运行目录
+                      </button>
+                    </p>
+                  </>
+                ) : serverProbe === "unreachable" ? (
+                  <>
+                    <p>本地无内容包和扩展。</p>
+                    <p>
+                      内容服务器当前无法连接（未配置服务端或网络不通）。可手动将
+                      内容包目录放入 <code>packages/</code>（exe 同级）或{" "}
+                      <code>packages-embedded/</code>（预装）后重启。
+                    </p>
+                    <p>
+                      <button
+                        className="ghost-btn inline"
+                        onClick={() =>
+                          api.openRunDir().catch((e) => setErr(String(e)))
+                        }
+                      >
+                        打开运行目录
+                      </button>{" "}
+                      <button
+                        className="ghost-btn inline"
+                        onClick={() => setServerProbe("idle")}
+                      >
+                        重新检测
+                      </button>
+                    </p>
+                  </>
+                ) : (
+                  <p>
+                    本地无内容包和扩展。
+                    {serverProbe === "probing" && " 正在连接内容服务器…"}
+                  </p>
+                )}
+              </div>
             ) : (
               <div className="card-grid">
                 {packages.map((p) => (

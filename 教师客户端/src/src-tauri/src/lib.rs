@@ -103,6 +103,9 @@ pub fn run() {
             window::exit_fullscreen,
             window::print_content,
             window::tool_timer,
+            window::server_ping,
+            window::open_run_dir,
+            window::open_server_page,
             // P1 认证/口令（A01 / D05 §4）
             auth::auth_status,
             auth::auth_sms_send,

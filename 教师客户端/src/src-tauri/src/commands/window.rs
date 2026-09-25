@@ -55,3 +55,60 @@ pub fn tool_timer(app: tauri::AppHandle) -> Result<bool, String> {
         Ok(true)
     }
 }
+
+// ------------------------------------------------ 内容包空态三段流程（v0.2 · 应用列表）
+
+/// 内容服务器可达性探测：GET `{api_base}/api/edu/packages/manifest`（5s 超时，不带 JWT）。
+/// **任何 HTTP 响应（含 401/404）都视为可达**并返回 api_base——只探存活不取数据；
+/// 网络错误/DNS 失败 → Err；api_base 未配置 → Err（P0 离线模式无服务端可连）。
+#[tauri::command]
+pub async fn server_ping(app: tauri::AppHandle) -> Result<String, String> {
+    let base = crate::commands::auth::api_base(&app);
+    if base.is_empty() {
+        return Err("未配置服务端地址（config.json api_base）".into());
+    }
+    let url = format!("{}/api/edu/packages/manifest", base.trim_end_matches('/'));
+    let c = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(5))
+        .build()
+        .map_err(|e| format!("HTTP 客户端初始化失败: {e}"))?;
+    match c.get(&url).send().await {
+        Ok(_resp) => Ok(base),
+        Err(e) => Err(format!("内容服务器无法连接: {e}")),
+    }
+}
+
+/// 打开运行目录（exe 同级——内容包手动放入点 `packages/` 就在其中）。
+/// 先尽力创建 `packages/` 子目录，再 `explorer.exe` 打开（只 spawn 不 wait，
+/// explorer 退出码不可靠）。
+#[tauri::command]
+pub fn open_run_dir() -> Result<(), String> {
+    let exe = std::env::current_exe().map_err(|e| format!("定位程序目录失败: {e}"))?;
+    let dir = exe
+        .parent()
+        .ok_or_else(|| "定位程序目录失败".to_string())?
+        .to_path_buf();
+    let _ = std::fs::create_dir_all(dir.join("packages"));
+    std::process::Command::new("explorer.exe")
+        .arg(&dir)
+        .spawn()
+        .map_err(|e| format!("打开目录失败: {e}"))?;
+    Ok(())
+}
+
+/// 打开内容服务器页面（浏览器打开 `api_base` 根；「内容包 / 扩展」两分区由服务端承载）。
+/// 仅放行 http/https 且不含控制字符的地址；`rundll32 url.dll,FileProtocolHandler`
+/// 零依赖、无 cmd 拼接注入面。
+#[tauri::command]
+pub fn open_server_page(url: String) -> Result<(), String> {
+    let ok = (url.starts_with("http://") || url.starts_with("https://"))
+        && !url.chars().any(char::is_control);
+    if !ok {
+        return Err("无效的服务器地址".into());
+    }
+    std::process::Command::new("rundll32")
+        .args(["url.dll,FileProtocolHandler", &url])
+        .spawn()
+        .map_err(|e| format!("打开浏览器失败: {e}"))?;
+    Ok(())
+}
