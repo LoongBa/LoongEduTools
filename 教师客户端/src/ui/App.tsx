@@ -136,8 +136,8 @@ function App() {
         <div className="brand">
           <span className="brand-mark">龙</span>
           <div>
-            <div className="brand-name">龙爸乐学</div>
-            <div className="brand-sub">桃李助手 v0.2.0</div>
+            <div className="brand-name">桃李助手</div>
+            <div className="brand-sub">龙爸乐学系列 v0.2.0</div>
           </div>
         </div>
         <nav>
@@ -160,7 +160,7 @@ function App() {
             打卡单
           </button>
           <button className={navClass("reflection")} onClick={() => setView("reflection")}>
-            反思本
+            复盘本
           </button>
           <button className={navClass("timer")} onClick={() => setView("timer")}>
             计时器

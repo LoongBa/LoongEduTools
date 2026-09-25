@@ -1,10 +1,10 @@
 /**
- * R16 教学反思记录本（D08 §3.4 · P4）—— 纯本地 · 零网络 · 零上报
+ * R16 教学复盘记录本（D08 §3.4 · P4）—— 纯本地 · 零网络 · 零上报
  *
  * 红线（对齐 CheckinView 惯例）：
- * - 反思记录仅存本机浏览器 localStorage（key: loongedu.reflection.v1），不出设备、不上云；
+ * - 复盘记录仅存本机浏览器 localStorage（key: loongedu.reflection.v1），不出设备、不上云；
  * - 不接任何 report/invoke/fetch（唯一副作用 = 打印按钮的 printCurrentPage，纯 window.print）；
- * - 零采集：不采集儿童数据，仅教师自记的课堂反思。
+ * - 零采集：不采集儿童数据，仅教师自记的课堂复盘。
  *
  * 模板（每课一条）：日期 / 班级 / 单元 / 亮点（哪里学生反应好）/ 卡点（哪里没讲透）/ 下次改进。
  * 打印：v0.1 仅单条详情打印（Oracle 决策 5：列表摘要打印不做）→ 列表页不放打印按钮。
@@ -91,11 +91,11 @@ export default function ReflectionView() {
   /** 打印页眉（屏幕隐藏、打印显示；onClick 里经 ref 直接写 DOM，避免 React 异步 state 带旧值） */
   const printHeadRef = useRef<HTMLDivElement>(null);
 
-  // 打印页眉：内容「教学反思 · 班级 · 当天日期」；打开条目/编辑班级时同步（Ctrl+P 兜底），
+  // 打印页眉：内容「教学复盘 · 班级 · 当天日期」；打开条目/编辑班级时同步（Ctrl+P 兜底），
   // 点「打印/导出 PDF」时 handlePrint 会经 ref 重写当天日期
   useEffect(() => {
     const el = printHeadRef.current;
-    if (el) el.textContent = `教学反思 · ${draft.className || "未填班级"} · ${todayLabel()}`;
+    if (el) el.textContent = `教学复盘 · ${draft.className || "未填班级"} · ${todayLabel()}`;
   }, [draft.className]);
 
   // 防抖持久化（≤500ms，同 CheckinView 惯例）
@@ -159,14 +159,14 @@ export default function ReflectionView() {
   }
 
   function removeEntry(id: string) {
-    if (!window.confirm("删除这条反思记录？此操作不可撤销。")) return;
+    if (!window.confirm("删除这条复盘记录？此操作不可撤销。")) return;
     setData((d) => d.filter((x) => x.id !== id));
   }
 
   /** 打印/导出 PDF：先经 ref 写入「班级 + 当天日期」（同步 DOM 写，再调 printCurrentPage） */
   function handlePrint() {
     const el = printHeadRef.current;
-    if (el) el.textContent = `教学反思 · ${draft.className || "未填班级"} · ${todayLabel()}`;
+    if (el) el.textContent = `教学复盘 · ${draft.className || "未填班级"} · ${todayLabel()}`;
     printCurrentPage();
   }
 
@@ -174,7 +174,7 @@ export default function ReflectionView() {
     setDraft((d) => ({ ...d, [k]: v }));
   }
 
-  const draftLabel = editId ? "编辑反思" : "新建反思";
+  const draftLabel = editId ? "编辑复盘" : "新建复盘";
 
   return (
     <section className="reflection view-reflection">
@@ -183,10 +183,10 @@ export default function ReflectionView() {
       {mode === "list" ? (
         <>
           <header className="reflection-head">
-            <h2>教学反思</h2>
+            <h2>教学复盘</h2>
             <div className="reflection-actions">
               <button className="ghost-btn inline" onClick={openNew}>
-                ＋ 新建反思
+                ＋ 新建复盘
               </button>
             </div>
           </header>
@@ -195,7 +195,7 @@ export default function ReflectionView() {
 
           {data.length === 0 ? (
             <p className="empty">
-              还没有反思记录。每课讲完点「新建反思」，记下今天的亮点、卡点和下次改进，下次备课随时回看。
+              还没有复盘记录。每课讲完点「新建复盘」，记下今天的亮点、卡点和下次改进，下次备课随时回看。
             </p>
           ) : (
             <ul className="reflection-list">
@@ -209,7 +209,7 @@ export default function ReflectionView() {
                   </button>
                   <button
                     className="ghost-btn inline reflection-del"
-                    title="删除这条反思"
+                    title="删除这条复盘"
                     onClick={() => removeEntry(e.id)}
                   >
                     ×
@@ -220,7 +220,7 @@ export default function ReflectionView() {
           )}
 
           <footer className="hint">
-            反思记录仅存本机浏览器（loongedu.reflection.v1），零网络、零上报；不采集学生数据。
+            复盘记录仅存本机浏览器（loongedu.reflection.v1），零网络、零上报；不采集学生数据。
           </footer>
         </>
       ) : (

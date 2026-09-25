@@ -1993,7 +1993,7 @@ code {
   }
 }
 
-/* ---------- D08 M4 R16 教学反思记录本（ReflectionView · D08 §3.4）----------
+/* ---------- D08 M4 R16 教学复盘记录本（ReflectionView · D08 §3.4）----------
  * 列表 + 单条详情（编辑表单）；打印 scope = .view-reflection（见文件末尾打印块）。 */
 .reflection {
   display: flex;
@@ -2148,7 +2148,7 @@ code {
 /* ==================== 打印形态（R18 打卡单 · D08 §3.1） ====================
  * ⚠️ Oracle M-6：全部规则按视图 scope——.view-checkin 前缀，或 body:has(.view-checkin)
  *    作用域写法。禁止裸全局选择器（如 .sidebar{display:none}）：.sidebar/.banner/.content
- *    是全视图共享选择器，裸规则会把打卡单打印样式泄漏到反思本等其它视图。
+ *    是全视图共享选择器，裸规则会把打卡单打印样式泄漏到复盘本等其它视图。
  *    颜色一律引用 :root 的 --print-ink / --print-paper（深色主题块不覆盖，保证深色
  *    主题下打印仍是黑白纸面）。本里程碑只做 .view-checkin 一个 scope。
  * =========================================================================== */
@@ -2275,7 +2275,7 @@ code {
     color: var(--print-ink);
   }
 
-  /* ---- R16 教学反思本视图 scope（D08 §3.4：仅单条详情打印，列表摘要打印不做） ----
+  /* ---- R16 教学复盘本视图 scope（D08 §3.4：仅单条详情打印，列表摘要打印不做） ----
    * 与打卡单段并列的独立 scope：全部规则以 .view-reflection / body:has(.view-reflection)
    * 前缀，禁止裸全局选择器（Oracle M-6）；颜色一律引用 --print-ink/--print-paper。 */
   body:has(.view-reflection) {
@@ -2303,7 +2303,7 @@ code {
     display: none !important;
   }
 
-  /* 打印页眉：屏幕隐藏；点击「打印/导出 PDF」时经 ref 写入「教学反思 · 班级 · 当天日期」 */
+  /* 打印页眉：屏幕隐藏；点击「打印/导出 PDF」时经 ref 写入「教学复盘 · 班级 · 当天日期」 */
   .view-reflection .reflection-print-head {
     display: block;
     margin-bottom: 8mm;
