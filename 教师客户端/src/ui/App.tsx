@@ -34,6 +34,18 @@ function currentTheme(): ThemeMode {
   return v === "light" || v === "dark" ? v : "system";
 }
 
+/**
+ * 错误归一化：纯浏览器环境（未注入 __TAURI_INTERNALS__）下任何 invoke 都会抛
+ * `TypeError: Cannot read properties of undefined (reading 'invoke')` —— 对教师
+ * 毫无信息量，归一成可读指引；其余错误原样透传。
+ */
+function friendlyErr(e: unknown): string {
+  const s = String(e);
+  return s.includes("reading 'invoke'") || s.includes('reading "invoke"')
+    ? "当前以浏览器方式打开页面（非客户端环境），系统命令不可用：请通过「桃李助手」客户端程序启动。"
+    : s;
+}
+
 function App() {
   const [view, setView] = useState<View>("apps");
   const [packages, setPackages] = useState<InstalledPackage[]>([]);
@@ -76,7 +88,7 @@ function App() {
       setRecents(rec);
       setErr(null);
     } catch (e) {
-      setErr(String(e));
+      setErr(friendlyErr(e));
     }
   }, []);
 
@@ -94,7 +106,7 @@ function App() {
       setServerProbe("reachable");
       if (!serverPageAutoOpened.current) {
         serverPageAutoOpened.current = true;
-        await api.openServerPage(base).catch((e) => setErr(String(e)));
+        await api.openServerPage(base).catch((e) => setErr(friendlyErr(e)));
       }
     } catch {
       setServerProbe("unreachable");
@@ -145,7 +157,7 @@ function App() {
       await api.load(pkg.package_id);
       setLoadedPkg(pkg.package_id);
     } catch (e) {
-      setErr(String(e));
+      setErr(friendlyErr(e));
     } finally {
       setLoadingPkg(null);
     }
@@ -326,7 +338,7 @@ function App() {
                           if (serverBase)
                             api
                               .openServerPage(serverBase)
-                              .catch((e) => setErr(String(e)));
+                              .catch((e) => setErr(friendlyErr(e)));
                         }}
                       >
                         打开内容服务器页面（内容包 · 扩展）
@@ -334,7 +346,7 @@ function App() {
                       <button
                         className="ghost-btn inline"
                         onClick={() =>
-                          api.openRunDir().catch((e) => setErr(String(e)))
+                          api.openRunDir().catch((e) => setErr(friendlyErr(e)))
                         }
                       >
                         打开运行目录
@@ -353,7 +365,7 @@ function App() {
                       <button
                         className="ghost-btn inline"
                         onClick={() =>
-                          api.openRunDir().catch((e) => setErr(String(e)))
+                          api.openRunDir().catch((e) => setErr(friendlyErr(e)))
                         }
                       >
                         打开运行目录
@@ -394,7 +406,7 @@ function App() {
                         title="将当前打开的内容包导出为 PDF（打印对话框）"
                         onClick={(e) => {
                           e.stopPropagation();
-                          api.printContent().catch((e) => setErr(String(e)));
+                          api.printContent().catch((e) => setErr(friendlyErr(e)));
                         }}
                       >
                         导出 PDF
@@ -430,7 +442,7 @@ function App() {
                           title="将当前打开的内容包导出为 PDF（打印对话框）"
                           onClick={(e) => {
                             e.stopPropagation();
-                            api.printContent().catch((e) => setErr(String(e)));
+                            api.printContent().catch((e) => setErr(friendlyErr(e)));
                           }}
                         >
                           导出 PDF
