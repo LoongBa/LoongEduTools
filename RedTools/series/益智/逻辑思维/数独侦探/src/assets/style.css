@@ -944,6 +944,47 @@ body {
 /* E5 自适应难度（v1.10）：建议降档档位高亮 */
 .diff-btn.suggested { border: 2px solid #ff8c42; }
 
+/* 闯关地图（v1.13 X1）：3×3 节点网格（每行同难度档） */
+.map-grid {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-flex-wrap: wrap;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.map-node {
+  width: 32%;
+  margin: 0 0.666% 10px;
+  min-height: 76px;
+  border: none;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 8px 4px;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(74, 168, 255, 0.12);
+  font-family: inherit;
+}
+.map-node:active { background: #e6f3ff; }
+.map-node .map-emoji { display: block; font-size: 20px; line-height: 1.2; }
+.map-node .map-name { display: block; font-size: 15px; font-weight: 800; color: #2a3a4a; margin-top: 2px; }
+.map-node .map-tip { display: block; font-size: 10px; color: #7a8ea3; margin-top: 3px; line-height: 1.3; }
+.map-node.locked {
+  background: #f0f2f5;
+  cursor: default;
+  box-shadow: none;
+}
+.map-node.locked:active { background: #f0f2f5; }
+.map-node.locked .map-name { color: #8ba4bd; }
+.map-done-banner {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #12b76a;
+  margin: 0 0 10px;
+}
+
 /* ---------- 响应式：大屏微调 / 小屏收紧 ---------- */
 
 @media (min-width: 400px) {

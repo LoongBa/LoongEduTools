@@ -21,6 +21,8 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
           + 双指缩放棋盘（E4 P2 捏合缩放 + 1:1 复位按钮）
     v1.12：每日挑战（当日种子同题，solver.js 零改动——Math.random 注入）+ 成就系统
           （X3：6 枚个人里程碑，无竞技无排行）
+    v1.13：闯关地图（X1：3 档难度 × 每档 3 关线性推进，复用 seed 基建同关同题；
+          无竞技，纯个人进度推进）
     星级：hints===0 && errors===0 → 3★；hints<=1 && errors<=3 → 2★；否则 1★
    难度：双参数（盘面尺寸 × 目标已知格）4×4→10、6×6→21、9×9→33
    设计约束（对齐 series/益智/设计文档.md §5）：
@@ -58,6 +60,18 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     { key: '9', name: '困难', N: 9, givens: 33 }
   ];
   var suggestedName = null; // E5 自适应难度（v1.10）：最近两局连败 → 建议降档档名；非持久化，进入任一局即清除
+  // 闯关地图（v1.13 X1）：3 档难度 × 每档 3 关 = 9 关线性推进；seedBase 固定 → 同关同题（可复玩）
+  var MAP_LEVELS = [
+    { i: 0, name: '1-1', levelKey: '4', seedBase: 10001, tip: '简单 4×4 · 初试身手' },
+    { i: 1, name: '1-2', levelKey: '4', seedBase: 10002, tip: '简单 4×4 · 小有心得' },
+    { i: 2, name: '1-3', levelKey: '4', seedBase: 10003, tip: '简单 4×4 · 轻松过关' },
+    { i: 3, name: '2-1', levelKey: '6', seedBase: 20001, tip: '普通 6×6 · 更进一步' },
+    { i: 4, name: '2-2', levelKey: '6', seedBase: 20002, tip: '普通 6×6 · 渐入佳境' },
+    { i: 5, name: '2-3', levelKey: '6', seedBase: 20003, tip: '普通 6×6 · 游刃有余' },
+    { i: 6, name: '3-1', levelKey: '9', seedBase: 30001, tip: '困难 9×9 · 挑战自我' },
+    { i: 7, name: '3-2', levelKey: '9', seedBase: 30002, tip: '困难 9×9 · 勇往直前' },
+    { i: 8, name: '3-3', levelKey: '9', seedBase: 30003, tip: '困难 9×9 · 大侦探！' }
+  ];
   var pinchScale = 1;        // v1.11 双指缩放：当前缩放（1 = 原始）
   var pinchActive = false;   // 双指捏合进行中
   var pinchStartDist = 0;    // 捏合起始两指距离
@@ -92,7 +106,8 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     replayFrom: null, // 回放来源（v1.6）：'mistake' 错题本 / 'favorite' 收藏本 / null 普通局
     replayMsgShown: false, // v1.6：错题回放提示行是否已显示（仅首次进入提示）
     createdFrom: 'normal', // 题目来源（v1.7）：'normal' 普通局（含回放，正常计成绩）/ 'import' 导入题（不计成绩、不打卡）
-    isDaily: false         // 每日挑战局标记（v1.12）：顶栏追加「· 每日题」，通关记 store.daily
+    isDaily: false,        // 每日挑战局标记（v1.12）：顶栏追加「· 每日题」，通关记 store.daily
+    fromMap: -1            // 闯关地图关卡序号（v1.13）：-1 = 非闯关关；>=0 顶栏追加「· 关卡 X-Y」，通关记 mapProgress
   };
 
   /* ---------- 持久化（redtools.shudurumen.v1） ---------- */
@@ -111,6 +126,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
       favorites: [],                // 收藏本（v1.6）：[{id,ts,level,board,solution}] 通关后可收藏的想再练题目
       daily: null,                  // 每日挑战完成记录（v1.12）：{ date:'YYYYMMDD', level:'6' }；未完成 null
       achievements: {},             // 成就解锁（v1.12）：{ key: 'YYYYMMDD' }（6 枚个人里程碑，无竞技）
+      mapProgress: { completed: [] }, // 闯关地图进度（v1.13）：{ completed:[i,...] } 已完成关卡序号（线性按序）
       cur: null                     // 断局快照（v1.2）：未完成（level,N,givensCount,puzzle,solution,given,pencils,undoStack,hints,errors,selected,penMode,ms,startStamp,origPuzzle)
     };
   }
@@ -130,6 +146,8 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
           if (!obj.favorites) { obj.favorites = []; } // v1.6：旧存档无收藏本字段 → 补空
           if (!('daily' in obj)) { obj.daily = null; } // v1.12：用 in 检查（null 也是合法值）
           if (!obj.achievements) { obj.achievements = {}; } // v1.12：旧存档无成就字段 → 补空
+          if (!obj.mapProgress) { obj.mapProgress = { completed: [] }; } // v1.13：旧存档无闯关进度 → 补空
+          if (!obj.mapProgress.completed) { obj.mapProgress.completed = []; } // 防 completed 缺失
           if (!obj.cur) { obj.cur = null; }
           if (obj.history.length > 30) { obj.history = obj.history.slice(-30); }
           return obj;
@@ -609,7 +627,8 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     title.appendChild(makeEl('small', '',
       state.N + '×' + state.N + ' · 已知 ' + state.givensCount + ' 格' +
       (state.createdFrom === 'import' ? ' · 导入题' : '') +
-      (state.isDaily ? ' · 每日题' : ''))); // v1.7 导入题顶栏标记 / v1.12 每日题顶栏标记
+      (state.isDaily ? ' · 每日题' : '') +
+      (state.fromMap >= 0 ? ' · 关卡 ' + MAP_LEVELS[state.fromMap].name : ''))); // v1.7/v1.12/v1.13 顶栏标记
     topbar.appendChild(title);
     timerEl = makeEl('span', 'top-timer', '⏱ 00.0');
     topbar.appendChild(timerEl);
@@ -1036,6 +1055,11 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
       if (sug) { suggestedName = sug.name; } else { suggestedName = null; }
       // v1.12：每日挑战通关记录 + 成就结算（新解锁名缓存给结算浮层展示）
       if (state.isDaily) { store.daily = { date: fmtDate(new Date()), level: '6' }; }
+      // v1.13：闯关通关记录（线性解锁 → 按序 push，completed 含该关则不重复）
+      if (state.fromMap >= 0) {
+        var ml = MAP_LEVELS[state.fromMap];
+        if (store.mapProgress.completed.indexOf(ml.i) < 0) { store.mapProgress.completed.push(ml.i); }
+      }
       lastUnlocked = checkAchievements();
     } else {
       winNewBest = false; // v1.7：导入题不产生新纪录
@@ -1174,6 +1198,14 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     dailyBtn.setAttribute('aria-label', dailyDone ? '今日每日挑战已完成' : '开始今日每日挑战');
     dailyBtn.addEventListener('click', startDaily);
     viewEl.appendChild(dailyBtn);
+    // 闯关地图入口（v1.13 X1）：3 档 × 3 关线性推进，复用 seed 基建同关同题
+    var mapComp = (store.mapProgress && store.mapProgress.completed) ? store.mapProgress.completed : [];
+    var mapBtn = makeEl('button', 'teach-btn book-btn');
+    mapBtn.appendChild(makeEl('span', 'teach-btn-head', '🗺️ 闯关地图'));
+    mapBtn.appendChild(makeEl('span', 'teach-btn-sub', '通关 ' + mapComp.length + ' / 9 关'));
+    mapBtn.setAttribute('aria-label', '打开闯关地图');
+    mapBtn.addEventListener('click', showMapView);
+    viewEl.appendChild(mapBtn);
     // 成就入口（v1.12）：个人里程碑，无竞技无排行
     var achBtn = makeEl('button', 'teach-btn book-btn');
     achBtn.appendChild(makeEl('span', 'teach-btn-head', '🏅 成就'));
@@ -1363,6 +1395,49 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     achBack.addEventListener('click', showDifficultyView);
     viewEl.appendChild(achBack);
   }
+  function showMapView() {
+    // 闯关地图（v1.13 X1）：3 档 × 3 关线性推进——已通关 ✅ / 下一关可玩 🔓 / 未解锁 🔒
+    hideOverlay();
+    stopTimer();
+    state.won = false;
+    state.playing = false;
+    renderHeader('闯关地图');
+    clearNode(viewEl);
+    viewEl.appendChild(makeEl('div', 'page-title', '闯关地图 · 9 关任你战'));
+    viewEl.appendChild(makeEl('div', 'home-hint', '从 4×4 到 9×9，一关一关升级（无排行无竞技）'));
+    var comp = (store.mapProgress && store.mapProgress.completed) ? store.mapProgress.completed : [];
+    var doneCount = comp.length;
+    if (doneCount >= MAP_LEVELS.length) {
+      viewEl.appendChild(makeEl('div', 'map-done-banner', '🎉 闯关全部通关！点关卡可重玩'));
+    }
+    var grid = makeEl('div', 'map-grid');
+    for (var mi = 0; mi < MAP_LEVELS.length; mi++) {
+      (function (ml) {
+        var st = ml.i < doneCount ? 'done' : (ml.i === doneCount ? 'open' : 'locked');
+        var emoji = st === 'done' ? '✅' : (st === 'open' ? '🔓' : '🔒');
+        var node = makeEl('button', 'map-node' + (st === 'locked' ? ' locked' : ''));
+        node.appendChild(makeEl('span', 'map-emoji', emoji));
+        node.appendChild(makeEl('span', 'map-name', ml.name));
+        node.appendChild(makeEl('span', 'map-tip', ml.tip));
+        node.setAttribute('aria-label', ml.name + '，' + ml.tip);
+        node.addEventListener('click', function () {
+          if (st === 'locked') {
+            toast('先通关上一关再解锁哦');
+          } else {
+            startMapLevel(ml.i); // 已通关可点击重玩（重玩通关不重复累计）
+          }
+        });
+        grid.appendChild(node);
+      })(MAP_LEVELS[mi]);
+    }
+    viewEl.appendChild(grid);
+    // 底部：返回难度
+    var mapBack = makeEl('button', 'btn-checkin', '← 返回');
+    mapBack.setAttribute('aria-label', '返回难度选择');
+    mapBack.style.marginTop = '4px';
+    mapBack.addEventListener('click', showDifficultyView);
+    viewEl.appendChild(mapBack);
+  }
   /* ---------- 错题本 / 收藏本（v1.6） ---------- */
   function renderMiniBoard(container, board, N) {
     // 迷你盘面缩略图（列表卡片用）：给定数字可见，空格留白，不可交互
@@ -1521,6 +1596,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     state.replayMsgShown = false;
     state.createdFrom = 'normal'; // v1.7：回放按普通局计成绩
     state.isDaily = false;        // v1.12：回放非每日挑战
+    state.fromMap = -1;           // v1.13：回放非闯关关
     state.startMs = 0;
     state.ms = 0;
     // 错题本回放：标记上次填错的位置（浅红，非错误计数）
@@ -1970,6 +2046,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     state.hintExpl = null;
     state.replayMsgShown = false;
     state.isDaily = false; // v1.12：导入局非每日挑战
+    state.fromMap = -1;    // v1.13：导入局非闯关关
     state.startMs = 0;
     state.ms = 0;
     renderGameView();
@@ -2214,6 +2291,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     state.replayFrom = null;
     state.createdFrom = 'normal'; // v1.7：新生成局为普通来源（正常计成绩）
     state.isDaily = false;        // v1.12：新局非每日挑战（startDaily 在 newRound 之后置 true）
+    state.fromMap = -1;           // v1.13：新局非闯关关（startMapLevel 在 newRound 之后置关卡号）
   }
   function startGame(levelKey) {
     if (!SUDOKU) {
@@ -2235,6 +2313,17 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     renderGameFooter();
     startTimer();
   }
+  function startMapLevel(i) {
+    // v1.13：闯关开局——seed 固定 → 同关同题（可复玩/分享）；计入普通成绩打卡
+    suggestedName = null;
+    var ml = MAP_LEVELS[i];
+    newRound(ml.levelKey, ml.seedBase);
+    state.fromMap = i;
+    state.isDaily = false;
+    renderGameView();
+    renderGameFooter();
+    startTimer();
+  }
   function resumeGame() {
     // 断局恢复：从 store.cur 还原并续玩
     if (!SUDOKU) {
@@ -2251,6 +2340,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     state.replayFrom = null;
     state.createdFrom = 'normal'; // v1.7：断局恢复按普通局计成绩（cur 快照不存 createdFrom）
     state.isDaily = false;        // v1.12：断局恢复非每日挑战
+    state.fromMap = -1;           // v1.13：断局恢复非闯关关
     renderGameView();
     renderGameFooter();
     startTimer();
