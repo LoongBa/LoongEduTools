@@ -1373,7 +1373,7 @@ mapBtn.appendChild(makeEl('span', 'teach-btn-head', '🗺️ 闯关地图'));
     advBack.addEventListener('click', showDifficultyView);
     viewEl.appendChild(advBack);
   }
-/* ---------- 成就（v1.12 X3 / v1.17 扩 2 / v1.18 扩 2 / v1.20 扩 1 / v1.21 扩 3）：14 枚个人里程碑，无竞技无排行 ---------- */
+/* ---------- 成就（v1.12 X3 / v1.17 扩 2 / v1.18 扩 2 / v1.20 扩 1 / v1.21 扩 3 / v1.22 扩 1）：15 枚个人里程碑，无竞技无排行 ---------- */
   var ACHIEVEMENTS = [
     { key: 'firstDaily', name: '每日挑战首通', desc: '完成一次每日挑战' },
     { key: 'daily3',     name: '连续打卡 3 天', desc: '连续 3 天完成打卡（含每日挑战）' },
@@ -1388,7 +1388,8 @@ mapBtn.appendChild(makeEl('span', 'teach-btn-head', '🗺️ 闯关地图'));
     { key: 'sixArts',    name: '六艺精通', desc: '点亮全部 6 枚技巧徽章（适龄 4 + 进阶 2）' },  // v1.21
     { key: 'allStars',   name: '全档三星', desc: '4×4 / 6×6 / 9×9 各至少一次 ★★★ 通关' },      // v1.21
     { key: 'daily14',    name: '坚持两周', desc: '连续打卡 14 天' },                             // v1.21
-    { key: 'advBoth',    name: '进阶双修', desc: '点亮唯一余数 + X-Wing 两枚进阶徽章' }          // v1.21
+    { key: 'advBoth',    name: '进阶双修', desc: '点亮唯一余数 + X-Wing 两枚进阶徽章' },          // v1.21
+    { key: 'clearAll',   name: '全档挑战', desc: '4×4 / 6×6 / 9×9 各通关一局' }                   // v1.22
   ];
   function countAchievements() {
     // 已解锁成就数（store.achievements 非空键个数）
@@ -1418,7 +1419,8 @@ var checks = {
       sixArts: litMapSkillCount() >= SKILLS.length, // v1.20 六艺精通：点亮全部 6 枚技巧徽章（适龄 4 + 进阶 2，任一来源皆计）
       allStars: !!store.best['4'] && !!store.best['6'] && !!store.best['9'] && store.best['4'].stars >= 3 && store.best['6'].stars >= 3 && store.best['9'].stars >= 3, // v1.21 全档三星（best 单档最佳只增不减，语义安全）
       daily14: streak >= 14, // v1.21 坚持两周
-      advBoth: !!(store.advSkills && store.advSkills.uniqueElim && store.advSkills.xwing) // v1.21 进阶双修
+      advBoth: !!(store.advSkills && store.advSkills.uniqueElim && store.advSkills.xwing), // v1.21 进阶双修
+      clearAll: !!(store.best['4'] && store.best['6'] && store.best['9']) // v1.22 全档挑战：4×4 / 6×6 / 9×9 各至少通关一局
     };
     var i;
     for (i = 0; i < ACHIEVEMENTS.length; i++) {
@@ -1833,10 +1835,17 @@ var grid = makeEl('div', 'map-grid');
       'SD' + N + ':' + board.join(',') + '\n' +
       '（空格填 0；复制后在数独思维「📥 导入题目」粘贴）';
   }
-  function shareTextForCurrent() {
+function shareTextForCurrent() {
     // 当前局分享文本：优先原始盘面（题面），退化用当前盘面
     var board = state.origPuzzle || state.puzzle;
-    return puzzleText(board, state.N, countNonZero(board));
+    var t = puzzleText(board, state.N, countNonZero(board));
+    // v1.22：闯关来源题追加技巧标签行（导入解析只取 SD 行、忽略其它行，此行为人类可读信息，向后兼容）
+    if (state.fromMap >= 0) {
+      var mlv = MAP_LEVELS[state.fromMap];
+      var skv = skillByKey(mlv.skill);
+      if (skv) { t += '\n技巧标签：' + skv.name; }
+    }
+    return t;
   }
   function parsePuzzleText(raw) {
     // 导入解析：找 SD{N}: 行 → 校验 N/长度/取值 → 唯一解校验
@@ -1918,7 +1927,19 @@ var grid = makeEl('div', 'map-grid');
     ctx.font = 'bold 28px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('数独思维 · ' + N + '×' + N + (showAnswer ? '（答案）' : ''), W / 2, 32);
+ctx.fillText('数独思维 · ' + N + '×' + N + (showAnswer ? '（答案）' : ''), W / 2, 32);
+    // v1.22：闯关来源题标注技巧标签（仅 state.fromMap 可识别；普通/导入/教学题不虚构技巧检测）
+    var shareSkill = '';
+    if (state.fromMap >= 0) {
+      var mlv = MAP_LEVELS[state.fromMap];
+      var skv = skillByKey(mlv.skill);
+      if (skv) { shareSkill = skv.name; }
+    }
+    if (shareSkill) {
+      ctx.fillStyle = '#8ba4bd';
+      ctx.font = '15px sans-serif';
+      ctx.fillText('技巧标签：' + shareSkill, W / 2, 62);
+    }
     ctx.textAlign = 'left';
     // 盘面网格（标题下方偏移 HEADER）
     var dims = SUDOKU.boxDims(N);
@@ -3066,8 +3087,23 @@ function baseSkillCount() {
         var lit = !!store.skills[SKILLS[li].key];
         skillParts.push((lit ? '✅ ' : '🎯 ') + SKILLS[li].name);
       }
-      cardB.appendChild(makeEl('div', 'report-badge-line', skillParts.join(' ')));
+cardB.appendChild(makeEl('div', 'report-badge-line', skillParts.join(' ')));
       cardB.appendChild(makeEl('div', 'report-row', countLitSkills() + '/' + baseSkillCount() + ' 枚技巧徽章已点亮'));
+      // v1.22 进阶分区：适龄 X/4 保持，进阶 2 枚独立展示（✨ 已点亮 / 💎 未点亮），不混入适龄口径
+      var advLit = 0;
+      var advTotal = 0;
+      var advParts = [];
+      for (li = 0; li < SKILLS.length; li++) {
+        if (SKILLS[li].group !== 'adv') { continue; }
+        advTotal++;
+        var alit = !!store.advSkills[SKILLS[li].key];
+        if (alit) { advLit++; }
+        advParts.push((alit ? '✨ ' : '💎 ') + SKILLS[li].name);
+      }
+      if (advTotal > 0) {
+        cardB.appendChild(makeEl('div', 'report-badge-line', advParts.join(' ')));
+        cardB.appendChild(makeEl('div', 'report-row', advLit + '/' + advTotal + ' 进阶技巧已点亮'));
+      }
     }
     viewEl.appendChild(cardB);
     // 卡片 C：成长进度（v1.16）——每日挑战/成就/闯关地图，全派生零新 schema
