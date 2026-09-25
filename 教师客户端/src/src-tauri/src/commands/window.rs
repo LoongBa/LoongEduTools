@@ -96,7 +96,7 @@ pub fn open_run_dir() -> Result<(), String> {
     Ok(())
 }
 
-/// 打开内容服务器页面（浏览器打开 `api_base` 根；「内容包 / 扩展」两分区由服务端承载）。
+/// 打开内容服务器页面（浏览器打开 `api_base` 根；内容/扩展分区由壳内「下载扩展」页承载，R03 §3.2）。
 /// 仅放行 http/https 且不含控制字符的地址；`rundll32 url.dll,FileProtocolHandler`
 /// 零依赖、无 cmd 拼接注入面。
 #[tauri::command]

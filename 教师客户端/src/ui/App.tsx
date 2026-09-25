@@ -95,9 +95,9 @@ function App() {
   }, []);
 
   // 应用列表空态 · 内容服务器探测（v0.2 三段流程）：
-  // 本地无内容包时先探服务端可达性——可达则自动打开服务器页面一次（内容包/扩展分区
-  // 由服务端承载），不可达才提示手动放入 packages/ 并给「打开运行目录」快捷方式；
-  // 本地有包时不探测不打扰。
+  // 本地无内容包时先探服务端可达性——可达则自动打开服务器页面一次（内容/扩展分区
+  // 由壳内「下载扩展」页承载，R03 §3.2），不可达才提示手动放入 packages/ 并给
+  // 「打开运行目录」快捷方式；本地有包时不探测不打扰。
   const runServerProbe = useCallback(async () => {
     if (serverProbingRef.current) return;
     serverProbingRef.current = true;
@@ -340,7 +340,7 @@ function App() {
                               .catch((e) => setErr(friendlyErr(e)));
                         }}
                       >
-                        打开内容服务器页面（内容包 · 扩展）
+                        打开内容服务器页面
                       </button>{" "}
                       <button
                         className="ghost-btn inline"
