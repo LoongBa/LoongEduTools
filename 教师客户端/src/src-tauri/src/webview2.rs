@@ -93,20 +93,15 @@ fn winreg_versions() -> Vec<String> {
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
 
-    // 64 位系统安装器可能写 WOW6432Node 或原生 SOFTWARE 视图（官方文档并列两路径）；
-    // HKCU 无 WOW64 重定向，只用非 WOW 路径。
-    let subkey_wow = format!(r"SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{WEBVIEW2_CLIENT_ID}");
-    let subkey_plain = format!(r"SOFTWARE\Microsoft\EdgeUpdate\Clients\{WEBVIEW2_CLIENT_ID}");
-    let subkey_hkcu = format!(r"Software\Microsoft\EdgeUpdate\Clients\{WEBVIEW2_CLIENT_ID}");
-
-    let candidates: [(&RegKey, &str); 3] = [
-        (&hklm, &subkey_wow),
-        (&hklm, &subkey_plain),
-        (&hkcu, &subkey_hkcu),
-    ];
+    let candidates = registry_subkeys();
 
     let mut out = Vec::new();
-    for (root, sub) in candidates {
+    for (root, sub) in [
+        (&hklm, candidates[0].as_str()),
+        (&hklm, candidates[1].as_str()),
+        (&hkcu, candidates[2].as_str()),
+        (&hkcu, candidates[3].as_str()),
+    ] {
         if let Ok(key) = root.open_subkey(sub) {
             if let Ok(pv) = key.get_value::<String, _>("pv") {
                 if !pv.is_empty() {
@@ -116,6 +111,16 @@ fn winreg_versions() -> Vec<String> {
         }
     }
     out
+}
+
+/// 纯函数：4 条注册表候选子键（HKLM WOW6432Node / HKLM 原生 / HKCU WOW6432Node / HKCU 原生）
+fn registry_subkeys() -> [String; 4] {
+    [
+        format!(r"SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{WEBVIEW2_CLIENT_ID}"),
+        format!(r"SOFTWARE\Microsoft\EdgeUpdate\Clients\{WEBVIEW2_CLIENT_ID}"),
+        format!(r"Software\WOW6432Node\Microsoft\EdgeUpdate\Clients\{WEBVIEW2_CLIENT_ID}"),
+        format!(r"Software\Microsoft\EdgeUpdate\Clients\{WEBVIEW2_CLIENT_ID}"),
+    ]
 }
 
 /// 目录回退：扫描全部安装基址下的版本目录名（仅 Windows）。
@@ -148,12 +153,13 @@ fn dir_versions() -> Vec<String> {
                 }
             }
         }
-        // MSIX/Store 部署：Program Files\WindowsApps（权限不足时 read_dir 失败即跳过）
-        if let Ok(rd) = std::fs::read_dir("C:\\Program Files\\WindowsApps") {
-            for entry in rd.flatten() {
-                if entry.file_name().to_string_lossy().starts_with("MicrosoftEdgeWebView") {
-                    bases.push(msix_app_base(&entry.path()));
-                }
+    }
+    // MSIX/Store 部署：Program Files\WindowsApps（固定基址，独立于 LOCALAPPDATA；
+    // 权限不足时 read_dir 失败即跳过）
+    if let Ok(rd) = std::fs::read_dir("C:\\Program Files\\WindowsApps") {
+        for entry in rd.flatten() {
+            if entry.file_name().to_string_lossy().starts_with("MicrosoftEdgeWebView") {
+                bases.push(msix_app_base(&entry.path()));
             }
         }
     }
@@ -242,14 +248,21 @@ fn find_bootstrapper() -> Option<std::path::PathBuf> {
     let mut candidates: Vec<std::path::PathBuf> = Vec::new();
     if let Ok(exe) = std::env::current_exe() {
         if let Some(dir) = exe.parent() {
-            candidates.push(dir.join(BOOTSTRAPPER_NAME));
-            candidates.push(dir.join("tools").join(BOOTSTRAPPER_NAME));
+            candidates.extend(bootstrapper_candidates(dir));
         }
     }
     if let Ok(cwd) = std::env::current_dir() {
         candidates.push(cwd.join(BOOTSTRAPPER_NAME));
     }
     candidates.into_iter().find(|p| p.is_file())
+}
+
+/// 纯函数：bootstrapper 候选路径列表（exe 同级 → exe 同级\tools\）
+fn bootstrapper_candidates(exe_dir: &std::path::Path) -> Vec<std::path::PathBuf> {
+    vec![
+        exe_dir.join(BOOTSTRAPPER_NAME),
+        exe_dir.join("tools").join(BOOTSTRAPPER_NAME),
+    ]
 }
 
 /// 原生错误弹窗（MessageBoxW，零依赖）——WebView2 缺失时 UI 起不来，
@@ -344,5 +357,41 @@ mod tests {
         assert!(version_tuple("108.0.1462.46").unwrap().0 >= MIN_MAJOR);
         assert!(version_tuple("153.0.4234.48").unwrap().0 >= MIN_MAJOR);
         assert!(version_tuple("107.0.6200.0").unwrap().0 < MIN_MAJOR);
+    }
+
+    #[test]
+    fn registry_subkeys_cover_four_paths() {
+        let subs = registry_subkeys();
+        assert_eq!(subs.len(), 4);
+        let guid = "{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}";
+        let wow_suffix = format!(r"WOW6432Node\Microsoft\EdgeUpdate\Clients\{guid}");
+        let plain_suffix = format!(r"Microsoft\EdgeUpdate\Clients\{guid}");
+        // HKLM WOW6432Node → HKLM 原生 → HKCU WOW6432Node → HKCU 原生（大小写不敏感）
+        assert!(subs[0].to_ascii_lowercase().ends_with(&wow_suffix.to_ascii_lowercase()));
+        assert!(subs[1].to_ascii_lowercase().ends_with(&plain_suffix.to_ascii_lowercase()));
+        assert!(subs[2].to_ascii_lowercase().ends_with(&wow_suffix.to_ascii_lowercase()));
+        assert!(subs[3].to_ascii_lowercase().ends_with(&plain_suffix.to_ascii_lowercase()));
+    }
+
+    #[test]
+    fn bootstrapper_candidates_ordered_exe_then_tools() {
+        let dir = std::path::Path::new(r"C:\app");
+        let cands = bootstrapper_candidates(dir);
+        assert_eq!(
+            cands,
+            vec![
+                std::path::PathBuf::from(r"C:\app\MicrosoftEdgeWebview2Setup.exe"),
+                std::path::PathBuf::from(r"C:\app\tools\MicrosoftEdgeWebview2Setup.exe"),
+            ]
+        );
+        // 查找决策：第一个存在的路径被选中（exe 同级优先于 tools）
+        let tmp = std::env::temp_dir().join("wv2_boot_test");
+        let _ = std::fs::create_dir_all(tmp.join("tools"));
+        std::fs::write(tmp.join(BOOTSTRAPPER_NAME), b"x").unwrap();
+        let picked = bootstrapper_candidates(&tmp)
+            .into_iter()
+            .find(|p| p.is_file());
+        assert_eq!(picked, Some(tmp.join(BOOTSTRAPPER_NAME)));
+        let _ = std::fs::remove_dir_all(tmp);
     }
 }
