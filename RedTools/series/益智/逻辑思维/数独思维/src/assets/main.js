@@ -1373,7 +1373,7 @@ mapBtn.appendChild(makeEl('span', 'teach-btn-head', '🗺️ 闯关地图'));
     advBack.addEventListener('click', showDifficultyView);
     viewEl.appendChild(advBack);
   }
-/* ---------- 成就（v1.12 X3 / v1.17 扩 2 / v1.18 扩 2）：10 枚个人里程碑，无竞技无排行 ---------- */
+/* ---------- 成就（v1.12 X3 / v1.17 扩 2 / v1.18 扩 2 / v1.20 扩 1）：11 枚个人里程碑，无竞技无排行 ---------- */
   var ACHIEVEMENTS = [
     { key: 'firstDaily', name: '每日挑战首通', desc: '完成一次每日挑战' },
     { key: 'daily3',     name: '连续打卡 3 天', desc: '连续 3 天完成打卡（含每日挑战）' },
@@ -1384,7 +1384,8 @@ mapBtn.appendChild(makeEl('span', 'teach-btn-head', '🗺️ 闯关地图'));
     { key: 'mapMaster',  name: '闯关地图通关', desc: '闯关地图全部 9 关通关' },      // v1.17
     { key: 'monthStreak', name: '月度坚持', desc: '连续打卡 30 天' },                 // v1.17
     { key: 'mapStreak',  name: '闯关达人', desc: '连续 7 天闯关' },                   // v1.18
-    { key: 'favorite',   name: '小小收藏家', desc: '收藏 10 道好题' }                  // v1.18
+    { key: 'favorite',   name: '小小收藏家', desc: '收藏 10 道好题' },                 // v1.18
+    { key: 'sixArts',    name: '六艺精通', desc: '点亮全部 6 枚技巧徽章（适龄 4 + 进阶 2）' }  // v1.20
   ];
   function countAchievements() {
     // 已解锁成就数（store.achievements 非空键个数）
@@ -1410,7 +1411,8 @@ var checks = {
       mapMaster: (store.mapProgress && store.mapProgress.completed.length >= MAP_LEVELS.length), // v1.17
       monthStreak: streak >= 30, // v1.17
       mapStreak: mapStreakDays() >= 7, // v1.18 闯关连续 7 天（doneAt 派生）
-      favorite: (store.favorites || []).length >= 10 // v1.18 收藏 10 道好题
+      favorite: (store.favorites || []).length >= 10, // v1.18 收藏 10 道好题
+      sixArts: litMapSkillCount() >= SKILLS.length // v1.20 六艺精通：点亮全部 6 枚技巧徽章（适龄 4 + 进阶 2，任一来源皆计）
     };
     var i;
     for (i = 0; i < ACHIEVEMENTS.length; i++) {
@@ -3086,7 +3088,7 @@ function baseSkillCount() {
     cardC.appendChild(makeEl('div', 'report-row', achParts));
     // 闯关地图行（当前进度关 + 档位）
     var mapDone = (store.mapProgress && store.mapProgress.completed) ? store.mapProgress.completed.length : 0;
-    var mapRow = '🗺️ 闯关地图 ' + mapDone + ' / ' + MAP_LEVELS.length + ' 关';
+    var mapRow = '🗺️ 闯关地图 ' + mapDone + ' / ' + MAP_LEVELS.length + ' 关 · 掌握技巧 ' + litMapSkillCount() + ' / ' + SKILLS.length; // v1.20：闯关行补技巧掌握（对齐闯关卡 sub 口径）
     if (mapDone >= MAP_LEVELS.length) {
       mapRow += ' · 已全部通关 🎉';
     } else {
