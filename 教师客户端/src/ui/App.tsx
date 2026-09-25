@@ -186,12 +186,8 @@ function App() {
       </aside>
 
       <main className="content">
-        {wv2 === null && (
-          <div className="banner warn">
-            WebView2 运行时未安装或版本过旧（需 ≥108）。
-            请运行同目录 <code>MicrosoftEdgeWebview2Setup.exe</code> 完成安装后重启本程序。
-          </div>
-        )}
+        {/* WebView2 提示 banner 已移除（v0.2）：主窗口能渲染即证明 WebView2 在工作，
+            该 banner 只会是误报；真缺失时由 Rust preflight 原生弹窗处理（见 webview2.rs） */}
         {err && (
           <div className="banner error" onClick={() => setErr(null)}>
             {err}（点击关闭）
@@ -366,7 +362,7 @@ function App() {
                   ? "检测中…"
                   : wv2
                     ? `已安装 ${wv2}`
-                    : "缺失/过旧"}
+                    : "未检出（不影响运行）"}
               </dd>
               <dt>内容包目录</dt>
               <dd>packages/ · packages-embedded/（exe 同级）</dd>

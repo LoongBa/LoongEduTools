@@ -1,31 +1,48 @@
-//! Win7 WebView2 运行时检测（D02 §3.6 Oracle 阻塞项方案 A）
-//! 注册表检测：EdgeUpdate Clients\{F3017226-FE2A-4295-8BEE-13A647FE2BA7} 的 pv 值
+//! WebView2 运行时检测与启动期安装兜底（D02 §3.6 方案 A · 2026-09-25 v0.2 修订）
+//!
+//! - 注册表（权威键，微软官方检测路径）：`EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}`
+//!   的 `pv` 值——HKLM WOW64 / HKLM / HKCU 三处**全读取、取最高版本**（多命中首个返回会漏
+//!   per-user 安装；`0.0.0.0` 按微软文档视为未装）。
+//!   ⚠️ 历史教训：v0.1 误写 GUID `{...8BEE-13A647FE2BA7}`（全机器 MISS），叠加目录回退在
+//!   "仅注册表有键"的机器上失守 → Win11 误报（2026-09-25 本机实测确认，已修正）。
+//! - 目录回退（注册表键缺失的机器兜底）：evergreen per-machine / per-user / MSIX 包目录。
+//! - 启动期 preflight（Builder/窗口创建**之前**调用）：未装 → 找同目录 bootstrapper 静默
+//!   安装并轮询注册表 → 都失败才由调用方原生弹窗提示（此时 UI 起不来，前端无从提示）。
 
-/// WebView2 Runtime 注册表路径（{F3017226-FE2A-4295-8BEE-13A647FE2BA7} = WebView2 客户端 GUID）
-const WEBVIEW2_SUBKEY: &str =
-    r"SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BEE-13A647FE2BA7}";
-/// 备选：非 WOW64 路径（32 位系统 / 个别布局）
-const WEBVIEW2_SUBKEY_ALT: &str =
-    r"SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BEE-13A647FE2BA7}";
+use std::time::{Duration, Instant};
 
-/// 最小值：Chromium ~108（Win7 停更版下限；D02 §6.3 minimumWebview2Version）
+/// WebView2 Runtime 客户端 GUID（微软官方 distribution 文档检测键）
+const WEBVIEW2_CLIENT_ID: &str = "{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}";
+/// 最小值：Chromium major ≥108（Win7 停更版下限；D02 §6.3 minimumWebview2Version）
 const MIN_MAJOR: u64 = 108;
+/// Evergreen Bootstrapper 安装文件名（随包放 exe 同级；D06 §6.3）
+const BOOTSTRAPPER_NAME: &str = "MicrosoftEdgeWebview2Setup.exe";
+
+/// 启动期 preflight 结果
+pub enum PreflightOutcome {
+    /// 已安装且达标（或安装轮询成功）——正常启动
+    Ready,
+    /// 未安装，且本程序同目录/工作目录未找到安装文件——需用户手动处理
+    InstallerMissing,
+    /// 找到安装文件但静默安装轮询超时/启动失败——需用户手动处理
+    InstallFailed,
+}
 
 /// 检测 WebView2 是否已安装且版本达标
 /// 返回 (installed: bool, version: Option<String>)
 pub fn check_webview2() -> (bool, Option<String>) {
     #[cfg(windows)]
     {
-        // 注册表优先；miss（Win11 inbox 版常见：EdgeUpdate Clients 键缺失但目录实存）
-        // 回退扫描固定安装目录，避免假阴性误报（用户实测：4 条注册表路径全 miss + 153.x 实存）
-        match winreg_read_pv().or_else(dir_read_version) {
+        // 注册表与目录全部命中合并取最高版本（不再"注册表优先、首个即返"——
+        // 首个命中可能是过期低版本，per-user 键也可能排在后位被漏掉）
+        let mut candidates = winreg_versions();
+        candidates.extend(dir_versions());
+        match best_version(&candidates) {
             Some(ver) => {
-                let major = ver
-                    .split('.')
-                    .next()
-                    .and_then(|s| s.parse::<u64>().ok())
-                    .unwrap_or(0);
-                (major >= MIN_MAJOR, Some(ver))
+                let ok = version_tuple(&ver)
+                    .map(|(major, _, _, _)| major >= MIN_MAJOR)
+                    .unwrap_or(false);
+                (ok, Some(ver))
             }
             None => (false, None),
         }
@@ -38,59 +55,110 @@ pub fn check_webview2() -> (bool, Option<String>) {
     }
 }
 
-/// winreg 读取 WebView2 版本 pv 值（仅 Windows；Cargo.toml target-gated 依赖）
+/// 解析四段版本号为元组（缺段补 0）；解析失败返回 None
+fn version_tuple(v: &str) -> Option<(u64, u64, u64, u64)> {
+    let mut parts = [0u64; 4];
+    let segs: Vec<&str> = v.trim().split('.').collect();
+    if segs.is_empty() || segs.len() > 4 {
+        return None;
+    }
+    for (i, s) in segs.iter().enumerate() {
+        parts[i] = s.parse::<u64>().ok()?;
+    }
+    Some((parts[0], parts[1], parts[2], parts[3]))
+}
+
+/// 从候选版本串中选合法最高版本（过滤空串/非法/全零 0.0.0.0——per-user 安装场景
+/// HKLM 侧 by-design 写 0.0.0.0，不能据此判"未装"）
+fn best_version(candidates: &[String]) -> Option<String> {
+    let mut best: Option<((u64, u64, u64, u64), String)> = None;
+    for c in candidates {
+        let Some(tuple) = version_tuple(c) else { continue };
+        if tuple == (0, 0, 0, 0) {
+            continue;
+        }
+        if best.as_ref().map(|(t, _)| tuple > *t).unwrap_or(true) {
+            best = Some((tuple, c.clone()));
+        }
+    }
+    best.map(|(_, v)| v)
+}
+
+/// 读取注册表全部候选 `pv` 值（仅 Windows；Cargo.toml target-gated 依赖）
 #[cfg(windows)]
-fn winreg_read_pv() -> Option<String> {
+fn winreg_versions() -> Vec<String> {
     use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
     use winreg::RegKey;
 
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
 
-    // 依次尝试 HKLM WOW64 → HKLM → HKCU WOW64 → HKCU
-    let candidates: [(&RegKey, &str); 4] = [
-        (&hklm, WEBVIEW2_SUBKEY),
-        (&hklm, WEBVIEW2_SUBKEY_ALT),
-        (&hkcu, WEBVIEW2_SUBKEY),
-        (&hkcu, WEBVIEW2_SUBKEY_ALT),
+    // 64 位系统安装器可能写 WOW6432Node 或原生 SOFTWARE 视图（官方文档并列两路径）；
+    // HKCU 无 WOW64 重定向，只用非 WOW 路径。
+    let subkey_wow = format!(r"SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{WEBVIEW2_CLIENT_ID}");
+    let subkey_plain = format!(r"SOFTWARE\Microsoft\EdgeUpdate\Clients\{WEBVIEW2_CLIENT_ID}");
+    let subkey_hkcu = format!(r"Software\Microsoft\EdgeUpdate\Clients\{WEBVIEW2_CLIENT_ID}");
+
+    let candidates: [(&RegKey, &str); 3] = [
+        (&hklm, &subkey_wow),
+        (&hklm, &subkey_plain),
+        (&hkcu, &subkey_hkcu),
     ];
 
+    let mut out = Vec::new();
     for (root, sub) in candidates {
         if let Ok(key) = root.open_subkey(sub) {
             if let Ok(pv) = key.get_value::<String, _>("pv") {
                 if !pv.is_empty() {
-                    return Some(pv);
+                    out.push(pv);
                 }
             }
         }
     }
-    None
+    out
 }
 
-/// 注册表 miss 时的目录回退：evergreen WebView2 固定装在
-/// `%ProgramFiles(x86)%\Microsoft\EdgeWebView\Application\<版本>\`
-/// （Win11 inbox 分发常见注册表键缺失、目录实存）。取最高版本号。
+/// 目录回退：扫描全部安装基址下的版本目录名（仅 Windows）。
+/// 覆盖 evergreen per-machine / per-user / MSIX 包三种布局；ACL 拒绝的基址静默跳过。
 #[cfg(windows)]
-fn dir_read_version() -> Option<String> {
+fn dir_versions() -> Vec<String> {
     let mut bases: Vec<std::path::PathBuf> = Vec::new();
-    if let Ok(pf) = std::env::var("ProgramFiles(x86)") {
-        bases.push(
-            std::path::PathBuf::from(pf)
-                .join("Microsoft")
-                .join("EdgeWebView")
-                .join("Application"),
-        );
-    }
-    if let Ok(pf) = std::env::var("ProgramFiles") {
-        bases.push(
-            std::path::PathBuf::from(pf)
-                .join("Microsoft")
-                .join("EdgeWebView")
-                .join("Application"),
-        );
+
+    // per-machine evergreen：Program Files(x86) 与 Program Files 双基址
+    for var in ["ProgramFiles(x86)", "ProgramFiles"] {
+        if let Ok(pf) = std::env::var(var) {
+            bases.push(
+                std::path::PathBuf::from(pf)
+                    .join("Microsoft")
+                    .join("EdgeWebView")
+                    .join("Application"),
+            );
+        }
     }
 
-    let mut best: Option<(u64, String)> = None;
+    if let Ok(local_app) = std::env::var("LOCALAPPDATA") {
+        let local = std::path::PathBuf::from(local_app);
+        // per-user evergreen
+        bases.push(local.join("Microsoft").join("EdgeWebView").join("Application"));
+        // MSIX/Store 部署：LOCALAPPDATA\Packages\MicrosoftEdgeWebView_*\AppX\...
+        if let Ok(rd) = std::fs::read_dir(local.join("Packages")) {
+            for entry in rd.flatten() {
+                if entry.file_name().to_string_lossy().starts_with("MicrosoftEdgeWebView") {
+                    bases.push(msix_app_base(&entry.path()));
+                }
+            }
+        }
+        // MSIX/Store 部署：Program Files\WindowsApps（权限不足时 read_dir 失败即跳过）
+        if let Ok(rd) = std::fs::read_dir("C:\\Program Files\\WindowsApps") {
+            for entry in rd.flatten() {
+                if entry.file_name().to_string_lossy().starts_with("MicrosoftEdgeWebView") {
+                    bases.push(msix_app_base(&entry.path()));
+                }
+            }
+        }
+    }
+
+    let mut out = Vec::new();
     for base in bases {
         let Ok(rd) = std::fs::read_dir(&base) else {
             continue;
@@ -100,28 +168,181 @@ fn dir_read_version() -> Option<String> {
                 continue;
             }
             let name = entry.file_name().to_string_lossy().into_owned();
-            let major = name
-                .split('.')
-                .next()
-                .and_then(|s| s.parse::<u64>().ok())
-                .unwrap_or(0);
-            if major == 0 {
-                continue;
-            }
-            if best.as_ref().map(|(m, _)| major > *m).unwrap_or(true) {
-                best = Some((major, name));
-            }
+            // 目录名 = 版本号；非法名由 best_version 统一过滤
+            out.push(name);
         }
     }
-    best.map(|(_, v)| v)
+    out
 }
 
-/// 启动期检测入口：返回错误消息时前端弹 dialog 引导装 WebView2
+/// MSIX 包目录 → `...\AppX\Microsoft\EdgeWebView\Application`
+#[cfg(windows)]
+fn msix_app_base(pkg_dir: &std::path::Path) -> std::path::PathBuf {
+    pkg_dir
+        .join("AppX")
+        .join("Microsoft")
+        .join("EdgeWebView")
+        .join("Application")
+}
+
+/// 启动期 preflight：检测 → 同目录 bootstrapper 静默安装 → 轮询注册表（≤60s）。
+/// **必须在 Builder/窗口创建之前调用**：运行时真缺失时主窗口起不来，前端无从提示。
+pub fn preflight_webview2() -> PreflightOutcome {
+    #[cfg(not(windows))]
+    {
+        PreflightOutcome::Ready
+    }
+
+    #[cfg(windows)]
+    {
+        if check_webview2().0 {
+            return PreflightOutcome::Ready;
+        }
+
+        let Some(setup_exe) = find_bootstrapper() else {
+            return PreflightOutcome::InstallerMissing;
+        };
+        eprintln!("[WebView2] 未检测到运行时，尝试静默安装: {}", setup_exe.display());
+
+        // 官方参数（顺序敏感历史坑：/silent 必须在前）
+        if std::process::Command::new(&setup_exe)
+            .args(["/silent", "/install"])
+            .spawn()
+            .is_err()
+        {
+            return PreflightOutcome::InstallFailed;
+        }
+
+        // bootstrapper 常立即返回、安装在后台（官方 issue #1349）——以注册表轮询为准，
+        // ExitCode 不作判定（微软未文档化，#2473 官方建议装后再查注册表）。
+        let deadline = Instant::now() + Duration::from_secs(60);
+        let mut ticks: u32 = 0;
+        while Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(500));
+            if check_webview2().0 {
+                eprintln!("[WebView2] 安装完成，继续启动");
+                return PreflightOutcome::Ready;
+            }
+            ticks += 1;
+            if ticks % 10 == 0 {
+                eprintln!("[WebView2] 等待安装完成… {}s", ticks / 2);
+            }
+        }
+        if check_webview2().0 {
+            PreflightOutcome::Ready
+        } else {
+            PreflightOutcome::InstallFailed
+        }
+    }
+}
+
+/// 查找随包 bootstrapper：exe 同级 → exe 同级\tools\ → 当前工作目录
+#[cfg(windows)]
+fn find_bootstrapper() -> Option<std::path::PathBuf> {
+    let mut candidates: Vec<std::path::PathBuf> = Vec::new();
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            candidates.push(dir.join(BOOTSTRAPPER_NAME));
+            candidates.push(dir.join("tools").join(BOOTSTRAPPER_NAME));
+        }
+    }
+    if let Ok(cwd) = std::env::current_dir() {
+        candidates.push(cwd.join(BOOTSTRAPPER_NAME));
+    }
+    candidates.into_iter().find(|p| p.is_file())
+}
+
+/// 原生错误弹窗（MessageBoxW，零依赖）——WebView2 缺失时 UI 起不来，
+/// tauri dialog 插件依赖窗口/事件循环不可用，必须走裸 Win32。
+#[cfg(windows)]
+pub fn native_error_dialog(title: &str, text: &str) {
+    use std::os::windows::ffi::OsStrExt;
+
+    fn wide(s: &str) -> Vec<u16> {
+        std::ffi::OsStr::new(s)
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect()
+    }
+
+    #[link(name = "user32")]
+    extern "system" {
+        fn MessageBoxW(
+            hwnd: *mut core::ffi::c_void,
+            lptext: *const u16,
+            lpcaption: *const u16,
+            utype: u32,
+        ) -> i32;
+    }
+
+    // MB_OK = 0x0 | MB_ICONERROR = 0x10
+    let w_text = wide(text);
+    let w_title = wide(title);
+    unsafe {
+        MessageBoxW(
+            core::ptr::null_mut(),
+            w_text.as_ptr(),
+            w_title.as_ptr(),
+            0x0000_0010,
+        );
+    }
+}
+
+/// 检测入口：返回错误消息时由调用方决定如何提示（现仅 eprintln；用户提示统一走原生弹窗）
 pub fn ensure_webview2() -> Result<Option<String>, String> {
     let (ok, ver) = check_webview2();
     if ok {
         Ok(ver) // Some(ver) = 已装且达标
     } else {
-        Err("WebView2 运行时未安装或版本过旧（需 ≥108）。请运行同目录 MicrosoftEdgeWebview2Setup.exe 后重试。".to_string())
+        Err("WebView2 运行时未安装或版本过旧（需 ≥108）".to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn version_tuple_parses_and_pads() {
+        assert_eq!(
+            version_tuple("153.0.4234.48"),
+            Some((153, 0, 4234, 48))
+        );
+        assert_eq!(version_tuple("109"), Some((109, 0, 0, 0)));
+        assert_eq!(version_tuple("108.0.1462.46"), Some((108, 0, 1462, 46)));
+        assert_eq!(version_tuple("abc"), None);
+        assert_eq!(version_tuple(""), None);
+        assert_eq!(version_tuple("1.2.3.4.5"), None);
+        assert_eq!(version_tuple(" 1.2.3.4 "), Some((1, 2, 3, 4)));
+    }
+
+    #[test]
+    fn best_version_rejects_zero_and_invalid() {
+        // 0.0.0.0 = per-user 安装下 HKLM 的 by-design 值，必须视为未装
+        let cands: Vec<String> = vec!["0.0.0.0".into(), "".into(), "x".into()];
+        assert_eq!(best_version(&cands), None);
+        let cands: Vec<String> = vec!["0.0.0.0".into(), "153.0.4234.48".into()];
+        assert_eq!(best_version(&cands).as_deref(), Some("153.0.4234.48"));
+    }
+
+    #[test]
+    fn best_version_picks_highest_across_hits() {
+        // 三个注册表命中 + 目录命中混合：取最高，不取首个
+        let cands: Vec<String> = vec![
+            "108.0.1462.46".into(),
+            "153.0.4234.48".into(),
+            "109.0.1518.122".into(),
+        ];
+        assert_eq!(best_version(&cands).as_deref(), Some("153.0.4234.48"));
+        // major 相同按后续段比
+        let cands: Vec<String> = vec!["109.0.1518.1".into(), "109.0.1518.122".into()];
+        assert_eq!(best_version(&cands).as_deref(), Some("109.0.1518.122"));
+    }
+
+    #[test]
+    fn min_major_gate() {
+        assert!(version_tuple("108.0.1462.46").unwrap().0 >= MIN_MAJOR);
+        assert!(version_tuple("153.0.4234.48").unwrap().0 >= MIN_MAJOR);
+        assert!(version_tuple("107.0.6200.0").unwrap().0 < MIN_MAJOR);
     }
 }

@@ -9,6 +9,36 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt as _, ShortcutState};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // ① WebView2 启动期 preflight —— 必须在 Builder/窗口创建之前：
+    //    运行时真缺失时主窗口起不来（wry 创建环境失败），前端 banner 永远不可达，
+    //    检测/静默安装/原生弹窗必须在原生层完成；都失败才提示并退出（v0.2 流程修订）。
+    #[cfg(windows)]
+    match webview2::preflight_webview2() {
+        webview2::PreflightOutcome::Ready => {}
+        webview2::PreflightOutcome::InstallerMissing => {
+            webview2::native_error_dialog(
+                "需要安装 WebView2 运行时",
+                "未检测到本机已安装 WebView2 运行时，也未在本程序同目录找到 \
+                 MicrosoftEdgeWebview2Setup.exe。\n\n\
+                 请到微软官方页面下载 WebView2 Runtime 安装程序并完成安装，\
+                 然后重新打开本程序：\n\
+                 https://developer.microsoft.com/microsoft-edge/webview2/\n\n\
+                 （Windows 11 及已安装机器通常无需此步，直接重新打开本程序即可。）",
+            );
+            std::process::exit(0);
+        }
+        webview2::PreflightOutcome::InstallFailed => {
+            webview2::native_error_dialog(
+                "WebView2 自动安装未成功",
+                "本程序已尝试自动安装 WebView2 运行时，但未能完成。\n\n\
+                 请手动运行本程序同目录的 MicrosoftEdgeWebview2Setup.exe 完成安装，\
+                 或到微软官方页面下载安装程序：\n\
+                 https://developer.microsoft.com/microsoft-edge/webview2/\n\n\
+                 安装完成后请重新打开本程序。",
+            );
+            std::process::exit(0);
+        }
+    }
     tauri::Builder::default()
         // ---- 状态注册（Builder 级：先于 config 窗口创建与 setup，杜绝
         // "state not managed" 窗口期；tauri 2.11 app.rs:2524 窗口先于 setup 创建）----
@@ -44,11 +74,11 @@ pub fn run() {
         )
         // ---- 启动流程（D02 §3.4 oracle 修订）----
         .setup(|app| {
-            // ① WebView2 检测（Win7 关键；缺失引导见前端 dialog）
+            // ① WebView2 兜底复检（preflight 已在窗口创建前保证 Ready；此处仅留日志，
+            //    缺失引导统一走 preflight 原生弹窗，前端 banner 已移除——见 v0.2 修订）
             let wv2 = webview2::ensure_webview2();
             if let Err(msg) = &wv2 {
                 eprintln!("[WebView2] {msg}");
-                // P0：检测失败仅警告不阻断（开发机已装；Win7 目标机由前端读结果弹引导）
             }
             // ② 扫描内容包 → 填充已注册的 AppState（Builder 级 manage 已完成注册）
             let state = app.state::<AppState>();
