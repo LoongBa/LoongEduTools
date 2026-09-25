@@ -40,6 +40,34 @@
   }
   var store = loadStore();
   saveStore();
+  var customLevels = loadCustomLevels();
+
+  /* ---------- 自定义关卡库（customLevels 数据层，v1.1） ---------- */
+  function loadCustomLevels() {
+    var arr = LX_SHARED.storage.get('customLevels');
+    return (arr && arr.length) ? arr : [];
+  }
+  function saveCustomLevels(arr) {
+    LX_SHARED.storage.set('customLevels', arr);
+  }
+  function addCustomLevel(cells, target, optimal, name) {
+    if (customLevels.length >= 20) { window.alert('自建关卡最多 20 个'); return null; }
+    var id = Date.now() + '-' + Math.random().toString(36).slice(2, 5);
+    customLevels.push({
+      id: id, name: name, cells: cells, size: 4, target: target,
+      optimal: optimal, createdAt: Date.now(), solved: false
+    });
+    saveCustomLevels(customLevels);
+    return id;
+  }
+  function removeCustomLevel(id) {
+    customLevels = customLevels.filter(function (c) { return c.id !== id; });
+    saveCustomLevels(customLevels);
+  }
+  function markCustomSolved(idx) {
+    customLevels[idx].solved = true;
+    saveCustomLevels(customLevels);
+  }
 
   /* ---------- 难度档（oracle v0.2 修正：initBlocks + sum 硬约束） ---------- */
   var LEVELS_CFG = {
@@ -65,6 +93,7 @@
   /* ---------- 状态 ---------- */
   var state = {
     level: 'easy',
+    size: 4,           // 盘面边长（startGame/startCustom 统一设置；编辑器固定 4×4）
     grid: [],          // 当前盘面（执行快照）
     initGrid: [],      // 初始盘面（重置用）
     cmds: [],          // 指令序列 [{id, val}]
@@ -75,7 +104,16 @@
     execDone: false,
     won: false,
     startMs: 0, elapsed: 0, timerId: null,
-    finished: false
+    finished: false,
+    // —— 编辑器状态（v1.1 关卡编辑器）——
+    customIdx: -1,       // 当前 custom 关卡索引
+    editCells: [],       // 编辑网格（16 格，值 0|2|4，M.state.editCells 供测试）
+    editTool: -1,        // -1 循环点格（空→2→4→空）｜ 2/4 直接写入 ｜ 0 橡皮
+    editTarget: 8,
+    editIdx: -1,         // 编辑中的 customLevels 索引（-1 = 新建）
+    editName: '',
+    editChecked: false,
+    editPainting: false
   };
 
   /* ---------- 小工具 ---------- */
@@ -171,13 +209,14 @@
   }
 
   /* ---------- BFS 最短指令数（确定性状态空间，oracle v0.2：入口防御） ---------- */
-  function bfsShortest(startGrid, size, target, maxDepth) {
+  function bfsShortest(startGrid, size, target, maxDepth, nodeCap) {
     if (maxOf(startGrid) >= target) { return 0; }   // oracle 建议：BFS 自守
     var queue = [{ grid: startGrid, depth: 0 }];
     var visited = {};
     visited[gridKey(startGrid)] = true;
     var head = 0;
     while (head < queue.length) {
+      if (nodeCap && queue.length > nodeCap) { return -2; }   // 超限兜底（custom 校验用；-2 = 暂不确定三态）
       var cur = queue[head];
       head += 1;
       for (var dir = 0; dir < 4; dir++) {
@@ -295,6 +334,13 @@
       wrap.appendChild(card);
     });
 
+    // 🛠 自建关卡入口（v1.1：创作闭环，摆数字块出题）
+    var customCard = makeEl('button', 'level-card custom-card');
+    customCard.appendChild(makeEl('div', 'level-name', '🛠 自建关卡 (' + customLevels.length + ')'));
+    customCard.appendChild(makeEl('div', 'level-best', '摆数字块，出题！'));
+    customCard.addEventListener('click', function () { viewCustomList(); });
+    wrap.appendChild(customCard);
+
     var checkinBtn = makeEl('button', 'btn btn-checkin', store.checkin.dates.indexOf(todayStr()) >= 0 ? '✅ 今日已打卡' : '📅 今日打卡');
     checkinBtn.addEventListener('click', function () { doCheckin(checkinBtn); });
     wrap.appendChild(checkinBtn);
@@ -335,7 +381,8 @@
     if (hist.length) {
       wrap.appendChild(makeEl('h3', 'parent-sub', '最近记录'));
       hist.forEach(function (h) {
-        wrap.appendChild(makeEl('div', 'parent-row small', h.date + ' · ' + (LEVELS_CFG[h.level] ? LEVELS_CFG[h.level].label : h.level) + ' · ' + h.stars + '★'));
+        var lvTxt = h.level === 'custom' ? ('自建关卡·' + h.customName) : (LEVELS_CFG[h.level] ? LEVELS_CFG[h.level].label : h.level);
+        wrap.appendChild(makeEl('div', 'parent-row small', h.date + ' · ' + lvTxt + ' · ' + h.stars + '★'));
       });
     }
     var back = makeEl('button', 'btn', '‹ 返回');
@@ -345,6 +392,8 @@
     clearBtn.addEventListener('click', function () {
       if (window.confirm('确定清除所有练习数据？此操作不可恢复。')) {
         LX_SHARED.storage.remove('v1');
+        LX_SHARED.storage.remove('customLevels');   // v1.1：自建关卡随清除一并删除
+        customLevels = [];
         store = loadStore();
         saveStore();
         viewHome();
@@ -355,9 +404,301 @@
     renderFooter('');
   }
 
+  /* ---------- 视图：自建关卡库 + 编辑器（v1.1） ---------- */
+  function viewCustomList() {
+    stopTimer();
+    state.finished = false;
+    renderHeader();
+    clearNode(viewEl);
+    var wrap = makeEl('div', 'parent-wrap');
+    wrap.appendChild(makeEl('h2', 'parent-title', '🛠 自建关卡'));
+    if (!customLevels.length) {
+      wrap.appendChild(makeEl('p', 'parent-row', '还没有自建关卡，点底部按钮新建一个！'));
+    }
+    customLevels.forEach(function (cl, i) {
+      var item = makeEl('div', 'cl-item');
+      var head = makeEl('div', 'cl-head');
+      head.appendChild(makeEl('span', 'cl-name', cl.name));
+      head.appendChild(makeEl('span', 'cl-badge ' + (cl.solved ? 'solved' : 'unsolved'), cl.solved ? '已解' : '未解'));
+      item.appendChild(head);
+      item.appendChild(makeEl('div', 'cl-info', '目标合出 ' + cl.target + ' · 最优 ' + cl.optimal + ' 步'));
+      var row = makeEl('div', 'cl-actions');
+      var editBtn = makeEl('button', 'btn btn-sm', '✏ 编辑');
+      editBtn.addEventListener('click', function () { viewEditor(i); });
+      row.appendChild(editBtn);
+      var playBtn = makeEl('button', 'btn btn-sm btn-primary', '▶ 挑战');
+      playBtn.addEventListener('click', function () { startCustom(i); });
+      row.appendChild(playBtn);
+      var delBtn = makeEl('button', 'btn btn-sm btn-danger', '🗑 删除');
+      delBtn.addEventListener('click', function () {
+        if (window.confirm('删除关卡「' + cl.name + '」？')) {
+          removeCustomLevel(cl.id);
+          viewCustomList();
+        }
+      });
+      row.appendChild(delBtn);
+      item.appendChild(row);
+      wrap.appendChild(item);
+    });
+    var newBtn = makeEl('button', 'btn btn-primary', '+ 新建关卡');
+    newBtn.addEventListener('click', function () { viewEditor(-1); });
+    wrap.appendChild(newBtn);
+    var back = makeEl('button', 'btn', '‹ 返回');
+    back.addEventListener('click', function () { viewHome(); });
+    wrap.appendChild(back);
+    viewEl.appendChild(wrap);
+    renderFooter('');
+  }
+
+  function viewEditor(idx) {
+    stopTimer();
+    state.finished = false;
+    state.editIdx = (idx === undefined ? -1 : idx);
+    state.editCells = new Array(16).fill(0);
+    state.editTarget = 8;
+    state.editTool = -1;          // 默认循环点格：空→2→4→空
+    state.editChecked = false;
+    state.editName = '';
+    if (state.editIdx >= 0 && customLevels[state.editIdx]) {
+      var cl = customLevels[state.editIdx];
+      for (var c = 0; c < cl.cells.length; c++) { state.editCells[cl.cells[c].idx] = cl.cells[c].val; }
+      state.editTarget = cl.target;
+      state.editName = cl.name;
+    }
+    renderHeader();
+    clearNode(viewEl);
+    var wrap = makeEl('div', 'game-wrap');
+
+    var top = makeEl('div', 'game-top');
+    var back = makeEl('button', 'game-back', '‹ 返回');
+    back.addEventListener('click', function () { viewCustomList(); });
+    top.appendChild(back);
+    top.appendChild(makeEl('div', 'game-prog', '🛠 盘面编辑器 · 4×4'));
+    top.appendChild(makeEl('div', 'game-timer', ''));
+    wrap.appendChild(top);
+
+    var nameRow = makeEl('div', 'edit-row');
+    nameRow.appendChild(makeEl('span', 'edit-label', '名称'));
+    var nameInput = makeEl('input', 'edit-input');
+    nameInput.type = 'text';
+    nameInput.maxLength = 12;
+    nameInput.placeholder = '我的关卡 ' + (customLevels.length + 1);
+    nameInput.value = state.editName;
+    nameInput.addEventListener('input', function () {
+      state.editName = nameInput.value;   // 改名不影响可解性——不重置 editChecked（目标/盘面变化才需重检）
+    });
+    nameRow.appendChild(nameInput);
+    wrap.appendChild(nameRow);
+
+    var targetRow = makeEl('div', 'edit-row');
+    targetRow.id = 'edit-targets';
+    targetRow.appendChild(makeEl('span', 'edit-label', '目标'));
+    [8, 16, 32].forEach(function (tv) {
+      var tb = makeEl('button', 'btn btn-sm' + (state.editTarget === tv ? ' btn-primary' : ''), '' + tv);
+      tb.setAttribute('data-target', '' + tv);
+      tb.addEventListener('click', function () {
+        state.editTarget = tv;
+        state.editChecked = false;
+        renderEditorTargets();
+        var fb = document.getElementById('edit-feedback');
+        if (fb) { fb.textContent = ''; }
+      });
+      targetRow.appendChild(tb);
+    });
+    wrap.appendChild(targetRow);
+
+    var board = makeEl('div', 'board edit-board');
+    board.id = 'edit-board';
+    wrap.appendChild(board);
+
+    var toolBar = makeEl('div', 'tool-bar');
+    toolBar.id = 'edit-tools';
+    var tools = [{ v: 2, label: '🔢 2' }, { v: 4, label: '🔢 4' }, { v: 0, label: '🧹 橡皮' }];
+    tools.forEach(function (tv) {
+      var tb = makeEl('button', 'btn btn-sm' + (state.editTool === tv.v ? ' btn-primary' : ''), tv.label);
+      tb.setAttribute('data-tool', '' + tv.v);
+      tb.addEventListener('click', function () {
+        state.editTool = tv.v;
+        renderEditorTools();
+      });
+      toolBar.appendChild(tb);
+    });
+    wrap.appendChild(toolBar);
+
+    var ctrl = makeEl('div', 'ctrl-row');
+    var checkBtn = makeEl('button', 'btn btn-primary', '✓ 检查可解');
+    checkBtn.addEventListener('click', function () { doCheckEdit(); });
+    ctrl.appendChild(checkBtn);
+    var saveBtn = makeEl('button', 'btn', '💾 保存');
+    saveBtn.addEventListener('click', function () { doSaveEdit(); });
+    ctrl.appendChild(saveBtn);
+    var clearBtn = makeEl('button', 'btn', '↺ 清空');
+    clearBtn.addEventListener('click', function () {
+      state.editCells = new Array(16).fill(0);
+      state.editChecked = false;
+      var fb = document.getElementById('edit-feedback');
+      if (fb) { fb.textContent = ''; fb.className = 'edit-feedback'; }
+      renderBoardEdit();
+    });
+    ctrl.appendChild(clearBtn);
+    wrap.appendChild(ctrl);
+
+    var fb = makeEl('div', 'edit-feedback', '点格子摆数字块（点一下：空→2→4→空）');
+    fb.id = 'edit-feedback';
+    wrap.appendChild(fb);
+
+    viewEl.appendChild(wrap);
+    renderBoardEdit();
+    renderFooter('');
+  }
+
+  /* 编辑网格渲染（4×4，复用 TILE_CLS 配色：2=米黄、4=深色） */
+  function renderBoardEdit() {
+    var board = document.getElementById('edit-board');
+    if (!board) { return; }
+    var parts = ['<div class="grid" style="width:' + (100 / 4) + '%">'];
+    for (var i = 0; i < 16; i++) {
+      var v = state.editCells[i];
+      var cls = 'cell' + (v ? ' ' + TILE_CLS[v] : '');
+      parts.push('<div class="' + cls + '" data-idx="' + i + '">' + (v || '') + '</div>');
+    }
+    parts.push('</div>');
+    board.innerHTML = parts.join('');
+    var cells = board.querySelectorAll('.cell');
+    for (var j = 0; j < cells.length; j++) {
+      (function (cell) {
+        var idx = parseInt(cell.getAttribute('data-idx'), 10);
+        cell.addEventListener('pointerdown', function (ev) {
+          ev.preventDefault();
+          state.editPainting = true;
+          paintEditCell(idx);
+          if (cell.setPointerCapture) { cell.setPointerCapture(ev.pointerId); }
+        });
+        cell.addEventListener('pointermove', function (ev) {
+          if (!state.editPainting) { return; }
+          var el = document.elementFromPoint(ev.clientX, ev.clientY);
+          if (el && el.getAttribute && el.getAttribute('data-idx') !== null) {
+            paintEditCell(parseInt(el.getAttribute('data-idx'), 10));
+          }
+        });
+        cell.addEventListener('pointerup', function () { state.editPainting = false; });
+        cell.addEventListener('pointercancel', function () { state.editPainting = false; });
+      })(cells[j]);
+    }
+  }
+
+  /* 涂格：循环 0→2→4→0（编辑工具 -1）或直接写入工具值（2/4/0 橡皮） */
+  function paintEditCell(idx) {
+    var v;
+    if (state.editTool === -1) {
+      v = state.editCells[idx] === 0 ? 2 : (state.editCells[idx] === 2 ? 4 : 0);
+    } else {
+      v = state.editTool;
+    }
+    if (state.editCells[idx] !== v) {
+      state.editCells[idx] = v;
+      state.editChecked = false;
+      var fb = document.getElementById('edit-feedback');
+      if (fb) { fb.textContent = ''; }
+      var cell = document.querySelector('#edit-board .cell[data-idx="' + idx + '"]');
+      if (cell) {
+        cell.className = 'cell' + (v ? ' ' + TILE_CLS[v] : '');
+        cell.textContent = v || '';
+      }
+    }
+  }
+
+  function renderEditorTargets() {
+    var row = document.getElementById('edit-targets');
+    if (!row) { return; }
+    var bs = row.querySelectorAll('.btn');
+    for (var i = 0; i < bs.length; i++) {
+      if (parseInt(bs[i].getAttribute('data-target'), 10) === state.editTarget) { bs[i].classList.add('btn-primary'); }
+      else { bs[i].classList.remove('btn-primary'); }
+    }
+  }
+
+  function renderEditorTools() {
+    var bar = document.getElementById('edit-tools');
+    if (!bar) { return; }
+    var bs = bar.querySelectorAll('.btn');
+    for (var j = 0; j < bs.length; j++) {
+      if (parseInt(bs[j].getAttribute('data-tool'), 10) === state.editTool) { bs[j].classList.add('btn-primary'); }
+      else { bs[j].classList.remove('btn-primary'); }
+    }
+  }
+
+  /* 编辑器模型 → 存储模型（N-3 转换）：editCells[y*4+x] 非零格 → cells [{idx, val}] */
+  function cellsFromEdit() {
+    var cells = [];
+    for (var i = 0; i < state.editCells.length; i++) {
+      if (state.editCells[i]) { cells.push({ idx: i, val: state.editCells[i] }); }
+    }
+    return cells;
+  }
+
+  /* 可解性校验（M.checkCustom）：cells = [{idx, val}]，块数/值域/sum 硬约束 + bfsShortest 三态 */
+  function checkCustom(cells, target) {
+    if (!cells || !cells.length) { return { ok: false, msg: '先摆数字块', optimal: -1 }; }
+    if (cells.length > 9) { return { ok: false, msg: '最多 9 个数字块', optimal: -1 }; }
+    var sum = 0;
+    for (var i = 0; i < cells.length; i++) {
+      if (cells[i].val !== 2 && cells[i].val !== 4) { return { ok: false, msg: '数字块只能是 2 或 4', optimal: -1 }; }
+      sum += cells[i].val;
+    }
+    if (sum < target) { return { ok: false, msg: '数字加起来不够目标', optimal: -1 }; }
+    var grid = new Array(16).fill(0);
+    for (var j = 0; j < cells.length; j++) { grid[cells[j].idx] = cells[j].val; }
+    var opt = bfsShortest(grid, 4, target, 18, 200000);
+    if (opt >= 1) { return { ok: true, msg: '✓ 可解！最优 ' + opt + ' 步', optimal: opt }; }
+    if (opt === -2) { return { ok: false, msg: '暂不确定，试试减少块数或改小目标', optimal: -2 }; }
+    return { ok: false, msg: '18 步内未找到解，试试少放几块或改小目标', optimal: -1 };
+  }
+
+  function doCheckEdit() {
+    var res = checkCustom(cellsFromEdit(), state.editTarget);
+    state.editChecked = res.ok;
+    var fb = document.getElementById('edit-feedback');
+    if (fb) {
+      fb.textContent = res.msg;
+      fb.className = 'edit-feedback ' + (res.ok ? 'ok' : 'miss');
+    }
+    return res;
+  }
+
+  function doSaveEdit() {
+    var fb = document.getElementById('edit-feedback');
+    if (!state.editChecked) {
+      if (fb) { fb.textContent = '先点「✓ 检查可解」，通过后才能保存'; fb.className = 'edit-feedback miss'; }
+      return;
+    }
+    var cells = cellsFromEdit();
+    var res = checkCustom(cells, state.editTarget);
+    if (!res.ok) {
+      state.editChecked = false;
+      if (fb) { fb.textContent = res.msg; fb.className = 'edit-feedback miss'; }
+      return;
+    }
+    var name = '';
+    if (state.editName) { name = state.editName.replace(/^\s+|\s+$/g, ''); }
+    if (!name) { name = '我的关卡 ' + (customLevels.length + 1); }
+    if (state.editIdx >= 0 && customLevels[state.editIdx]) {
+      var cl = customLevels[state.editIdx];
+      cl.name = name; cl.cells = cells; cl.target = state.editTarget; cl.optimal = res.optimal;
+      cl.solved = false;
+      saveCustomLevels(customLevels);
+    } else {
+      var id = addCustomLevel(cells, state.editTarget, res.optimal, name);
+      if (!id) { return; }
+    }
+    window.alert('✓ 可解！保存成功');
+    viewCustomList();
+  }
+
   /* ---------- 视图：练习页 ---------- */
   function startGame(level) {
     state.level = level;
+    state.size = LEVELS_CFG[level].size;
     state.finished = false;
     state.execLock = false; state.execDone = false; state.won = false;
     state.cmds = [];
@@ -372,6 +713,24 @@
     startTimer();
   }
 
+  /* ---------- 自定义关卡练习（v1.1，复刻 startGame 完整启动序列） ---------- */
+  function startCustom(idx) {
+    stopTimer();                              // 防重复 interval（⟲ 重置重载同关路径会二次进入）
+    state.finished = false;
+    state.execLock = false; state.execDone = false; state.won = false;
+    state.cmds = []; state.totalCmds = 0;
+    state.level = 'custom'; state.customIdx = idx;
+    state.size = 4;                           // 编辑器固定 4×4
+    var cl = customLevels[idx];
+    var grid = new Array(16).fill(0);
+    for (var i = 0; i < cl.cells.length; i++) { grid[cl.cells[i].idx] = cl.cells[i].val; }
+    state.initGrid = grid; state.grid = grid.slice();
+    state.target = cl.target; state.optimal = cl.optimal;
+    renderGame();
+    state.startMs = Date.now();
+    startTimer();
+  }
+
   function renderGame() {
     renderHeader();
     clearNode(viewEl);
@@ -381,7 +740,7 @@
     var back = makeEl('button', 'game-back', '‹ 返回');
     back.addEventListener('click', function () { viewHome(); });
     top.appendChild(back);
-    var lvEl = makeEl('div', 'game-prog', LEVELS_CFG[state.level].label + ' · 目标合出 ' + state.target);
+    var lvEl = makeEl('div', 'game-prog', (state.level === 'custom' ? customLevels[state.customIdx].name : LEVELS_CFG[state.level].label) + ' · 目标合出 ' + state.target);
     lvEl.id = 'game-prog';
     top.appendChild(lvEl);
     var timerEl = makeEl('div', 'game-timer', '⏱ 00.0');
@@ -426,6 +785,7 @@
     ctrl.appendChild(runBtn);
     var resetBtn = makeEl('button', 'btn', '⟲ 重置');
     resetBtn.addEventListener('click', function () {
+      if (state.level === 'custom') { startCustom(state.customIdx); return; }  // custom：重载同关（不再随机）
       state.execLock = false; state.execDone = false; state.won = false;
       state.cmds = []; state.totalCmds = 0;
       state.grid = state.initGrid.slice();
@@ -494,7 +854,7 @@
   function renderBoardOnly() {
     var board = document.getElementById('board');
     if (!board) { return; }
-    var size = LEVELS_CFG[state.level].size;
+    var size = state.size;   // N2 统一口径：startGame/startCustom 均设 state.size
     var parts = ['<div class="grid" style="width:' + (100 / size) + '%">'];
     for (var i = 0; i < state.grid.length; i++) {
       var v = state.grid[i];
@@ -545,7 +905,7 @@
     var dir = state.execQueue[state.execProg];
     var dirMap = { left: 0, up: 1, right: 2, down: 3 };
     state.execProg += 1;
-    var res = applyMovePure(state.grid, LEVELS_CFG[state.level].size, dirMap[dir]);
+    var res = applyMovePure(state.grid, state.size, dirMap[dir]);
     if (!res.changed) {
       // 无变化步：计 1 条指令 + 盘面闪烁 + 友好提示
       flashBoard();
@@ -621,6 +981,16 @@
     var stars = 1;
     if (total <= state.optimal * 1.5) { stars = 3; }
     else if (total <= state.optimal * 2.5) { stars = 2; }
+    var fb = document.getElementById('game-feedback');
+    if (state.level === 'custom') {
+      // custom 分支：不写 store.best/recent（防污染三档统计）；星级按保存时 BFS 最优真实计算
+      markCustomSolved(state.customIdx);
+      store.history.push({ date: todayStr(), level: 'custom', customName: customLevels[state.customIdx].name, stars: stars, cmds: total });
+      store.history = store.history.slice(-100);
+      saveStore();
+      if (fb) { fb.textContent += '（' + stars + '★，指令 ' + total + ' 条 / 最优 ' + state.optimal + '）'; }
+      return;
+    }
     var lv = state.level;
     var rec = { date: todayStr(), level: lv, stars: stars, cmds: total };
     var prev = store.best[lv];
@@ -631,11 +1001,11 @@
     store.history.push(rec);
     store.history = store.history.slice(-100);
     saveStore();
-    var fb = document.getElementById('game-feedback');
     if (fb) { fb.textContent += '（' + stars + '★，指令 ' + total + ' 条 / 最优 ' + state.optimal + '）'; }
   }
 
   function nextLevel() {
+    if (state.level === 'custom') { viewCustomList(); return; }   // 结算后回关卡库
     state.execLock = false; state.execDone = false; state.won = false;
     state.cmds = []; state.totalCmds = 0;
     var res = genLevel(state.level);
@@ -679,6 +1049,15 @@
   /* 导出（供调试/测试） */
   M.viewHome = viewHome;
   M.startGame = startGame;
+  M.startCustom = startCustom;
+  M.viewCustomList = viewCustomList;
+  M.viewEditor = viewEditor;
+  M.checkCustom = checkCustom;
+  M.loadCustomLevels = loadCustomLevels;
+  M.saveCustomLevels = saveCustomLevels;
+  M.addCustomLevel = addCustomLevel;
+  M.removeCustomLevel = removeCustomLevel;
+  M.markCustomSolved = markCustomSolved;
   M.state = state;
   M.genLevel = genLevel;
   M.applyMovePure = applyMovePure;

@@ -3,13 +3,14 @@
    ------------------------------------------------------------
    玩法：网格走廊盘面（起点 S + 终点 G⭐），孩子用指令让机器人
    从 S 走到 G。指令含显式循环块「🔁 重复 N 次 { 组指令 }」——
-   MVP 单层循环（多指令块重复），区别于走迷宫隐式 chip ×N。
+   v1.0 MVP 单层循环；v1.1 放开嵌套（循环块内可再嵌循环块 ≤2 层，
+   🔁×M { 🔁×N {指令} } = 二维自动化）。
    - 指令：前进/左转/右转 + 循环块（单元）——循环 = 自动化
    - 判定：执行后机器人位置 = 目标格 = 有标准答案（走廊无捷径）
    - 星级：编写量（循环块1条 + 内部指令计1不乘N）vs 最优
-     （pattern.length + 1，走廊唯一路径 → 循环块 = 高效解）
-   - 三档：简单（6×6, pattern2×3）/ 普通（8×8, pattern3×3）/
-     挑战（10×10, pattern4×3）——展开写必 ≥1.5× optimal（封顶2★）
+     （v1.1 重定义为嵌套解写量常量 4；单层循环解 normal/hard 跌 2★）
+   - 三档：简单（6×6, pattern2×3）/ 普通（8×8, pattern5×3）/
+     挑战（10×10, pattern7×3）——展开写必 ≥1.5× optimal（封顶2★）
    - 生成：走廓生成（轨迹格空地 + 相邻非轨迹格墙）+ 自交检查 +
      simulate 纯函数（生成器与执行器共用）
    - 数据：window.APP_DATA（data.js）
@@ -47,8 +48,8 @@
   /* ---------- 难度档 ---------- */
   var LEVELS_CFG = {
     easy:   { key: 'easy',   label: '简单', size: 6, patternLen: 3, rep: 3 },   // [F,F,R] → 螺旋走廊
-    normal: { key: 'normal', label: '普通', size: 8, patternLen: 4, rep: 3 },   // [F,F,F,R]
-    hard:   { key: 'hard',   label: '挑战', size: 10, patternLen: 5, rep: 3 }   // [F,F,F,F,R]（长骨架）
+    normal: { key: 'normal', label: '普通', size: 8, patternLen: 6, rep: 3 },   // [F×5,R]（嵌套解 fwd 数 5 = patternLen−1，v1.1）
+    hard:   { key: 'hard',   label: '挑战', size: 10, patternLen: 8, rep: 3 }   // [F×7,R]（嵌套解 fwd 数 7，v1.1）
   };
   var LEVEL_ORDER = ['easy', 'normal', 'hard'];
 
@@ -223,7 +224,7 @@
         path: steps,
         pattern: pattern,
         rep: cfg.rep,
-        optimal: cfg.patternLen + 1    // ★ 最优编写量 = 骨架指令数 + 循环块 1
+        optimal: 4    // ★ v1.1：optimal 重定义为嵌套解写量常量 4（§2.0/§2.4 权威口径；非 patternLen+1）
       };
     }
     // 兜底：直线走廊（最简单必有解）
@@ -280,47 +281,6 @@
       }
     }
     return false; // 不可达（不应发生）
-  }
-
-  function seedLevel(diff) {
-    // 兜底：手工设计的有解走廓（2 组）
-    var cfg = LEVELS_CFG[diff];
-    var walls = {};
-    var trace = [];
-    // 简单模式：右3 → 下1 → 右1 → 上1 → 右1（Z 字）
-    // 手写安全走廓：pattern [fwd,fwd,fwd,right,fwd] 之类
-    // 用 simulate 生成保证一致性
-    var pattern;
-    if (diff === 'easy') { pattern = ['fwd', 'right', 'fwd', 'right', 'fwd']; }
-    else if (diff === 'normal') { pattern = ['fwd', 'fwd', 'right', 'fwd', 'fwd', 'right', 'fwd', 'fwd']; }
-    else { pattern = ['fwd', 'fwd', 'fwd', 'right', 'fwd', 'fwd', 'fwd', 'right', 'fwd', 'fwd', 'fwd', 'right', 'fwd', 'fwd', 'fwd']; }
-    var sim = simulate(pattern, cfg.size, { x: 1, y: 1 }, 0);
-    // 若越界，退回简单直线
-    if (sim.invalid) {
-      var straight = [];
-      for (var i = 0; i < cfg.size - 2; i++) { straight.push('fwd'); }
-      sim = simulate(straight, cfg.size, { x: 1, y: 1 }, 0);
-      return {
-        walls: buildCorridor(sim.trace, cfg.size),
-        trace: sim.trace,
-        start: { x: 1, y: 1 }, startFace: 0,
-        goal: sim.end,
-        path: straight,
-        pattern: ['fwd'],
-        rep: straight.length,
-        optimal: 2
-      };
-    }
-    return {
-      walls: buildCorridor(sim.trace, cfg.size),
-      trace: sim.trace,
-      start: { x: 1, y: 1 }, startFace: 0,
-      goal: sim.end,
-      path: pattern,
-      pattern: pattern,
-      rep: 1,
-      optimal: pattern.length + 1
-    };
   }
 
   /* ---------- 渲染：顶栏 ---------- */
@@ -517,8 +477,8 @@
     board.innerHTML = boardHtml();
     wrap.appendChild(board);
 
-    // 概念卡（循环 vs 走迷宫 ×N）
-    var concept = makeEl('div', 'concept-note', '💡 循环块 = 让一「组」动作重复做；走迷宫的 ×N 是让一个动作重复做');
+    // 概念卡（循环 vs 走迷宫 ×N + v1.1 嵌套循环）
+    var concept = makeEl('div', 'concept-note', '💡 循环块 = 让一「组」动作重复做；走迷宫的 ×N 是让一个动作重复做；嵌套循环 = 循环套循环：外层每轮完整执行一遍内层');
     wrap.appendChild(concept);
 
     // 指令区
@@ -584,7 +544,7 @@
   }
 
   /* ---------- 指令树交互（分层：顶层 + 循环块内） ---------- */
-  var editCtx = { loopIdx: -1 };   // -1 = 顶层；>=0 = 正在编辑的循环块下标
+  var editCtx = { loopIdx: -1, innerIdx: -1 };   // -1 = 顶层/未展开；innerIdx >= 0 = 正在编辑 cmds[loopIdx].body[innerIdx] 内层循环块
 
   function addTopCmd(id) {
     if (state.execLock) { return; }
@@ -601,11 +561,31 @@
   function addBodyCmd(id) {
     if (state.execLock) { return; }
     if (editCtx.loopIdx < 0) { return; }
-    var loop = state.cmds[editCtx.loopIdx];
-    if (!loop || loop.type !== 'loop') { return; }
-    if (id === 'loop') { return; }   // MVP 单层：块内不再套循环
-    loop.body.push({ type: id });
+    var outer = state.cmds[editCtx.loopIdx];
+    if (!outer || outer.type !== 'loop') { return; }
+    var loop;
+    if (editCtx.innerIdx >= 0) {                 // 内层编辑态 → 目标 = 内层 loop
+      loop = outer.body[editCtx.innerIdx];
+      if (!loop || loop.type !== 'loop') { return; }
+    } else {                                     // 外层编辑态 → 目标 = 外层 loop
+      loop = outer;
+    }
+    if (id === 'loop') {
+      if (loopDepth() >= 2) {                    // 嵌套 ≤2 层守卫
+        var fb = document.getElementById('game-feedback');
+        if (fb) { fb.textContent = '⚠ 循环嵌套最多 2 层'; fb.className = 'game-feedback miss'; }
+        return;
+      }
+      loop.body.push({ type: 'loop', rep: 2, body: [] });   // N1：默认 rep=2（hard 需点 5 次到 7，UX 可接受）
+    } else {
+      loop.body.push({ type: id });
+    }
     renderSeq();
+  }
+
+  /* v1.1：当前嵌套深度 = 正在编辑外层循环(loopIdx>=0 ? 1 : 0) + 已展开内层循环(innerIdx>=0 ? 1 : 0) */
+  function loopDepth() {
+    return (editCtx.loopIdx >= 0 ? 1 : 0) + (editCtx.innerIdx >= 0 ? 1 : 0);
   }
 
   function removeTopCmd(i) {
@@ -619,19 +599,36 @@
   function removeBodyCmd(i) {
     if (state.execLock) { return; }
     if (editCtx.loopIdx < 0) { return; }
-    var loop = state.cmds[editCtx.loopIdx];
-    if (!loop) { return; }
-    loop.body.splice(i, 1);
+    var outer = state.cmds[editCtx.loopIdx];
+    if (!outer || outer.type !== 'loop') { return; }
+    if (editCtx.innerIdx >= 0) {
+      // 内层编辑态：splice 内层 loop 的 body
+      var inner = outer.body[editCtx.innerIdx];
+      if (!inner) { return; }
+      inner.body.splice(i, 1);
+    } else {
+      // 外层编辑态：splice 外层 loop 的 body；删到内层 loop → innerIdx 校正回退
+      outer.body.splice(i, 1);
+      if (editCtx.innerIdx === i) { editCtx.innerIdx = -1; }
+      else if (editCtx.innerIdx > i) { editCtx.innerIdx -= 1; }
+    }
     renderSeq();
   }
 
-  // 循环块 N 递增 2→3→4→5→2
+  // 循环块 N 递增 2→3→…→9→2（上限 9，顶层与内层共用，v1.1 放开）
   function cycleLoopRep() {
     if (state.execLock) { return; }
-    if (editCtx.loopIdx < 0) { return; }
-    var loop = state.cmds[editCtx.loopIdx];
-    if (!loop) { return; }
-    loop.rep = ((loop.rep || 2) - 1) % 4 + 2;  // 2→3→4→5→2
+    var loop;
+    if (editCtx.innerIdx >= 0) {            // 内层编辑态 → 操作内层 loop
+      if (editCtx.loopIdx < 0) { return; }
+      var outer = state.cmds[editCtx.loopIdx];
+      if (!outer || outer.type !== 'loop') { return; }
+      loop = outer.body[editCtx.innerIdx];
+    } else if (editCtx.loopIdx >= 0) {      // 外层编辑态 → 操作外层 loop（v1.0 行为）
+      loop = state.cmds[editCtx.loopIdx];
+    } else { return; }
+    if (!loop || loop.type !== 'loop') { return; }
+    loop.rep = ((loop.rep || 2) - 1) % 8 + 2;  // 2→3→4→5→6→7→8→9→2
     renderSeq();
   }
 
@@ -677,21 +674,26 @@
     return cmd.type === 'fwd' ? '⬆' : (cmd.type === 'left' ? '↰' : (cmd.type === 'right' ? '↱' : '?'));
   }
 
-  // 块内编辑区（循环块打开时显示 body 指令 + 增删按钮）
+  // 循环块内编辑区（v1.1 两层：外层循环 body + 内层循环 body）
   function renderBlockEdit() {
     var box = document.getElementById('block-edit');
     if (!box) { return; }
     clearNode(box);
-    if (editCtx.loopIdx < 0) { return; }
-    var loop = state.cmds[editCtx.loopIdx];
-    if (!loop || loop.type !== 'loop') { editCtx.loopIdx = -1; return; }
-    box.className = 'block-edit open';
-    // 面包屑：循环块 #idx
-    var crumb = makeEl('div', 'block-crumb', '🔁 第 ' + (editCtx.loopIdx + 1) + ' 条循环块 · 重复 ' + loop.rep + ' 次');
+    if (editCtx.loopIdx < 0) { return; }                        // 顶层：无编辑区
+    var outer = state.cmds[editCtx.loopIdx];
+    if (!outer || outer.type !== 'loop') { editCtx.loopIdx = -1; return; }
+    var isInner = editCtx.innerIdx >= 0;
+    var loop = isInner ? outer.body[editCtx.innerIdx] : outer;
+    if (!loop || loop.type !== 'loop') { editCtx.innerIdx = -1; loop = outer; isInner = false; }
+    box.className = 'block-edit open' + (isInner ? ' block-edit-inner' : '');
+    // 面包屑
+    var crumb = makeEl('div', 'block-crumb', (isInner ? '🔁 内层循环' : '🔁 第 ' + (editCtx.loopIdx + 1) + ' 条循环块') + ' · 重复 ' + loop.rep + ' 次');
     box.appendChild(crumb);
+    // 重复次数按钮（内外层分支）
     var repBtn = makeEl('button', 'btn btn-small', '重复次数 ' + loop.rep + ' 次');
     repBtn.addEventListener('click', function () { cycleLoopRep(); renderBlockEdit(); });
     box.appendChild(repBtn);
+    // body chips（loop 类型渲染 🔁×N 绿色 .loopb）
     var bodyRow = makeEl('div', 'block-body');
     bodyRow.id = 'block-body';
     if (!loop.body.length) {
@@ -699,7 +701,21 @@
     }
     for (var b = 0; b < loop.body.length; b++) {
       var bc = loop.body[b];
-      var bchip = makeEl('span', 'cmd-chip body-chip', (b + 1) + '.' + (bc.type === 'fwd' ? '⬆' : (bc.type === 'left' ? '↰' : '↱')));
+      var isLoop = bc.type === 'loop';
+      var lbl = bc.type === 'fwd' ? '⬆' : (bc.type === 'left' ? '↰' : (bc.type === 'right' ? '↱'
+        : (bc.type === 'loop' ? '🔁×' + (bc.rep || 2) : '?')));
+      var bchip = makeEl('span', 'cmd-chip body-chip' + (isLoop ? ' loopb' : ''), (b + 1) + '.' + lbl);
+      if (isLoop) {
+        // 点击内层 loop → 打开内层编辑区
+        (function (bidx) {
+          bchip.addEventListener('click', function (ev) {
+            ev.stopPropagation();
+            if (state.execLock) { return; }
+            editCtx.innerIdx = bidx;
+            renderSeq();
+          });
+        })(b);
+      }
       var bx = makeEl('span', 'chip-x', '✕');
       (function (bidx) {
         bx.addEventListener('click', function (ev) {
@@ -711,18 +727,21 @@
       bodyRow.appendChild(bchip);
     }
     box.appendChild(bodyRow);
-    // 块内加动作按钮
+    // 块内加动作按钮（内层编辑区不含 🔁）
     var addRow = makeEl('div', 'block-add-row');
-    [CMD_FWD, CMD_LEFT, CMD_RIGHT].forEach(function (cmd) {
+    var addBtns = [CMD_FWD, CMD_LEFT, CMD_RIGHT];
+    if (!isInner) { addBtns.push(CMD_LOOP); }   // 外层编辑区可加 🔁（loopDepth 守卫兜底）
+    addBtns.forEach(function (cmd) {
       var b = makeEl('button', 'cmd-add small', cmd.label);
       b.addEventListener('click', function () { addBodyCmd(cmd.id); });
       addRow.appendChild(b);
     });
     box.appendChild(addRow);
-    // 完成（收合）
-    var doneBtn = makeEl('button', 'btn btn-primary btn-small', '✓ 完成');
+    // 完成（内层 → 回外层；外层 → 回顶层）
+    var doneBtn = makeEl('button', 'btn btn-primary btn-small', isInner ? '✓ 返回外层' : '✓ 完成');
     doneBtn.addEventListener('click', function () {
-      editCtx.loopIdx = -1;
+      if (isInner) { editCtx.innerIdx = -1; }
+      else { editCtx.loopIdx = -1; }
       renderSeq();
     });
     box.appendChild(doneBtn);
@@ -732,37 +751,45 @@
     var cmd = state.cmds[idx];
     if (!cmd || cmd.type !== 'loop') { return; }
     editCtx.loopIdx = idx;
+    editCtx.innerIdx = -1;   // v1.1：打开新外层编辑时重置内层下标
     renderSeq();
   }
 
   /* ---------- 执行器（simulate 共用） ---------- */
+  // v1.1：递归扁平化指令树为动作序列（loop → 展开 rep 次 body；叶 → 指令），嵌套天然支持
+  function flattenCmds(list, out) {
+    for (var i = 0; i < list.length; i++) {
+      var c = list[i];
+      if (c.type === 'loop') {
+        for (var r = 0; r < (c.rep || 2); r++) { flattenCmds(c.body, out); }
+      } else { out.push(c.type); }
+    }
+    return out;
+  }
+
+  // v1.1：编写量递归（循环块 1 条 + body 内指令计 1，不乘 rep）
+  function countCmds(list) {
+    var n = 0;
+    for (var i = 0; i < list.length; i++) {
+      var c = list[i];
+      if (c.type === 'loop') { n += 1 + countCmds(c.body); }
+      else { n += 1; }
+    }
+    return n;
+  }
+
   function execRun() {
     if (state.execLock || state.execDone || state.won) { return; }
-    // 展开指令树为动作序列（MVP 单层循环）
-    var steps = [];
-    for (var i = 0; i < state.cmds.length; i++) {
-      var c = state.cmds[i];
-      if (c.type === 'loop') {
-        for (var r = 0; r < (c.rep || 2); r++) {
-          for (var b = 0; b < c.body.length; b++) { steps.push(c.body[b].type); }
-        }
-      } else {
-        steps.push(c.type);
-      }
-    }
+    // 展开指令树为动作序列（v1.1 递归 flatten，支持嵌套循环）
+    var steps = flattenCmds(state.cmds, []);
     if (!steps.length) { return; }
     state.execLock = true;
     state.firstFail = null;
     setCmdLocked(true);
     state.curPos = { x: state.start.x, y: state.start.y };
     state.curFace = state.startFace;
-    // 编写量：循环块1 + 内部指令计1（不乘N）+ 顶层基础指令
-    state.totalCmds = 0;
-    for (var k = 0; k < state.cmds.length; k++) {
-      var ck = state.cmds[k];
-      if (ck.type === 'loop') { state.totalCmds += 1 + ck.body.length; }
-      else { state.totalCmds += 1; }
-    }
+    // 编写量：循环块1 + 内部指令计1（不乘N；v1.1 递归统计嵌套层）
+    state.totalCmds = countCmds(state.cmds);
     var fb = document.getElementById('game-feedback');
     if (fb) { fb.textContent = '机器人执行中…'; fb.className = 'game-feedback'; }
     renderSeq();
@@ -815,8 +842,8 @@
       if (nextBtn) { nextBtn.style.display = 'inline-block'; }
       finishLevel();
     } else if (state.firstFail) {
-      // 撞墙定位：反查是哪条顶层指令/循环块
-      var loc = locateFailStep(state.firstFail.step - 1);
+      // 撞墙定位：递归反查（v1.1 嵌套感知）
+      var loc = locateFailStep(state.firstFail.step - 1, state.cmds, '');
       if (fb) { fb.textContent = '⛔ ' + loc + '让机器人撞墙啦（还差 ' + distRemain() + ' 格）'; fb.className = 'game-feedback miss'; }
       markErrChip();
     } else {
@@ -826,29 +853,43 @@
     renderBoardOnly();
   }
 
-  // 定位失败步骤所属的顶层指令/循环块（oracle 4b：循环块级定位）
-  function locateFailStep(stepIdx) {
+  // 定位失败步骤所属的顶层指令/循环块（v1.1 递归：嵌套「第 a 次外层循环里的第 b 次内层循环里的第 c 条指令」）
+  // flattenCount(list) = body 完全展开步数（递归：loop → rep × flattenCount(body)；叶 → 1）
+  function flattenCount(list) {
+    var n = 0;
+    for (var i = 0; i < list.length; i++) {
+      var c = list[i];
+      if (c.type === 'loop') { n += (c.rep || 2) * flattenCount(c.body); }
+      else { n += 1; }
+    }
+    return n;
+  }
+
+  // v1.1：dirName helper（v1.0 硬编码「⬆ 前进」bug 一并修复——撞墙定位能区分左右转）
+  function dirName(t) {
+    return t === 'fwd' ? '⬆ 前进' : (t === 'left' ? '↰ 左转' : (t === 'right' ? '↱ 右转' : '指令'));
+  }
+
+  // 递归定位：返回「第 a 次外层循环里的第 b 次内层循环里的第 c 条指令」路径描述
+  //（prefix 无尾空格——「次循环里的」直接拼接，保持与 v1.0「第 K 次循环里的第 M 条指令」格式一致）
+  function locateFailStep(stepIdx, list, prefix) {
     var offset = 0;
-    for (var i = 0; i < state.cmds.length; i++) {
-      var c = state.cmds[i];
+    for (var i = 0; i < list.length; i++) {
+      var c = list[i];
       if (c.type === 'loop') {
-        // 若 stepIdx 在循环块展开范围内
-        var total = (c.rep || 2) * c.body.length;
+        var total = (c.rep || 2) * flattenCount(c.body);
         if (stepIdx >= offset && stepIdx < offset + total) {
           var rel = stepIdx - offset;
-          var iter = Math.floor(rel / c.body.length) + 1;
-          var bodyIdx = rel % c.body.length;
-          return '第 ' + iter + ' 次循环里的第 ' + (bodyIdx + 1) + ' 条指令（⬆ 前进）';
+          var iter = Math.floor(rel / flattenCount(c.body)) + 1;
+          return locateFailStep(rel % flattenCount(c.body), c.body, prefix + '第 ' + iter + ' 次循环里的');
         }
         offset += total;
       } else {
-        if (stepIdx === offset) {
-          return '第 ' + (i + 1) + ' 条指令（⬆ 前进）';
-        }
+        if (stepIdx === offset) { return prefix + '第 ' + (i + 1) + ' 条指令（' + dirName(c.type) + '）'; }
         offset += 1;
       }
     }
-    return '某条指令';
+    return prefix + '某条指令';
   }
 
   function distRemain() {
@@ -891,7 +932,7 @@
   function nextLevel() {
     state.execLock = false; state.execDone = false; state.won = false;
     state.cmds = []; state.totalCmds = 0; state.firstFail = null;
-    editCtx.loopIdx = -1;
+    editCtx.loopIdx = -1; editCtx.innerIdx = -1;   // v1.1：下一题重置两层编辑上下文
     var lv = genLevel(state.level);
     state.gridW = state.gridH = LEVELS_CFG[state.level].size;
     state.walls = lv.walls;
@@ -940,5 +981,11 @@
   M.state = state;
   M.genLevel = genLevel;
   M.simulate = simulate;
+  M.flattenCmds = flattenCmds;
+  M.flattenCount = flattenCount;
+  M.countCmds = countCmds;
+  M.locateFailStep = locateFailStep;
+  M.dirName = dirName;
+  M.loopDepth = loopDepth;
   window.M = M;
 })();

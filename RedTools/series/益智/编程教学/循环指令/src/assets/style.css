@@ -314,6 +314,12 @@ body {
 
 .body-chip { background: #3a7bd5; }
 
+/* V1.1 内层循环 chip（绿色小 chip，body 内嵌 loop） */
+.body-chip.loopb {
+  background: #2f9e62;
+  border: 1px solid #23824c;
+}
+
 /* 执行高亮 / 失败定位 */
 .cmd-chip.exec {
   background: #ffffff;
@@ -368,6 +374,16 @@ body {
   font-weight: 600;
   color: #5a3ab5;
   margin-bottom: 6px;
+}
+
+/* V1.1 内层编辑区（嵌套循环：绿色系边框 + 面包屑绿色标识） */
+.block-edit-inner {
+  background: #f0faf4;
+  border-color: #2f9e62;
+}
+
+.block-edit-inner .block-crumb {
+  color: #23824c;
 }
 
 .block-body {
