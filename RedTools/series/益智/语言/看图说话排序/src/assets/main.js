@@ -177,7 +177,7 @@
     return -1;
   }
 
-  /* ---------- 音效（Web Audio 合成，同因果排序/数独侦探） ---------- */
+  /* ---------- 音效（Web Audio 合成，同因果排序/数独思维） ---------- */
   var actx = null;
   function ensureAudio() {
     try {

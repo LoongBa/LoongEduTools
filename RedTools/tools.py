@@ -293,13 +293,13 @@ TOOLS: dict[str, ToolConfig] = {
         free_units=2,
         default_unit=0,
     ),
-    "数独侦探": ToolConfig(
+    "数独思维": ToolConfig(
         series="益智",
-        subgroup="逻辑思维",   # 子系列目录：series/益智/逻辑思维/数独侦探/
-        tool="数独侦探",
-        version="1.14",
+        subgroup="逻辑思维",   # 子系列目录：series/益智/逻辑思维/数独思维/
+        tool="数独思维",
+        version="1.15",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
-        app_name="数独侦探",
+        app_name="数独思维",
         modes=["offline", "online"],
         free_units=1,
         default_unit=0,
