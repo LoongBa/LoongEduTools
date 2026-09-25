@@ -1373,7 +1373,7 @@ mapBtn.appendChild(makeEl('span', 'teach-btn-head', '🗺️ 闯关地图'));
     advBack.addEventListener('click', showDifficultyView);
     viewEl.appendChild(advBack);
   }
-/* ---------- 成就（v1.12 X3 / v1.17 扩 2 / v1.18 扩 2 / v1.20 扩 1）：11 枚个人里程碑，无竞技无排行 ---------- */
+/* ---------- 成就（v1.12 X3 / v1.17 扩 2 / v1.18 扩 2 / v1.20 扩 1 / v1.21 扩 3）：14 枚个人里程碑，无竞技无排行 ---------- */
   var ACHIEVEMENTS = [
     { key: 'firstDaily', name: '每日挑战首通', desc: '完成一次每日挑战' },
     { key: 'daily3',     name: '连续打卡 3 天', desc: '连续 3 天完成打卡（含每日挑战）' },
@@ -1385,7 +1385,10 @@ mapBtn.appendChild(makeEl('span', 'teach-btn-head', '🗺️ 闯关地图'));
     { key: 'monthStreak', name: '月度坚持', desc: '连续打卡 30 天' },                 // v1.17
     { key: 'mapStreak',  name: '闯关达人', desc: '连续 7 天闯关' },                   // v1.18
     { key: 'favorite',   name: '小小收藏家', desc: '收藏 10 道好题' },                 // v1.18
-    { key: 'sixArts',    name: '六艺精通', desc: '点亮全部 6 枚技巧徽章（适龄 4 + 进阶 2）' }  // v1.20
+    { key: 'sixArts',    name: '六艺精通', desc: '点亮全部 6 枚技巧徽章（适龄 4 + 进阶 2）' },  // v1.21
+    { key: 'allStars',   name: '全档三星', desc: '4×4 / 6×6 / 9×9 各至少一次 ★★★ 通关' },      // v1.21
+    { key: 'daily14',    name: '坚持两周', desc: '连续打卡 14 天' },                             // v1.21
+    { key: 'advBoth',    name: '进阶双修', desc: '点亮唯一余数 + X-Wing 两枚进阶徽章' }          // v1.21
   ];
   function countAchievements() {
     // 已解锁成就数（store.achievements 非空键个数）
@@ -1412,7 +1415,10 @@ var checks = {
       monthStreak: streak >= 30, // v1.17
       mapStreak: mapStreakDays() >= 7, // v1.18 闯关连续 7 天（doneAt 派生）
       favorite: (store.favorites || []).length >= 10, // v1.18 收藏 10 道好题
-      sixArts: litMapSkillCount() >= SKILLS.length // v1.20 六艺精通：点亮全部 6 枚技巧徽章（适龄 4 + 进阶 2，任一来源皆计）
+      sixArts: litMapSkillCount() >= SKILLS.length, // v1.20 六艺精通：点亮全部 6 枚技巧徽章（适龄 4 + 进阶 2，任一来源皆计）
+      allStars: !!store.best['4'] && !!store.best['6'] && !!store.best['9'] && store.best['4'].stars >= 3 && store.best['6'].stars >= 3 && store.best['9'].stars >= 3, // v1.21 全档三星（best 单档最佳只增不减，语义安全）
+      daily14: streak >= 14, // v1.21 坚持两周
+      advBoth: !!(store.advSkills && store.advSkills.uniqueElim && store.advSkills.xwing) // v1.21 进阶双修
     };
     var i;
     for (i = 0; i < ACHIEVEMENTS.length; i++) {
@@ -2363,10 +2369,10 @@ function baseSkillCount() {
       }
       ctx.fillText('' + v, gx0 + (c + 0.5) * cell, gy0 + (r + 0.5) * cell);
     }
-    // 徽章行
+    // 徽章行（v1.21：countLitSkills() base 口径 → litMapSkillCount() + SKILLS.length，对齐闯关卡 sub/成长卡口径）
     ctx.fillStyle = '#2a3a4a';
     ctx.font = '36px sans-serif';
-    ctx.fillText((countLitSkills() > 0 ? '已点亮 ' + countLitSkills() + ' 枚技巧徽章 🏆' : '技巧徽章待点亮 💪'), W / 2, 1710);
+    ctx.fillText((litMapSkillCount() > 0 ? '掌握技巧 ' + litMapSkillCount() + ' / ' + SKILLS.length + ' 🏆' : '技巧徽章待点亮 💪'), W / 2, 1710);
     // 页脚
     ctx.fillStyle = '#93a8bd';
     ctx.font = '34px sans-serif';
@@ -2380,7 +2386,7 @@ function baseSkillCount() {
     var stars = starsText(calcStars(state.hints, state.errors));
     return '🎉 我在「数独思维」通关 ' + lv.name + ' ' + state.N + '×' + state.N + '！\n' +
       stars + ' · 用时 ' + fmtTime(Math.round(state.ms)) + ' · 错 ' + state.errors + ' 次 · 提示 ' + state.hints + ' 次\n' +
-      (countLitSkills() > 0 ? '已点亮 ' + countLitSkills() + ' 枚技巧徽章 🏆' : '技巧徽章待点亮 💪') + '\n' +
+      (litMapSkillCount() > 0 ? '掌握技巧 ' + litMapSkillCount() + ' / ' + SKILLS.length + ' 🏆' : '技巧徽章待点亮 💪') + '\n' +
       '来一起练练脑吧～#数独 #小学生逻辑 #龙爸乐学';
   }
   function openShareResultOverlay() {
