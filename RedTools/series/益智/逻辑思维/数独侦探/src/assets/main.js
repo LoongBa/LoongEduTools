@@ -17,6 +17,8 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
           + 9×9 小屏适配（窄屏缩字号 + 竖屏横屏提示一次；双指缩放 P2 不做）
     v1.10：自由解题（进阶技巧教学：唯一余数 / X-Wing，独立 advSkills 徽章，不吹适龄
           徽章）+ E5 自适应难度（连败两局自动建议降档，不扣分）
+    v1.11：分享题二维码（微信长按识别导入；qrcode.js MIT 内嵌，UTF-8 编码中文）
+          + 双指缩放棋盘（E4 P2 捏合缩放 + 1:1 复位按钮）
     星级：hints===0 && errors===0 → 3★；hints<=1 && errors<=3 → 2★；否则 1★
    难度：双参数（盘面尺寸 × 目标已知格）4×4→10、6×6→21、9×9→33
    设计约束（对齐 series/益智/设计文档.md §5）：
@@ -54,6 +56,11 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     { key: '9', name: '困难', N: 9, givens: 33 }
   ];
   var suggestedName = null; // E5 自适应难度（v1.10）：最近两局连败 → 建议降档档名；非持久化，进入任一局即清除
+  var pinchScale = 1;        // v1.11 双指缩放：当前缩放（1 = 原始）
+  var pinchActive = false;   // 双指捏合进行中
+  var pinchStartDist = 0;    // 捏合起始两指距离
+  var pinchStartScale = 1;   // 捏合起始缩放
+  var zoomResetBtnEl = null; // 棋盘上方「1:1 复位」按钮 DOM（pinchScale>1 时显示）
 
   /* ---------- 状态 ---------- */
   var state = {
@@ -509,11 +516,67 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     hintBtnEl.disabled = (countEmpty() === 0) || limitReached;
     if (limitReached) { hintBtnEl.title = '本局提示次数已用完'; }
   }
+  /* ---------- 双指缩放棋盘（v1.11 E4 P2）：捏合缩放 + 1:1 复位 ---------- */
+  function pinchDist(a, b) {
+    // 两触点距离（Chrome 38+ 支持 Math.hypot）
+    return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+  }
+  function applyBoardZoom(el) {
+    // 缩放 1 时清空 transform（原始大小），否则应用 scale（transform 不改变布局，命中测试仍落到各 .cell）
+    el.style.transform = pinchScale > 1 ? 'scale(' + pinchScale + ')' : '';
+  }
+  function updateZoomResetBtn() {
+    // pinchScale>1 时显示「1:1 复位」按钮，否则隐藏
+    if (zoomResetBtnEl) {
+      zoomResetBtnEl.style.display = (pinchScale > 1) ? 'block' : 'none';
+    }
+  }
+  function resetBoardZoom(el) {
+    // 复位到原始大小（点击「1:1 复位」或新盘渲染）
+    pinchScale = 1;
+    pinchActive = false;
+    if (el) {
+      el.style.transform = '';
+      el.style.transformOrigin = '';
+    }
+    updateZoomResetBtn();
+  }
+  function bindPinch(el) {
+    // 双指捏合缩放：touchstart 两指起捏、touchmove 以两指中点缩放、touchend 单指结束；
+    // 单指不拦截（正常点击/滑动）；passive:false 以允许 preventDefault
+    el.addEventListener('touchstart', function (e) {
+      if (e.touches.length >= 2) {
+        pinchActive = true;
+        pinchStartDist = pinchDist(e.touches[0], e.touches[1]);
+        pinchStartScale = pinchScale;
+        e.preventDefault();
+      }
+    }, { passive: false });
+    el.addEventListener('touchmove', function (e) {
+      if (pinchActive && e.touches.length >= 2) {
+        var d = pinchDist(e.touches[0], e.touches[1]);
+        pinchScale = Math.min(2.2, Math.max(1, pinchStartScale * d / (pinchStartDist || 1)));
+        var rect = el.getBoundingClientRect();
+        var cx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+        var cy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+        el.style.transformOrigin = cx + 'px ' + cy + 'px';
+        applyBoardZoom(el);
+        e.preventDefault();
+      }
+    }, { passive: false });
+    el.addEventListener('touchend', function (e) {
+      if (e.touches.length < 2) {
+        pinchActive = false;
+        updateZoomResetBtn();
+      }
+    }, { passive: false });
+  }
 
   /* ---------- 渲染：游戏视图 ---------- */
   function renderGameView() {
     clearNode(viewEl);
     cellEls = [];
+    resetBoardZoom(null); // v1.11：每局新盘从原始大小开始（复位按钮随之隐藏）
     var lv = findLevel(state.level);
 
     // 顶栏：← 返回 + 难度名（含盘面信息）+ ⏱ 计时
@@ -558,7 +621,15 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
       })(i);
     }
     card.appendChild(board);
+    // v1.11 E4 P2：棋盘上方「1:1 复位」按钮（pinchScale>1 时显示）+ 双指捏合缩放（仅普通局游戏页）
+    var zoomBtn = makeEl('button', 'zoom-reset-btn', '1:1 复位');
+    zoomBtn.setAttribute('aria-label', '恢复棋盘原始大小');
+    zoomBtn.addEventListener('click', function () { resetBoardZoom(card); });
+    zoomResetBtnEl = zoomBtn;
+    viewEl.appendChild(zoomBtn);
     viewEl.appendChild(card);
+    bindPinch(card);
+    updateZoomResetBtn();
     // v1.9 E4：9×9 竖屏时温和提示横屏（一次性、非阻塞；双指缩放 P2 不做）
     if (state.N === 9 && window.innerHeight > window.innerWidth && !hint9Shown) {
       hint9Shown = true;
@@ -1665,6 +1736,32 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
       img.setAttribute('alt', shareShowAnswer ? '数独答案版' : '数独打印题面');
     });
     card.appendChild(ansBtn);
+    // 区块 C：二维码（v1.11）——微信「长按识别图中二维码」直接导入；浮层打开时生成一次即可
+    if (window.qrcode) {
+      // 中文文本需 UTF-8 编码（默认 stringToBytes 为 charCodeAt&0xff，中文会损坏；qrcode.js 自带 UTF-8 编码器）
+      window.qrcode.stringToBytes = window.qrcode.stringToBytesFuncs['UTF-8'];
+      var qr = window.qrcode(0, 'L');
+      qr.addData(shareTextForCurrent());
+      qr.make();
+      var n = qr.getModuleCount();
+      var c = makeEl('canvas', 'share-qr');
+      var size = (n + 8) * 8;          // 8px/模块 + 4 模块静区（quiet zone）
+      c.width = size;
+      c.height = size;
+      var ctx = c.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, size, size);
+      for (var r = 0; r < n; r++) {
+        for (var col = 0; col < n; col++) {
+          if (qr.isDark(r, col)) {
+            ctx.fillStyle = '#000000';
+            ctx.fillRect((col + 4) * 8, (r + 4) * 8, 8, 8);
+          }
+        }
+      }
+      card.appendChild(c);
+      card.appendChild(makeEl('div', 'share-hint', '微信：长按二维码 → 识别图中二维码 → 复制文本；或保存二维码转发。朋友在「📥 导入题目」粘贴即玩'));
+    }
     // 底部
     var backBtn = makeEl('button', 'btn-ghost', '返回结算');
     backBtn.setAttribute('aria-label', '返回结算');
@@ -1927,7 +2024,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     img.src = drawResultCard().toDataURL('image/png');
     img.setAttribute('alt', '数独成绩分享卡');
     card.appendChild(img);
-    card.appendChild(makeEl('div', 'share-hint', '📸 长按保存图片 · 分享到小红书 / 朋友圈'));
+    card.appendChild(makeEl('div', 'share-hint', '📸 长按保存图片 · 分享到小红书 / 朋友圈 · 在微信里长按图片可保存或转发给朋友'));
     // 分享文案（只读，可手动复制兜底）
     var ta = makeEl('textarea', 'export-zone', shareResultText());
     ta.readOnly = true;

@@ -168,6 +168,38 @@ body {
   border-radius: 14px;
   box-shadow: 0 2px 8px rgba(74, 168, 255, 0.12);
   padding: 8px;
+  will-change: transform; /* v1.11：棋盘可双指缩放提示 */
+}
+
+/* v1.11 E4 P2：双指缩放「1:1 复位」按钮（棋盘上方，pinchScale>1 时显示） */
+.zoom-reset-btn {
+  display: none;
+  /* 固定浮标（右下角、高 z-index）：棋盘缩放放大外溢不遮挡，随时可点复位 */
+  position: fixed;
+  right: 12px;
+  bottom: 96px;
+  z-index: 60;
+  padding: 6px 14px;
+  min-height: 32px;
+  border: none;
+  border-radius: 10px;
+  background: #dceefe;
+  color: #3a6a9a;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(74, 168, 255, 0.25);
+}
+.zoom-reset-btn:active { background: #c6e2fb; }
+
+/* v1.11：分享题二维码 canvas（CSS 定显示尺寸，内部分辨率按模块数） */
+.share-qr {
+  width: 200px;
+  height: 200px;
+  display: block;
+  margin: 8px auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
 }
 
 .board {
