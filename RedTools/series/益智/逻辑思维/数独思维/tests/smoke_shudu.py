@@ -109,7 +109,7 @@ def main():
 
         # A. 首页
         check("A1 标题", page.locator(".header-title").inner_text() == "数独思维")
-        check("A2 版本", page.locator(".header-ver").inner_text().startswith("v1.18"))
+        check("A2 版本", page.locator(".header-ver").inner_text().startswith("v1.19"))
         check("A3 三张难度卡片", page.locator(".diff-btn").count() == 3)
         check("A4 打卡入口", page.locator(".btn-checkin").count() == 1)
 
@@ -124,7 +124,7 @@ def main():
 
         # C. 选格高亮
         size, puzzle, given = read_board(page)
-        empty = [i for i in range(size) if not given[i]]
+        empty = [i for i in range(size * size) if not given[i]]
         check("C0 存在空格", len(empty) > 0)
         if empty:
             idx = empty[0]
@@ -172,7 +172,7 @@ def main():
 
         # E. 合法填数（用求解器求该格正确值）
         size, puzzle, given = read_board(page)
-        empty = [i for i in range(size) if not given[i]]
+        empty = [i for i in range(size * size) if not given[i]]
         sol = solve_via_page(page, puzzle, 4)
         check("E0 求解器可解", sol is not None)
         if empty and sol:
@@ -191,7 +191,7 @@ def main():
 
         # F. 橡皮清除
         size, puzzle, given = read_board(page)
-        filled_user = [i for i in range(size) if not given[i] and puzzle[i] != 0]
+        filled_user = [i for i in range(size * size) if not given[i] and puzzle[i] != 0]
         if filled_user:
             idx = filled_user[0]
             cls = page.locator(".cell-inner").nth(idx).get_attribute("class")

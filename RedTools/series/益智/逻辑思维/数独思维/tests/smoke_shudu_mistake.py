@@ -115,7 +115,7 @@ def main():
         page.locator(".diff-btn").nth(0).click()
         page.wait_for_timeout(400)
         size, puzzle, given = read_board(page)
-        empty = [i for i in range(size) if not given[i]]
+        empty = [i for i in range(size * size) if not given[i]]
         # 选一个「所在行有已知数」的空格作为冲突目标（随机盘面下首个空格所在行可能全空）
         idx = None
         row_vals = []

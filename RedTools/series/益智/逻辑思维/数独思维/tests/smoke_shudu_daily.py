@@ -3,13 +3,14 @@
 
 用例：
   A. 难度页：📅 每日挑战卡（未完成）+ 🏅 成就卡（0/10）
-  B. 每日挑战开局：6×6 + 顶栏「· 每日题」
+  B. 每日挑战开局：当日难度盘面（v1.17 周轮换 4/6/9）+ 顶栏「· 每日题」
   C. 通关 → store.daily 写入 + 结算浮层「🏅 解锁成就：每日挑战首通」
   D. 返回难度：每日卡变「今日已完成 ✅」+ 成就卡（2/10）
   E. 成就视图：10 卡（🏅 2 解锁 + 🔒 8 未解锁）+ 解锁日期
   F. 每日同题：再次进入每日挑战 → 盘面与首次完全一致
   G. 全程无 JS 报错
 """
+import datetime
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
@@ -72,6 +73,20 @@ def board_snapshot(page):
     return pz
 
 
+def dismiss_landscape_hint(page):
+    """v1.9 E4：9×9 竖屏「建议横屏」提示（周六 9×9 每日题触发）→ 点「知道了」"""
+    ov = page.locator(".overlay", has_text="建议横屏")
+    if ov.count() > 0:
+        page.locator(".overlay .btn-main", has_text="知道了").click()
+        page.wait_for_timeout(200)
+
+
+def expected_daily_size():
+    """v1.17 周难度轮换 DAILY_DIFFS=['6','4','4','6','6','6','9']（JS getDay() Sun=0）"""
+    diffs = ['6', '4', '4', '6', '6', '6', '9']
+    return int(diffs[(datetime.date.today().weekday() + 1) % 7])
+
+
 def main():
     with sync_playwright() as p:
         browser = p.chromium.launch()
@@ -92,7 +107,11 @@ def main():
         first_board = None
         page.locator("button:has-text('每日挑战')").click()
         page.wait_for_timeout(400)
-        check("B1 每日挑战 6×6", page.locator(".cell").count() == 36)
+        dismiss_landscape_hint(page)
+        b_size = read_board(page)[0]
+        check("B1 每日挑战 %d×%d（周轮换）" % (b_size, b_size),
+              b_size == expected_daily_size(),
+              "actual=%d expected=%d" % (b_size, expected_daily_size()))
         check("B2 顶栏「· 每日题」", "每日题" in page.locator(".level-title").inner_text())
         first_board = board_snapshot(page)
 
@@ -131,6 +150,7 @@ def main():
         # F. 每日同题：再次进入 → 盘面一致
         page.locator("button:has-text('每日挑战')").click()
         page.wait_for_timeout(400)
+        dismiss_landscape_hint(page)
         second_board = board_snapshot(page)
         check("F1 每日同题（再次进入盘面一致）", second_board == first_board)
         page.locator(".topbar button, .btn-ghost").first.click()
