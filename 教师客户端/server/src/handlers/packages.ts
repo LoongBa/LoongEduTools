@@ -14,6 +14,8 @@ interface ManifestPkg {
   package_version: string;
   name: string;
   package_type: string;
+  /** 内容/扩展分区标签（R03 §3.2，方案 A）；旧条目可能缺省 */
+  categories?: string[];
   required_license_level: number;
   min_shell_version: string;
   size_bytes: number;
@@ -120,6 +122,11 @@ export async function packagesUpload(req: Request, env: Env): Promise<Response> 
   const minShell = String(form.get("min_shell_version") ?? "0.1.0");
   const name = String(form.get("name") || packageId);
   const packageType = String(form.get("package_type") || "app");
+  // categories：可选表单字段，CSV → 数组；缺省空数组（向后兼容，R03 §3.2 方案 A）
+  const categories = String(form.get("categories") || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
   const file = form.get("file");
   if (!packageId || !version) throw new BadRequest("package_id / version 必填");
   if (!(file instanceof File)) throw new BadRequest("file 字段必填");
@@ -156,6 +163,7 @@ export async function packagesUpload(req: Request, env: Env): Promise<Response> 
       package_version: version,
       name,
       package_type: packageType,
+      categories,
       required_license_level: licenseLevel,
       min_shell_version: minShell,
       size_bytes: buf.byteLength,
