@@ -67,6 +67,8 @@ function App() {
   const serverPageAutoOpened = useRef(false);
   /** 探测重入闸（「重新检测」连点防抖） */
   const serverProbingRef = useRef(false);
+  /** 右上角账号下拉菜单开合（v0.2：登录/个人信息/设置收进头像菜单，侧栏不再直挂） */
+  const [avatarOpen, setAvatarOpen] = useState(false);
 
   // 主题切换：写 dataset 即时生效 + localStorage 持久化（首页渲染前由 main.tsx 引导读取）
   function applyTheme(t: ThemeMode) {
@@ -126,7 +128,9 @@ function App() {
     api
       .testWebview2()
       .then((v) => setWv2(v))
-      .catch(() => setWv2(null));
+      .catch((e) =>
+        console.warn("[WebView2] 状态查询失败（主窗口已渲染，不影响使用）", e),
+      );
     api
       .authStatus()
       .then(setAuth)
@@ -218,12 +222,7 @@ function App() {
           <button className={navClass("discipline")} onClick={() => setView("discipline")}>
             纪律
           </button>
-          <button className={navClass("profile")} onClick={() => setView("profile")}>
-            {profileLabel}
-          </button>
-          <button className={navClass("settings")} onClick={() => setView("settings")}>
-            设置
-          </button>
+          {/* 登录/个人信息/设置已收进右上角头像菜单（v0.2 常用交互） */}
         </nav>
         <div className="sidebar-foot">
           <button
@@ -509,6 +508,66 @@ function App() {
           </section>
         )}
       </main>
+
+      {/* 右上角账号头像（v0.2）：未登录=匿名灰头像，已登录=姓名首字彩色头像；
+          下拉收 登录/个人信息 + 设置，替代原侧栏两项 */}
+      <div className="user-menu">
+        <button
+          className={`avatar-btn${avatarOpen ? " open" : ""}`}
+          title={profileLabel}
+          aria-label="账号菜单"
+          onClick={() => setAvatarOpen((o) => !o)}
+        >
+          {auth?.logged_in ? (
+            <span className="avatar-initial">
+              {(auth.teacher?.name || "师").slice(0, 1)}
+            </span>
+          ) : (
+            <svg className="avatar-glyph" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 12c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm0 2c-3.34 0-10 1.67-10 5v3h20v-3c0-3.33-6.66-5-10-5z" />
+            </svg>
+          )}
+        </button>
+        {avatarOpen && (
+          <>
+            {/* 点击菜单外任意处关闭 */}
+            <div
+              className="user-menu-backdrop"
+              onClick={() => setAvatarOpen(false)}
+            />
+            <div className="user-menu-panel">
+              <div className="user-menu-head">
+                <div className="user-menu-name">
+                  {auth?.logged_in
+                    ? auth.teacher?.name || "已登录"
+                    : "未登录"}
+                </div>
+                <div className="user-menu-sub">
+                  {auth?.logged_in
+                    ? "点击下方管理个人信息与口令"
+                    : "登录后可同步口令与班级"}
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setView("profile");
+                  setAvatarOpen(false);
+                }}
+              >
+                {auth?.logged_in ? "个人信息" : "登录"}
+              </button>
+              <button
+                onClick={() => {
+                  setView("settings");
+                  setAvatarOpen(false);
+                }}
+              >
+                设置
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

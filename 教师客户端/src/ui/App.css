@@ -269,6 +269,107 @@ nav {
   margin-top: auto;
 }
 
+/* ---------- 右上角账号头像菜单（v0.2：登录/个人信息/设置收进头像下拉） ---------- */
+.user-menu {
+  position: fixed;
+  top: 14px;
+  right: 18px;
+  z-index: 60;
+}
+
+.avatar-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.avatar-btn:hover,
+.avatar-btn.open {
+  border-color: var(--primary);
+}
+
+.avatar-glyph {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.avatar-initial {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.user-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  background: transparent;
+}
+
+.user-menu-panel {
+  position: absolute;
+  top: 44px;
+  right: 0;
+  min-width: 190px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+  padding: 6px;
+  z-index: 60;
+}
+
+.user-menu-head {
+  padding: 8px 10px 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
+.user-menu-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.user-menu-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.user-menu-panel > button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.user-menu-panel > button:hover {
+  background: var(--sidebar-hover);
+}
+
 .ghost-btn {
   width: 100%;
   padding: 8px;
