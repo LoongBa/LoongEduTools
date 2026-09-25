@@ -56,7 +56,7 @@ export interface LicenseStatus {
   machine_fp: string;
 }
 
-// ---- P2 内容商店（store.rs · A01 §4）----
+// ---- P2 下载扩展（store.rs · A01 §4）----
 
 export interface RemotePkg {
   package_id: string;
@@ -167,7 +167,7 @@ export const api = {
     invoke<LicenseStatus>("license_renew", { semester: semester ?? null }),
   licenseBindCurrent: () => invoke<unknown>("license_bind_current"),
 
-  // ---- P2 内容商店（store.rs · A01 §4 / S01 §2.4）----
+  // ---- P2 下载扩展（store.rs · A01 §4 / S01 §2.4）----
   storeManifest: () => invoke<StoreManifest>("store_manifest"),
   storeDownload: (packageId: string, version: string) =>
     invoke<InstalledPackage>("store_download", { packageId, version }),

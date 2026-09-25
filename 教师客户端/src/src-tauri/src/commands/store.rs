@@ -1,4 +1,4 @@
-//! 内容商店命令层 · P2 双通道内容分发（云端下载 + U 盘 zip 导入）
+//! 下载扩展命令层 · P2 双通道内容分发（云端下载 + U 盘 zip 导入）
 //! 契约：A01 §4（manifest/download 路径 + Bearer JWT）、S01 §2.4（U 盘导入预检）
 //! 依赖复刻：auth.rs 的 load_credential/api_base（凭证解密不复制 cred_key 逻辑）；
 //! packages 目录定位与 scan_packages 同源（exe_dir()/packages，见 recents::exe_dir）
@@ -51,7 +51,7 @@ pub struct StoreManifest {
     pub packages: Vec<RemotePkg>,
 }
 
-/// 商店列表项：本地已装差集标注（installed / update_available）
+/// 下载扩展列表项：本地已装差集标注（installed / update_available）
 #[derive(Debug, Clone, Serialize)]
 pub struct StoreItem {
     pub package_id: String,
@@ -178,7 +178,7 @@ async fn manifest_inner(app: &tauri::AppHandle) -> Result<StoreManifest, String>
     match jwt {
         None => match cache {
             Some(c) => Ok(c),
-            None => Err("未登录，请先登录后浏览内容商店".into()),
+            None => Err("未登录，请先登录后浏览下载扩展".into()),
         },
         Some(jwt) => match get_json(app, "packages/manifest", Some(&jwt)).await {
             Ok(v) => {

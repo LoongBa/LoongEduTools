@@ -118,7 +118,7 @@ pub fn run() {
             license::license_status,
             license::license_renew,
             license::license_bind_current,
-            // P2 内容商店（云端下载 + U 盘导入 · A01 §4 / S01 §2.4）
+            // P2 下载扩展（云端下载 + U 盘导入 · A01 §4 / S01 §2.4）
             store::store_manifest,
             store::store_download,
             store::store_import_usb,

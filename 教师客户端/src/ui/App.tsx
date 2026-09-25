@@ -199,7 +199,7 @@ function App() {
             应用
           </button>
           <button className={navClass("store")} onClick={() => setView("store")}>
-            内容商店
+            下载扩展
           </button>
           <button className={navClass("quickstart")} onClick={() => setView("quickstart")}>
             一键开课
@@ -254,7 +254,7 @@ function App() {
         )}
         {updates.length > 0 && view !== "store" && (
           <div className="banner warn" onClick={() => setView("store")}>
-            {updates.length} 个内容包有新版本，前往内容商店更新（点击前往）。
+            {updates.length} 个内容包有新版本，前往下载扩展更新（点击前往）。
             <button
               className="ghost-btn inline"
               onClick={(e) => {

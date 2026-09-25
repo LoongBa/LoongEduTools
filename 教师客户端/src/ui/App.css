@@ -924,7 +924,7 @@ code {
   color: var(--accent);
 }
 
-/* ---------- P2 内容商店（store.rs · A01 §4） ---------- */
+/* ---------- P2 下载扩展（store.rs · A01 §4） ---------- */
 .store-toolbar {
   display: flex;
   align-items: center;

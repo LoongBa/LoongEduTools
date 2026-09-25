@@ -82,7 +82,7 @@ export default function StoreView({ auth, onGoLogin, onInstalled }: Props) {
   return (
     <section>
       <div className="store-toolbar">
-        <h2>内容商店</h2>
+        <h2>下载扩展</h2>
         <div className="btn-row">
           <button
             className="ghost-btn inline"
@@ -113,10 +113,10 @@ export default function StoreView({ auth, onGoLogin, onInstalled }: Props) {
       )}
 
       {store === null ? (
-        <p className="empty">加载中…（离线时可展示最近一次缓存的商店清单）</p>
+        <p className="empty">加载中…（离线时可展示最近一次缓存的清单）</p>
       ) : store.packages.length === 0 ? (
         <p className="empty">
-          商店暂无可下载内容包。已连接服务端（config.json api_base）时自动拉取清单，
+          暂无可下载内容包。已连接服务端（config.json api_base）时自动拉取清单，
           U 盘导入不受登录状态限制。
         </p>
       ) : (
