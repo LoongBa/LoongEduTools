@@ -68,7 +68,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     { key: '9', name: '困难', N: 9, givens: 33 }
   ];
   var suggestedName = null; // E5 自适应难度（v1.10）：最近两局连败 → 建议降档档名；非持久化，进入任一局即清除
-  // 闯关地图（v1.13 X1）：3 档难度 × 每档 3 关 = 9 关线性推进；seedBase 固定 → 同关同题（可复玩）
+  // 闯关地图（v1.13 X1）：3 档难度 × 每档 3 关 + 3-4 收官 = 10 关线性推进；seedBase 固定 → 同关同题（可复玩）
 var MAP_LEVELS = [
     // v1.18：skill 字段映射到真实 SKILLS key（base 用 boxElim/rowColElim/blockElim/crossElim，adv 用 uniqueElim/xwing）
     { i: 0, name: '1-1', levelKey: '4', seedBase: 10001, tip: '简单 4×4 · 初试身手', skill: 'boxElim' },
@@ -79,7 +79,8 @@ var MAP_LEVELS = [
     { i: 5, name: '2-3', levelKey: '6', seedBase: 20003, tip: '普通 6×6 · 游刃有余', skill: 'blockElim' },
     { i: 6, name: '3-1', levelKey: '9', seedBase: 30001, tip: '困难 9×9 · 挑战自我', skill: 'crossElim' },
     { i: 7, name: '3-2', levelKey: '9', seedBase: 30002, tip: '困难 9×9 · 勇往直前', skill: 'uniqueElim' },
-    { i: 8, name: '3-3', levelKey: '9', seedBase: 30003, tip: '困难 9×9 · 思维高手', skill: 'xwing' }
+    { i: 8, name: '3-3', levelKey: '9', seedBase: 30003, tip: '困难 9×9 · 思维高手', skill: 'xwing' },
+    { i: 9, name: '3-4', levelKey: '9', seedBase: 30004, tip: '困难 9×9 · 数对占位', skill: 'nakedPair' } // v1.24：数对占位入闯关口径（末尾追加，既有索引不动）
   ];
   var pinchScale = 1;        // v1.11 双指缩放：当前缩放（1 = 原始）
   var pinchActive = false;   // 双指捏合进行中
@@ -1243,7 +1244,7 @@ dailyBtn.setAttribute('aria-label', dailyDone ? '今日每日挑战已完成' : 
     var mapComp = (store.mapProgress && store.mapProgress.completed) ? store.mapProgress.completed : [];
     var mapBtn = makeEl('button', 'teach-btn book-btn');
 mapBtn.appendChild(makeEl('span', 'teach-btn-head', '🗺️ 闯关地图'));
-    mapBtn.appendChild(makeEl('span', 'teach-btn-sub', '通关 ' + mapComp.length + ' / 9 关 · 掌握技巧 ' + litMapSkillCount() + ' / ' + mapSkillTotal()));
+    mapBtn.appendChild(makeEl('span', 'teach-btn-sub', '通关 ' + mapComp.length + ' / ' + MAP_LEVELS.length + ' 关 · 掌握技巧 ' + litMapSkillCount() + ' / ' + mapSkillTotal()));
     mapBtn.setAttribute('aria-label', '打开闯关地图');
     mapBtn.addEventListener('click', showMapView);
     viewEl.appendChild(mapBtn);
@@ -1373,7 +1374,7 @@ mapBtn.appendChild(makeEl('span', 'teach-btn-head', '🗺️ 闯关地图'));
     advBack.addEventListener('click', showDifficultyView);
     viewEl.appendChild(advBack);
   }
-/* ---------- 成就（v1.12 X3 / v1.17 扩 2 / v1.18 扩 2 / v1.20 扩 1 / v1.21 扩 3 / v1.22 扩 1）：15 枚个人里程碑，无竞技无排行 ---------- */
+/* ---------- 成就（v1.12 X3 / v1.17 扩 2 / v1.18 扩 2 / v1.20 扩 1 / v1.21 扩 3 / v1.22 扩 1 / v1.24 扩 1）：16 枚个人里程碑，无竞技无排行 ---------- */
   var ACHIEVEMENTS = [
     { key: 'firstDaily', name: '每日挑战首通', desc: '完成一次每日挑战' },
     { key: 'daily3',     name: '连续打卡 3 天', desc: '连续 3 天完成打卡（含每日挑战）' },
@@ -1381,7 +1382,7 @@ mapBtn.appendChild(makeEl('span', 'teach-btn-head', '🗺️ 闯关地图'));
     { key: 'games10',    name: '十局小达人', desc: '累计完成 10 局' },
     { key: 'allSkills',  name: '技巧大师', desc: '点亮全部 4 枚适龄技巧徽章' },
     { key: 'perfect3',   name: '三星完美', desc: '0 错 0 提示 ★★★ 通关一局' },
-    { key: 'mapMaster',  name: '闯关地图通关', desc: '闯关地图全部 9 关通关' },      // v1.17
+    { key: 'mapMaster',  name: '闯关地图通关', desc: '闯关地图全部 10 关通关' },      // v1.17/v1.24
     { key: 'monthStreak', name: '月度坚持', desc: '连续打卡 30 天' },                 // v1.17
     { key: 'mapStreak',  name: '闯关达人', desc: '连续 7 天闯关' },                   // v1.18
     { key: 'favorite',   name: '小小收藏家', desc: '收藏 10 道好题' },                 // v1.18
@@ -1389,7 +1390,8 @@ mapBtn.appendChild(makeEl('span', 'teach-btn-head', '🗺️ 闯关地图'));
     { key: 'allStars',   name: '全档三星', desc: '4×4 / 6×6 / 9×9 各至少一次 ★★★ 通关' },      // v1.21
     { key: 'daily14',    name: '坚持两周', desc: '连续打卡 14 天' },                             // v1.21
     { key: 'advBoth',    name: '进阶双修', desc: '点亮唯一余数 + X-Wing 两枚进阶徽章' },          // v1.21
-    { key: 'clearAll',   name: '全档挑战', desc: '4×4 / 6×6 / 9×9 各通关一局' }                   // v1.22
+    { key: 'clearAll',   name: '全档挑战', desc: '4×4 / 6×6 / 9×9 各通关一局' },                   // v1.22
+    { key: 'perfectStreak3', name: '连战连捷', desc: '连续 3 局 ★★★ 通关（不含导入局）' }        // v1.24
   ];
   function countAchievements() {
     // 已解锁成就数（store.achievements 非空键个数）
@@ -1398,7 +1400,12 @@ mapBtn.appendChild(makeEl('span', 'teach-btn-head', '🗺️ 闯关地图'));
     for (k in store.achievements) {
       if (Object.prototype.hasOwnProperty.call(store.achievements, k) && store.achievements[k]) { n++; }
     }
-    return n;
+return n;
+  }
+  function last3Perfect() {
+    // v1.24 连战连捷：最近 3 局（store.history 尾部）皆为 3★（导入局不写 history，天然排除）
+    var h = store.history;
+    return h.length >= 3 && h[h.length - 1].stars === 3 && h[h.length - 2].stars === 3 && h[h.length - 3].stars === 3;
   }
   function checkAchievements() {
     // 结算成就：返回本局新解锁的名称数组（已解锁跳过，不重复写入；成就键值存解锁日期）
@@ -1420,7 +1427,8 @@ var checks = {
       allStars: !!store.best['4'] && !!store.best['6'] && !!store.best['9'] && store.best['4'].stars >= 3 && store.best['6'].stars >= 3 && store.best['9'].stars >= 3, // v1.21 全档三星（best 单档最佳只增不减，语义安全）
       daily14: streak >= 14, // v1.21 坚持两周
       advBoth: !!(store.advSkills && store.advSkills.uniqueElim && store.advSkills.xwing), // v1.21 进阶双修
-      clearAll: !!(store.best['4'] && store.best['6'] && store.best['9']) // v1.22 全档挑战：4×4 / 6×6 / 9×9 各至少通关一局
+      clearAll: !!(store.best['4'] && store.best['6'] && store.best['9']), // v1.22 全档挑战：4×4 / 6×6 / 9×9 各至少通关一局
+      perfectStreak3: last3Perfect() // v1.24 连战连捷：最近 3 局 3★（history 尾部，导入局不写入天然排除）
     };
     var i;
     for (i = 0; i < ACHIEVEMENTS.length; i++) {
@@ -1469,7 +1477,7 @@ var checks = {
     state.playing = false;
     renderHeader('闯关地图');
     clearNode(viewEl);
-    viewEl.appendChild(makeEl('div', 'page-title', '闯关地图 · 9 关任你战'));
+    viewEl.appendChild(makeEl('div', 'page-title', '闯关地图 · ' + MAP_LEVELS.length + ' 关任你战'));
     viewEl.appendChild(makeEl('div', 'home-hint', '从 4×4 到 9×9，一关一关升级（无排行无竞技）'));
     var comp = (store.mapProgress && store.mapProgress.completed) ? store.mapProgress.completed : [];
     var doneCount = comp.length;

@@ -1115,7 +1115,7 @@ body {
   html, body { height: auto; overflow: visible; background: #ffffff; }
   body { height: auto; }
   .app-main { overflow: visible !important; height: auto !important; }
-  .app-footer, .topbar, .home-hint { display: none !important; }
+  .app-footer, .app-header, .home-hint { display: none !important; }
   .view { max-width: 760px; padding: 0; }
   /* 只保留报告内容：当前视图内除报告卡与标题外的元素全部隐藏（含打印/返回按钮） */
   .view > *:not(.report-card):not(.page-title) { display: none !important; }

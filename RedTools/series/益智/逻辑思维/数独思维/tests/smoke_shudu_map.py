@@ -2,7 +2,7 @@
 """数独思维 v1.13 冒烟：闯关地图（X1——3 档×3 关 seed 固定题 + 线性解锁 + 进度记录）
 
 用例：
-  A. 难度页：🗺️ 闯关地图卡（0/9 关）
+  A. 难度页：🗺️ 闯关地图卡（0/10 关）
   B. 地图视图：9 节点 3×3（🔓1 可玩 + 🔒8 锁定）+ 无竞技提示 + 技巧 tag（9 🎯 未点亮）
   C. 开始 1-1（简单）：4×4 + 顶栏「· 关卡 1-1」+ 同关同题（再次进入盘面一致）
   D. 通关 1-1 → store.mapProgress.completed=[{i:0,doneAt}] + 地图卡 1/9
@@ -85,21 +85,21 @@ def main():
         # A. 难度页入口
         check("A1 闯关地图卡存在", page.locator("button:has-text('闯关地图')").count() == 1)
         map_sub = page.locator("button:has-text('闯关地图') .teach-btn-sub").inner_text()
-        check("A2 进度 0/9 关", "0 / 9" in map_sub, map_sub)
+        check("A2 进度 0/10 关", "0 / 10" in map_sub, map_sub)
 
         # B. 地图视图
         page.locator("button:has-text('闯关地图')").click()
         page.wait_for_timeout(250)
         check("B1 标题'闯关地图'", "闯关地图" in page.locator(".page-title").inner_text())
         nodes = page.locator(".map-node")
-        check("B2 9 个节点", nodes.count() == 9)
+        check("B2 10 个节点", nodes.count() == 10)
         check("B3 可玩 🔓 1 个", page.locator(".map-node", has_text="🔓").count() == 1)
-        check("B4 锁定 🔒 8 个", page.locator(".map-node", has_text="🔒").count() == 8)
+        check("B4 锁定 🔒 9 个", page.locator(".map-node", has_text="🔒").count() == 9)
         check("B5 无竞技提示", "无排行" in page.locator(".home-hint").inner_text()
               or "无竞技" in page.locator(".home-hint").inner_text())
-        # v1.18：技巧 tag——初始 9 关全部未点亮 🎯（不占用三态 🔒 计数）
-        check("B6 技巧 tag 9 个未点亮 🎯", page.locator(".map-skill-tag", has_text="🎯").count() == 9)
-        check("B7 技巧 tag 与三态不冲突（🔒 仍 8）", page.locator(".map-node", has_text="🔒").count() == 8)
+        # v1.18：技巧 tag——初始 10 关全部未点亮 🎯（不占用三态 🔒 计数）
+        check("B6 技巧 tag 10 个未点亮 🎯", page.locator(".map-skill-tag", has_text="🎯").count() == 10)
+        check("B7 技巧 tag 与三态不冲突（🔒 仍 9）", page.locator(".map-node", has_text="🔒").count() == 9)
 
         # C. 开始 1-1（第一个可玩节点）
         page.locator(".map-node", has_text="🔓").click()
@@ -127,7 +127,7 @@ def main():
         page.locator("button:has-text('选难度')").click()
         page.wait_for_timeout(300)
         map_sub2 = page.locator("button:has-text('闯关地图') .teach-btn-sub").inner_text()
-        check("D2 地图卡 1/9 关", "1 / 9" in map_sub2, map_sub2)
+        check("D2 地图卡 1/10 关", "1 / 10" in map_sub2, map_sub2)
 
         # E. 地图视图进度
         page.locator("button:has-text('闯关地图')").click()
@@ -136,7 +136,7 @@ def main():
         check("E2 可玩 🔓 1（下一关 1-2 线性推进）", page.locator(".map-node", has_text="🔓").count() == 1
               and "1-2" in page.locator(".map-node", has_text="🔓").inner_text(),
               " | ".join(page.locator(".map-node", has_text="🔓").all_inner_texts()))
-        check("E3 锁定 🔒 7", page.locator(".map-node", has_text="🔒").count() == 7)
+        check("E3 锁定 🔒 8", page.locator(".map-node", has_text="🔒").count() == 8)
         # 点锁定节点 → 温和提示
         page.locator(".map-node", has_text="🔒").first.click()
         page.wait_for_timeout(150)
@@ -144,9 +144,9 @@ def main():
         check("E4 锁定节点温和提示", "先通关" in view_text, view_text[:120])
         page.locator("button:has-text('← 返回')").click()
         page.wait_for_timeout(200)
-        check("E5 地图卡 1/9 + 掌握技巧 1/6（1-1 点亮 boxElim 去重）",
-              "1 / 9" in page.locator("button:has-text('闯关地图') .teach-btn-sub").inner_text()
-              and "掌握技巧 1 / 6" in page.locator("button:has-text('闯关地图') .teach-btn-sub").inner_text(),
+        check("E5 地图卡 1/10 + 掌握技巧 1/7（1-1 点亮 boxElim 去重）",
+              "1 / 10" in page.locator("button:has-text('闯关地图') .teach-btn-sub").inner_text()
+              and "掌握技巧 1 / 7" in page.locator("button:has-text('闯关地图') .teach-btn-sub").inner_text(),
               page.locator("button:has-text('闯关地图') .teach-btn-sub").inner_text())
 
         # G. v1.18 adv 关 gate：注入前 7 关完成 → 3-2（uniqueElim 进阶）未掌握 → 点击引导去自由解题
