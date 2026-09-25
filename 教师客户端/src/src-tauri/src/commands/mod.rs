@@ -6,4 +6,5 @@ pub mod recents;
 pub mod report;
 pub mod roster;
 pub mod store;
+pub mod toolbox;
 pub mod window;

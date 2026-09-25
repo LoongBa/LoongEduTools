@@ -133,7 +133,8 @@ fn installed_map(state: &AppState) -> HashMap<String, InstalledPackage> {
 // ------------------------------------------------------------------ 网络（GET，复用 auth 的 api_base/凭证）
 
 /// GET `{api_base}/api/edu/{path}`（Bearer JWT），错误结构同 A01 §1.2
-async fn get_json(
+/// pub(crate)：toolbox.rs 复用（工具箱清单端点姿态与 packages/manifest 一致）
+pub(crate) async fn get_json(
     app: &tauri::AppHandle,
     path: &str,
     jwt: Option<&str>,
@@ -209,7 +210,8 @@ pub async fn store_manifest(app: tauri::AppHandle) -> Result<StoreManifest, Stri
 
 // ------------------------------------------------------------------ 命令②：store_download
 
-/// 流式下载 `{api_base}/api/edu/packages/{id}/{ver}` → 校验 checksum → 解包落盘到
+/// 流式下载 `{api_base}/api/edu/packages/{id}/{ver}` → **严格**校验 checksum（B2：清单内
+/// 无该版本或 checksum 无效即拒绝，不再静默放行）→ 解包落盘到
 /// packages/{id}-{ver}/（与 scan_packages 结构一致：根含 manifest.json/package.json/data/）
 /// → 刷新索引 → 返回 InstalledPackage
 #[tauri::command]
@@ -238,16 +240,19 @@ pub async fn store_download(
         }
     }
 
-    // manifest 条目中的 checksum（若有则校验；不在清单内也放行——以服务端为权威）
-    let checksum: Option<String> = manifest_inner(&app)
-        .await
-        .ok()
-        .and_then(|m| {
-            m.packages
-                .iter()
-                .find(|p| p.package_id == package_id && p.package_version == version)
-                .and_then(|p| p.checksum.clone())
-        });
+    // manifest 条目中的 checksum：严格校验（B2 加固）——必须在清单内且带有效 sha256，
+    // 否则拒绝下载（原「不在清单内也放行」使完整性校验形同虚设）
+    let manifest = manifest_inner(&app).await?;
+    let checksum = manifest
+        .packages
+        .iter()
+        .find(|p| p.package_id == package_id && p.package_version == version)
+        .and_then(|p| p.checksum.clone())
+        .ok_or_else(|| {
+            format!("清单未提供 {package_id} v{version} 的 checksum，拒绝下载（完整性校验必需）")
+        })?;
+    let expect = parse_sha256_hex(&checksum)
+        .ok_or_else(|| format!("manifest checksum 格式无效: {checksum}"))?;
 
     let url = format!(
         "{}/api/edu/packages/{}/{}",
@@ -258,15 +263,9 @@ pub async fn store_download(
     let tmp = temp_zip_path(&package_id, &version);
     let got_hex = download_stream(&url, &cred.jwt, &tmp).await?;
 
-    if let Some(cs) = &checksum {
-        let Some(expect) = parse_sha256_hex(cs) else {
-            let _ = fs::remove_file(&tmp);
-            return Err(format!("manifest checksum 格式无效: {cs}"));
-        };
-        if !got_hex.eq_ignore_ascii_case(&expect) {
-            let _ = fs::remove_file(&tmp);
-            return Err("下载文件校验失败（SHA-256 不匹配），请重试".into());
-        }
+    if !got_hex.eq_ignore_ascii_case(&expect) {
+        let _ = fs::remove_file(&tmp);
+        return Err("下载文件校验失败（SHA-256 不匹配），请重试".into());
     }
 
     // 解包到暂存目录 → 校验内层 manifest.json 且 package_id 匹配 → 移入正式目录（失败不破坏本地）

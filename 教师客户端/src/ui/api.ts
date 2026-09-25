@@ -98,6 +98,39 @@ export interface StoreList {
   packages: StoreItem[];
 }
 
+// ---- v0.3 工具箱清单（toolbox.rs · R03 §4.4 / A01 §4.4）----
+
+export interface ToolboxCategory {
+  id: string;
+  name: string;
+}
+
+export interface ToolboxTool {
+  id: string;
+  name: string;
+  category: string;
+  tags: string[];
+  description: string;
+  license: string;
+  homepage: string;
+  download_url: string;
+  /** 未钉定 asset 时为 0（服务端清单语义） */
+  size_bytes: number;
+  /** 未钉定 asset 时为空串 */
+  checksum: string;
+  portable: boolean;
+  win7_ok: boolean;
+  recommend: boolean;
+  entry: string;
+}
+
+export interface ToolboxManifest {
+  version: string;
+  updated_at: string;
+  categories: ToolboxCategory[];
+  tools: ToolboxTool[];
+}
+
 // ---- P3 抽卡/分组（roster.rs · D05 §2.4.1/§2.4.2）----
 
 export interface RosterStudent {
@@ -178,6 +211,9 @@ export const api = {
   storeImportUsb: (zipPath: string) =>
     invoke<InstalledPackage>("store_import_usb", { zipPath }),
   storeListAvailable: () => invoke<StoreList>("store_list_available"),
+
+  // ---- v0.3 工具箱清单（toolbox.rs · R03 §4.4）----
+  toolboxManifest: () => invoke<ToolboxManifest>("toolbox_manifest"),
 
   // ---- P3 抽卡/分组（roster.rs · D05 §2.4.1/§2.4.2）----
   rosterSave: (rosterJson: string) => invoke<void>("roster_save", { rosterJson }),
