@@ -96,13 +96,25 @@
   }
   // v1.11 块参数：hasParam 派生（B2 Oracle 修订）——body 含参数化 steps（steps:null）即带参数
   function blockHasParam(id) {
+    return blockParamCount(id) > 0;   // v1.13：协议镜像（含槽位参数化）
+  }
+  // v1.13 混合态/多参数：参数数量派生（不存字段）——body 中 max(paramIdx)+1，clamp 到 2（低龄上限）
+  // I3：存量 v1.11/1.12 steps:null 无 paramIdx → 视为槽#0（undefined || 0）；hasNull 判定防畸形 paramIdx 空计数
+  // I4：clamp 到 2——异常 paramIdx>1 防御（执行 fallback 槽#0 兜底，不崩）
+  function blockParamCount(id) {
     var def = getCustomBlock(id);
-    if (!def || !def.body) { return false; }
+    if (!def || !def.body) { return 0; }
+    var maxIdx = 0, hasNull = false;
     for (var i = 0; i < def.body.length; i++) {
       var c = def.body[i];
-      if (c.id === 'steps' && c.steps === null) { return true; }
+      if (c.id === 'steps' && c.steps === null) {
+        hasNull = true;
+        var idx = c.paramIdx || 0;
+        if (idx > maxIdx) { maxIdx = idx; }
+      }
     }
-    return false;
+    if (!hasNull) { return 0; }
+    return Math.min(maxIdx + 1, 2);
   }
   // 名称唯一校验：editingId 传 null（新建）或自身 id（编辑时排除自身）
   function blockNameTaken(name, editingId) {
@@ -488,6 +500,9 @@
   var BLOCK_BODY_CMDS = [CMD_FWD, CMD_L, CMD_R, CMD_BLOCK, CMD_STEPS];
   // v1.11：编辑态参数开关（toggle 状态从 body 派生，B2）
   var editBlockHasParam = false;
+  // v1.13 I-new-3：长按触发后 click 抑制标志（函数级作用域——跨 chip 重建存活）
+  // 长按触发固定⇌参数切换后 500ms 内的 click 是长按的收尾（不落在新 chip 上），抑制防槽位/数值二次切换
+  var suppressChipClickUntil = 0;
 
   function viewBlockEdit(id) {
     stopTimer();
@@ -503,10 +518,12 @@
         editBlockName = def.name;
         // 深拷贝（map 复制指令对象——slice 仅浅拷贝数组，指令对象与块库共享引用：
         // 编辑步骤 cycleRep/cycleSteps 改 rep/steps 会污染块库原对象，即使取消保存也被改）
+        // B1（Oracle v1.13）：补 paramIdx——防编辑即销毁槽位（slot#1 → 缺省槽#0 塌缩）
         editBlockBody = def.body.map(function (c) {
           var nc = { id: c.id };
           if (c.rep !== undefined) { nc.rep = c.rep; }
           if (c.steps !== undefined) { nc.steps = c.steps; }
+          if (c.paramIdx !== undefined) { nc.paramIdx = c.paramIdx; }
           return nc;
         });
         editBlockHasParam = blockHasParam(id);   // v1.11：编辑态参数开关从 body 派生（B2）
@@ -550,7 +567,7 @@
     });
     paramRow.appendChild(paramToggle);
     if (editBlockHasParam) {
-      paramRow.appendChild(makeEl('div', 'block-edit-param-hint', '块里的「➡?步」都走同一个距离，由调用时传入（1-9）'));
+      paramRow.appendChild(makeEl('div', 'block-edit-param-hint', '块里的「➡?₁步」「➡?₂步」各自独立，由调用时传入（1-9）；长按一条可固定或变参数'));
     }
     wrap.appendChild(paramRow);
     // body 指令 chips（单栏）
@@ -603,22 +620,52 @@
     renderFooter('');
   }
 
-  /* 块 body chip 渲染（复用 renderSeq chip 交互：fwd 等 cycleRep、steps cycleSteps、✕ 删除） */
+  /* 块 body chip 渲染（复用 renderSeq chip 交互：fwd 等 cycleRep、steps cycleSteps、✕ 删除）
+     v1.13 混合态/多参数扩展：
+     - 参数化 steps 显示 ➡?₁步（槽#0）/ ➡?₂步（槽#1），下标区分独立参数
+     - 单击参数化 steps = 切换槽位（?₁⇌?₂）；单击固定 steps = cycleSteps 数值（v1.12 不变）
+     - 长按（≥350ms）或 shift+单击 = 固定 ⇌ 参数 双向切换（混合态创建入口，I1 弃 dblclick）
+     - I-new-1：✕ 删除按钮 pointerdown 过滤（防长按误触发）
+     - I-new-2：pointercancel 取消长按定时器（移动端 OS 中断）
+     - I-new-3：长按触发后 click 抑制（suppressChipClickUntil 函数级标志） */
   function renderBlockBodyChip(cmd, i) {
     var isSteps = cmd.id === 'steps';
     var isParamSteps = isSteps && cmd.steps === null;   // v1.11：参数化 steps（调用时传距离）
+    var slotIdx = isParamSteps ? (cmd.paramIdx || 0) : -1;   // v1.13：参数槽位（缺省 #0）
     var lbl;
-    if (isParamSteps) { lbl = '➡?步'; }   // v1.12 N2：定义态 ? 占位（距离由调用时传入；调用态显示具体数字）
+    if (isParamSteps) {
+      lbl = slotIdx === 1 ? '➡?₂步' : '➡?₁步';   // v1.13：槽位下标显示（?₁=?₁ / ?₂=?₂）——多参数独立视觉
+    }
     else { lbl = cmd.id === 'fwd' ? '↑' : (cmd.id === 'left' ? '↰' : (cmd.id === 'right' ? '↱' : (cmd.id === 'block' ? '🧱' : (cmd.id === 'steps' ? '➡走' + (cmd.steps || 1) + '步' : '?')))); }
     var repTxt = (!isSteps && cmd.rep && cmd.rep > 1) ? ('×' + cmd.rep) : '';
     var chip = makeEl('span', 'cmd-chip' + (repTxt ? ' loop' : '') + (isParamSteps ? ' param-step' : ''), (i + 1) + '.' + lbl + repTxt);
+    chip.setAttribute('title', isSteps ? (isParamSteps ? '单击换参数·长按变固定' : '单击调步数·长按变参数') : '单击调次数');
+    // 长按切换（I1）：pointerdown 起 350ms 定时器 → 触发 fixed⇌param；pointerup/pointercancel 早取消（I-new-2）
+    var lpTimer = null, lpFired = false;
+    chip.addEventListener('pointerdown', function (ev) {
+      if (!isSteps || state.execLock) { return; }
+      if (ev.target.classList.contains('chip-x')) { return; }   // I-new-1：✕ 删除按钮不触发长按
+      if (ev.shiftKey) { toggleStepsParam(cmd, i); lpFired = true; return; }   // shift+单击兜底
+      lpFired = false;
+      if (lpTimer) { clearTimeout(lpTimer); }
+      lpTimer = setTimeout(function () {
+        lpTimer = null;
+        lpFired = true;
+        toggleStepsParam(cmd, i);
+      }, 350);
+    });
+    chip.addEventListener('pointerup', function () { if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; } });
+    chip.addEventListener('pointercancel', function () { if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; } });   // I-new-2
     chip.addEventListener('click', function (ev) {
       ev.stopPropagation();
-      if (isSteps) {
-        if (cmd.steps === null) { return; }   // I3：参数版 no-op（距离由调用时决定）
-        cmd.steps = ((cmd.steps || 1) % 9) + 1;
+      if (!isSteps) { cmd.rep = ((cmd.rep || 1) % 4) + 1; renderBlockEdit(); return; }
+      if (Date.now() < suppressChipClickUntil) { return; }   // I-new-3：长按收尾 click 抑制
+      if (lpFired) { lpFired = false; return; }   // 长按已处理，本 click 是长按收尾（pointerdown→up 后浏览器派发）
+      if (isParamSteps) {
+        // 单击参数化 steps = 切换槽位（?₁⇌?₂），v1.13（v1.11 I3 no-op → 放开为槽位交互）
+        if (cmd.paramIdx === 1) { delete cmd.paramIdx; } else { cmd.paramIdx = 1; }
       } else {
-        cmd.rep = ((cmd.rep || 1) % 4) + 1;
+        cmd.steps = ((cmd.steps || 1) % 9) + 1;   // 固定 steps：数值循环（v1.12 不变）
       }
       renderBlockEdit();
     });
@@ -639,31 +686,55 @@
     chip.appendChild(x);
     return chip;
   }
+  // v1.13 固定⇌参数双向切换（I1 长按/shift+单击共用；混合态创建入口）：
+  //  固定 steps → 参数化槽#0（steps:null）；参数化 steps → 恢复固定（steps:1，清槽位）
+  function toggleStepsParam(cmd, i) {
+    if (!cmd || cmd.id !== 'steps') { return; }
+    // I-new-3：切换触发 renderBlockEdit 重建 chip 后，长按/shift 收尾的 click 派发到新 chip——
+    // 函数级抑制标志（跨重建存活）500ms 内挡住，防槽位/数值二次切换
+    suppressChipClickUntil = Date.now() + 500;
+    if (cmd.steps === null) {
+      cmd.steps = 1;
+      if (cmd.paramIdx !== undefined) { delete cmd.paramIdx; }
+    } else {
+      cmd.steps = null;   // 槽#0
+    }
+    // editBlockHasParam 从 body 重新派生（切换后更新 toggle 状态）
+    var stillHas = false;
+    for (var pi = 0; pi < editBlockBody.length; pi++) {
+      if (editBlockBody[pi].id === 'steps' && editBlockBody[pi].steps === null) { stillHas = true; break; }
+    }
+    editBlockHasParam = stillHas;
+    renderBlockEdit();
+  }
 
   /* v1.11：参数 toggle——开 → 全部 steps 参数化（steps:null）；关 → 参数化恢复固定。
      v1.12 N1（Oracle 审核）：v1.11 仅第一条参数化 → 放开为全部参数化（一个参数 N 贯穿块内所有 steps，
      execCall 副本已支持全部 steps:null 填同一 param，执行层零改动）。
      I1 注释（Oracle）：v1.11 存量 1-param 块在此 toggle off→on 后升级为 all-param（数据变但语义更一致，可接受）。
+     v1.13 I2 修订（Oracle）：ON 幂等——仅「未参数化 steps」→ 槽#0（steps:null，paramIdx 不设），
+     已参数化（含槽#1）保持不变——不破坏混合态/槽位；OFF = 全部恢复固定（v1.12 保持，含槽#1 一并清空）。
      返回错误消息（null=成功）；提示由调用方在 renderBlockEdit 重建后设置（防旧元素被清） */
   function toggleBlockHasParam() {
     if (editBlockHasParam) {
-      // 关：参数化 steps（steps:null）恢复固定 steps:1
+      // 关：参数化 steps（steps:null）恢复固定 steps:1（清槽位标记）
       for (var i = 0; i < editBlockBody.length; i++) {
         if (editBlockBody[i].id === 'steps' && editBlockBody[i].steps === null) {
           editBlockBody[i].steps = 1;
+          if (editBlockBody[i].paramIdx !== undefined) { delete editBlockBody[i].paramIdx; }
         }
       }
       editBlockHasParam = false;
       return null;
     } else {
-      // 开：需要 body 有 steps；全部参数化（v1.12 放开为全部）
+      // 开：需要 body 有 steps；I2 幂等——仅未参数化 steps → 槽#0（已参数化含槽#1 保持）
       var hasSteps = false;
       for (var j = 0; j < editBlockBody.length; j++) {
         if (editBlockBody[j].id === 'steps') { hasSteps = true; break; }
       }
       if (!hasSteps) { return '😅 先加一条 ➡N步，才能带参数'; }   // 保持 off
       for (var k = 0; k < editBlockBody.length; k++) {
-        if (editBlockBody[k].id === 'steps') { editBlockBody[k].steps = null; }   // v1.12：全部参数化
+        if (editBlockBody[k].id === 'steps' && editBlockBody[k].steps !== null) { editBlockBody[k].steps = null; }   // v1.13 I2：仅未参数化→槽#0
       }
       editBlockHasParam = true;
       return null;
@@ -671,7 +742,10 @@
   }
 
   function addBlockBodyCmd(id) {
-    if (id === 'steps') { editBlockBody.push({ id: id, steps: editBlockHasParam ? null : 1 }); }   // v1.11：参数态新增 steps 直接参数化
+    if (id === 'steps') {
+      // v1.11：参数态新增 steps 直接参数化（槽#0）；v1.13 显式 paramIdx:0（一致性，缺省亦同义）
+      editBlockBody.push({ id: id, steps: editBlockHasParam ? null : 1, paramIdx: editBlockHasParam ? 0 : undefined });
+    }
     else { editBlockBody.push({ id: id, rep: 1 }); }
     renderBlockEdit();
   }
@@ -1260,14 +1334,25 @@
       var isLoop = cmd.id === 'loop';
       var isCall = cmd.id === 'call';
       var lbl;
+      var paramSegs = null;   // v1.13：多参数 call 分段（[{slot,last}]）
       if (isCall) {
         // v1.10 自定义块引用：name 渲染查块库取最新（I-3）；块已删除 → 灰显 + 「块已删除」标记（N-3）
         // v1.11：参数块显示 (N)——有参数块 chip 显示 🧩名(N)，点击调参（cycleCallParam）
+        // v1.13 I6：多参数块显示 🧩名(N₀,N₁)——N₀/N₁ 分段 span（data-slot）独立调参；单参块保持 (3) 兼容
         var defC = getCustomBlock(cmd.bid);
-        var isParamCall = defC && blockHasParam(cmd.bid);
+        var pc = defC ? blockParamCount(cmd.bid) : 0;
+        var isParamCall = pc > 0;
         if (defC) {
-          lbl = '🧩' + defC.name + (isParamCall ? '(' + (cmd.param || 3) + ')' : '');
           cmd.name = defC.name;
+          if (isParamCall) {
+            // 参数分段显示：显示值 = params[slot] ?? (slot===0 ? param : 3)（存量 call 升级补默认，不写数据）
+            paramSegs = [];
+            for (var s = 0; s < pc; s++) {
+              var pv = (cmd.params && cmd.params[s] !== undefined) ? cmd.params[s] : (s === 0 ? (cmd.param || 3) : 3);
+              paramSegs.push({ slot: s, last: s === pc - 1, txt: String(pv) });
+            }
+            lbl = '🧩' + defC.name;
+          } else { lbl = '🧩' + defC.name; }
         }
         else { lbl = '🧩' + (cmd.name || '已删除') + '❌'; }
       } else {
@@ -1275,13 +1360,32 @@
       }
       var repTxt = (!isIf && !isSteps && !isLoop && !isCall && cmd.rep && cmd.rep > 1) ? ('×' + cmd.rep) : '';
       // 指令 chip：单击循环次数/参数递增/打开编辑区（if 分支 or 循环块 or 块引用调参）；✕ 角标删除
-      var chip = makeEl('span', 'cmd-chip' + (repTxt ? ' loop' : '') + (isIf ? ' if' : '') + (isLoop ? ' loopb' : '') + (isCall ? (defC ? (isParamCall ? ' call param-call' : ' call') : ' call deleted') : ''), (i + 1) + '.' + lbl + repTxt);
+      var chipCls = 'cmd-chip' + (repTxt ? ' loop' : '') + (isIf ? ' if' : '') + (isLoop ? ' loopb' : '') + (isCall ? (defC ? (isParamCall ? ' call param-call' : ' call') : ' call deleted') : '');
+      var chip;
+      if (paramSegs) {
+        // v1.13 I6：分段 chip——「i.🧩名(」+ 各参数段 span + 「)」
+        chip = makeEl('span', chipCls, (i + 1) + '.' + lbl + '(');
+        paramSegs.forEach(function (ps, si) {
+          var seg = makeEl('span', 'call-param', ps.txt);
+          seg.setAttribute('data-slot', String(ps.slot));
+          seg.addEventListener('click', function (ev) {
+            ev.stopPropagation();
+            if (!defC || state.execLock) { return; }
+            cycleCallParamSlot(i, ps.slot);   // 参数段独立调参
+          });
+          chip.appendChild(seg);
+          if (!ps.last) { chip.appendChild(document.createTextNode(',')); }
+        });
+        chip.appendChild(document.createTextNode(')'));
+      } else {
+        chip = makeEl('span', chipCls, (i + 1) + '.' + lbl + repTxt);
+      }
       chip.addEventListener('click', function (ev) {
         ev.stopPropagation();
         if (isIf || isLoop) { openEditCtx(i, cmd); }
         else if (isCall) {
           if (!defC || state.execLock) { return; }   // 孤儿/执行中不可点
-          if (isParamCall) { cycleCallParam(i); }    // v1.11：参数块点击 → 调参
+          if (isParamCall) { cycleCallParamSlot(i, 0); }    // v1.13：参数块主体点击 → 调参槽#0（v1.12 盲点行为保持）
           else { viewBlockEditFromGame(cmd.bid); }   // 无参数块 → 进块编辑器（v1.10 保持）
         }
         else if (isSteps) { cycleSteps(i); }
@@ -1316,13 +1420,24 @@
     renderSeq();
   }
   // v1.11：块引用参数递增——参数块 chip 点击 3→4→…→9→1→…→2→3（对齐 steps 1-9 循环）
-  function cycleCallParam(i) {
+  // v1.13 多参数：cycleCallParamSlot(i, slot)——逐槽独立调参（分段 span 点击）；主体点击 = 槽#0（v1.12 兼容）
+  // 写时归一化：存量 call.param → params 数组（删 param）；补足缺失槽位默认 3
+  function cycleCallParamSlot(i, slot) {
     if (state.execLock) { return; }
     var cmd = state.cmds[i];
     if (!cmd || cmd.id !== 'call') { return; }
-    cmd.param = ((cmd.param || 3) % 9) + 1;
+    var pc = blockParamCount(cmd.bid);
+    if (slot >= pc) { return; }   // 无效槽 no-op（块已降级 1 参但 call 段点击旧槽）
+    if (!cmd.params) {
+      cmd.params = [cmd.param !== undefined ? cmd.param : 3];
+      delete cmd.param;   // 归一化：params 优先，param 清除（防并存脏数据）
+    }
+    while (cmd.params.length < pc) { cmd.params.push(3); }   // 补足槽位默认 3
+    cmd.params[slot] = ((cmd.params[slot] || 3) % 9) + 1;   // 槽位独立 3→4→…→9→1
     renderSeq();
   }
+  // v1.11 兼容别名：主体点击（无槽位指定）→ 槽#0（行为 = v1.12 cycleCallParam）
+  function cycleCallParam(i) { cycleCallParamSlot(i, 0); }
 
   function renderBoardOnly() {
     var board = document.getElementById('board');
@@ -1360,22 +1475,31 @@
     customBlocks.forEach(function (b) {
       var item = makeEl('div', 'block-picker-item');
       var hasParam = blockHasParam(b.id);   // v1.11：参数块显示 (N)
-      var lbl = makeEl('span', 'block-picker-name', '🧩 ' + b.name + (hasParam ? ' (3)' : ''));
+      var pc = blockParamCount(b.id);       // v1.13：参数数量（多参数显示 (3,3)）
+      var lbl = makeEl('span', 'block-picker-name', '🧩 ' + b.name + (hasParam ? (pc > 1 ? ' (3,3)' : ' (3)') : ''));
       item.appendChild(lbl);
-      // N-2：body 预览（指令 chips 缩略，强化"封装可见"教学；参数版 steps 显示 N）
+      // N-2：body 预览（指令 chips 缩略，强化"封装可见"教学；参数版 steps 显示 ? 占位）
+      // v1.13：槽位下标显示（?₁/?₂）+ 固定数字共存（混合态预览）
       var prev = makeEl('span', 'block-picker-preview', b.body.map(function (c) {
         if (c.id === 'fwd') { return '↑' + (c.rep && c.rep > 1 ? '×' + c.rep : ''); }
         if (c.id === 'left') { return '↰'; }
         if (c.id === 'right') { return '↱'; }
         if (c.id === 'block') { return '🧱'; }
-        if (c.id === 'steps') { return c.steps === null ? '➡?步' : '➡' + c.steps + '步'; }   // v1.12 N2：预览 ? 占位   // v1.11 参数版
+        if (c.id === 'steps') {
+          if (c.steps === null) { return (c.paramIdx === 1 ? '➡?₂步' : '➡?₁步'); }   // v1.13 I5：槽位下标
+          return '➡' + c.steps + '步';
+        }
         return '?';
       }).join(' '));
       item.appendChild(prev);
       item.addEventListener('click', function () {
         if (state.execLock) { return; }
         // v1.11：参数块追加带默认参数 3；无参数块不设 param
-        if (hasParam) { state.cmds.push({ id: 'call', bid: b.id, name: b.name, param: 3 }); }
+        // v1.13 I5：多参数块（pc>1）追加 params:[3,3]（每槽默认 3）；单参/无参兼容
+        if (hasParam) {
+          if (pc > 1) { state.cmds.push({ id: 'call', bid: b.id, name: b.name, params: [3, 3].slice(0, pc) }); }
+          else { state.cmds.push({ id: 'call', bid: b.id, name: b.name, param: 3 }); }
+        }
         else { state.cmds.push({ id: 'call', bid: b.id, name: b.name }); }
         hideBlockPicker();
         renderSeq();
@@ -1768,10 +1892,17 @@
     var runBody;
     if (blockHasParam(cmd.bid)) {
       // v1.11 运行时副本：参数化 steps（steps:null）填 call.param，其余指令浅拷贝——不同 call 不同参数互不污染
+      // v1.13 B2（Oracle 修订）：槽位感知回退链——params[slot] 优先；param 仅对槽#0 有效；槽#1 直接兜底 3
+      //（防存量 param:5 块升双参后槽#1 错误继承 5）；固定 steps 原样（混合态天然支持）
       runBody = def.body.map(function (c) {
         var nc = { id: c.id };
         if (c.rep !== undefined) { nc.rep = c.rep; }
-        if (c.id === 'steps') { nc.steps = (c.steps === null) ? (cmd.param || 3) : c.steps; }
+        if (c.id === 'steps') {
+          if (c.steps === null) {
+            var slot = c.paramIdx || 0;
+            nc.steps = (cmd.params && cmd.params[slot] !== undefined) ? cmd.params[slot] : (slot === 0 ? (cmd.param || 3) : 3);
+          } else { nc.steps = c.steps; }
+        }
         else if (c.steps !== undefined) { nc.steps = c.steps; }
         return nc;
       });
@@ -2144,7 +2275,9 @@
   M.blockNameTaken = blockNameTaken;
   // v1.11：块参数
   M.blockHasParam = blockHasParam;
+  M.blockParamCount = blockParamCount;   // v1.13：参数数量派生（测试/调试）
   M.cycleCallParam = cycleCallParam;
+  M.cycleCallParamSlot = cycleCallParamSlot;   // v1.13：逐槽调参
   M.toggleBlockHasParam = toggleBlockHasParam;
   window.M = M;
 })();

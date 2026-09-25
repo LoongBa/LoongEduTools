@@ -593,6 +593,8 @@ body {
 .cmd-chip.param-step { background: #f3e8fd; border-color: #c9a8e8; color: #722ed1; }
 .cmd-chip.param-step .chip-x { color: #a07bd1; }
 
-/* 序列中参数块引用 chip（🧩名(N)——(N) 浅紫小字可调暗示） */
+/* 序列中参数块引用 chip（🧩名(N)——(N) 浅紫小字可调暗示）
+   v1.13 I6：多参数分段 (N₀,N₁)——.call-param 段独立可点（下划线+手型暗示） */
 .cmd-chip.call.param-call { background: #f3e8fd; border-color: #c9a8e8; color: #722ed1; font-weight: 600; }
+.cmd-chip.call .call-param { color: #a07bd1; font-weight: 600; text-decoration: underline; -webkit-tap-highlight-color: transparent; cursor: pointer; }
 
