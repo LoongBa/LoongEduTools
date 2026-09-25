@@ -27,6 +27,8 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     v1.15：更名「数独思维」（教育语境，避免「侦探」游戏感误会；成就/闯关称号同步
           中性化：十局小达人 / 思维高手）
     v1.16：家长报告成长进度卡（每日挑战/成就/闯关地图进度，全派生零 schema）
+    v1.17：每日挑战难度轮换（周1/2 简单→周3-5 普通→周6 困难→周日普通）+ 成就
+          扩充 2 枚（闯关地图通关 / 月度坚持，6 → 8 枚）
     星级：hints===0 && errors===0 → 3★；hints<=1 && errors<=3 → 2★；否则 1★
    难度：双参数（盘面尺寸 × 目标已知格）4×4→10、6×6→21、9×9→33
    设计约束（对齐 series/益智/设计文档.md §5）：
@@ -304,6 +306,9 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     // v1.12：当日整数种子（YYYYMMDD → int）——同一天同 seed → 每日挑战同题；跨天换题
     return parseInt(fmtDate(new Date()), 10);
   }
+  // 每日挑战难度轮换（v1.17）：按星期（JS getDay(): 0=周日..6=周六）
+  // 周一/周二 4×4 简单轻松起步 → 周三至周五 6×6 普通 → 周六 9×9 周末挑战 → 周日 6×6 收尾
+  var DAILY_DIFFS = ['6', '4', '4', '6', '6', '6', '9'];
   /* 格子列宽/格内字体按盘面尺寸 */
   function colPct(n) {
     if (n === 4) { return '25%'; }
@@ -1063,7 +1068,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
       var sug = suggestLevel();
       if (sug) { suggestedName = sug.name; } else { suggestedName = null; }
       // v1.12：每日挑战通关记录 + 成就结算（新解锁名缓存给结算浮层展示）
-      if (state.isDaily) { store.daily = { date: fmtDate(new Date()), level: '6' }; }
+      if (state.isDaily) { store.daily = { date: fmtDate(new Date()), level: state.level }; } // v1.17：记录实际难度（周轮换）
       // v1.13：闯关通关记录（线性解锁 → 按序 push，completed 含该关则不重复）
       if (state.fromMap >= 0) {
         var ml = MAP_LEVELS[state.fromMap];
@@ -1202,8 +1207,12 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     var dailyDone = !!(store.daily && store.daily.date === dToday);
     var dailyBtn = makeEl('button', 'teach-btn book-btn');
     dailyBtn.appendChild(makeEl('span', 'teach-btn-head', '📅 每日挑战'));
+    // v1.17：未完成分支按今日难度显示动态文案（周轮换）
+    var todayDiffKey = DAILY_DIFFS[new Date().getDay()];
+    var todayLv = findLevel(todayDiffKey);
     dailyBtn.appendChild(makeEl('span', 'teach-btn-sub',
-      dailyDone ? '今日已完成 ✅ 连续 ' + (store.checkin.streak || 0) + ' 天' : '今日一题 · 6×6 · 和全世界同题'));
+      dailyDone ? '今日已完成 ✅ 连续 ' + (store.checkin.streak || 0) + ' 天' :
+        '今日一题 · ' + todayLv.name + ' ' + todayLv.N + '×' + todayLv.N + ' · 和全世界同题'));
     dailyBtn.setAttribute('aria-label', dailyDone ? '今日每日挑战已完成' : '开始今日每日挑战');
     dailyBtn.addEventListener('click', startDaily);
     viewEl.appendChild(dailyBtn);
@@ -1341,14 +1350,16 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     advBack.addEventListener('click', showDifficultyView);
     viewEl.appendChild(advBack);
   }
-  /* ---------- 成就（v1.12 X3）：6 枚个人里程碑，无竞技无排行 ---------- */
+/* ---------- 成就（v1.12 X3 / v1.17 扩 2 枚）：8 枚个人里程碑，无竞技无排行 ---------- */
   var ACHIEVEMENTS = [
     { key: 'firstDaily', name: '每日挑战首通', desc: '完成一次每日挑战' },
     { key: 'daily3',     name: '连续打卡 3 天', desc: '连续 3 天完成打卡（含每日挑战）' },
     { key: 'daily7',     name: '连续打卡 7 天', desc: '连续 7 天完成打卡' },
     { key: 'games10',    name: '十局小达人', desc: '累计完成 10 局' },
     { key: 'allSkills',  name: '技巧大师', desc: '点亮全部 4 枚适龄技巧徽章' },
-    { key: 'perfect3',   name: '三星完美', desc: '0 错 0 提示 ★★★ 通关一局' }
+    { key: 'perfect3',   name: '三星完美', desc: '0 错 0 提示 ★★★ 通关一局' },
+    { key: 'mapMaster',  name: '闯关地图通关', desc: '闯关地图全部 9 关通关' },      // v1.17
+    { key: 'monthStreak', name: '月度坚持', desc: '连续打卡 30 天' }                  // v1.17
   ];
   function countAchievements() {
     // 已解锁成就数（store.achievements 非空键个数）
@@ -1364,13 +1375,15 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     var unlocked = [];
     var today = fmtDate(new Date());
     var streak = store.checkin && store.checkin.streak ? store.checkin.streak : 0;
-    var checks = {
+var checks = {
       firstDaily: state.isDaily,
       daily3: streak >= 3,
       daily7: streak >= 7,
       games10: store.history.length >= 10,
       allSkills: countLitSkills() >= baseSkillCount(),
-      perfect3: state.errors === 0 && state.hints === 0 // 3★（0 错 0 提示）
+      perfect3: state.errors === 0 && state.hints === 0, // 3★（0 错 0 提示）
+      mapMaster: (store.mapProgress && store.mapProgress.completed.length >= MAP_LEVELS.length), // v1.17
+      monthStreak: streak >= 30 // v1.17
     };
     var i;
     for (i = 0; i < ACHIEVEMENTS.length; i++) {
@@ -2321,9 +2334,10 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     startTimer(); // 计时从游戏页渲染开始（数独整局计时）
   }
   function startDaily() {
-    // v1.12：每日挑战——固定 6×6 普通 + 当日种子同题（计入普通成绩打卡；无竞技）
+    // v1.12/v1.17：每日挑战——当日难度（周轮换）+ 当日种子同题（计入普通成绩打卡；无竞技）
     suggestedName = null; // 每日挑战同样消费降档建议
-    newRound('6', dailySeed());
+    var todayDiff = DAILY_DIFFS[new Date().getDay()]; // v1.17：难度轮换（4/6/9）
+    newRound(todayDiff, dailySeed());
     state.isDaily = true;
     renderGameView();
     renderGameFooter();
