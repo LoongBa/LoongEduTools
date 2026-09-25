@@ -404,3 +404,111 @@ body {
   flex: 0 0 auto;
   padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
 }
+
+/* ---------- v1.2 自建关卡：关卡库 + 编辑器 ---------- */
+.custom-wrap { text-align: center; }
+
+.custom-title { font-size: 20px; margin: 20px 0 12px; }
+
+.custom-empty { font-size: 14px; color: #86909c; margin: 16px 0; }
+
+.custom-item {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: justify;
+  -webkit-justify-content: space-between;
+  justify-content: space-between;
+  background: #ffffff;
+  border: 1px solid #e8eaef;
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin: 8px 0;
+  text-align: left;
+}
+
+.custom-item-main { min-width: 0; }
+
+.custom-item-name { font-size: 15px; font-weight: 600; color: #1f2329; }
+
+.custom-item-meta { font-size: 12px; color: #86909c; margin-top: 2px; }
+
+.custom-btns { -webkit-box-flex: 0; -webkit-flex: 0 0 auto; flex: 0 0 auto; }
+
+.custom-limit { font-size: 12px; color: #f5222d; margin: 8px 0; }
+
+.custom-wrap .btn { margin: 4px 6px; }
+
+.edit-wrap { text-align: center; }
+
+.edit-name-row {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  margin: 8px 0;
+}
+
+.edit-name-label { font-size: 14px; color: #4e5969; }
+
+.edit-name-input {
+  border: 1px solid #c9cdd4;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+  color: #1f2329;
+  margin: 0 6px;
+  max-width: 160px;
+}
+
+.edit-name-tip { font-size: 12px; color: #86909c; }
+
+.edit-board {
+  max-width: 340px;
+  margin: 0 auto;
+}
+
+.edit-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  -ms-touch-action: none;
+  touch-action: none;
+}
+
+.edit-tools { margin: 10px 0 4px; }
+
+.edit-tool.active {
+  background: #3a7bd5;
+  border-color: #3a7bd5;
+  color: #ffffff;
+}
+
+.edit-acts { margin: 6px 0; }
+
+.edit-acts .btn { margin: 4px 6px; }
+
+/* 迷你按钮（关卡库列表 [✏编辑][▶挑战][🗑删除] / 编辑器工具条与操作）——btn 基础上缩小 */
+.btn-mini {
+  display: inline-block;
+  background: #ffffff;
+  border: 1px solid #c9cdd4;
+  border-radius: 16px;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: #1f2329;
+  cursor: pointer;
+  margin: 2px 3px;
+}
+
+.btn-mini.btn-primary { background: #3a7bd5; border-color: #3a7bd5; color: #ffffff; }
+
+.btn-mini.btn-danger { color: #f5222d; border-color: #ffa39e; }
