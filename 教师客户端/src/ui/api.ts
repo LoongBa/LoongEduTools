@@ -63,6 +63,8 @@ export interface RemotePkg {
   package_version: string;
   name: string;
   package_type: string;
+  /** 内容/扩展分区标签；服务端旧清单可能缺省（R03 §3.2 方案 A） */
+  categories?: string[];
   required_license_level: number;
   min_shell_version: string;
   size_bytes: number | null;
@@ -80,6 +82,8 @@ export interface StoreItem {
   package_version: string;
   name: string;
   package_type: string;
+  /** 内容/扩展分区标签（壳端恒有值，旧清单缺省后落空数组） */
+  categories: string[];
   required_license_level: number;
   min_shell_version: string;
   size_bytes: number | null;
