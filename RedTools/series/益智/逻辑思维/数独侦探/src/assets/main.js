@@ -23,6 +23,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
           （X3：6 枚个人里程碑，无竞技无排行）
     v1.13：闯关地图（X1：3 档难度 × 每档 3 关线性推进，复用 seed 基建同关同题；
           无竞技，纯个人进度推进）
+    v1.14：设置面板（🔊 音效开关 / 🗑️ 清除本地进度 / ℹ️ 关于；数据只存本机）
     星级：hints===0 && errors===0 → 3★；hints<=1 && errors<=3 → 2★；否则 1★
    难度：双参数（盘面尺寸 × 目标已知格）4×4→10、6×6→21、9×9→33
    设计约束（对齐 series/益智/设计文档.md §5）：
@@ -77,6 +78,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
   var pinchStartDist = 0;    // 捏合起始两指距离
   var pinchStartScale = 1;   // 捏合起始缩放
   var zoomResetBtnEl = null; // 棋盘上方「1:1 复位」按钮 DOM（pinchScale>1 时显示）
+  var soundEnabled = true;   // v1.14 全局音效开关（tone 总出口拦截；启动时从 store.settings.sound 同步）
 
   /* ---------- 状态 ---------- */
   var state = {
@@ -127,6 +129,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
       daily: null,                  // 每日挑战完成记录（v1.12）：{ date:'YYYYMMDD', level:'6' }；未完成 null
       achievements: {},             // 成就解锁（v1.12）：{ key: 'YYYYMMDD' }（6 枚个人里程碑，无竞技）
       mapProgress: { completed: [] }, // 闯关地图进度（v1.13）：{ completed:[i,...] } 已完成关卡序号（线性按序）
+      settings: { sound: true },        // 设置（v1.14）：{ sound: true } 全局音效开关
       cur: null                     // 断局快照（v1.2）：未完成（level,N,givensCount,puzzle,solution,given,pencils,undoStack,hints,errors,selected,penMode,ms,startStamp,origPuzzle)
     };
   }
@@ -148,6 +151,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
           if (!obj.achievements) { obj.achievements = {}; } // v1.12：旧存档无成就字段 → 补空
           if (!obj.mapProgress) { obj.mapProgress = { completed: [] }; } // v1.13：旧存档无闯关进度 → 补空
           if (!obj.mapProgress.completed) { obj.mapProgress.completed = []; } // 防 completed 缺失
+          if (!obj.settings) { obj.settings = { sound: true }; } // v1.14：旧存档无设置 → 补默认（音效开）
           if (!obj.cur) { obj.cur = null; }
           if (obj.history.length > 30) { obj.history = obj.history.slice(-30); }
           return obj;
@@ -163,6 +167,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
   }
   var store = loadStore();
   saveStore(); // 初始化写入
+  soundEnabled = !!store.settings.sound; // v1.14：启动时从存档同步音效开关（首次渲染前）
 
   /* ---------- 断局恢复（v1.2）：state 快照 ↔ store.cur ---------- */
   function saveCur() {
@@ -321,6 +326,7 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     return actx;
   }
   function tone(freq, dur, type, vol, delay) {
+    if (!soundEnabled) { return; } // v1.14：全局音效开关（sndClick/sndCorrect/sndWrong/sndWin 唯一发声出口拦截）
     var ac = ensureAudio();
     if (!ac) { return; }
     try {
@@ -1213,6 +1219,13 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     achBtn.setAttribute('aria-label', '打开成就墙');
     achBtn.addEventListener('click', showAchievementView);
     viewEl.appendChild(achBtn);
+    // 设置入口（v1.14）：音效开关 / 清除进度 / 关于
+    var setBtn = makeEl('button', 'teach-btn book-btn');
+    setBtn.appendChild(makeEl('span', 'teach-btn-head', '⚙️ 设置'));
+    setBtn.appendChild(makeEl('span', 'teach-btn-sub', '音效 · 清除进度 · 关于'));
+    setBtn.setAttribute('aria-label', '打开设置');
+    setBtn.addEventListener('click', showSettingsView);
+    viewEl.appendChild(setBtn);
     // 家长报告入口（v1.9）：今日反馈 / 近 7 天 / 技巧掌握度（只读本地数据）
     var reportBtn = makeEl('button', 'teach-btn book-btn');
     reportBtn.appendChild(makeEl('span', 'teach-btn-head', '📊 家长报告'));
@@ -2896,6 +2909,73 @@ v1.6：提示带讲解 + 次数限制（4×4 不限 / 6×6 限 3 / 9×9 限 2）
     back.style.marginTop = '4px';
     back.addEventListener('click', showDifficultyView);
     viewEl.appendChild(back);
+  }
+
+  /* ---------- 设置面板（v1.14）：音效开关 / 清除本地进度 / 关于 ---------- */
+  function updateSettingsToggle(toggleEl) {
+    // 刷新音效开关按钮文案与样式：开=绿底「开」/ 关=灰底「关」
+    if (!toggleEl) { return; }
+    toggleEl.className = 'settings-toggle' + (soundEnabled ? ' on' : ' off');
+    toggleEl.textContent = soundEnabled ? '开' : '关';
+  }
+  function showSettingsView() {
+    // 设置面板（v1.14）：仿徽章墙/成就视图模式；数据只存本机不联网
+    hideOverlay();
+    stopTimer();
+    state.won = false;
+    state.playing = false;
+    renderHeader('设置');
+    clearNode(viewEl);
+    viewEl.appendChild(makeEl('div', 'page-title', '设置'));
+    viewEl.appendChild(makeEl('div', 'home-hint', '数据只保存在本机，不联网不上传'));
+    // 音效开关行
+    var soundRow = makeEl('div', 'settings-row');
+    soundRow.appendChild(makeEl('span', 'settings-label', '🔊 音效'));
+    var soundToggle = makeEl('button', 'settings-toggle', '');
+    soundToggle.setAttribute('aria-label', '切换音效开关');
+    soundToggle.addEventListener('click', function () {
+      soundEnabled = !soundEnabled;
+      store.settings.sound = soundEnabled;
+      saveStore();
+      updateSettingsToggle(soundToggle);
+      if (soundEnabled) { sndClick(); } // 开启时播一声确认音
+    });
+    soundRow.appendChild(soundToggle);
+    updateSettingsToggle(soundToggle);
+    viewEl.appendChild(soundRow);
+    // 清除进度行
+    var clearRow = makeEl('div', 'settings-row');
+    var clearCol = makeEl('div', 'settings-col');
+    clearCol.appendChild(makeEl('span', 'settings-label', '🗑️ 清除本地进度'));
+    clearCol.appendChild(makeEl('span', 'settings-sub', '清空成绩/打卡/错题/成就/闯关等全部本地数据'));
+    clearRow.appendChild(clearCol);
+    var clearBtn = makeEl('button', 'settings-danger', '清除');
+    clearBtn.setAttribute('aria-label', '清除全部本地进度');
+    clearBtn.addEventListener('click', function () {
+      showOverlay('🗑️ 确定清除？', '此操作不可撤销，将清空本机全部进度与设置', [], [
+        { text: '取消', cls: 'btn-ghost', act: hideOverlay },
+        { text: '确认清除', cls: 'btn-danger', act: function () {
+            try { localStorage.removeItem(STORE_KEY); } catch (err) { /* ignore */ }
+            // v1.14：清空后重载 → defaultStore 重新初始化（含全部字段，音效回默认开）
+            window.location.reload();
+          } }
+      ]);
+    });
+    clearRow.appendChild(clearBtn);
+    viewEl.appendChild(clearRow);
+    // 关于
+    var ver = APP.meta && APP.meta.version ? APP.meta.version : '1.14';
+    var aboutCard = makeEl('div', 'settings-about');
+    aboutCard.appendChild(makeEl('div', '', 'ℹ️ 关于 · v' + ver));
+    aboutCard.appendChild(makeEl('div', '', '数独侦探 · 逻辑推理小达人'));
+    aboutCard.appendChild(makeEl('div', '', '无账号无云同步，数据只存本机'));
+    viewEl.appendChild(aboutCard);
+    // 底部：返回难度
+    var setBack = makeEl('button', 'btn-checkin', '← 返回');
+    setBack.setAttribute('aria-label', '返回难度选择');
+    setBack.style.marginTop = '4px';
+    setBack.addEventListener('click', showDifficultyView);
+    viewEl.appendChild(setBack);
   }
 
   /* ---------- 实体键盘增强（1-9 / Backspace / Delete；仅游戏页） ---------- */
