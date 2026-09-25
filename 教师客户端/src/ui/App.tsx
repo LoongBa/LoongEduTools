@@ -191,7 +191,7 @@ function App() {
           <span className="brand-mark">龙</span>
           <div>
             <div className="brand-name">桃李助手</div>
-            <div className="brand-sub">龙爸乐学系列 v0.2.0</div>
+            <div className="brand-sub">龙爸易教·教师端 v0.2.0</div>
           </div>
         </div>
         <nav>
