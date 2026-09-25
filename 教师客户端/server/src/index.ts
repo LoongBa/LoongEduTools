@@ -19,6 +19,7 @@ import {
 } from "./handlers/auth";
 import { licenseBind, licensePack, licenseRenew } from "./handlers/license";
 import { packagesDownload, packagesManifest, packagesUpload } from "./handlers/packages";
+import { toolboxManifest } from "./handlers/toolbox";
 import { reportIngest } from "./handlers/report";
 import { requireAuth } from "./handlers/auth";
 
@@ -102,6 +103,12 @@ export default {
       }
       if (method === "POST" && path === "/packages") {
         return withCors(await packagesUpload(req, env));
+      }
+
+      // ---- 工具箱 A01 §4.4（R03 §4.4；鉴权姿态与 packages/manifest 一致）----
+      if (method === "GET" && path === "/toolbox/manifest") {
+        await requireAuth(req, env);
+        return withCors(await toolboxManifest(req, env));
       }
 
       // ---- 上报 A01 §5 ----
