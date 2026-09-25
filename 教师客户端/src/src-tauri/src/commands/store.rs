@@ -439,7 +439,7 @@ pub async fn store_import_usb(
             "包要求壳 {min_shell}，当前壳 {SHELL_VERSION}，请先升级客户端"
         ));
     }
-    // 签名块结构预检（P0 简化不验 ed25519，见 package.rs P0 说明；块存在则字段必须齐）
+    // 签名块结构预检（轻量第一关；真正验签在解包后 read_manifest → verify_manifest_signature，B1）
     if let Some(sig) = mj.get("signature") {
         let ok = sig.get("alg").and_then(|v| v.as_str()).is_some()
             && sig.get("sig").and_then(|v| v.as_str()).is_some()
