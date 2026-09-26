@@ -2,7 +2,7 @@ mod commands;
 mod state;
 mod webview2;
 
-use crate::commands::{auth, license, package, recents, report, roster, store, toolbox, window};
+use crate::commands::{auth, license, package, recents, report, roster, store, textbook, toolbox, window};
 use crate::state::AppState;
 use tauri::Manager as _;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt as _, ShortcutState};
@@ -133,6 +133,8 @@ pub fn run() {
             // P3 白名单上报（A01 §5.1 · 零儿童数据红线）
             report::report_progress,
             report::report_flush,
+            // v0.3 教材目录扫描（设计源 §3.4 · 替换前端 showDirectoryPicker 的 Tauri fs 版）
+            textbook::textbook_scan,
             // P3 抽卡/分组 名单持久化（D05 §2.4.1/§2.4.2 · 本地 roster.json 零上报）
             roster::roster_save,
             roster::roster_load,

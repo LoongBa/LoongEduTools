@@ -157,6 +157,28 @@ export interface ToolboxDb {
   shortcuts: ToolboxShortcut[];
 }
 
+// ---- v0.3 教材目录扫描结果（textbook.rs · 设计源 §3.4 口径）----
+
+export interface ScannedPdf {
+  /** 相对所选目录的路径（/ 分隔） */
+  path: string;
+  name: string;
+  size_bytes: number;
+  pdf_version: string | null;
+  title: string | null;
+  valid: boolean;
+}
+
+export interface TextbookScanResult {
+  dir_name: string;
+  total_files: number;
+  image_count: number;
+  pdfs: ScannedPdf[];
+  invalid_count: number;
+  total_bytes: number;
+  truncated: boolean;
+}
+
 // ---- P3 抽卡/分组（roster.rs · D05 §2.4.1/§2.4.2）----
 
 export interface RosterStudent {
@@ -253,6 +275,10 @@ export const api = {
   // ---- P3 抽卡/分组（roster.rs · D05 §2.4.1/§2.4.2）----
   rosterSave: (rosterJson: string) => invoke<void>("roster_save", { rosterJson }),
   rosterLoad: () => invoke<string | null>("roster_load"),
+
+  // ---- v0.3 教材目录扫描（textbook.rs · 设计源 §3.4，字段对齐 pdf-scan.ts）----
+  textbookScan: (dirPath: string) =>
+    invoke<TextbookScanResult>("textbook_scan", { dirPath }),
 
   // ---- P3 白名单上报（report.rs · A01 §5.1 · 零儿童数据）----
   reportProgress: (payload: {

@@ -14,9 +14,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { open } from "@tauri-apps/plugin-dialog";
 import { TEXTBOOK_EXT_INSTALL_URL } from "@/lib/mockData";
 import { formatBytes } from "@/lib/format";
-import { guessSubject, scanTextbookDirectory, type ScanResult } from "@/lib/pdf-scan";
+import { guessSubject } from "@/lib/pdf-scan";
+import { api, TextbookScanResult } from "@/api";
 import type { LocalTextbook } from "@/lib/types";
 
 interface Props {
@@ -25,14 +27,14 @@ interface Props {
 }
 
 /** 扫描结果 → 本机教材条目 */
-function toTextbook(r: ScanResult): LocalTextbook {
+function toTextbook(r: TextbookScanResult): LocalTextbook {
   const valid = r.pdfs.filter((p) => p.valid);
   const titles = valid.map((p) => p.title).filter((t): t is string => !!t);
   return {
     id: `tbk-${Date.now().toString(36)}`,
-    name: titles[0] ?? r.dirName,
-    subject: guessSubject(r.dirName, titles),
-    dir: r.dirName,
+    name: titles[0] ?? r.dir_name,
+    subject: guessSubject(r.dir_name, titles),
+    dir: r.dir_name,
     file_count: valid.length + r.image_count,
     size_bytes: r.total_bytes,
     formats: `PDF ×${valid.length}${r.image_count > 0 ? ` · 图片 ×${r.image_count}` : ""}`,
@@ -44,7 +46,7 @@ function toTextbook(r: ScanResult): LocalTextbook {
 export function TextbookSection({ items, onItems }: Props) {
   const [filter, setFilter] = useState("全部");
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
-  const [report, setReport] = useState<ScanResult | null>(null);
+  const [report, setReport] = useState<TextbookScanResult | null>(null);
 
   const subjects = useMemo(() => {
     const out: string[] = [];
@@ -57,34 +59,33 @@ export function TextbookSection({ items, onItems }: Props) {
   const totalSize = items.reduce((a, t) => a + t.size_bytes, 0);
   const scanning = progress !== null;
 
-  /** 真实扫描：选目录 → 遍历文件 → PDF 魔数校验与 /Title 粗识别 */
+  /** 真实扫描：选目录（tauri dialog）→ Rust textbook_scan（PDF 魔数校验与 /Title 粗识别） */
   const scanFolder = async () => {
     setProgress({ done: 0, total: 0 });
-    let res: Awaited<ReturnType<typeof scanTextbookDirectory>>;
     try {
-      res = await scanTextbookDirectory((done, total) => setProgress({ done, total }));
+      // 目录选择：tauri-plugin-dialog（替代浏览器的 showDirectoryPicker），取消返回 null 静默
+      const picked = await open({ directory: true, multiple: false });
+      if (typeof picked !== "string" || !picked) return;
+      const r = await api.textbookScan(picked);
+      const validPdfs = r.pdfs.filter((p) => p.valid).length;
+      if (validPdfs === 0 && r.image_count === 0) {
+        toast.error(`「${r.dir_name}」里没有找到可用的 PDF 或图片`, {
+          description: r.pdfs.length > 0 ? `发现 ${r.pdfs.length} 个 .pdf 文件，但均不是有效的 PDF 格式。` : undefined,
+        });
+        return;
+      }
+      const next = toTextbook(r);
+      onItems([next, ...items]);
+      setReport(r);
+      const titled = r.pdfs.filter((p) => p.valid && p.title).length;
+      toast.success(`已导入「${next.name}」`, {
+        description: `识别到 ${validPdfs} 个有效 PDF${titled > 0 ? `（其中 ${titled} 个带书名）` : ""}${r.image_count > 0 ? `、${r.image_count} 张图片` : ""}，已纳入工具包打包。`,
+      });
+    } catch (e) {
+      toast.error(`扫描失败：${String(e)}`);
     } finally {
       setProgress(null);
     }
-    if (!res.ok) {
-      if (!res.canceled && res.reason) toast.error(res.reason);
-      return;
-    }
-    const r = res.result;
-    const validPdfs = r.pdfs.filter((p) => p.valid).length;
-    if (validPdfs === 0 && r.image_count === 0) {
-      toast.error(`「${r.dirName}」里没有找到可用的 PDF 或图片`, {
-        description: r.pdfs.length > 0 ? `发现 ${r.pdfs.length} 个 .pdf 文件，但均不是有效的 PDF 格式。` : undefined,
-      });
-      return;
-    }
-    const next = toTextbook(r);
-    onItems([next, ...items]);
-    setReport(r);
-    const titled = r.pdfs.filter((p) => p.valid && p.title).length;
-    toast.success(`已导入「${next.name}」`, {
-      description: `识别到 ${validPdfs} 个有效 PDF${titled > 0 ? `（其中 ${titled} 个带书名）` : ""}${r.image_count > 0 ? `、${r.image_count} 张图片` : ""}，已纳入工具包打包。`,
-    });
   };
 
   const togglePacked = (id: string) =>
@@ -194,13 +195,13 @@ export function TextbookSection({ items, onItems }: Props) {
 }
 
 /** 最近一次扫描的明细报告（最多展示 30 条） */
-function ScanReport({ result, onClose }: { result: ScanResult; onClose: () => void }) {
+function ScanReport({ result, onClose }: { result: TextbookScanResult; onClose: () => void }) {
   const valid = result.pdfs.filter((p) => p.valid);
   const titled = valid.filter((p) => p.title);
   return (
     <section className="rounded-xl border border-border bg-card p-3.5 shadow-sm">
       <div className="flex flex-wrap items-center gap-2">
-        <h3 className="text-[13px] font-semibold">扫描报告 · {result.dirName}</h3>
+        <h3 className="text-[13px] font-semibold">扫描报告 · {result.dir_name}</h3>
         <span className="text-[11px] tabular-nums text-muted-foreground">
           共遍历 {result.total_files} 个文件
           {result.truncated && <em className="not-italic text-warn">（文件过多，仅扫描前 800 个）</em>}
