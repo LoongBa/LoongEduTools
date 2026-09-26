@@ -20,11 +20,11 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { api } from "@/api";
-import { MOCK_EDU_TOOLS, MOCK_TOOLBOX_MANIFEST } from "@/lib/mockData";
+import { MOCK_EDU_TOOLS } from "@/lib/mockData";
 import { formatBytes, relativeTime } from "@/lib/format";
 import type { ActiveDownloadView } from "@/components/TopBar";
 import type { InstalledMap } from "@/lib/store";
-import type { DownloadHistoryItem, DownloadKind, LocalTextbook, Notification, StoreItem } from "@/lib/types";
+import type { DownloadHistoryItem, DownloadKind, LocalTextbook, Notification, StoreItem, ToolboxManifest } from "@/lib/types";
 import { TextbookSection } from "@/components/TextbookSection";
 
 type Section = "tasks" | "content" | "tool" | "textbook";
@@ -104,6 +104,14 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
   }, [showTasks]);
 
   const [packages, setPackages] = useState<StoreItem[]>([]);
+  // 工具清单：真实拉取（与 ToolboxPanel 同源，待办总览「需下载工具」与批量下载用）
+  const [toolbox, setToolbox] = useState<ToolboxManifest | null>(null);
+  useEffect(() => {
+    void api
+      .toolboxManifest()
+      .then(setToolbox)
+      .catch(() => { /* 清单不可达：待办总览工具项降级为空 */ });
+  }, []);
   const items: StoreItem[] = useMemo(() => {
     return packages.map((p) => {
       const instVer = installed[p.id];
@@ -219,12 +227,12 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
   // ── 待办总览：需下载 / 缺数据 / 数据有更新 / 有更新 ──
   const todo = useMemo(() => {
     const needPkg = items.filter((i) => !i.installed && i.package_type === "data" && (i.categories?.length ?? 0) > 0);
-    const needTool = MOCK_TOOLBOX_MANIFEST.tools.filter((t) => t.recommend && t.download_url);
+    const needTool = (toolbox?.tools ?? []).filter((t) => t.recommend && t.download_url);
     const missingData = MOCK_EDU_TOOLS.filter((t) => t.requiresPkgId && !installed[t.requiresPkgId]);
     const dataUpdatable = items.filter((i) => i.updatable && i.package_type === "data");
     const appUpdatable = items.filter((i) => i.updatable && i.package_type === "app");
     return { needPkg, needTool, missingData, dataUpdatable, appUpdatable };
-  }, [items, installed]);
+  }, [items, installed, toolbox]);
 
   const batch = (list: { id: string; name: string; version: string }[], kind: "pkg" | "tool") => {
     if (!loggedIn) {
@@ -239,7 +247,8 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
           notify?.({ kind: "success", title: `「${x.name}」下载完成`, body: "内容包已安装到本机，可立即使用。" });
         }, { name: x.name, kind: "pkg" });
       } else {
-        const t = MOCK_TOOLBOX_MANIFEST.tools.find((m) => m.id === x.id)!;
+        const t = (toolbox?.tools ?? []).find((m) => m.id === x.id);
+        if (!t) return; // 清单未含该工具：跳过（R6 防 .find()! 运行期炸）
         startDownload(`tb:${t.id}`, (id) => {
           addDownloaded?.(id.replace("tb:", ""), `toolbox/${t.id}/${t.entry}`);
           toast.success(`「${t.name}」已下载到工具目录`);

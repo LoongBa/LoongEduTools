@@ -63,7 +63,7 @@ const EDU_ICONS: Record<string, LucideIcon> = {
 /** pkgId → 清单条目（版本比较用；由真实 storeListAvailable 派生，见组件内 useMemo） */
 let PKG_BY_ID: Record<string, { name: string; version: string }> = {};
 let TOOL_NAME_BY_ID: Record<string, string> = {};
-let MOCK_PKG_APP_BY_ID: Record<string, { name: string; icon: string; desc: string }> = {};
+let PKG_APP_BY_ID: Record<string, { name: string; icon: string; desc: string }> = {};
 
 export function semverLt(a: string, b: string): boolean {
   const pa = a.split(".").map(Number);
@@ -258,7 +258,7 @@ function QuickLaunch({
   const [pendingDelete, setPendingDelete] = useState<Bookmark | null>(null);
   const [cfgTarget, setCfgTarget] = useState<{ itemId: string; name: string } | null>(null);
   const [dlReq, setDlReq] = useState<PendingDownload | null>(null);
-  // 真实清单拉取：storeListAvailable + toolboxManifest → 派生 PKG_BY_ID/TOOL_NAME_BY_ID/MOCK_PKG_APP_BY_ID
+  // 真实清单拉取：storeListAvailable + toolboxManifest → 派生 PKG_BY_ID/TOOL_NAME_BY_ID/PKG_APP_BY_ID
   const [, forceRender] = useState(0);
   const [toolbox, setToolbox] = useState<ToolboxManifest | null>(null);
   useEffect(() => {
@@ -268,7 +268,7 @@ function QuickLaunch({
         PKG_BY_ID = Object.fromEntries(
           list.packages.map((p) => [p.package_id, { name: p.name, version: p.package_version }]),
         );
-        MOCK_PKG_APP_BY_ID = Object.fromEntries(
+        PKG_APP_BY_ID = Object.fromEntries(
           list.packages
             .filter((p) => p.package_type === "app")
             .map((p) => [
@@ -301,7 +301,7 @@ function QuickLaunch({
     const dynamic: EduTool[] = Object.keys(installed)
       .filter((id) => id.startsWith("pkg-"))
       .flatMap((id) => {
-        const pkg = MOCK_PKG_APP_BY_ID[id];
+        const pkg = PKG_APP_BY_ID[id];
         return pkg ? [{ id: `pkg:${id}`, name: pkg.name, icon: pkg.icon, desc: pkg.desc }] : [];
       });
     return [...MOCK_EDU_TOOLS, ...dynamic];
