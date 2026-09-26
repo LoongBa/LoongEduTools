@@ -112,4 +112,4 @@ cd 教师客户端/src && pnpm build              # EXIT=0
 
 ## 版本
 
-v0.2.5 已统一（Cargo/tauri.conf/package.json/SHELL_VERSION 五处对齐；0.2.4 版为 D11 P4 交付）；tag 教师客户端-v0.2.5 需用户另行同意。下一功能交付时子版本升 0.2.6。
+v0.2.5 已统一（Cargo/tauri.conf/package.json/SHELL_VERSION 五处对齐）；**tag `教师客户端-v0.2.5` 已创建并推 origin**（指向 f634222，D11 全部落地）。当前 tag 链：v0.2.0 → v0.2.1 → v0.2.5（0.2.2/0.2.3/0.2.4 为 P2/P3/P4 中间交付未单独打 tag，如需追溯可补打）。下一功能交付时子版本升 0.2.6（tag 需用户另行同意）。
