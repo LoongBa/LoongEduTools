@@ -21,12 +21,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { MOCK_TOOLBOX_MANIFEST } from "@/lib/mockData";
+import { api } from "@/api";
 import { formatBytes, relativeTime } from "@/lib/format";
 import type { CollapseMap, LocalTextbook, ToolboxManifest, ToolboxPackFile, ToolboxTool, ToolShortcut } from "@/lib/types";
 
 interface Props {
-  probeOnline: boolean;
   shortcuts: ToolShortcut[];
   onShortcuts: (next: ToolShortcut[]) => void;
   addDownloaded: (toolId: string, path: string) => void;
@@ -47,7 +46,6 @@ const LRU_MAX = 10;
 type FetchPhase = "loading" | "ready" | "failed-cached" | "failed-empty";
 
 export function ToolboxPanel({
-  probeOnline,
   shortcuts,
   onShortcuts,
   addDownloaded,
@@ -66,36 +64,36 @@ export function ToolboxPanel({
   const [tag, setTag] = useState("全部");
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // ── 清单获取：可达 → 拉取并写缓存；不可达 → 用缓存降级（只读）──
-  const fetchManifest = (retry = false) => {
+  // ── 清单获取：真实 invoke（Rust 端登录拉取 + 写缓存；未登录/无网 → Rust 缓存降级）。
+  // 前端 CACHE_KEY 作双保险：invoke 失败时读本地缓存区分 failed-cached / failed-empty ──
+  const fetchManifest = async (retry = false) => {
     setPhase("loading");
-    window.setTimeout(() => {
-      if (probeOnline) {
-        setManifest(MOCK_TOOLBOX_MANIFEST);
-        setPhase("ready");
-        try {
-          window.localStorage.setItem(CACHE_KEY, JSON.stringify(MOCK_TOOLBOX_MANIFEST));
-        } catch { /* 忽略写入失败 */ }
+    try {
+      const m = await api.toolboxManifest();
+      setManifest(m);
+      setPhase("ready");
+      try {
+        window.localStorage.setItem(CACHE_KEY, JSON.stringify(m));
+      } catch { /* 忽略写入失败 */ }
+    } catch {
+      let cached: ToolboxManifest | null = null;
+      try {
+        const raw = window.localStorage.getItem(CACHE_KEY);
+        if (raw) cached = JSON.parse(raw) as ToolboxManifest;
+      } catch { /* 缓存损坏视为无 */ }
+      if (cached) {
+        setManifest(cached);
+        setPhase("failed-cached");
+        if (retry) toast.success("仍在使用本地缓存清单");
       } else {
-        let cached: ToolboxManifest | null = null;
-        try {
-          const raw = window.localStorage.getItem(CACHE_KEY);
-          if (raw) cached = JSON.parse(raw) as ToolboxManifest;
-        } catch { /* 缓存损坏视为无 */ }
-        if (cached) {
-          setManifest(cached);
-          setPhase("failed-cached");
-        } else {
-          setManifest(null);
-          setPhase("failed-empty");
-        }
-        if (retry && cached) toast.success("仍在使用本地缓存清单");
+        setManifest(null);
+        setPhase("failed-empty");
       }
-    }, 600);
+    }
   };
 
   useEffect(() => {
-    fetchManifest();
+    void fetchManifest();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

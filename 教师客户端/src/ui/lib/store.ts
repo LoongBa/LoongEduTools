@@ -12,7 +12,8 @@ import type {
   Notification,
   ToolShortcut,
 } from "./types";
-import { MOCK_BOOKMARK_BASELINE, MOCK_INSTALLED_BASELINE, MOCK_SHORTCUT_BASELINE, MOCK_TEXTBOOK_BASELINE, QUICKSTART_PIN_SEED, LAUNCH_ICON_SEED_MIGRATION_KEY, LEGACY_SEED_ICON_IDS } from "./mockData";
+import { MOCK_BOOKMARK_BASELINE, MOCK_TEXTBOOK_BASELINE, QUICKSTART_PIN_SEED, LAUNCH_ICON_SEED_MIGRATION_KEY, LEGACY_SEED_ICON_IDS } from "./mockData";
+import { api } from "@/api";
 
 // localStorage keys —— 折叠态 / 主题 / 登录态 / 探针 / 已装包 / 快捷方式 / 下载任务 / 启动中心
 const K = {
@@ -90,10 +91,19 @@ export interface InstalledMap {
   [pkgId: string]: string;
 }
 export function useInstalledPackages() {
-  const [installed, setInstalled] = usePersistentState<InstalledMap>(
-    K.installed,
-    MOCK_INSTALLED_BASELINE,
-  );
+  const [installed, setInstalled] = usePersistentState<InstalledMap>(K.installed, {});
+  // 初始从真实壳端拉已装内容包（list_installed → {package_id: package_version}）
+  useEffect(() => {
+    void api
+      .listInstalled()
+      .then((pkgs) =>
+        setInstalled(
+          Object.fromEntries(pkgs.map((p) => [p.package_id, p.package_version])),
+        ),
+      )
+      .catch(() => { /* 未登录/离线：保持本地状态，下载中心自会提示 */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const markInstalled = useCallback(
     (id: string, version: string) =>
       setInstalled((m) => ({ ...m, [id]: version })),
@@ -102,19 +112,38 @@ export function useInstalledPackages() {
   return { installed, markInstalled, setInstalled };
 }
 
-// ── 工具箱本地快捷方式（唯一本地业务状态）──
+// ── 工具箱本地快捷方式（唯一本地业务状态；真实源 = 壳端 toolbox.json，localStorage 仅作离线兜底）──
 export function useShortcuts() {
   const [shortcuts, setShortcuts] = usePersistentState<ToolShortcut[]>(
     K.shortcuts,
-    MOCK_SHORTCUT_BASELINE,
+    [],
   );
+  // 初始从真实壳端拉（toolbox_list → ToolboxShortcut[]，字段对齐）
+  useEffect(() => {
+    void api
+      .toolboxList()
+      .then((db) =>
+        setShortcuts(
+          db.shortcuts.map((s) => ({
+            tool_id: s.tool_id,
+            path: s.path,
+            pinned: s.pinned,
+            last_used: s.last_used || null,
+            source: s.source,
+            external_name: s.external_name ?? undefined,
+          })),
+        ),
+      )
+      .catch(() => { /* 未初始化：保持本地状态 */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const upsert = useCallback(
     (next: ToolShortcut[]) => setShortcuts(next),
     [setShortcuts],
   );
 
-  /** 下载完成 → 自动生成本地快捷方式 */
+  /** 下载完成 → 自动生成本地快捷方式（后端 toolbox_download 已落盘 + 生成，此处仅同步 UI） */
   const addDownloaded = useCallback(
     (toolId: string, path: string) =>
       setShortcuts((list) =>
@@ -126,35 +155,62 @@ export function useShortcuts() {
   );
 
   const togglePin = useCallback(
-    (toolId: string) =>
-      setShortcuts((list) => {
-        if (list.some((s) => s.tool_id === toolId)) {
-          return list.map((s) =>
-            s.tool_id === toolId ? { ...s, pinned: !s.pinned } : s,
-          );
-        }
-        // 未下载也可先收藏（清单可达时展示信息）
-        return [
+    (toolId: string) => {
+      const target = shortcuts.find((s) => s.tool_id === toolId);
+      if (!target) {
+        // 未下载也可先收藏（清单可达时展示信息）——本地乐观 + 后端无记录（UI 态）
+        setShortcuts((list) => [
           ...list,
           { tool_id: toolId, path: "", pinned: true, last_used: null, source: "manual" },
-        ];
-      }),
-    [setShortcuts],
+        ]);
+        return;
+      }
+      const next = !target.pinned;
+      void api.toolboxSetPinned(toolId, next).then((db) =>
+        setShortcuts(
+          db.shortcuts.map((s) => ({
+            tool_id: s.tool_id,
+            path: s.path,
+            pinned: s.pinned,
+            last_used: s.last_used || null,
+            source: s.source,
+            external_name: s.external_name ?? undefined,
+          })),
+        ),
+      ).catch(() => { /* 后端失败：保持本地乐观态 */ });
+      // 乐观更新
+      setShortcuts((list) =>
+        list.map((s) => (s.tool_id === toolId ? { ...s, pinned: next } : s)),
+      );
+    },
+    [shortcuts, setShortcuts],
   );
 
-  /** 成功启动 → LRU 置顶，上限 10 */
+  /** 成功启动 → 后端 toolbox_launch 更新 last_used + LRU 置顶（上限 10） */
   const markUsed = useCallback(
-    (toolId: string) =>
+    (toolId: string) => {
+      void api.toolboxLaunch(toolId).then((db) =>
+        setShortcuts(
+          db.shortcuts.map((s) => ({
+            tool_id: s.tool_id,
+            path: s.path,
+            pinned: s.pinned,
+            last_used: s.last_used || null,
+            source: s.source,
+            external_name: s.external_name ?? undefined,
+          })),
+        ),
+      ).catch(() => { /* 启动失败：保持本地状态 */ });
+      // 乐观 LRU 置顶
       setShortcuts((list) => {
         const rest = list.filter((s) => s.tool_id !== toolId);
         const target = list.find((s) => s.tool_id === toolId);
         if (!target) return list;
         const used: ToolShortcut = { ...target, last_used: new Date().toISOString() };
         const head = [used, ...rest];
-        // pinned 项永不因 LRU 丢失：仅裁剪非 pinned 的尾部
-        const trimmed = head.slice(0, Math.max(10, head.filter((s) => s.pinned).length));
-        return trimmed;
-      }),
+        return head.slice(0, Math.max(10, head.filter((s) => s.pinned).length));
+      });
+    },
     [setShortcuts],
   );
 

@@ -92,6 +92,7 @@ export interface StoreItem {
   min_shell_version: string;
   size_bytes: number | null;
   checksum: string | null;
+  download_url: string | null;
   installed: boolean;
   installed_version: string | null;
   update_available: boolean;

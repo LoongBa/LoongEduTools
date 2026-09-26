@@ -19,7 +19,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { MOCK_EDU_TOOLS, MOCK_PACKAGES, MOCK_TOOLBOX_MANIFEST } from "@/lib/mockData";
+import { api } from "@/api";
+import { MOCK_EDU_TOOLS, MOCK_TOOLBOX_MANIFEST } from "@/lib/mockData";
 import { formatBytes, relativeTime } from "@/lib/format";
 import type { ActiveDownloadView } from "@/components/TopBar";
 import type { InstalledMap } from "@/lib/store";
@@ -102,8 +103,9 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showTasks]);
 
+  const [packages, setPackages] = useState<StoreItem[]>([]);
   const items: StoreItem[] = useMemo(() => {
-    return MOCK_PACKAGES.map((p) => {
+    return packages.map((p) => {
       const instVer = installed[p.id];
       return {
         ...p,
@@ -113,7 +115,7 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
         updatable: Boolean(instVer) && semverLt(instVer, p.version),
       };
     });
-  }, [installed]);
+  }, [packages, installed]);
 
   const counts = useMemo(
     () => ({
@@ -157,10 +159,35 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
     return byCat.filter((i) => i.categories?.includes(tag));
   }, [items, section, filter, tag]);
 
-  // 模拟清单拉取（切分区/切筛选不重置 phase —— 加载态与错误态跨 Tab 保留）
+  // 清单拉取：真实 invoke store_list_available（壳端字段 package_id/package_version/
+  // update_available → 设计源 StoreItem id/version/updatable/latest_version）
   const refresh = () => {
     setPhase("loading");
-    window.setTimeout(() => setPhase("ready"), 650);
+    void api
+      .storeListAvailable()
+      .then((list) => {
+        setPackages(
+          list.packages.map(
+            (p: import("@/api").StoreItem) => ({
+              id: p.package_id,
+              name: p.name,
+              version: p.package_version,
+              package_type: p.package_type as "app" | "data",
+              size_bytes: p.size_bytes ?? 0,
+              download_url: p.download_url ?? "",
+              checksum: p.checksum ?? "",
+              updated_at: list.updated_at,
+              categories: p.categories,
+              description: p.description ?? undefined,
+              installed: p.installed,
+              latest_version: p.package_version,
+              updatable: p.update_available,
+            }),
+          ),
+        );
+        setPhase("ready");
+      })
+      .catch(() => setPhase("error"));
   };
   useEffect(() => {
     refresh();
