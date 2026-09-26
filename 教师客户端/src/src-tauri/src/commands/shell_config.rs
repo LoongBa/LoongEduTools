@@ -18,12 +18,12 @@ use std::path::PathBuf;
 
 /// 壳配置签名公钥表（key_id → ed25519 公钥 hex · S01 §2.2 信封同构）
 /// 生成方式：python scripts/gen_shell_config.py --config xxx.json（打印公钥 hex 后写回此处）
-/// shell-config-2026 = 由管理员运行 gen_shell_config.py --key keys/<prod>.key 首次生成。
-/// 轮换：追加新条目（旧配置旧钥可验、新配置新钥可验，双轨兼容）。
+/// shell-config-2026 = 开发/测试钥（scripts/keys/shell-config.key，gitignored · 对齐
+/// package.rs SIGN_PUBKEYS 先例：开发期预置 dev 公钥保证功能可用，生产部署时
+/// 用 `gen_shell_config.py --key keys/prod.key` 生成生产钥并**追加**新条目轮换。
 pub const SHELL_CONFIG_PUBKEYS: &[(&str, &str)] = &[(
     "shell-config-2026",
-    // TODO: 部署时用 gen_shell_config.py 生成生产私钥后，把公钥 hex 填到这里
-    "",
+    "431390d54ec99142f16d21b2c8ec709e7c7b13f3890fda487e71ca76cba647d7",
 )];
 
 /// 配置缓存文件名（exe 同目录；内容 = AES-GCM 加密的签名包）
@@ -234,8 +234,8 @@ mod tests {
 
     /// 互操作验证：gen_shell_config.py 生成的签名包必须能被壳端验签通过。
     /// fixture = 由 `python scripts/gen_shell_config.py --config <cfg> --out ...` 生成
-    /// （dev 测试密钥 keys/shell-config.key，公钥 = 431390d5... 对应私钥在 keys/shell-config.key）。
-    /// 若重新生成 fixture，需同步替换 publi hex。
+    /// （dev 测试密钥 keys/shell-config.key，与 SHELL_CONFIG_PUBKEYS 预置公钥一致）。
+    /// 若重新生成 fixture（轮换钥），需同步替换常量与 fixture 签名。
     #[test]
     fn python_generated_package_verifies() {
         const FIXTURE: &str = r#"{
@@ -250,10 +250,8 @@ mod tests {
           }
         }"#;
         let v: serde_json::Value = serde_json::from_str(FIXTURE).unwrap();
-        let pubkeys: &[(&str, &str)] = &[(
-            "shell-config-2026",
-            "431390d54ec99142f16d21b2c8ec709e7c7b13f3890fda487e71ca76cba647d7",
-        )];
-        verify_signed_envelope(&v, pubkeys).expect("gen_shell_config.py 签名包应被壳端接受");
+        // 直接用运行时常量（生产同表），确保测试覆盖真实验签路径
+        verify_signed_envelope(&v, SHELL_CONFIG_PUBKEYS)
+            .expect("gen_shell_config.py 签名包应被壳端接受");
     }
 }
