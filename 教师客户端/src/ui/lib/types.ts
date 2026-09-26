@@ -218,11 +218,28 @@ export interface DataOption {
 }
 
 // ── 通知中心：本地事件流（下载完成/钉选上限/条目失效等）──
+// D11 §7.1：kind 是严重度（TopBar KIND_ICON 字面量索引），channel 是业务线（插件/内容/教材/归档）——职责分离，勿扩 kind。
+export type NotificationChannel = "plugin" | "content" | "textbook" | "archive";
+
 export interface Notification {
   id: string;
   kind: "success" | "info" | "warn";
+  /** D11 §7.1 新增：业务通道（插件/内容/教材/归档）；缺省 = 通用系统通知 */
+  channel?: NotificationChannel;
   title: string;
   body?: string;
+  /** D11 §7.1 新增：携带 payload（文件路径/归档结果/合并计数）供 action 使用 */
+  meta?: {
+    path?: string;
+    subject?: string;
+    /** groupKey 合并后的条目数（>1 展开明细） */
+    count?: number;
+    groupKey?: string;
+    /** 合并明细：已归档文件名列表 */
+    items?: string[];
+  };
+  /** D11 §7.1 新增：可执行动作（确认/撤销/去归类） */
+  action?: "confirm-archive" | "undo-archive" | "go-classify";
   /** ISO 时间戳 */
   at: string;
   read: boolean;

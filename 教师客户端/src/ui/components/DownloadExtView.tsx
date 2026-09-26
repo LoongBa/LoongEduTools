@@ -27,6 +27,7 @@ import { api, ArchiveEntry } from "@/api";
 import { friendlyErr } from "@/errutil";
 import { EDU_TOOLS } from "@/lib/eduTools";
 import { formatBytes, relativeTime } from "@/lib/format";
+import { readBoolPref } from "@/lib/store";
 import type { ActiveDownloadView } from "@/components/TopBar";
 import type { InstalledMap } from "@/lib/store";
 import type { DownloadHistoryItem, DownloadKind, LocalTextbook, Notification, StoreItem, ToolboxManifest } from "@/lib/types";
@@ -116,7 +117,7 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
       const pkg = await api.storeImportUsb(picked as string);
       onInstalled(pkg.package_id, pkg.package_version);
       toast.success(`已导入「${pkg.display_name}」`, { description: "签名校验通过，已装入本机内容包目录" });
-      notify?.({ kind: "success", title: `内容包已导入：${pkg.display_name}`, body: "来自 U 盘导入" });
+      notify?.({ kind: "success", channel: "content", title: `内容包已导入：${pkg.display_name}`, body: "来自 U 盘导入" });
     } catch (e) {
       toast.error("导入失败", { description: friendlyErr(e) });
     }
@@ -252,7 +253,7 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
     startDownload(item.id, (id) => {
       onInstalled(id, item.version);
       toast.success(`「${item.name}」下载完成并已安装`);
-      notify?.({ kind: "success", title: `「${item.name}」下载完成`, body: "内容包已安装到本机，可立即使用。" });
+      notify?.({ kind: "success", channel: "content", title: `「${item.name}」下载完成`, body: "内容包已安装到本机，可立即使用。" });
     }, { name: item.name, kind: "pkg" });
   };
 
@@ -276,7 +277,7 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
         startDownload(x.id, (id) => {
           onInstalled(id, x.version);
           toast.success(`「${x.name}」下载完成并已安装`);
-          notify?.({ kind: "success", title: `「${x.name}」下载完成`, body: "内容包已安装到本机，可立即使用。" });
+          notify?.({ kind: "success", channel: "content", title: `「${x.name}」下载完成`, body: "内容包已安装到本机，可立即使用。" });
         }, { name: x.name, kind: "pkg" });
       } else {
         const t = (toolbox?.tools ?? []).find((m) => m.id === x.id);
@@ -284,7 +285,11 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
         startDownload(`tb:${t.id}`, (id) => {
           addDownloaded?.(id.replace("tb:", ""), `toolbox/${t.id}/${t.entry}`);
           toast.success(`「${t.name}」已下载到工具目录`);
-          notify?.({ kind: "success", title: `「${t.name}」下载完成`, body: "已生成本机快捷方式，出现在启动中心外部工具区。" });
+          notify?.({ kind: "success", channel: "plugin", title: `「${t.name}」下载完成`, body: "已生成本机快捷方式，出现在启动中心外部工具区。" });
+          // notifyLaunch 读取闭环（D11 §7.2）：开关开启时提示可启动
+          if (readBoolPref("taoli.settings.notifyLaunch", true)) {
+            toast.info(`「${t.name}」已就绪`, { description: "可到启动中心「外部工具」区点击启动。" });
+          }
         }, { name: t.name, kind: "tool" });
       }
     }
@@ -625,19 +630,34 @@ function TasksSection({
             暂无下载记录。完成一次下载后，这里会保留最近 60 条。
           </p>
         ) : (
-          <ul role="list" className="divide-y divide-border">
-            {history.map((h) => (
-              <li key={`${h.id}-${h.at}`} className="flex items-center gap-3 py-2.5">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                  {h.kind === "tool" ? <Wrench size={14} aria-hidden /> : <Package size={14} aria-hidden />}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-[13px]" title={h.name}>
-                  {h.name}
-                </span>
-                <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">{relativeTime(h.at)}</span>
-              </li>
-            ))}
-          </ul>
+          /* D11 §7.2 已下载按 channel 分组：插件（工具）/ 内容（数据包） */
+          <div className="space-y-3">
+            {(["tool", "pkg"] as const).map((kind) => {
+              const bucket = history.filter((h) => h.kind === kind);
+              if (bucket.length === 0) return null;
+              const isTool = kind === "tool";
+              return (
+                <div key={kind}>
+                  <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                    {isTool ? <Wrench size={11} aria-hidden className="text-brand" /> : <Package size={11} aria-hidden className="text-brand" />}
+                    {isTool ? "插件" : "内容"}
+                    <span className="text-[10px] tabular-nums text-muted-foreground/70">{bucket.length}</span>
+                  </p>
+                  <ul role="list" className="divide-y divide-border rounded-lg border border-border/60 bg-muted/20">
+                    {bucket.map((h) => (
+                      <li key={`${h.id}-${h.at}`} className="flex items-center gap-3 py-2">
+                        <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                          {isTool ? <Wrench size={12} aria-hidden /> : <Package size={12} aria-hidden />}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-[12.5px]" title={h.name}>{h.name}</span>
+                        <span className="shrink-0 text-[10.5px] tabular-nums text-muted-foreground">{relativeTime(h.at)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
         )}
       </section>
     </div>

@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { listen } from "@tauri-apps/api/event";
 import { cn } from "@/lib/utils";
 import { detectPatternFor } from "@/lib/archiveDetect";
-import type { ArchiveMeta, View } from "@/lib/types";
+import type { ArchiveMeta, Notification, View } from "@/lib/types";
 import { VIEW_TITLES } from "@/lib/nav";
 import {
   useArchivePending,
@@ -140,13 +140,18 @@ function ShellInner() {
           volume: meta.volume,
         });
       }
-      notifyPush({
-        kind: "success",
-        title: `已归档：${item.name}`,
-        body: remember
-          ? `${meta.subject}·${meta.version}·${meta.grade}${meta.volume}（已记住同类自动整理）`
-          : `${meta.subject}·${meta.version}·${meta.grade}${meta.volume}`,
-      });
+      // D11 §7：归档通知走 archive 通道 + groupKey 合并（15min 同批次）+ 撤销 action
+      notifyPush(
+        {
+          kind: "success",
+          channel: "archive",
+          title: `已归档：${meta.subject}·${meta.version}·${meta.grade}${meta.volume}`,
+          body: item.name,
+          meta: { path: item.path, subject: meta.subject },
+          action: "undo-archive",
+        },
+        { groupKey: `archived:${meta.subject}:${meta.version}:${meta.grade}${meta.volume}` },
+      );
       toast.success(`已归档「${item.name}」到素材目录`);
     },
     [archivePending, archiveConfirm, archiveAddRule, notifyPush],
@@ -159,11 +164,40 @@ function ShellInner() {
       archiveIgnore(id);
       notifyPush({
         kind: "info",
+        channel: "archive",
         title: `已忽略：${item?.name ?? ""}`,
         body: "文件保留在浏览器下载目录，未归档。",
       });
     },
     [archivePending, archiveIgnore, notifyPush],
+  );
+
+  /** D11 §7.4：通知 action 处理——撤销归档（通知 meta.path 反查 archive entry id） */
+  const handleNotifyAction = useCallback(
+    (n: Notification) => {
+      if (n.action !== "undo-archive") return;
+      const path = n.meta?.path;
+      void (async () => {
+        try {
+          const list = await api.archiveList();
+          const entry = path ? list.find((e) => e.source_path === path) : undefined;
+          if (entry) {
+            await api.archiveUndo(entry.id);
+            toast.success(`已撤销归档：${entry.name}`, {
+              description: "源文件仍在浏览器下载目录，可重新整理。",
+            });
+            removeOne(n.id);
+          } else {
+            // 索引中已无此条目（已被撤销/手动删除）：仅清通知
+            removeOne(n.id);
+            toast.info("该归档已在素材目录中移除");
+          }
+        } catch (e) {
+          toast.error("撤销失败", { description: friendlyErr(e) });
+        }
+      })();
+    },
+    [removeOne],
   );
 
   // 侧栏快捷启动项：pinnedMenu 钉选项（view/edu/tool/bm 均可），≤6、按钉入时间排序；失效 bm 自动过滤
@@ -285,6 +319,7 @@ function ShellInner() {
           onNotifyMarkAllRead={markAllRead}
           onNotifyRemove={removeOne}
           onNotifyClear={clearAll}
+          onNotifyAction={handleNotifyAction}
           activeDownloads={activeList}
           downloadHistory={downloadHistory}
           onOpenDownloadCenter={() => {

@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { api } from "@/api";
 import { formatBytes, relativeTime } from "@/lib/format";
+import { readBoolPref } from "@/lib/store";
 import type { CollapseMap, LocalTextbook, ToolboxManifest, ToolboxPackFile, ToolboxTool, ToolShortcut } from "@/lib/types";
 
 interface Props {
@@ -32,7 +33,7 @@ interface Props {
   togglePin: (toolId: string) => void;
   markUsed: (toolId: string) => void;
   tasks: Record<string, { progress: number; done: boolean }>;
-  startDownload: (id: string, onDone: (id: string) => void) => void;
+  startDownload: (id: string, onDone: (id: string) => void, info?: { name?: string; kind?: "pkg" | "tool" }) => void;
   collapse: CollapseMap;
   onToggleCategory: (id: string) => void;
   /** 原版教材（下载中心·本机目录导入项）：导出时打包 packed=true 者 */
@@ -159,7 +160,11 @@ export function ToolboxPanel({
       toast.success(`「${t.name}」已下载到工具目录，快捷方式已生成`, {
         description: "可直接点击「启动」，也会出现在「快捷启动」的外部工具区。",
       });
-    });
+      // notifyLaunch 读取闭环（D11 §7.2）：开关开启时提示可启动
+      if (readBoolPref("taoli.settings.notifyLaunch", true)) {
+        toast.info(`「${t.name}」已就绪`, { description: "可点击「启动」立即使用。" });
+      }
+    }, { name: t.name, kind: "tool" });
   };
 
   // ── 随身工具包：导出 / 导入 ──

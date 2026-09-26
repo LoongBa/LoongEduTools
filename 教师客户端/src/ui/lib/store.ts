@@ -59,6 +59,21 @@ function save<T>(key: string, value: T): void {
   }
 }
 
+/**
+ * 读取 localStorage 布尔偏好（SettingsView ToggleRow 的存储格式：JSON.stringify(bool)）。
+ * 未设置回退 defaultOn；解析失败同样回退。供业务层读取开关闭环（D11 §7.2 notifyLaunch）。
+ */
+export function readBoolPref(key: string, defaultOn = false): boolean {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (raw === null) return defaultOn;
+    const v = JSON.parse(raw) as boolean;
+    return typeof v === "boolean" ? v : defaultOn;
+  } catch {
+    return defaultOn;
+  }
+}
+
 /** 通用：state + localStorage 持久化 hook */
 export function usePersistentState<T>(key: string, initial: T) {
   const [state, setState] = useState<T>(() => load(key, initial));
@@ -350,21 +365,76 @@ export function useNavGroups() {
 }
 
 // ── 通知中心：本地事件流（下载完成/钉选上限/条目失效等），FIFO 上限 50 ──
+// D11 §7.3 通知合并：push 支持 groupKey——同 key 且未过期条目合并（count++ / items 明细 / 标题更新），
+// 过期窗口后新建条目（合并只作用于新事件，不回算历史）。
 const NOTIFY_MAX = 50;
+/** 归档成功合并窗口（D11 §7.3：archived:* 15 分钟同批次） */
+export const ARCHIVE_GROUP_WINDOW_MS = 15 * 60 * 1000;
+
+export interface NotifyPushOptions {
+  /** 合并键（如 archived:英语:人教版:四年级上册）；同键未过期条目合并 */
+  groupKey?: string;
+  /** 合并时间窗毫秒（缺省 15min） */
+  windowMs?: number;
+}
+
+/**
+ * 通知推送 reducer（纯函数，可单测——D11 §11 通知合并用例）：
+ * groupKey 合并：同键且未过期 → count++ / items 追加 / 标题「N 个…」；过期或异键 → 新建。
+ * 合并只作用于新事件，不回算历史；NOTIFY_MAX 上限裁剪。
+ */
+export function pushNotifyReducer(
+  list: Notification[],
+  n: Omit<Notification, "id" | "at" | "read">,
+  nowMs: number,
+  opts?: NotifyPushOptions,
+): Notification[] {
+  const now = new Date(nowMs).toISOString();
+  if (opts?.groupKey) {
+    const idx = list.findIndex((i) => {
+      if (i.meta?.groupKey !== opts.groupKey) return false;
+      const age = nowMs - new Date(i.at).getTime();
+      return age < (opts.windowMs ?? ARCHIVE_GROUP_WINDOW_MS);
+    });
+    if (idx >= 0) {
+      const prev = list[idx];
+      const count = (prev.meta?.count ?? 1) + 1;
+      const itemsPrev = prev.meta?.items ?? (prev.body ? [prev.body] : []);
+      const merged: Notification = {
+        ...prev,
+        title: `${count} 个${prev.title.replace(/^\d+ 个/, "")}`,
+        at: now,
+        read: false,
+        meta: {
+          ...(prev.meta ?? {}),
+          count,
+          groupKey: opts.groupKey,
+          items: [...itemsPrev, n.body ?? prev.body ?? ""].filter(Boolean),
+        },
+      };
+      const rest = list.filter((_, i) => i !== idx);
+      return [merged, ...rest].slice(0, NOTIFY_MAX);
+    }
+  }
+  const item: Notification = {
+    ...n,
+    id: `nt-${nowMs}-${Math.random().toString(36).slice(2, 6)}`,
+    at: now,
+    read: false,
+    meta:
+      opts?.groupKey
+        ? { ...(n.meta ?? {}), count: 1, groupKey: opts.groupKey, items: n.body ? [n.body] : [] }
+        : n.meta,
+  };
+  return [item, ...list].slice(0, NOTIFY_MAX);
+}
+
 export function useNotifications() {
   const [items, setItems] = usePersistentState<Notification[]>(K.notifyItems, []);
-  /** 追加一条通知；kind=warn 用于拦截与失效提醒 */
+  /** 追加一条通知；kind=warn 用于拦截与失效提醒；groupKey 合并（D11 §7.3） */
   const push = useCallback(
-    (n: Omit<Notification, "id" | "at" | "read">) =>
-      setItems((list) => {
-        const item: Notification = {
-          ...n,
-          id: `nt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          at: new Date().toISOString(),
-          read: false,
-        };
-        return [item, ...list].slice(0, NOTIFY_MAX);
-      }),
+    (n: Omit<Notification, "id" | "at" | "read">, opts?: NotifyPushOptions) =>
+      setItems((list) => pushNotifyReducer(list, n, Date.now(), opts)),
     [setItems],
   );
   const markAllRead = useCallback(

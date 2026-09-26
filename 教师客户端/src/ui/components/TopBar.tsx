@@ -1,11 +1,36 @@
 // 顶栏：当前视图标题 · 服务器探针（可达/不可达，可手动切换模拟断网）· 下载速览 · 通知 · 头像菜单
+// D11 §7.4：NotifyBell 支持 channel 分组图标 / groupKey 合并 count 展开 / action 动作按钮（撤销归档等）
 import { useEffect, useRef, useState } from "react";
-import { Bell, Check, LogOut, Menu, Settings, UserRound, Wifi, WifiOff, X, CheckCheck, Trash2, Info, TriangleAlert, CircleCheck, Download, Package, Wrench, Loader } from "lucide-react";
+import {
+  Bell,
+  Check,
+  LogOut,
+  Menu,
+  Settings,
+  UserRound,
+  Wifi,
+  WifiOff,
+  X,
+  CheckCheck,
+  Trash2,
+  Info,
+  TriangleAlert,
+  CircleCheck,
+  Download,
+  Package,
+  Wrench,
+  Loader,
+  Archive,
+  BookOpen,
+  Undo2,
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { VIEW_TITLES } from "@/lib/nav";
 import { relativeTime } from "@/lib/format";
 import { api } from "@/api";
-import type { ActiveDownload, DownloadHistoryItem, Notification, View } from "@/lib/types";
+import type { ActiveDownload, DownloadHistoryItem, Notification, NotificationChannel, View } from "@/lib/types";
 
 /** 顶栏下载面板里的活动任务（含进度） */
 export interface ActiveDownloadView extends ActiveDownload {
@@ -26,6 +51,8 @@ interface TopBarProps {
   onNotifyMarkAllRead: () => void;
   onNotifyRemove: (id: string) => void;
   onNotifyClear: () => void;
+  /** D11 §7.4：通知动作（撤销归档等） */
+  onNotifyAction?: (n: Notification) => void;
   /** 下载中心速览：正在下载 / 等待中 */
   activeDownloads: ActiveDownloadView[];
   /** 已下载历史 */
@@ -36,6 +63,20 @@ interface TopBarProps {
 
 const KIND_ICON = { success: CircleCheck, info: Info, warn: TriangleAlert } as const;
 const KIND_CLASS = { success: "text-ok", info: "text-brand", warn: "text-warn" } as const;
+
+/** D11 §7.4：channel 图标（插件/内容/教材/归档；缺省=通用不显） */
+const CHANNEL_ICON: Partial<Record<NotificationChannel, typeof Wrench>> = {
+  plugin: Wrench,
+  content: Package,
+  textbook: BookOpen,
+  archive: Archive,
+};
+const CHANNEL_LABEL: Partial<Record<Notification["channel"] & string, string>> = {
+  plugin: "插件",
+  content: "内容",
+  textbook: "教材",
+  archive: "归档",
+};
 
 /** 任务类型图标：跑动中转圈，否则按内容包/工具区分 */
 function IconFor({ kind, busy }: { kind: ActiveDownload["kind"]; busy: boolean }) {
@@ -49,11 +90,15 @@ interface NotifyBellProps {
   onMarkAllRead: () => void;
   onRemove: (id: string) => void;
   onClear: () => void;
+  /** D11 §7.4：点击通知动作按钮（undo-archive 等）；返回 Promise 供按钮 loading 态 */
+  onAction?: (n: Notification) => void;
 }
 
 /** 顶栏通知铃铛 + 向下弹出面板 */
-function NotifyBell({ items, unread, onMarkAllRead, onRemove, onClear }: NotifyBellProps) {
+function NotifyBell({ items, unread, onMarkAllRead, onRemove, onClear, onAction }: NotifyBellProps) {
   const [open, setOpen] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -141,13 +186,63 @@ function NotifyBell({ items, unread, onMarkAllRead, onRemove, onClear }: NotifyB
             <ul className="min-h-0 flex-1 divide-y divide-border overflow-y-auto" role="list">
               {items.map((n) => {
                 const Icon = KIND_ICON[n.kind];
+                const ch = n.channel; // NotificationChannel | undefined
+                const ChannelIcon = ch ? CHANNEL_ICON[ch] : undefined;
+                const count = n.meta?.count;
+                const itemsList = n.meta?.items;
+                const isExpanded = expanded === n.id;
                 return (
                   <li key={n.id} className={cn("group flex gap-2 px-3 py-2.5", !n.read && "bg-brand-soft/40")}>
-                    <Icon size={14} aria-hidden className={cn("mt-0.5 shrink-0", KIND_CLASS[n.kind])} />
+                    <div className="flex shrink-0 flex-col items-center gap-1 pt-0.5">
+                      <Icon size={14} aria-hidden className={cn(KIND_CLASS[n.kind])} />
+                      {ChannelIcon && ch && (
+                        <span className="flex items-center gap-0.5 rounded bg-muted px-1 py-px text-[9px] text-muted-foreground" title={`${CHANNEL_LABEL[ch]}通道`}>
+                          <ChannelIcon size={9} aria-hidden />
+                        </span>
+                      )}
+                    </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[12.5px] font-medium text-popover-foreground" title={n.title}>{n.title}</p>
-                      {n.body && <p className="mt-0.5 line-clamp-2 text-[11.5px] leading-relaxed text-muted-foreground">{n.body}</p>}
+                      <p className="truncate text-[12.5px] font-medium text-popover-foreground" title={n.title}>
+                        {count && count > 1 ? `${count} 个${n.title.replace(/^\d+ 个/, "")}` : n.title}
+                      </p>
+                      {!isExpanded && n.body && (
+                        <p className="mt-0.5 line-clamp-2 text-[11.5px] leading-relaxed text-muted-foreground">{n.body}</p>
+                      )}
+                      {isExpanded && itemsList && itemsList.length > 0 && (
+                        <ul className="mt-1 space-y-0.5 border-l-2 border-border pl-2">
+                          {itemsList.map((f, i) => (
+                            <li key={i} className="truncate text-[11px] text-muted-foreground" title={f}>{f}</li>
+                          ))}
+                        </ul>
+                      )}
+                      {/* 合并条目 >1 且带明细 → 展开开关 */}
+                      {count && count > 1 && itemsList && itemsList.length > 0 && (
+                        <button
+                          type="button"
+                          className="mt-0.5 flex items-center gap-0.5 text-[10.5px] text-brand hover:underline"
+                          onClick={() => setExpanded(isExpanded ? null : n.id)}
+                        >
+                          {isExpanded ? <ChevronDown size={10} aria-hidden /> : <ChevronRight size={10} aria-hidden />}
+                          {isExpanded ? "收起明细" : `查看 ${itemsList.length} 项明细`}
+                        </button>
+                      )}
                       <p className="mt-0.5 text-[10.5px] text-muted-foreground/80">{relativeTime(n.at)}</p>
+                      {/* D11 §7.4 动作按钮：仅当 action 已定义（撤销归档） */}
+                      {n.action === "undo-archive" && onAction && (
+                        <button
+                          type="button"
+                          disabled={busyId === n.id}
+                          className="mt-1 flex h-6 items-center gap-1 rounded-md border border-input bg-card px-2 text-[11px] text-foreground transition-colors hover:bg-accent disabled:opacity-45"
+                          onClick={() => {
+                            setBusyId(n.id);
+                            onAction(n);
+                            setTimeout(() => setBusyId(null), 1500);
+                          }}
+                        >
+                          {busyId === n.id ? <Loader size={10} aria-hidden className="animate-spin" /> : <Undo2 size={10} aria-hidden />}
+                          撤销归档
+                        </button>
+                      )}
                     </div>
                     <button
                       type="button"
@@ -324,6 +419,7 @@ export function TopBar({
   onNotifyMarkAllRead,
   onNotifyRemove,
   onNotifyClear,
+  onNotifyAction,
   activeDownloads,
   downloadHistory,
   onOpenDownloadCenter,
@@ -373,6 +469,7 @@ export function TopBar({
           onMarkAllRead={onNotifyMarkAllRead}
           onRemove={onNotifyRemove}
           onClear={onNotifyClear}
+          onAction={onNotifyAction}
         />
 
         {/* 头像菜单（profile/login/settings 收进此处，不回流侧栏） */}

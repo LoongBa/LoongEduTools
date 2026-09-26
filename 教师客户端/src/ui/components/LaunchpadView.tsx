@@ -37,10 +37,12 @@ import { ToolboxPanel } from "@/components/ToolboxPanel";
 import { LaunchConfigDialog, isPinnedMenu } from "@/components/LaunchConfigDialog";
 import { LaunchIconBlock, clampMenuLabel } from "@/lib/launch-icon";
 import type { InstalledMap } from "@/lib/store";
+import { readBoolPref } from "@/lib/store";
 import type {
   Bookmark,
   CollapseMap,
   DataOption,
+  DownloadKind,
   EduTool,
   LaunchConfig,
   LaunchConfigMap,
@@ -94,7 +96,8 @@ interface Props {
   togglePin: (toolId: string) => void;
   markUsed: (toolId: string) => void;
   tasks: Record<string, { progress: number; done: boolean }>;
-  startDownload: (id: string, onDone: (id: string) => void) => void;
+  /** startDownload 带 info（name/kind）：工具类必须传 kind:"tool"，否则被标 "pkg" 脏数据（D11 决策 8） */
+  startDownload: (id: string, onDone: (id: string) => void, info?: { name?: string; kind?: DownloadKind }) => void;
   collapse: CollapseMap;
   onToggleCategory: (id: string) => void;
   probeOnline: boolean;
@@ -377,13 +380,13 @@ function QuickLaunch({
 
   const openCfg = (itemId: string, name: string) => setCfgTarget({ itemId, name });
 
-  /** 发起内容包下载（含完成回调落库 + 通知） */
+  /** 发起内容包下载（含完成回调落库 + 通知）；kind:"pkg"（内容包） */
   const downloadPkg = (pkgId: string, label: string) => {
     startDownload(pkgId, (id) => {
       markInstalled(id, PKG_BY_ID[id]?.version ?? "1.0.0");
       toast.success(`「${label}」下载完成并已安装`);
-      notify?.({ kind: "success", title: `「${label}」下载完成`, body: "内容包已安装到本机，可立即使用。" });
-    });
+      notify?.({ kind: "success", channel: "content", title: `「${label}」下载完成`, body: "内容包已安装到本机，可立即使用。" });
+    }, { name: label, kind: "pkg" });
   };
 
   /** 点击徽章：按条目情况弹选包或直接确认下载 */
@@ -408,11 +411,15 @@ function QuickLaunch({
         title,
         taskLabel: `${t.name} · ${t.license} · 便携版`,
         onConfirm: () => {
+          // 决策 8 修复：工具下载必须传 kind:"tool"，避免被标 "pkg"
           startDownload(`tb:${t.id}`, (id) => {
             addDownloaded(id.replace("tb:", ""), `toolbox/${t.id}/${t.entry}`);
             toast.success(`「${t.name}」已下载，出现在外部工具区`);
-            notify?.({ kind: "success", title: `「${t.name}」下载完成`, body: "已生成本机快捷方式，出现在外部工具区。" });
-          });
+            notify?.({ kind: "success", channel: "plugin", title: `「${t.name}」下载完成`, body: "已生成本机快捷方式，出现在外部工具区。" });
+            if (readBoolPref("taoli.settings.notifyLaunch", true)) {
+              toast.info(`「${t.name}」已就绪`, { description: "可点击「启动」立即使用。" });
+            }
+          }, { name: t.name, kind: "tool" });
         },
       });
       return;

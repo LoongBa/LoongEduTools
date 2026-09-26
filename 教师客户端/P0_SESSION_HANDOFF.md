@@ -48,12 +48,24 @@
 - **版本 0.2.2→0.2.3**（五处对齐；注意 Cargo.lock 全量 Replace 会误伤 cfg_aliases 等依赖版本，已修复为仅 teacher-client 0.2.3）
 - 四绿验证：cargo 87/87、tsc 0、vitest 59/59、pnpm build ✓
 
-## 待办（后续会话 P4-P5）
+### D11 P4 通知扩展（2026-09-27，本会话完成，版本 0.2.4）
+- **前置修复（决策 8）**：
+  - `LaunchpadView.tsx` Props `startDownload` 加 info 参数；`downloadPkg`（kind:"pkg"）与 toolId 分支（kind:"tool"）补 `{name, kind}`——消除「工具下载被标 pkg」存量脏数据
+  - `store.ts` 新增 `readBoolPref(key, defaultOn)`（读取 SettingsView ToggleRow 的 JSON.stringify(bool) 格式）；ToolboxPanel/DownloadExtView/LaunchpadView 工具下载完成回调读 `taoli.settings.notifyLaunch`（默认开）→ toast「已就绪」提示——notifyLaunch 死开关补读取闭环
+- `types.ts`：Notification 加 `channel: "plugin"|"content"|"textbook"|"archive"`（**勿扩 kind 严重度**——TopBar KIND_ICON 字面量索引保持）+ `meta`（path/subject/count/groupKey/items）+ `action`（"undo-archive"）
+- `store.ts`：`pushNotifyReducer` 纯函数（D11 §7.3 合并）——同 groupKey 且未过期（15min 默认）→ count++ / items 明细追加 / 标题「N 个…」；过期或异键 → 新建；NOTIFY_MAX 50 裁剪；`push` 接 opts `{groupKey, windowMs}`；**5 新增单测**（合并/过期拆分/异键/无 key/上限）
+- `Shell.tsx`：归档通知 channel=archive + groupKey `archived:学科:版本:年级册次`（15min 同批次合并）+ action="undo-archive"；`handleNotifyAction` 撤销（meta.path 反查 archive_list → archive_undo → 清通知）；忽略通知加 channel=archive
+- `TopBar.tsx`：CHANNEL_ICON/CHANNEL_LABEL + NotifyBell channel 图标、合并 count 展开明细（items）、撤销归档按钮（loading 态）
+- `DownloadExtView.tsx`：TasksSection 已下载按 插件/内容 分组（tool≈plugin、pkg≈content）；内容包/U盘导入通知补 channel=content、工具补 channel=plugin
+- `LaunchConfigDialog` 钉选上限 warn 保持无 channel（通用系统通知）
+- **版本 0.2.3→0.2.4**（五处对齐）
+- 四绿验证：cargo 87/87、tsc 0、vitest 64/64（59 原有+5 新增）、pnpm build ✓
 
-1. **P4 通知扩展**（D11 §7）：types.ts Notification 加 `channel: "plugin"|"content"|"textbook"|"archive"`（勿扩展 kind 严重度——TopBar KIND_ICON 字面量索引会编译失败）+ `meta`/`action` 字段 + `push` 加 groupKey 合并（count++ + 时间窗 15min/24h）+ DownloadExtView TasksSection 按 channel 分组 + TopBar 通知渲染分组
-2. **P5 打包**（D11 §8）：ToolboxPanel exportPack 加 media_archive 索引段（`archive_pack_index` 已就绪，直接嵌入）+ 「仅供个人教学和学习使用」文案全覆盖
-3. **前置修复**（P4 前必做）：`LaunchpadView.tsx:97` startDownload prop 缺 info 参数 → 工具下载被标 "pkg" 的存量脏数据；`taoli.settings.notifyLaunch` 死开关补读取闭环
-4. **静默归档**（D11 §5.4 规则命中）：`useArchiveRules.matchFor` 已就绪，接入轮询/事件处理——命中规则的文件跳过确认卡片直接 archive_confirm + 通知
+## 待办（后续会话 P5）
+
+1. **P5 打包**（D11 §8）：ToolboxPanel exportPack 加 `media_archive` 索引段（Rust `archive_pack_index` 已就绪，直接 `api.archivePackIndex()` 嵌入；不含实体，与既有 JSON 落差一致）+ 「仅供个人教学和学习使用」文案全覆盖（ToolboxPanel 导出提示 / ToolboxPackFile 类型 / importPack 解析）
+2. **静默归档**（D11 §5.4 规则命中）：`useArchiveRules.matchFor` 已就绪，接入 `archive:new` 事件处理——命中规则的文件跳过确认卡片直接 `archive_confirm` + 通知（channel=archive 合并）
+3. 可选体验补强：归档通知撤销成功后 DownloadExtView「素材归档」Tab 数据需手动刷新（`onRefresh` 未联动）；可加全局刷新信号
 
 ## 关键决策（D11 §12 决策记录摘要）
 
@@ -91,4 +103,4 @@ cd 教师客户端/src && pnpm build              # EXIT=0
 
 ## 版本
 
-v0.2.3 已统一（Cargo/tauri.conf/package.json/SHELL_VERSION 五处对齐；0.2.2 版为 D11 P2 交付）；tag 教师客户端-v0.2.3 需用户另行同意。下一功能交付（P4）时子版本升 0.2.4。
+v0.2.4 已统一（Cargo/tauri.conf/package.json/SHELL_VERSION 五处对齐；0.2.3 版为 D11 P3 交付）；tag 教师客户端-v0.2.4 需用户另行同意。下一功能交付（P5）时子版本升 0.2.5。
