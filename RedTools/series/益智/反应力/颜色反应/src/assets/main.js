@@ -509,140 +509,96 @@
       '答对了 ' + s.score + ' 题，『' + s.label + '』！已连续打卡 ' + streak +
       ' 天，辨色反应训练走起～#颜色反应 #专注力训练 #小学生益智';
   }
-  function roundRectPath(ctx, x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
-  }
+  /* V0.7：roundRectPath 迁至 LX_SHARED.share（Chrome 61 圆角路径统一） */
   function drawShareCard() {
-    var s = state.summary;
-    var W = 1080, H = 1920;
-    var cv = document.createElement('canvas');
-    cv.width = W;
-    cv.height = H;
-    var ctx = cv.getContext('2d');
-    var grad = ctx.createLinearGradient(0, 0, 0, H);
-    grad.addColorStop(0, '#fff3e6');
-    grad.addColorStop(1, '#ffe3cc');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = 'rgba(255, 140, 66, 0.35)';
-    for (var i = 0; i < 24; i++) {
-      var rx = Math.random() * W;
-      var ry = Math.random() * H * 0.55;
-      ctx.beginPath();
-      ctx.arc(rx, ry, 6 + Math.random() * 10, 0, Math.PI * 2);
+    /* V0.7：canvas 容器迁至 LX_SHARED.share.cardCanvas（drawFn 内保留工具专属绘制） */
+    return LX_SHARED.share.cardCanvas(1080, 1920, function (ctx, W, H) {
+      var s = state.summary;
+      var grad = ctx.createLinearGradient(0, 0, 0, H);
+      grad.addColorStop(0, '#fff3e6');
+      grad.addColorStop(1, '#ffe3cc');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = 'rgba(255, 140, 66, 0.35)';
+      for (var i = 0; i < 24; i++) {
+        var rx = Math.random() * W;
+        var ry = Math.random() * H * 0.55;
+        ctx.beginPath();
+        ctx.arc(rx, ry, 6 + Math.random() * 10, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#d95b1e';
+      ctx.font = 'bold 84px "PingFang SC","Microsoft YaHei",sans-serif';
+      ctx.fillText('颜色反应', W / 2, 300);
+      ctx.fillStyle = '#f08a4d';
+      ctx.font = '42px "PingFang SC","Microsoft YaHei",sans-serif';
+      ctx.fillText('辨色小达人', W / 2, 400);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.94)';
+      LX_SHARED.share.roundRectPath(ctx, 110, 520, W - 220, 820, 24);
       ctx.fill();
-    }
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#d95b1e';
-    ctx.font = 'bold 84px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('颜色反应', W / 2, 300);
-    ctx.fillStyle = '#f08a4d';
-    ctx.font = '42px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('辨色小达人', W / 2, 400);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.94)';
-    roundRectPath(ctx, 110, 520, W - 220, 820, 24);
-    ctx.fill();
-    ctx.strokeStyle = '#ffd6b8';
-    ctx.lineWidth = 4;
-    roundRectPath(ctx, 110, 520, W - 220, 820, 24);
-    ctx.stroke();
-    ctx.fillStyle = '#e07b35';
-    ctx.font = 'bold 52px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('【' + LEVELS[s.level].label + '】', W / 2, 660);
-    ctx.fillStyle = '#b0886a';
-    ctx.font = '40px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText(s.limit > 0 ? '限时答对题数' : '答对题数', W / 2, 770);
-    var scoreText = s.limit > 0 ? (s.score + ' 题') : (s.score + '/' + s.total + ' 题');
-    ctx.fillStyle = '#ff8c42';
-    ctx.font = 'bold 128px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText(scoreText, W / 2, 900);
-    ctx.fillStyle = '#ff8c42';
-    roundRectPath(ctx, W / 2 - 170, 1040, 340, 84, 42);
-    ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 46px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('『' + s.label + '』', W / 2, 1084);
-    ctx.fillStyle = '#a8765c';
-    ctx.font = '40px "PingFang SC","Microsoft YaHei",sans-serif';
-    var rate = s.total > 0 ? '正确率 ' + Math.round(s.score / s.total * 100) + '%' : '限时 60 秒';
-    ctx.fillText(rate + ' · 连续打卡 ' + (store.checkin && store.checkin.streak || 0) + ' 天', W / 2, 1220);
-    ctx.fillStyle = '#d95b1e';
-    ctx.font = '54px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText(motivationFor(s.label), W / 2, 1540);
-    ctx.fillStyle = '#c98d6b';
-    ctx.font = '36px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('龙爸乐学 · 专注儿童益智', W / 2, 1730);
-    ctx.fillText(fmtDate(new Date()), W / 2, 1800);
-    return cv;
+      ctx.strokeStyle = '#ffd6b8';
+      ctx.lineWidth = 4;
+      LX_SHARED.share.roundRectPath(ctx, 110, 520, W - 220, 820, 24);
+      ctx.stroke();
+      ctx.fillStyle = '#e07b35';
+      ctx.font = 'bold 52px "PingFang SC","Microsoft YaHei",sans-serif';
+      ctx.fillText('【' + LEVELS[s.level].label + '】', W / 2, 660);
+      ctx.fillStyle = '#b0886a';
+      ctx.font = '40px "PingFang SC","Microsoft YaHei",sans-serif';
+      ctx.fillText(s.limit > 0 ? '限时答对题数' : '答对题数', W / 2, 770);
+      var scoreText = s.limit > 0 ? (s.score + ' 题') : (s.score + '/' + s.total + ' 题');
+      ctx.fillStyle = '#ff8c42';
+      ctx.font = 'bold 128px "PingFang SC","Microsoft YaHei",sans-serif';
+      ctx.fillText(scoreText, W / 2, 900);
+      ctx.fillStyle = '#ff8c42';
+      LX_SHARED.share.roundRectPath(ctx, W / 2 - 170, 1040, 340, 84, 42);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 46px "PingFang SC","Microsoft YaHei",sans-serif';
+      ctx.fillText('『' + s.label + '』', W / 2, 1084);
+      ctx.fillStyle = '#a8765c';
+      ctx.font = '40px "PingFang SC","Microsoft YaHei",sans-serif';
+      var rate = s.total > 0 ? '正确率 ' + Math.round(s.score / s.total * 100) + '%' : '限时 60 秒';
+      ctx.fillText(rate + ' · 连续打卡 ' + (store.checkin && store.checkin.streak || 0) + ' 天', W / 2, 1220);
+      ctx.fillStyle = '#d95b1e';
+      ctx.font = '54px "PingFang SC","Microsoft YaHei",sans-serif';
+      ctx.fillText(motivationFor(s.label), W / 2, 1540);
+      ctx.fillStyle = '#c98d6b';
+      ctx.font = '36px "PingFang SC","Microsoft YaHei",sans-serif';
+      ctx.fillText('龙爸乐学 · 专注儿童益智', W / 2, 1730);
+      ctx.fillText(fmtDate(new Date()), W / 2, 1800);
+    });
   }
   var shareOpen = false;
   function openShare() {
-    if (shareOpen) { return; }
+    if (shareOpen) { return; }   /* Oracle ISSUE-5：幂等标志保留在工具 wrapper */
     shareOpen = true;
-    var cv = drawShareCard();
-    var img = document.createElement('img');
-    img.className = 'share-img';
-    img.setAttribute('alt', '颜色反应成绩打卡卡片');
-    img.src = cv.toDataURL('image/png');
-    var cardWrap = makeEl('div', 'share-card-wrap');
-    cardWrap.appendChild(img);
-    var hint = makeEl('div', 'share-hint', '📸 长按保存图片 · 发布笔记分享成就');
-    var btnCopy = makeEl('button', 'btn btn-primary', '复制分享文案');
-    btnCopy.addEventListener('click', copyShareText);
-    var btnBack = makeEl('button', 'btn', '返回结算');
-    btnBack.addEventListener('click', function () {
-      shareOpen = false;
-      closeOverlay(state.shareOverlay);
-      showResult();
+    /* V0.7：弹层骨架迁至 LX_SHARED.share.overlay（img/复制/返回按钮统一；返回回调恢复结算） */
+    var ov = LX_SHARED.share.overlay({
+      title: '📷 分享打卡',
+      alt: '颜色反应成绩打卡卡片',
+      imgSrc: drawShareCard().toDataURL('image/png'),
+      hint: '📸 长按保存图片 · 发布笔记分享成就',
+      copyText: copyShareText,
+      backLabel: '返回结算',
+      onBack: function () {
+        shareOpen = false;
+        showResult();
+      }
     });
-    var btns = makeEl('div', 'share-btns');
-    btns.appendChild(btnCopy);
-    btns.appendChild(btnBack);
-    var card = makeEl('div', 'overlay-card share-card');
-    card.appendChild(makeEl('div', 'overlay-title', '📷 分享打卡'));
-    card.appendChild(cardWrap);
-    card.appendChild(hint);
-    card.appendChild(btns);
-    var overlay = makeEl('div', 'result-overlay share-overlay');
-    overlay.appendChild(card);
-    document.body.appendChild(overlay);
-    state.shareOverlay = overlay;
+    state.shareOverlay = ov && ov.el;
   }
+  /* V0.7：copyShareText 迁至 LX_SHARED.share.copyText（工具专属 toast 反馈 + 2600ms 保持） */
   function copyShareText() {
-    var text = shareText();
-    var ta = document.createElement('textarea');
-    ta.value = text;
-    ta.style.position = 'fixed';
-    ta.style.top = '0';
-    ta.style.left = '-9999px';
-    document.body.appendChild(ta);
-    ta.select();
-    var ok = false;
-    try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
-    document.body.removeChild(ta);
-    if (ok) {
-      toast('✅ 文案已复制，去小红书粘贴发布吧');
-    } else {
-      toast('📋 文案如下，请长按选择复制：' + text);
-    }
+    LX_SHARED.share.copyText(shareText(), {
+      onOk: function () { LX_SHARED.uikit.toast('✅ 文案已复制，去小红书粘贴发布吧', 2600); },
+      onFail: function (text) { LX_SHARED.uikit.toast('📋 文案如下，请长按选择复制：' + text, 2600); }
+    });
   }
-  var toastEl = null;
-  function toast(msg) {
-    if (toastEl && toastEl.parentNode) { toastEl.parentNode.removeChild(toastEl); }
-    toastEl = makeEl('div', 'toast', msg);
-    document.body.appendChild(toastEl);
-    setTimeout(function () {
-      if (toastEl && toastEl.parentNode) { toastEl.parentNode.removeChild(toastEl); }
-      toastEl = null;
-    }, 2600);
-  }
+
+  /* V0.7：本地 toast 已迁至 LX_SHARED.uikit.toast（复制反馈 2600ms），原函数删除 */
 
   /* ---------- 视图：成绩历史 ---------- */
   function viewHistory() {

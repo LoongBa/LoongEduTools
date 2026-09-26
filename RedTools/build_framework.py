@@ -807,7 +807,7 @@ def merge_shared_js(cfg: ToolConfig, out_dir: Path) -> None:
     if not shared_src.exists():
         log("WARN _shared/js/src 不存在，跳过公共模块合并")
         return
-    order = ["lx-shared-core.js", "storage.js", "progress.js", "auth.js", "guard.js", "ui-kit.js"]
+    order = ["lx-shared-core.js", "storage.js", "progress.js", "auth.js", "guard.js", "ui-kit.js", "share.js"]
     parts = []
     for name in order:
         f = shared_src / name
