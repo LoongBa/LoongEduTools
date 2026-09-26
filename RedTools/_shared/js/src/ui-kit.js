@@ -9,8 +9,9 @@
    - toast(msg)              轻提示
    - progressBar(ratio)      进度条（返回元素）
    - starsText(n)            ★★★ 文本（n=0..3）
+   - setFeedback(el,msg,state,baseCls)  即时正反馈（文本 + 状态类统一管理；V0.6 抽取）
    依赖：无（纯 DOM 工具，Chrome 61）
-   说明：feedback（即时正反馈 UI）仍内联于各工具 main.js，B 批再抽
+   说明：feedback 已抽取为 setFeedback（数学口算 v1.2.1 接入样板）；其余工具仍内联待迁移（V0.5 审计缺口②）
    ============================================================ */
 (function () {
   'use strict';
@@ -65,6 +66,24 @@
     }, ms || 1500);
   }
 
+  /* ---------- 即时正反馈（V0.6 抽取） ----------
+     setFeedback(el, msg, state, baseCls):
+     - el.textContent = msg（null/undefined → ''）
+     - el.className = state 白名单内 ? base+' '+state : base（仅文本，无状态类）
+     - baseCls 缺省时用 el._lxBaseCls（同元素多态调用免重复传 base；首次必须显式传）
+     - 输出 className 与既有工具约定逐字节一致（如 'quiz-feedback ok'）→ CSS 零改动
+     - 返回 el（链式复用） */
+  var FB_STATES = { '': 1, 'ok': 1, 'bad': 1, 'miss': 1 };
+  function setFeedback(el, msg, state, baseCls) {
+    if (!el) { return el; }
+    el.textContent = (msg !== undefined && msg !== null) ? msg : '';
+    var base = baseCls || (el._lxBaseCls || 'lx-feedback');
+    if (!FB_STATES[state]) { state = ''; }   /* Oracle ISSUE-1：白名单兜底，未知态仅文本 */
+    el.className = state ? (base + ' ' + state) : base;
+    el._lxBaseCls = base;
+    return el;
+  }
+
   /* ---------- 结算浮层 ---------- */
   function overlay(opts) {
     if (!opts) { return null; }
@@ -108,6 +127,7 @@
   U.progressBar = progressBar;
   U.starsText = starsText;
   U.makeEl = makeEl;
+  U.setFeedback = setFeedback;
 
   /* ---------- 注册 ---------- */
   if (window.LX_SHARED && window.LX_SHARED.register) {

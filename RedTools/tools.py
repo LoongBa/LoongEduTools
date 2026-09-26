@@ -32,7 +32,7 @@ TOOLS: dict[str, ToolConfig] = {
     "数学口算": ToolConfig(
         series="学科",
         tool="数学口算",
-        version="1.2",        # v1.2：防沉迷/自控力接入（V0.5 guard 通用能力样板——练习限时/组间到点提醒/延迟自律/自律锁）
+        version="1.2.1",      # v1.2.1（patch）：feedback 迁移 uikit setFeedback（V0.6 行为不变内部替换）；v1.2：防沉迷接入（V0.5）
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="数学口算",
         modes=["offline", "online"],
@@ -297,7 +297,7 @@ TOOLS: dict[str, ToolConfig] = {
         series="益智",
         subgroup="逻辑思维",   # 子系列目录：series/益智/逻辑思维/数独思维/
         tool="数独思维",
-        version="1.28",
+        version="1.29",
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="数独思维",
         modes=["offline", "online"],

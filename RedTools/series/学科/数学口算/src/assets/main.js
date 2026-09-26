@@ -440,14 +440,14 @@
       state.correct += 1;
       state.combo += 1;
       if (state.combo > state.maxCombo) { state.maxCombo = state.combo; }
-      feedbackEl.textContent = '✓ 答对了！';
-      feedbackEl.className = 'quiz-feedback ok';
+      /* V0.6：uikit setFeedback（quiz-feedback ok） */
+      LX_SHARED.uikit.setFeedback(feedbackEl, '✓ 答对了！', 'ok', 'quiz-feedback');
       // 错题本：连续答对计数（若曾在错题本）
       updateWrongBook(q, true);
     } else {
       state.combo = 0;
-      feedbackEl.textContent = '✗ 正确答案：' + q.answer;
-      feedbackEl.className = 'quiz-feedback bad';
+      /* V0.6：uikit setFeedback（quiz-feedback bad） */
+      LX_SHARED.uikit.setFeedback(feedbackEl, '✗ 正确答案：' + q.answer, 'bad', 'quiz-feedback');
       updateWrongBook(q, false);
     }
     // 下一题
@@ -825,17 +825,16 @@
     }
     document.body.removeChild(ta);
     if (ok) {
-      feedbackEl.textContent = '已复制，去小红书粘贴发布吧';
-      feedbackEl.className = 'share-feedback ok';
+      /* V0.6：uikit setFeedback（share-feedback ok） */
+      LX_SHARED.uikit.setFeedback(feedbackEl, '已复制，去小红书粘贴发布吧', 'ok', 'share-feedback');
     } else {
       /* 保底：文案全文已展示在 .share-text，提示手动长按选择复制 */
-      feedbackEl.textContent = '复制失败，请长按选择复制';
-      feedbackEl.className = 'share-feedback bad';
+      /* V0.6：uikit setFeedback（share-feedback bad） */
+      LX_SHARED.uikit.setFeedback(feedbackEl, '复制失败，请长按选择复制', 'bad', 'share-feedback');
     }
-    /* 2 秒后清空反馈 */
+    /* 2 秒后清空反馈（V0.6：state='' → className=base only，与旧逐字节一致） */
     window.setTimeout(function () {
-      feedbackEl.textContent = '';
-      feedbackEl.className = 'share-feedback';
+      LX_SHARED.uikit.setFeedback(feedbackEl, '', '', 'share-feedback');
     }, 2000);
   }
 
