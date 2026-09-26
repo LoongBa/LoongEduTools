@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { MOCK_USER } from "@/lib/mockData";
+import { useAccountInfo } from "@/lib/store";
 import { SKIN_META, useThemeCtx, type SkinId, type ThemeMode } from "@/lib/theme";
 import type { InstalledMap } from "@/lib/store";
 import type { ToolShortcut } from "@/lib/types";
@@ -48,6 +48,7 @@ export function SettingsView({
   shortcuts,
 }: SettingsViewProps) {
   const { mode, setMode, resolved, skin, setSkin } = useThemeCtx();
+  const acct = useAccountInfo();
   const [confirmReset, setConfirmReset] = useState(false);
 
   const downloadedCount = shortcuts.filter((s) => s.source === "download").length;
@@ -141,7 +142,7 @@ export function SettingsView({
         </Group>
 
         {/* ── 账号 ── */}
-        <Group title="账号" hint="演示环境无真实账号体系">
+        <Group title="账号" hint={acct.real ? "真实壳端登录态" : "演示环境无真实账号体系"}>
           <Row label="登录状态" desc={loggedIn ? "已登录 · 本机授权，可下载安装内容包" : "未登录 · 仅可浏览，不能下载"}>
             <button
               type="button"
@@ -153,11 +154,11 @@ export function SettingsView({
                   : "border-transparent bg-primary text-primary-foreground hover:opacity-90",
               )}
             >
-              {loggedIn ? "退出登录" : "去登录（模拟）"}
+              {loggedIn ? "退出登录" : "去登录"}
             </button>
           </Row>
-          <Row label="授权信息" desc={`${MOCK_USER.school} · ${MOCK_USER.clientVersion}`}>
-            <span className="text-[12px] text-muted-foreground">到期 {MOCK_USER.licenseUntil.split("（")[0]}</span>
+          <Row label="授权信息" desc={`${acct.school} · ${acct.clientVersion}`}>
+            <span className="text-[12px] text-muted-foreground">到期 {acct.licenseUntil}</span>
           </Row>
         </Group>
 

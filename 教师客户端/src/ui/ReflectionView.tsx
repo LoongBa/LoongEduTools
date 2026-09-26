@@ -2,7 +2,7 @@
  * R16 教学复盘记录本（D08 §3.4 · P4）—— 纯本地 · 零网络 · 零上报
  *
  * 红线（对齐 CheckinView 惯例）：
- * - 复盘记录仅存本机浏览器 localStorage（key: loongedu.reflection.v1），不出设备、不上云；
+ * - 复盘记录仅存本机浏览器 localStorage（key: taoli.reflection.v1），不出设备、不上云；
  * - 不接任何 report/invoke/fetch（唯一副作用 = 打印按钮的 printCurrentPage，纯 window.print）；
  * - 零采集：不采集儿童数据，仅教师自记的课堂复盘。
  *
@@ -12,7 +12,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { printCurrentPage } from "./printUtil";
 
-const LS_KEY = "loongedu.reflection.v1";
+const LS_KEY = "taoli.reflection.v1";
 
 /** 日期 input 值（YYYY-MM-DD，默认当天） */
 function todayISO(): string {
@@ -220,7 +220,7 @@ export default function ReflectionView() {
           )}
 
           <footer className="hint">
-            复盘记录仅存本机浏览器（loongedu.reflection.v1），零网络、零上报；不采集学生数据。
+             复盘记录仅存本机浏览器（taoli.reflection.v1），零网络、零上报；不采集学生数据。
           </footer>
         </>
       ) : (

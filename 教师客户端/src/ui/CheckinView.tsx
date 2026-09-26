@@ -2,7 +2,7 @@
  * R18 朗读打卡单（D05 · P3）—— 纯本地 · 零网络 · 零上报
  *
  * 红线（对齐 DisciplineView 惯例）：
- * - 学生姓名仅存本机浏览器 localStorage（key: loongedu.checkin.v1），不出设备、不上云；
+ * - 学生姓名仅存本机浏览器 localStorage（key: taoli.checkin.v1），不出设备、不上云；
  * - 无个人排名/无班级对比（只显示个人读熟进度，不做榜单）；
  * - 名单由教师手工粘贴，软件不采集、不推断。
  *
@@ -11,7 +11,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { printCurrentPage } from "./printUtil";
 
-const LS_KEY = "loongedu.checkin.v1";
+const LS_KEY = "taoli.checkin.v1";
 
 /** 打印页眉日期（点击打印按钮时取当天，格式：2026年9月25日） */
 function todayLabel(): string {

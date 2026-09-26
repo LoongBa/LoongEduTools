@@ -14,7 +14,7 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { MOCK_USER } from "@/lib/mockData";
+import { useAccountInfo } from "@/lib/store";
 import type { ToolShortcut } from "@/lib/types";
 import type { InstalledMap } from "@/lib/store";
 
@@ -36,7 +36,8 @@ export function ProfileView({
   onGoSettings,
 }: ProfileViewProps) {
   const [editing, setEditing] = useState(false);
-  const [name, setName] = useState<string>(MOCK_USER.name);
+  const acct = useAccountInfo();
+  const [name, setName] = useState<string>(acct.name);
 
   const usedCount = shortcuts.filter((s) => s.last_used).length;
   const pinnedCount = shortcuts.filter((s) => s.pinned).length;
@@ -51,7 +52,7 @@ export function ProfileView({
           <div className="h-20 bg-gradient-to-r from-brand to-primary opacity-90" aria-hidden />
           <div className="-mt-9 flex flex-col gap-3 px-6 pb-6 sm:flex-row sm:items-end">
             <span className="flex size-[72px] shrink-0 items-center justify-center rounded-2xl border-4 border-card bg-brand-soft text-[26px] font-bold text-brand shadow-sm">
-              {(name || MOCK_USER.name).slice(0, 1)}
+              {(name || acct.name).slice(0, 1)}
             </span>
             <div className="min-w-0 flex-1">
               {editing ? (
@@ -78,7 +79,7 @@ export function ProfileView({
                     type="button"
                     className="h-9 rounded-md px-2 text-[13px] text-muted-foreground hover:text-foreground"
                     onClick={() => {
-                      setName(MOCK_USER.name);
+                      setName(acct.name);
                       setEditing(false);
                     }}
                   >
@@ -99,9 +100,9 @@ export function ProfileView({
                 </div>
               )}
               <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-muted-foreground">
-                <span>{MOCK_USER.school}</span>
+                <span>{acct.school}</span>
                 <span aria-hidden>·</span>
-                <span>{MOCK_USER.subject}</span>
+                <span>{acct.subject}</span>
                 <span
                   className={cn(
                     "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium",
@@ -148,11 +149,11 @@ export function ProfileView({
         <section>
           <SectionTitle icon={ShieldCheck} label="授权与设备" />
           <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card text-[13px]">
-            <InfoRow k="授权方式" v="本机授权（离线可用，续期需联网）" />
-            <InfoRow k="授权到期" v={MOCK_USER.licenseUntil} />
-            <InfoRow k="客户端版本" v={MOCK_USER.clientVersion} />
-            <InfoRow k="清单通道" v="packages / toolbox manifest（演示为内置模拟数据）" />
-            <InfoRow k="本机标识" v={<code className="rounded bg-muted px-1.5 py-0.5 text-[12px]">{MOCK_USER.deviceId}</code>} />
+            <InfoRow k="授权方式" v={acct.real ? "本机授权（离线可用，续期需联网）" : "演示数据（未登录）"} />
+            <InfoRow k="授权到期" v={acct.licenseUntil} />
+            <InfoRow k="客户端版本" v={acct.clientVersion} />
+            <InfoRow k="清单通道" v="packages / toolbox manifest（服务端真实拉取）" />
+            <InfoRow k="本机标识" v={<code className="rounded bg-muted px-1.5 py-0.5 text-[12px]">{acct.deviceId}</code>} />
           </ul>
         </section>
 

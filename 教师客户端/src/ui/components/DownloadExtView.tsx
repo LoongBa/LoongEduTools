@@ -1,6 +1,7 @@
 // 下载中心（R03 §3 演进）：任务 / 内容（按学科分类）/ 工具（按类型分类）/ 原版教材（本机目录导入）四分区 Tab
 // + 子分类 chips + tag chips + 卡片三态 + 待办总览（需下载/缺数据/数据有更新/有更新 + 一键批量）
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { open } from "@tauri-apps/plugin-dialog";
 import {
   AlertTriangle,
   CircleCheck,
@@ -20,6 +21,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { api } from "@/api";
+import { friendlyErr } from "@/errutil";
 import { MOCK_EDU_TOOLS } from "@/lib/mockData";
 import { formatBytes, relativeTime } from "@/lib/format";
 import type { ActiveDownloadView } from "@/components/TopBar";
@@ -102,6 +104,20 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
     onShowTasksHandled();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showTasks]);
+
+  // 从 U 盘导入内容包 zip：选文件 → store_import_usb（Rust 解压 + 校验 + 签名）→ 更新已装表
+  const importUsb = useCallback(async () => {
+    const picked = await open({ directory: false, multiple: false, filters: [{ name: "内容包", extensions: ["zip"] }] });
+    if (!picked) return; // 用户取消
+    try {
+      const pkg = await api.storeImportUsb(picked as string);
+      onInstalled(pkg.package_id, pkg.package_version);
+      toast.success(`已导入「${pkg.display_name}」`, { description: "签名校验通过，已装入本机内容包目录" });
+      notify?.({ kind: "success", title: `内容包已导入：${pkg.display_name}`, body: "来自 U 盘导入" });
+    } catch (e) {
+      toast.error("导入失败", { description: friendlyErr(e) });
+    }
+  }, [onInstalled, notify]);
 
   const [packages, setPackages] = useState<StoreItem[]>([]);
   // 工具清单：真实拉取（与 ToolboxPanel 同源，待办总览「需下载工具」与批量下载用）
@@ -313,10 +329,8 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
           </button>
           <button
             type="button"
-            className="flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-input bg-card px-3 text-[13px] text-foreground transition-colors hover:bg-accent"
-            onClick={() =>
-              toast.info("演示环境：真实客户端将扫描 U 盘中的内容包目录并校验签名")
-            }
+            className="flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-input bg-card px-3 text-[13px] text-foreground transition-colors hover:bg-accent disabled:opacity-50"
+            onClick={importUsb}
           >
             <FolderInput size={13} aria-hidden />从 U 盘导入…
           </button>

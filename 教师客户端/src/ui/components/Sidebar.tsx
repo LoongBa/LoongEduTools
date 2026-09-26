@@ -1,6 +1,7 @@
 // 侧栏：品牌区 + 分组二级导航（组名/可见性可配置）+ 快捷启动项区 + 底栏
 // rail 收拢模式：200px ↔ 56px 图标条——品牌/菜单项/快捷项/底栏功能全部保留图标，hover/focus 显示名称
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import {
   ChevronRight,
   Globe,
@@ -28,6 +29,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_GROUPS, groupOfView } from "@/lib/nav";
+import { api } from "@/api";
+import { friendlyErr } from "@/errutil";
 import { useThemeCtx } from "@/lib/theme";
 import { RailIconOrFallback, clampMenuLabel } from "@/lib/launch-icon";
 import type { CollapseMap } from "@/lib/store";
@@ -426,12 +429,17 @@ export function Sidebar({
               "flex min-h-9 items-center justify-center rounded-md text-sidebar-muted transition-colors hover:bg-sidebar-hover hover:text-sidebar-text",
               rail ? "size-9 w-full" : "w-9 shrink-0",
             )}
-            title="全屏（F11，真实客户端能力，此处为演示占位）"
-            onClick={() => {
-              if (document.fullscreenElement) {
-                void document.exitFullscreen();
-              } else {
-                void document.documentElement.requestFullscreen().catch(() => undefined);
+            title="全屏（F11，Tauri 窗口全屏）"
+            onClick={async () => {
+              // 真实壳端：Tauri 窗口全屏（对 main 窗口）；非 Tauri 环境降级为浏览器全屏（演示/浏览器直开）
+              try {
+                await api.toggleFullscreen("main");
+              } catch (e) {
+                if (document.fullscreenElement) {
+                  void document.exitFullscreen();
+                } else {
+                  void document.documentElement.requestFullscreen().catch(() => toast.error(friendlyErr(e)));
+                }
               }
             }}
           >

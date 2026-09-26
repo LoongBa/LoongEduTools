@@ -12,7 +12,7 @@ import type {
   Notification,
   ToolShortcut,
 } from "./types";
-import { MOCK_BOOKMARK_BASELINE, MOCK_TEXTBOOK_BASELINE, QUICKSTART_PIN_SEED, LAUNCH_ICON_SEED_MIGRATION_KEY, LEGACY_SEED_ICON_IDS } from "./mockData";
+import { MOCK_BOOKMARK_BASELINE, MOCK_TEXTBOOK_BASELINE, QUICKSTART_PIN_SEED, LAUNCH_ICON_SEED_MIGRATION_KEY, LEGACY_SEED_ICON_IDS, MOCK_USER } from "./mockData";
 import { api } from "@/api";
 
 // localStorage keys —— 折叠态 / 主题 / 登录态 / 探针 / 已装包 / 快捷方式 / 下载任务 / 启动中心
@@ -100,6 +100,45 @@ export function useProbeOnline() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return [online, setOnline] as const;
+}
+
+// ── 账号信息（真实来源：auth_status + license_status；未登录/离线时回退 MOCK_USER）──
+export interface AccountInfo {
+  name: string;
+  school: string;
+  subject: string;
+  licenseUntil: string;
+  clientVersion: string;
+  deviceId: string;
+  /** 是否来自真实壳端命令（false = 演示兜底） */
+  real: boolean;
+}
+export function useAccountInfo(): AccountInfo {
+  const [acct, setAcct] = useState<AccountInfo>(() => ({
+    ...MOCK_USER,
+    real: false,
+  }));
+  useEffect(() => {
+    void Promise.allSettled([api.authStatus(), api.licenseStatus()]).then(([a, l]) => {
+      const auth = a.status === "fulfilled" ? a.value : null;
+      const lic = l.status === "fulfilled" ? l.value : null;
+      if (!auth?.teacher) return; // 未登录：保持演示兜底
+      const t = auth.teacher;
+      setAcct({
+        name: t.name ?? "教师",
+        school: lic?.present ? "已授权（本机）" : "未授权",
+        subject: [t.grade, t.subject].filter(Boolean).join(" · ") || "任教信息未填",
+        licenseUntil: lic?.expires_at
+          ? new Date(lic.expires_at).toLocaleDateString("zh-CN")
+          : "—",
+        clientVersion: "教师客户端 v0.3.0",
+        deviceId: auth.device_id || lic?.machine_fp || "—",
+        real: true,
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return acct;
 }
 
 // ── 内容包安装状态：tool → 已装版本号 ──
