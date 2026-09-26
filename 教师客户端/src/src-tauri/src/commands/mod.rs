@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod archive;
 pub mod contentkey;
 pub mod credential;
 pub mod fingerprint;

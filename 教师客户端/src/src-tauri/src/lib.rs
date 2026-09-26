@@ -3,8 +3,8 @@ mod state;
 mod webview2;
 
 use crate::commands::{
-    auth, credential, license, package, protocol, recents, report, roster, shell_config, store,
-    textbook, toolbox, window,
+    archive, auth, credential, license, package, protocol, recents, report, roster, shell_config,
+    store, textbook, toolbox, window,
 };
 use crate::state::AppState;
 use tauri::Manager as _;
@@ -129,6 +129,17 @@ pub fn run() {
             if let Err(e) = credential::startup_check(app.handle()) {
                 eprintln!("[credential] 启动复验未通过: {e}（凭证过期/时间异常可在 UI 查看并走 U 盘续期）");
             }
+            // ⑤ D11 §4·P1：启动下载目录监视（自动定位，用户显式配置覆盖）；失败仅 log。
+            //    新文件发现经 archive:new 事件推前端（确认卡片在 P2 接入）。
+            {
+                let cfg = archive::load_archive_config(app.handle());
+                let dir = cfg
+                    .dir
+                    .clone()
+                    .map(std::path::PathBuf::from)
+                    .unwrap_or_else(archive::detect_downloads_dir);
+                archive::spawn_watch_thread(app.handle().clone(), dir, cfg.poll_ms);
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -184,6 +195,9 @@ pub fn run() {
             shell_config::shell_config_fetch,
             shell_config::shell_config_cached,
             shell_config::shell_config_key_status,
+            // D11 · P1 下载目录监视观测层（定位/轮询/事件）
+            archive::archive_watch_dir,
+            archive::archive_status,
             // WebView2 状态查询（前端启动时调用，决定是否弹引导）
             test_webview2,
         ])
