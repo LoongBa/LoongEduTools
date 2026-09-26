@@ -303,6 +303,15 @@ pub async fn store_download(
                 pkg.package_id, package_id
             ));
         }
+        // D09 §7 步骤2：下载包同样拒收明文（服务端/镜像侧不设防时的客户端兜底；
+        // 失败由外层清理暂存目录）
+        let pj_raw = fs::read_to_string(staging.join("package.json"))
+            .map_err(|e| format!("读取 package.json 失败: {e}"))?;
+        let pj: PackageJson = serde_json::from_str(&pj_raw)
+            .map_err(|e| format!("package.json 解析失败: {e}"))?;
+        if pj.encrypted != Some(true) {
+            return Err("明文内容包被拒绝（D09 §2.4：需 encrypted=true）".into());
+        }
         Ok(pkg)
     })();
     if let Err(e) = staged {
@@ -424,6 +433,14 @@ pub async fn store_import_usb(
     }
     if pj.file_count.is_none() || pj.encrypted.is_none() {
         return Err("package.json 缺 file_count / encrypted 字段（S01 §2.3 预检）".into());
+    }
+    // D09 §7 步骤2 验收：明文内容包拒绝导入——S01 v1.1 起包必须 encrypted=true，
+    // 明文包绕过全部防扩散防线（`pack_content.py --plain` 已删）；此处尚在验签/解压
+    // 之前，零磁盘写入即拒。
+    if pj.encrypted != Some(true) {
+        return Err(
+            "明文内容包被拒绝导入（D09 §2.4：需 encrypted=true，可用新版管线重打包）".into(),
+        );
     }
 
     // 预检② manifest.json + min_shell_version（S01 §2.2）

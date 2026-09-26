@@ -1,0 +1,4 @@
+# D09 §6 Win7 锁链：Rust 锁 1.77.2（1.78+ 弃 Win7）
+[toolchain]
+channel = "1.77.2"
+profile = "minimal"

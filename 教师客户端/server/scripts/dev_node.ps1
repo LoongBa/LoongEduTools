@@ -64,6 +64,8 @@ try {
   # 5. 挂住直到进程退出 / Ctrl+C
   Wait-Process -Id $psi.Id
 } finally {
-  if (-not $psi.HasExited) { Stop-Process -Id $psi.Id -Force -ErrorAction SilentlyContinue }
+  # taskkill /T：连带杀 npm→tsx→node 整条链（Stop-Process 只杀 cmd 壳会留孤儿 server）
+  & taskkill /PID $psi.Id /T /F 2>$null | Out-Null
+  Stop-Process -Id $psi.Id -Force -ErrorAction SilentlyContinue
   if (Test-Path $PidFile) { Remove-Item $PidFile -Force -ErrorAction SilentlyContinue }
 }

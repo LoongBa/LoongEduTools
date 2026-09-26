@@ -28,8 +28,8 @@ pub fn list_installed(state: tauri::State<'_, AppState>) -> Result<Vec<Installed
     Ok(state.packages.lock().unwrap().clone())
 }
 
-/// 加载内容包：P0 简化 = 直接返回包内 app/index.html 路径（无加密，见 D02 P0 简化说明）
-/// 真实加载走 P1：解密 data/ → 临时区 → 返回加载 URL
+/// 加载内容包：经 `edu-content` 自定义协议导航到包内入口
+/// （D09 §2.4/§5.1 M4：加密包协议层内存解密、不落盘；每响应 no-store + Range 206）
 #[tauri::command]
 pub fn load(
     app: tauri::AppHandle,
@@ -42,13 +42,14 @@ pub fn load(
         .find(|p| p.package_id == package_id)
         .ok_or_else(|| format!("内容包不存在: {package_id}"))?;
 
-    // app 型：定位 data/app/index.html（P0 未加密，直接路径）
+    // app 型：服务根 = data/app/（S01 v1.1 加密包由协议层用 contentkey 内存解密）
     let root = PathBuf::from(&pkg.root);
-    let index = if pkg.package_type == "app" {
-        root.join("data").join("app").join("index.html")
+    let app_root = if pkg.package_type == "app" {
+        root.join("data").join("app")
     } else {
         return Err("data 型内容包需应用打开入口，P0 暂不支持直接 load".into());
     };
+    let index = app_root.join("index.html");
     if !index.exists() {
         return Err(format!(
             "内容包缺入口文件: {}（data/app/index.html 不存在）",
@@ -56,15 +57,42 @@ pub fn load(
         ));
     }
 
-    // 启动内容窗口（label="content"）并加载文件
-    let content_window = app
-        .get_webview_window("content")
-        .ok_or("内容窗口不存在")?;
+    // D09 §7 步骤2 验收：明文内容包拒绝加载——任何安装来源（U 盘导入/下载/
+    // 预装）的 encrypted≠true 包都在进入协议服务与内容窗口之前被拒。
+    if !pack_encrypted(&root) {
+        return Err(
+            "明文内容包被拒绝加载（D09 §2.4：需 encrypted=true，可用新版管线重打包）".into(),
+        );
+    }
 
-    // 将本地 html 加载进 content 窗口：用 file:// URL（Tauri 2.x 需 convertFileSrc）
-    let url = tauri::Url::from_file_path(&index)
-        .map_err(|_| "无法解析入口路径 URL".to_string())?
-        .to_string();
+    // 内容窗口：M2（D09 §5.1）destroy 后按 tauri.conf 等价参数重建，label 不变
+    // （visible:false/fullscreen:true/resizable:true；初始 about:blank 同 conf url）
+    let content_window = match app.get_webview_window("content") {
+        Some(w) => w,
+        None => {
+            let blank = tauri::Url::parse("about:blank")
+                .map_err(|_| "about:blank URL 解析失败".to_string())?;
+            tauri::webview::WebviewWindowBuilder::new(
+                &app,
+                "content",
+                tauri::WebviewUrl::External(blank),
+            )
+            .visible(false)
+            .fullscreen(true)
+            .resizable(true)
+            .build()
+            .map_err(|e| format!("重建内容窗口失败: {e}"))?
+        }
+    };
+
+    // 设定协议服务根（含加密态，读包根 package.json 的 encrypted 标志）+ 导航。
+    // Windows 下 Tauri 2 自定义协议请求形如 http://edu-content.localhost/<path>
+    // （非 Windows 形如 edu-content://localhost/<path>；本项目仅部署 Windows）。
+    crate::commands::protocol::set_serve_root(app_root, pack_encrypted(&root));
+    let url = format!(
+        "http://{}.localhost/index.html",
+        crate::commands::protocol::SCHEME
+    );
 
     content_window
         .show()
@@ -76,24 +104,50 @@ pub fn load(
         .eval(&format!("window.location.href = '{url}';"))
         .map_err(|e| format!("加载内容失败: {e}"))?;
 
+    // D09 §7 步骤4：水印独立顶层窗口（防扩散主防线）——内容会话开始即挂载。
+    // 失败仅记日志不阻断课堂（水印是追溯标识，非课堂功能前提）。
+    if let Err(e) = crate::commands::watermark::show_watermark(&app) {
+        eprintln!("[watermark] 水印显示失败（不阻断课堂）: {e}");
+    }
+    // 签发链台账：每次内容会话记账一次 cred-unlock（脱敏；凭证未装/seq 缺失则静默跳过）
+    crate::commands::watermark::log_unlock_event(&app);
+
     // 触发"当前单元=根"占位上报（真实断点上报见 M3 recents 集成）
     app.emit_content_progress(&package_id, "__root", "__root_in", "");
 
     Ok(url)
 }
 
-/// 卸载内容包：关闭 content 窗口（P0 无解密临时区；P1 补临时目录清理）
+/// 卸载内容包（D09 §5.1 M2：hide → destroy，真正释放 WebView2 renderer 与页面
+/// 内存——hide 仅保留实例不省内存；下次 load 按 conf 等价参数重建窗口）。
+/// 同步清除协议服务根与内容密钥（§2.4：密钥仅存内存、随卸载消失）。
+/// ⚠️ destroy 时序（Tauri #9199/#9353 已修）需运行期实测验证——M2 注。
 #[tauri::command]
 pub fn unload(app: tauri::AppHandle) -> Result<(), String> {
+    // D09 §7 步骤4：水印随内容会话销毁（destroy，杜绝陈旧身份残留）
+    crate::commands::watermark::hide_watermark(&app);
     if let Some(w) = app.get_webview_window("content") {
-        // 先导航回空白页，隐藏窗口（保留窗口实例避免重建开销）
-        let _ = w.eval("window.location.href = 'about:blank';");
-        let _ = w.hide();
+        w.destroy()
+            .map_err(|e| format!("销毁内容窗口失败: {e}"))?;
     }
+    crate::commands::protocol::clear_serve_root();
+    crate::commands::contentkey::clear_content_key();
     Ok(())
 }
 
 // ---------------------------------------------------------------- 内部工具
+
+/// 读包根 `package.json` 的 `encrypted` 标志（S01 §2.3 预检文件，不加密）：
+/// true = S01 v1.1 加密包，协议层用 contentkey 内存解密（D09 §2.4 C2）。
+/// false/缺文件按明文处理——`load` 在服务前已拒收明文包（D09 §7 步骤2），
+/// 此函数在 load 路径上仅作协议层加密态取值。
+fn pack_encrypted(root: &Path) -> bool {
+    fs::read_to_string(root.join("package.json"))
+        .ok()
+        .and_then(|raw| serde_json::from_str::<serde_json::Value>(&raw).ok())
+        .and_then(|v| v.get("encrypted").and_then(|b| b.as_bool()))
+        .unwrap_or(false)
+}
 
 /// 启动/刷新时扫描内容包目录并填充 AppState.packages
 /// 需要 AppHandle 以用 exe_dir() 定位 exe 同目录（store.rs 下载/导入均落盘到该 packages/）

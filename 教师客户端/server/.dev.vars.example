@@ -2,4 +2,5 @@
 JWT_SECRET=local-dev-jwt-secret-change-me
 PKG_ADMIN_KEY=local-dev-pkg-admin-key
 # LICENSE_SIGN_KEY=（可选：ed25519 PKCS8 PEM；缺省临时自签 + warning）
+# CREDENTIAL_SIGN_PRIVATE_KEY=（可选：签名凭证 ed25519 PKCS8 PEM；缺省临时自签 + warning）
 # SMS_MOCK 在 wrangler.toml [vars] 默认 "true"

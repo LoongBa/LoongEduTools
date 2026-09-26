@@ -39,6 +39,8 @@ export const PKG_DOWNLOAD_LIMITS: Limit[] = [{ max: 100, windowSec: 3600 }];
 
 export const LICENSE_RENEW_LIMITS: Limit[] = [{ max: 3, windowSec: 86400 }];
 
+export const CREDENTIAL_SIGN_LIMITS: Limit[] = [{ max: 20, windowSec: 86400 }];
+
 /** 认证失败计数（不使用 bump 的「先增后查」语义——此处独立函数便于失败时调用） */
 export async function countAuthFail(kv: KVNamespace, phone: string): Promise<void> {
   const nowSec = Math.floor(Date.now() / 1000);

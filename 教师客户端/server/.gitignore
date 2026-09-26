@@ -14,3 +14,5 @@ scripts/sms_code.txt
 scripts/sms_code.history
 # Node 双入口本地数据（app.db / r2 文件系统模拟，不入库）
 data/
+# dev_node.ps1 运行期 PID 文件
+scripts/dev_node.pid

@@ -24,3 +24,4 @@ bucket_name = "edu-teacher-pack"
 
 # Secrets（wrangler secret put，不入库）：
 #   JWT_SECRET / LICENSE_SIGN_KEY / PKG_ADMIN_KEY / SMS_SECRET（可选）
+#   CREDENTIAL_SIGN_PRIVATE_KEY（ed25519 签名凭证私钥，D09 §2.2 / A01 §4.5，独立信任域；PKCS8 PEM 或 base64 raw 32B；缺省临时自签 + warning）

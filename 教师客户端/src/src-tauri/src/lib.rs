@@ -2,10 +2,26 @@ mod commands;
 mod state;
 mod webview2;
 
-use crate::commands::{auth, license, package, recents, report, roster, store, textbook, toolbox, window};
+use crate::commands::{
+    auth, credential, license, package, protocol, recents, report, roster, store, textbook,
+    toolbox, window,
+};
 use crate::state::AppState;
 use tauri::Manager as _;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt as _, ShortcutState};
+
+/// 壳加固注入脚本（D09 §7 步骤2）：右键菜单 + 危险快捷键阻断。
+/// 随 `Builder::on_page_load` 注入到每个页面（含内容包 H5），且壳侧 main.tsx 启动即装同款监听。
+/// 注意：`concat!` 拼接为单行 JS（注入 eval 执行）。
+const HARDEN_JS: &str = concat!(
+    "window.addEventListener('contextmenu', e => e.preventDefault());",
+    "window.addEventListener('keydown', e => {",
+    "  const k = e.key.toUpperCase();",
+    "  const shiftIJC = e.ctrlKey && e.shiftKey && ['I','J','C'].includes(k);",
+    "  const ctrlUPC = e.ctrlKey && !e.shiftKey && ['U','P','S'].includes(k);",
+    "  if (e.key === 'F12' || shiftIJC || ctrlUPC) e.preventDefault();",
+    "});",
+);
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -72,6 +88,23 @@ pub fn run() {
                 })
                 .build(),
         )
+        // ---- 壳加固（D09 §7 步骤2：WebView2 禁右键/危险快捷键）----
+        // JS 级阻断：每个页面（含 content 窗口经 package::load 加载的内容包 H5）加载完成后
+        // 注入 contextmenu/keydown preventDefault。覆盖：右键菜单、F12、Ctrl+Shift+I/J/C、
+        // Ctrl+U、Ctrl+P、Ctrl+S。DevTools 未启用 tauri `devtools` feature → release 默认关闭
+        // （tauri.conf.json 亦无 devtools/devtoolsFrontendFolder 显式开启，见 D09 步骤2 报告）。
+        .on_page_load(|webview, payload| {
+            if payload.event() == tauri::webview::PageLoadEvent::Finished {
+                let _ = webview.eval(HARDEN_JS);
+            }
+        })
+        // ---- 内容协议（D09 §2.4/§5.1 M4：edu-content 内存解密、不落盘）----
+        // Windows 实际请求形如 http://edu-content.localhost/<path>（wry/
+        // WebResourceRequested 拦截）；响应恒带 Cache-Control: no-store + Range
+        // 206/416 支持（每响应头遵守性待运行期实测，D09 §8 R4）。
+        .register_uri_scheme_protocol(protocol::SCHEME, |_ctx, request| {
+            protocol::handle(request)
+        })
         // ---- 启动流程（D02 §3.4 oracle 修订）----
         .setup(|app| {
             // ① WebView2 兜底复检（preflight 已在窗口创建前保证 Ready；此处仅留日志，
@@ -90,6 +123,12 @@ pub fn run() {
                     "[global-shortcut] Alt+T 注册失败（可能被输入法/其它应用占用）: {e}；已降级为壳内「浮层」按钮"
                 );
             }
+            // ④ D09 §2.3/§7 步骤3：启动即复验签名凭证（验签→指纹→有效期→时钟回拨），
+            //    不触发 Argon2id（PIN 在 credential_unlock 时输入）。失败仅 log 不阻断启动——
+            //    状态经 credential_status 暴露给 UI（clock_rollback / expired / expiring_soon）。
+            if let Err(e) = credential::startup_check(app.handle()) {
+                eprintln!("[credential] 启动复验未通过: {e}（凭证过期/时间异常可在 UI 查看并走 U 盘续期）");
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -101,7 +140,6 @@ pub fn run() {
             recents::recents_set,
             window::toggle_fullscreen,
             window::exit_fullscreen,
-            window::print_content,
             window::tool_timer,
             window::server_ping,
             window::open_run_dir,
@@ -118,6 +156,10 @@ pub fn run() {
             license::license_status,
             license::license_renew,
             license::license_bind_current,
+            // D09 §7 步骤3 · 签名凭证（A01 §4.5）：U 盘导入 / PIN+口令解锁 / 状态
+            credential::credential_import_from_usb,
+            credential::credential_unlock,
+            credential::credential_status,
             // P2 下载扩展（云端下载 + U 盘导入 · A01 §4 / S01 §2.4）
             store::store_manifest,
             store::store_download,

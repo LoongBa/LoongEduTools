@@ -80,22 +80,77 @@ fn now_secs() -> i64 {
         .unwrap_or(0)
 }
 
-/// 解析 ISO8601 到 unix 秒（支持 ...Z 与带偏移的粗解析：取 date 前段近似）
+/// 解析 ISO8601 → unix 秒（**精确**，D09 §7 步骤3 H4：取整秒比较，无近似误差）。
+/// 支持 `YYYY-MM-DD` / `YYYY-MM-DDTHH:MM:SS`，可选 `Z` 或 `±HH:MM`/`±HHMM` 偏移。
+/// 复用 report.rs day_from_ts（Howard Hinnant civil）的逆向算法 `days_from_civil`。
 fn parse_iso_secs(s: &str) -> Option<i64> {
-    // 简化：只支持 YYYY-MM-DDTHH:MM:SSZ
-    let s = s.trim_end_matches('Z');
-    let (date, time) = s.split_once('T').unwrap_or((s, "00:00:00"));
+    let s = s.trim();
+    let (body, offset_secs) = strip_offset(s);
+    let (date, time) = body.split_once('T').unwrap_or((body, "00:00:00"));
     let mut dp = date.split('-');
     let y: i64 = dp.next()?.parse().ok()?;
     let m: i64 = dp.next()?.parse().ok()?;
     let d: i64 = dp.next()?.parse().ok()?;
+    let max_d: i64 = match m {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+        4 | 6 | 9 | 11 => 30,
+        2 => {
+            let leap = (y % 4 == 0 && y % 100 != 0) || y % 400 == 0;
+            if leap { 29 } else { 28 }
+        }
+        _ => return None, // 月份 1-12 之外
+    };
+    if d < 1 || d > max_d {
+        return None;
+    }
     let mut tp = time.split(':');
     let hh: i64 = tp.next().unwrap_or("0").parse().unwrap_or(0);
     let mm: i64 = tp.next().unwrap_or("0").parse().unwrap_or(0);
     let ss: i64 = tp.next().unwrap_or("0").parse().unwrap_or(0);
-    // 顺序近似（忽略闰年精细差，口令到期判断容差足够）
-    let days = y * 365 + m * 30 + d;
-    Some(days * 86400 + hh * 3600 + mm * 60 + ss - 946684800 /* 2000-01-01 锚点粗调 */)
+    if !(0..=23).contains(&hh) || !(0..=59).contains(&mm) || !(0..=60).contains(&ss) {
+        return None;
+    }
+    Some(days_from_civil(y, m, d) * 86400 + hh * 3600 + mm * 60 + ss - offset_secs)
+}
+
+/// 剥离时区后缀：`Z` → 0；`+08:00` / `+0800` → 正偏移；负数同理。无后缀 → 0（契约用 UTC）。
+fn strip_offset(s: &str) -> (&str, i64) {
+    if let Some(b) = s.strip_suffix('Z') {
+        return (b, 0);
+    }
+    if let Some(pos) = s.rfind(|c: char| c == '+' || c == '-') {
+        let tail = &s[pos + 1..];
+        let off = match tail.len() {
+            5 => {
+                let parts = tail
+                    .split_once(':')
+                    .and_then(|(h, m)| Some((h.parse::<i64>().ok()?, m.parse::<i64>().ok()?)));
+                match parts {
+                    Some((h, m)) => h * 3600 + m * 60,
+                    None => return (s, 0),
+                }
+            }
+            4 => match (tail[..2].parse::<i64>().ok(), tail[2..].parse::<i64>().ok()) {
+                (Some(h), Some(m)) => h * 3600 + m * 60,
+                _ => return (s, 0),
+            },
+            _ => return (s, 0),
+        };
+        let sign = if s.as_bytes()[pos] == b'-' { -1 } else { 1 };
+        return (&s[..pos], sign * off);
+    }
+    (s, 0)
+}
+
+/// Howard Hinnant civil 逆向：YYYY-MM-DD → 1970-01-01 起的天数（与 report.rs day_from_ts 互逆）
+fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
+    let y = if m <= 2 { y - 1 } else { y };
+    let era = if y >= 0 { y } else { y - 399 } / 400;
+    let yoe = y - era * 400; // [0, 399]
+    let mp = if m > 2 { m - 3 } else { m + 9 }; // [0, 11]
+    let doy = (153 * mp + 2) / 5 + d - 1; // [0, 365]
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy; // [0, 146096]
+    era * 146097 + doe - 719468
 }
 
 /// 口令状态（本地，不联网）
@@ -242,6 +297,47 @@ pub async fn license_bind_current(app: tauri::AppHandle) -> Result<serde_json::V
         }
     }
     Ok(v)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// H4：精确解析要与日换秒全等（无近似误差；与 report.rs day_from_ts 互逆）
+    #[test]
+    fn parse_iso_secs_exact_epoch() {
+        assert_eq!(parse_iso_secs("1970-01-01T00:00:00Z"), Some(0));
+        assert_eq!(parse_iso_secs("1970-01-01T00:00:00"), Some(0));
+        assert_eq!(parse_iso_secs("2000-01-01T00:00:00Z"), Some(946_684_800));
+        // 日期仅（无时间，默认 00:00:00）
+        assert_eq!(parse_iso_secs("1970-01-02"), Some(86400));
+        // 闰年精确：2020-02-29 存在；2020-03-01 = 2020-02-29 + 86400
+        let feb29 = parse_iso_secs("2020-02-29T00:00:00Z").unwrap();
+        let mar01 = parse_iso_secs("2020-03-01T00:00:00Z").unwrap();
+        assert_eq!(mar01 - feb29, 86400);
+        // 非闰年 2 月只能到 28：2019-03-01 − 2019-02-28 = 86400
+        let f28 = parse_iso_secs("2019-02-28T00:00:00Z").unwrap();
+        let m01 = parse_iso_secs("2019-03-01T00:00:00Z").unwrap();
+        assert_eq!(m01 - f28, 86400);
+        // 与 report.rs day_from_ts 双向互逆：date 字符串 ↔ 精确天数
+        let ts = parse_iso_secs("2026-09-26T00:00:00Z").unwrap();
+        assert_eq!(ts % 86400, 0);
+        // 偏移处理：+08:00 减 8h；-05:00 加 5h
+        assert_eq!(
+            parse_iso_secs("2000-01-01T08:00:00+08:00"),
+            Some(946_684_800)
+        );
+        assert_eq!(
+            parse_iso_secs("1999-12-31T19:00:00-05:00"),
+            Some(946_684_800)
+        );
+        assert_eq!(parse_iso_secs("2000-01-01T01:00:00+0800"), Some(946_659_600));
+        // 非法输入 → None
+        assert_eq!(parse_iso_secs("2026-13-01"), None);
+        assert_eq!(parse_iso_secs("2026-00-10"), None);
+        assert_eq!(parse_iso_secs("2026-02-30"), None);
+        assert_eq!(parse_iso_secs("garbage"), None);
+    }
 }
 
 

@@ -8,6 +8,8 @@ export interface Env {
   /** ed25519 口令包签名私钥（PKCS8 PEM 或 base64 raw 32B，Secret；缺省时自签并打 warning） */
   LICENSE_SIGN_KEY?: string;
   LICENSE_SIGN_KEY_ID?: string;
+  /** ed25519 签名凭证私钥（D09 §2.2 / A01 §4.5；独立信任域，Secret；缺省时临时自签并打 warning） */
+  CREDENTIAL_SIGN_PRIVATE_KEY?: string;
   /** 内容包管理接口密钥（Secret） */
   PKG_ADMIN_KEY?: string;
   /** "true" = 不真发短信，验证码打日志 */

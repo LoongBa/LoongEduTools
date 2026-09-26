@@ -6,7 +6,7 @@
   1. 结构完整性 — zip 含 manifest/package.json/data/
   2. 签名校验   — manifest.signature ed25519（开发公钥）
   3. hash 比对  — package.json file_index → 解密后逐文件 SHA-256
-  4. 解密抽样   — 加密包抽 ≤3 文件 DEV_PASSPHRASE 解密冒烟
+  4. 解密抽样   — 加密包抽 ≤3 文件内容主密钥解密冒烟（S01 v1.1 keys/content-master.key）
   5. 包体积     — 教材点读 ≤10MiB WARN（其余默认 50MiB）
   6. app 依赖   — app 型 index.html 引用的相对资源在包内
   7. 版本记录   — registry.json 不重复（WARN）
@@ -28,7 +28,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey  # noqa: E402
 
-from crypto_out import DEV_PASSPHRASE, decrypt_bytes, derive_key, load_dev_public_bytes  # noqa: E402
+from crypto_out import decrypt_bytes, load_dev_public_bytes  # noqa: E402
+from pack_content import load_content_key  # noqa: E402
 
 # 教材点读体积红线（D04 §5）；其余包用通用上限
 SIZE_LIMIT_APP = 10 * 1024 * 1024
@@ -43,7 +44,7 @@ def _fail(results: list, name: str, ok: bool, detail: str, hard: bool = True) ->
     )
 
 
-def verify(zip_path: Path) -> dict:
+def verify(zip_path: Path, content_key_file: str | None = None) -> dict:
     results: list[dict] = []
     checks_fail = 0
 
@@ -108,7 +109,7 @@ def verify(zip_path: Path) -> dict:
 
     # 3+4. 解密 / hash
     encrypted = bool(package.get("encrypted"))
-    key = derive_key(pkg_id, version, DEV_PASSPHRASE) if encrypted else None
+    key = load_content_key(content_key_file) if encrypted else None
     file_index: list = package.get("file_index", [])
     hash_bad: list[str] = []
     decrypt_bad: list[str] = []
@@ -205,11 +206,16 @@ def verify(zip_path: Path) -> dict:
 def main() -> None:
     ap = argparse.ArgumentParser(description="内容包 QA 自检（D04 §5）")
     ap.add_argument("zip", help="内容包 zip 路径")
+    ap.add_argument(
+        "--content-key-file",
+        default=None,
+        help="内容主密钥文件（S01 v1.1，默认 keys/content-master.key）",
+    )
     ap.add_argument("--out", default=None, help="qa json 输出（默认 zip 同目录 <id>-<ver>-qa.json）")
     args = ap.parse_args()
 
     zip_path = Path(args.zip).resolve()
-    report = verify(zip_path)
+    report = verify(zip_path, args.content_key_file)
 
     out_path = Path(args.out) if args.out else zip_path.parent / (
         f"{report.get('package_id', 'unknown')}-{report.get('version', 'unknown')}-qa.json"

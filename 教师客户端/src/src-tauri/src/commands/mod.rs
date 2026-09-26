@@ -1,11 +1,15 @@
 pub mod auth;
+pub mod contentkey;
+pub mod credential;
 pub mod fingerprint;
 pub mod license;
 pub mod package;
+pub mod protocol;
 pub mod recents;
 pub mod report;
 pub mod roster;
 pub mod store;
 pub mod textbook;
 pub mod toolbox;
+pub mod watermark;
 pub mod window;

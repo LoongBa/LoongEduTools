@@ -215,9 +215,6 @@ export const api = {
     invoke<boolean>("toggle_fullscreen", { window }),
   exitFullscreen: (window: string) => invoke<void>("exit_fullscreen", { window }),
 
-  // ---- R8 内容包导出 PDF（print_content · D08 §3.2 方案 A：content 窗 window.print()）----
-  printContent: () => invoke<void>("print_content"),
-
   // ---- D08 M3 计时器浮层呼出/收起（tool_timer · 全局快捷键 Alt+T 的壳内降级入口）----
   toolTimer: () => invoke<boolean>("tool_timer"),
 

@@ -22,6 +22,21 @@ document.documentElement.dataset.theme = bootTheme;
 // Spike-S1 临时代码已摘除（OverlaySpike + spike://tick 使命完成，演化为本视图）
 const isOverlay = location.hash === "#/overlay";
 
+// ---- 壳加固（D09 §7 步骤2 · 与 Rust 侧 on_page_load 注入同款）----
+// 壳启动即阻断：右键菜单 + F12 / Ctrl+Shift+I/J/C / Ctrl+U / Ctrl+P / Ctrl+S。
+// ReactDOM 渲染前挂裸 window 监听，覆盖 shell 全部路由；content 窗口内容包页由
+// src-tauri lib.rs on_page_load 每页注入同一逻辑（包内 H5 不经过本 bundle）。
+function installHardening(): void {
+  window.addEventListener("contextmenu", (e) => e.preventDefault());
+  window.addEventListener("keydown", (e) => {
+    const k = e.key.toUpperCase();
+    const shiftIJC = e.ctrlKey && e.shiftKey && ["I", "J", "C"].includes(k);
+    const ctrlUPC = e.ctrlKey && !e.shiftKey && ["U", "P", "S"].includes(k);
+    if (e.key === "F12" || shiftIJC || ctrlUPC) e.preventDefault();
+  });
+}
+installHardening();
+
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     {isOverlay ? <OverlayView /> : <Shell />}

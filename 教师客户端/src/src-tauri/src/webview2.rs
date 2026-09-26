@@ -8,6 +8,9 @@
 //! - 目录回退（注册表键缺失的机器兜底）：evergreen per-machine / per-user / MSIX 包目录。
 //! - 启动期 preflight（Builder/窗口创建**之前**调用）：未装 → 找同目录 bootstrapper 静默
 //!   安装并轮询注册表 → 都失败才由调用方原生弹窗提示（此时 UI 起不来，前端无从提示）。
+//! - GPO preflight（D09 附B）：组策略 `BrowserExecutableFolder` 强制指定浏览器目录时启动期
+//!   告警——GPO 覆盖优先于内置 evergreen/固定版回退，策略指向无效目录将导致启动失败；
+//!   客户端无权改学校 IT 策略，仅告警不拦截。
 
 use std::time::{Duration, Instant};
 
@@ -123,6 +126,46 @@ fn registry_subkeys() -> [String; 4] {
     ]
 }
 
+/// 纯函数：GPO WebView2 策略 4 条候选子键（HKLM/HKCU × 原生/WOW6432Node；
+/// 策略位 `SOFTWARE\Policies\Microsoft\Edge\WebView2`，仅 Windows）
+fn gpo_policy_subkeys() -> [String; 4] {
+    [
+        r"SOFTWARE\WOW6432Node\Policies\Microsoft\Edge\WebView2".into(),
+        r"SOFTWARE\Policies\Microsoft\Edge\WebView2".into(),
+        r"Software\WOW6432Node\Policies\Microsoft\Edge\WebView2".into(),
+        r"Software\Policies\Microsoft\Edge\WebView2".into(),
+    ]
+}
+
+/// D09 附B：读取 GPO `BrowserExecutableFolder` 强制覆盖值（4 条候选键首个非空命中）。
+/// 未配置 / 读取失败 → None（静默，不告警）；策略指向无效目录时 WebView2 无法启动，
+/// preflight 仅能告警（客户端无权改学校 IT 下发的组策略）。
+#[cfg(windows)]
+fn gpo_browser_folder() -> Option<String> {
+    use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
+    use winreg::RegKey;
+
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+    let subs = gpo_policy_subkeys();
+    for (root, sub) in [
+        (&hklm, subs[0].as_str()),
+        (&hklm, subs[1].as_str()),
+        (&hkcu, subs[2].as_str()),
+        (&hkcu, subs[3].as_str()),
+    ] {
+        if let Ok(key) = root.open_subkey(sub) {
+            if let Ok(v) = key.get_value::<String, _>("BrowserExecutableFolder") {
+                let v = v.trim();
+                if !v.is_empty() {
+                    return Some(v.to_string());
+                }
+            }
+        }
+    }
+    None
+}
+
 /// 目录回退：扫描全部安装基址下的版本目录名（仅 Windows）。
 /// 覆盖 evergreen per-machine / per-user / MSIX 包三种布局；ACL 拒绝的基址静默跳过。
 #[cfg(windows)]
@@ -201,6 +244,16 @@ pub fn preflight_webview2() -> PreflightOutcome {
 
     #[cfg(windows)]
     {
+        // D09 附B：GPO BrowserExecutableFolder 强制覆盖告警（先于一切检测——
+        // 策略存在时内置 evergreen/固定版回退均被压制，装没装对都可能起不来）
+        if let Some(folder) = gpo_browser_folder() {
+            eprintln!(
+                "[WebView2] ⚠ 组策略 BrowserExecutableFolder = {}——GPO 强制指定浏览器目录，\
+                 内置 evergreen/固定版回退将被覆盖；若该目录无效将启动失败（请学校 IT 核查策略）",
+                folder
+            );
+        }
+
         if check_webview2().0 {
             return PreflightOutcome::Ready;
         }
@@ -371,6 +424,21 @@ mod tests {
         assert!(subs[1].to_ascii_lowercase().ends_with(&plain_suffix.to_ascii_lowercase()));
         assert!(subs[2].to_ascii_lowercase().ends_with(&wow_suffix.to_ascii_lowercase()));
         assert!(subs[3].to_ascii_lowercase().ends_with(&plain_suffix.to_ascii_lowercase()));
+    }
+
+    #[test]
+    fn gpo_policy_subkeys_cover_four_paths() {
+        let subs = gpo_policy_subkeys();
+        assert_eq!(subs.len(), 4);
+        let tail = r"policies\microsoft\edge\webview2";
+        // HKLM WOW6432Node → HKLM 原生 → HKCU WOW6432Node → HKCU 原生（大小写不敏感）
+        for s in &subs {
+            assert!(s.to_ascii_lowercase().ends_with(tail));
+        }
+        assert!(subs[0].to_ascii_lowercase().contains("wow6432node"));
+        assert!(!subs[1].to_ascii_lowercase().contains("wow6432node"));
+        assert!(subs[2].to_ascii_lowercase().contains("wow6432node"));
+        assert!(!subs[3].to_ascii_lowercase().contains("wow6432node"));
     }
 
     #[test]

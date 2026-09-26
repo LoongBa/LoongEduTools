@@ -4,6 +4,8 @@ version = "0.2.0"
 description = "桃李助手 · 龙爸易教·教师端（Tauri 壳）"
 authors = ["LoongBa"]
 edition = "2021"
+# D09 附B：Win7 最后可用 Rust（1.78+ 弃 Win7）——声明 MSRV 使解析器按 1.77.2 挑选依赖版本
+rust-version = "1.77.2"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -15,10 +17,13 @@ name = "teacher_client_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
+# D09 附B：tauri-build 版本线与 tauri 独立（最新稳定 2.6.3，无 2.11 线），仅构建期参与、
+# 不进运行时 → 不随 tauri 锁 <2.12；Win7 运行时兼容由 tauri/wry/tao 决定。"2" 上界由 Cargo.lock 钉死。
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+# D09 §6 Win7 锁链：tauri ≥2.11,<2.12（2.12+ 弃 Win7；Rust 锁 1.77.2 见 rust-toolchain.toml）
+tauri = { version = ">=2.11, <2.12", features = [] }
 tauri-plugin-store = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-single-instance = "2"
@@ -42,6 +47,8 @@ ring = "0.17"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 aes-gcm = "0.10"
 rand = "0.8"
+argon2 = "0.5.3"
+base64ct = { version = "1.6.0", features = ["alloc"] }
 
 # Win7 WebView2 注册表检测（D02 §3.6）
 [target.'cfg(windows)'.dependencies]

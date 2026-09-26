@@ -70,7 +70,8 @@ fn save_queue(app: &tauri::AppHandle, q: &ReportQueue) -> Result<(), String> {
 }
 
 /// epoch 秒 → YYYY-MM-DD（UTC；Howard Hinnant civil 算法，无 chrono 依赖）
-fn day_from_ts(ts: u64) -> String {
+/// pub(crate)：watermark.rs 水印文案日期复用
+pub(crate) fn day_from_ts(ts: u64) -> String {
     let days = (ts / 86400) as i64;
     let z = days + 719468;
     let era = if z >= 0 { z } else { z - 146096 } / 146097;
@@ -84,7 +85,8 @@ fn day_from_ts(ts: u64) -> String {
     format!("{y:04}-{m:02}-{d:02}")
 }
 
-fn now_secs() -> u64 {
+/// pub(crate)：watermark.rs 水印文案日期复用
+pub(crate) fn now_secs() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs())
@@ -206,6 +208,88 @@ pub async fn report_flush(
     }
 }
 
+// ---------------------------------------------------------------- 签发链台账（D09 §7 步骤4）
+
+/// 单条签发链事件记录（**全部脱敏**，R01 零采集红线；服务端签发链以
+/// `/credential/sign` 服务端记录为准，本台账为客户端本地可追溯留痕）
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct CredEvent {
+    /// unix 秒
+    pub ts: u64,
+    /// YYYY-MM-DD（UTC，复用 day_from_ts）
+    pub day: String,
+    /// "cred-import" | "cred-unlock"
+    pub event: String,
+    /// 凭证签发密钥 key_id（如 credential-sign-2026）
+    pub key_id: String,
+    /// 凭证 seq（i64，防回滚链）
+    pub seq: i64,
+    /// machine_fp 前 8 位
+    pub fp8: String,
+    /// 教师摘要前 8 位（无教师缓存为 "-"）
+    pub teacher8: String,
+}
+
+/// 台账上限：500 条，超限丢最旧（防无限膨胀，够教室一学期量级）
+pub const LEDGER_MAX_ENTRIES: usize = 500;
+
+/// 台账文件：exe 同目录 cred-ledger.json（绿色目录形态，跟随 U 盘）
+fn ledger_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    Ok(exe_dir(app)?.join("cred-ledger.json"))
+}
+
+fn load_ledger(app: &tauri::AppHandle) -> Vec<CredEvent> {
+    ledger_path(app)
+        .ok()
+        .and_then(|p| std::fs::read_to_string(p).ok())
+        .and_then(|raw| serde_json::from_str(&raw).ok())
+        .unwrap_or_default()
+}
+
+fn save_ledger(app: &tauri::AppHandle, entries: &[CredEvent]) -> Result<(), String> {
+    let path = ledger_path(app)?;
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let json = serde_json::to_string_pretty(entries).map_err(|e| e.to_string())?;
+    std::fs::write(&path, json).map_err(|e| format!("写入签发台账失败: {e}"))
+}
+
+/// 追加+裁剪纯逻辑（可单测）：pushed 后如超 LEDGER_MAX_ENTRIES 丢最旧
+fn apply_ledger(entries: &mut Vec<CredEvent>, ev: CredEvent) {
+    entries.push(ev);
+    while entries.len() > LEDGER_MAX_ENTRIES {
+        entries.remove(0);
+    }
+}
+
+/// 追加一条签发链事件（append-only JSON 数组，超 500 丢最旧）。
+/// **纯本地台账，不上报**（A01 §5.1 `/report/ingest` 白名单无此字段，见模块头说明；
+/// 服务端签发链 = `/credential/sign` 服务端记录，运维侧）。
+/// 供 watermark.rs / package.rs / credential.rs（additive）调用；失败静默不阻断课堂。
+pub fn append_cred_event(
+    app: &tauri::AppHandle,
+    event: &str,
+    key_id: &str,
+    seq: i64,
+    fp8: &str,
+    teacher8: &str,
+) -> Result<(), String> {
+    let ts = now_secs();
+    let ev = CredEvent {
+        ts,
+        day: day_from_ts(ts),
+        event: event.to_string(),
+        key_id: key_id.to_string(),
+        seq,
+        fp8: fp8.to_string(),
+        teacher8: teacher8.to_string(),
+    };
+    let mut entries = load_ledger(app);
+    apply_ledger(&mut entries, ev);
+    save_ledger(app, &entries)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -273,7 +357,7 @@ mod tests {
         assert_eq!(q.usage[1].seconds, 0);
     }
 
-    #[test]
+#[test]
     fn queue_capped_at_200_dropping_oldest() {
         let mut q = ReportQueue::default();
         for i in 0..(QUEUE_MAX_ENTRIES + 5) {
@@ -283,5 +367,47 @@ mod tests {
         // 最旧的 5 条已丢弃，保留的是后 200 条
         assert_eq!(q.usage[0].package_id, "pkg5");
         assert_eq!(q.usage[QUEUE_MAX_ENTRIES - 1].package_id, "pkg204");
+    }
+
+    // ---------------- D09 §7 步骤4：签发链台账（纯逻辑，不落盘） ----------------
+
+    fn sample_ev(seq: i64) -> CredEvent {
+        CredEvent {
+            ts: 1_752_000_000 + seq as u64,
+            day: day_from_ts(1_752_000_000 + seq as u64),
+            event: "cred-import".into(),
+            key_id: "credential-sign-2026".into(),
+            seq,
+            fp8: "a1b2c3d4".into(),
+            teacher8: "9f8e7d6c".into(),
+        }
+    }
+
+    #[test]
+    fn cred_event_serde_roundtrip() {
+        let ev = sample_ev(7);
+        let json = serde_json::to_string(&ev).unwrap();
+        let back: CredEvent = serde_json::from_str(&json).unwrap();
+        assert_eq!(ev, back);
+        // day 与 ts 对齐（day_from_ts 复用）
+        assert_eq!(back.day, day_from_ts(back.ts));
+        assert_eq!(back.event, "cred-import");
+        assert_eq!(back.seq, 7);
+    }
+
+    #[test]
+    fn ledger_append_and_cap_drops_oldest() {
+        let mut entries: Vec<CredEvent> = Vec::new();
+        for i in 0..(LEDGER_MAX_ENTRIES + 10) {
+            apply_ledger(&mut entries, sample_ev(i as i64));
+        }
+        assert_eq!(entries.len(), LEDGER_MAX_ENTRIES);
+        // 最旧的 10 条被丢弃：首条 seq = 10
+        assert_eq!(entries[0].seq, 10);
+        assert_eq!(entries[LEDGER_MAX_ENTRIES - 1].seq, (LEDGER_MAX_ENTRIES + 9) as i64);
+        // 保留的是后 500 条且按序
+        for (idx, e) in entries.iter().enumerate() {
+            assert_eq!(e.seq, (idx + 10) as i64);
+        }
     }
 }

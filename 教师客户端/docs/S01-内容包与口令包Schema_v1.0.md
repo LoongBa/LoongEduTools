@@ -1,6 +1,6 @@
 # S01 内容包与口令包格式 Schema（v1.0 冻结版）
 
-> 状态：**冻结 v1.0**（2026-09-23）。本文档为教师客户端**双版本体系**的数据格式唯一权威：
+> 状态：**冻结 v1.0；v1.1（2026-09-26）增补 D09 C2 密钥链**。本文档为教师客户端**双版本体系**的数据格式唯一权威：
 > 内容包（数据/应用）与口令包（授权）的目录结构、manifest 字段、加密/签名规格、U 盘导入规则。
 > 上游：`R01-教育工具-教师客户端需求分析与设计方案.md`（§2.3/§4）与 `D01-教育工具-教师版RUST外壳开发方案.md`（§2/§4）。
 > 变更冻结：内容包/口令包格式一经冻结，**P0-P4 一律遵守**；变更需重评估，不得静默改格式。
@@ -106,10 +106,15 @@ U 盘检测（启动时扫描根目录 packages/*.zip 或指定目录）
 ### 2.5 data/ 加密规格
 
 - 算法：**AES-256-GCM**（认证加密，防篡改 + 防披露）；
-- 密钥派生：**HKDF-SHA256**（IKM = 课堂口令派生的 32 字节密钥，salt = 内容包 `package_id + package_version`，info = "content-pack-v1"）；
 - 加密对象：data/ 区**整体**（zip 压缩后对 data/ 目录加密）或逐文件加密（推荐逐文件：支持运行时按需解密加载，避免整包解密开销）；
-- 逐文件加密：每个文件 16 字节随机 IV 前置，密文 = `iv | ciphertext | tag`（GCM 认证标签并入）；
-- 解密时机：运行时鉴权通过后（凭证有效 × 口令级别达标），按 Rust 命令 `package.load` 按需解密加载，**不落盘明文**（解密到内存/临时区，退出清理）。
+- 逐文件加密（**口径不变**）：每个文件 16 字节随机 IV 前置，密文 = `iv | ciphertext | tag`（GCM 认证标签并入，无 AAD）；字节格式 = `scripts/crypto_out.py::encrypt_bytes`（`iv(16) | ct | tag`，tag 并入 ct 尾部）；
+- 内容密钥（v1.1 起，仅内容包）：**K = 单一全局内容主密钥**（32 随机字节）。打包/办公室侧文件 = `教师客户端/scripts/keys/content-master.key`（64 位小写 hex + 换行；经 `scripts/.gitignore` 的 `keys/*.key` 忽略、不入 git；**永不进入任何内容包 zip**）。`pack_content.py` 经 `--content-key-file` 读取（默认即上述路径，缺省自动生成）；
+- 运行时密钥链（v1.1 起，仅内容包）：K 仅随签名凭证 `credential.enc` 的 `key_material` 字段分发——`key_material` = 以 KEK 对 K 的 AES-256-GCM 包裹，KEK = Argon2id(结构化拼接 `[pin_len:u16][pin][pass]`, salt)，参数 m=48MiB / t=2 / p=1 / out=32B；`credential_unlock` 时解包；**K 仅存内存、不落盘**。交叉引用：D09 §2.2 / §2.3 / §2.4、A01 §4.5.1；
+- 完整性口径（不变）：package.json `file_index` 的 sha256 = **明文 hash**（解密后比对）；manifest `content_hash`（打包侧 data_hash）= **密文整体** SHA-256（按存储序）；package.json `encrypted: true`，`enc_alg` 加密时固定字符串 = `"AES-256-GCM"`（见 `scripts/gen_package_json.py`）；
+- 解密时机：运行时鉴权通过后（凭证有效 × 口令级别达标），按 Rust 命令 `package.load` 按需解密加载，**不落盘明文**（解密到内存/临时区，退出清理）；
+- **v1.0「口令 → HKDF → 内容密钥」对内容包弃用**（D09 §2.4 C2）：**不做双轨兼容解密器**；HKDF（口令派生）仅保留给名单包（§4.3）。
+
+> 范围说明：**v1.1 变更仅限内容包；名单包维持 v1.0。**
 
 ---
 
@@ -222,3 +227,25 @@ roster-pack-<teacher_id>-<roster_id>.zip
 - **2026-09-23 冻结 v1.0**：字段/加密/签名/导入规则按上文锁定；P0-P4 一律遵守。
 - P0 预装内容包（教材点读）即按本 Schema 打包（manifest + 加密 data/ + 预检 package.json）。
 - 变更流程：格式变更须重评审（Oracle）+ 升 schema_version + 记录迁移（P1 前不变更，若发现缺陷走评审）。
+
+---
+
+## ADR（v1.1 变更记录）
+
+> v1.1（2026-09-26）由 D09 §2.4 C2 决策驱动：内容包密钥链从「口令 → HKDF → 内容密钥」改为「Argon2id(PIN‖口令) → KEK → 解 key_material → 内容密钥」。本附录记录四项 ADR 及其与上游文档的对齐；**办公室签发工具、凭证解锁 UI 均为后置实现**（本期不产出，不在本 Schema 承诺范围）。
+
+**ADR-1 · C2 密钥链（D09 §2.4）**
+
+- S01 升 v1.1 并补本 ADR；已交付的英语点读 zip 按新格式**全量重打包 + 重 QA**（范围见 ADR-3）；**不做双轨兼容解密器**——v1.0「口令 → HKDF」派生对内容包弃用（见 §2.5）。
+
+**ADR-2 · 内容主密钥保管**
+
+- K（32B 全局内容主密钥）明文文件**仅在办公室打包侧**（`教师客户端/scripts/keys/content-master.key`，gitignored，永不进内容包 zip）；运行时**只见到 `key_material`**（密文包裹态），`credential_unlock` 解包后 K 仅存内存。
+
+**ADR-3 · 重打包范围（2026-09-26 用户裁定）**
+
+- D09 §2.4「11 个英语点读 zip 全量重打包」表述**收窄**为实际被消费的 4 个产物：预装 `pep-reader-u01`（教材点读）+ `pep-vocab-cards`（词卡），四上 unit1 / unit2 的可下载孪生包；其余未消费的不在本期重打包范围。
+
+**ADR-4 · 「包裹态密钥文件与内容包同目录」后置（D09 §2.4）**
+
+- 该条**延期**至未来办公室签发工具；本期运行时**只消费 `credential.enc` 的 `key_material`**（`credential.rs` 已实现），本阶段不产出同目录包裹态密钥文件。

@@ -18,6 +18,7 @@ import {
   wechatStatus,
 } from "./handlers/auth";
 import { licenseBind, licensePack, licenseRenew } from "./handlers/license";
+import { credentialSign } from "./handlers/credential";
 import { packagesDownload, packagesManifest, packagesUpload } from "./handlers/packages";
 import { toolboxManifest } from "./handlers/toolbox";
 import { reportIngest } from "./handlers/report";
@@ -89,6 +90,12 @@ export default {
       if (method === "POST" && path === "/license/bind") {
         const p = await requireAuth(req, env);
         return withCors(await licenseBind(req, env, p.sub));
+      }
+
+      // ---- 签名凭证 A01 §4.5（D09 防扩散，需 JWT）----
+      if (method === "POST" && path === "/credential/sign") {
+        const p = await requireAuth(req, env);
+        return withCors(await credentialSign(req, env, p.sub, p.lvl));
       }
 
       // ---- 内容包 A01 §4 ----

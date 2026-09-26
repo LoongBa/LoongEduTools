@@ -22,18 +22,10 @@ pub fn exit_fullscreen(app: tauri::AppHandle, window: String) -> Result<(), Stri
 
 /// 内容包窗口导出 PDF（R8 打印底座 · D08 §3.2 方案 A）
 ///
-/// 对 `content` 窗口执行 `window.print()`（WebView2 原生打印对话框 / 另存 PDF，
-/// 零新依赖）。窗口不存在或不可见 → Err（前端据此提示先打开内容包）。
-#[tauri::command]
-pub fn print_content(app: tauri::AppHandle) -> Result<(), String> {
-    let w = app
-        .get_webview_window("content")
-        .ok_or_else(|| "内容包未打开，无法导出 PDF".to_string())?;
-    if !w.is_visible().map_err(|e| e.to_string())? {
-        return Err("内容包未打开，无法导出 PDF".to_string());
-    }
-    w.eval("window.print()").map_err(|e| e.to_string())
-}
+/// **已移除（D09 §7 步骤2 壳加固）：`print_content` 命令注册与实现已按 D09 步骤2 删除**——
+/// 壳加固要求 WebView2 禁打印（内容包 H5 不可 `window.print()` 导出 PDF），且仅去前端按钮
+/// 不够（内容 JS 可 invoke），故命令级整体移除。壳内页面（打卡单/复盘本）打印仍走前端
+/// `printUtil.printCurrentPage`（`window.print()` 直调，属壳 UI 自身功能，非内容包导出）。
 
 /// 计时器浮层呼出/收起（D05 tool.timer 预留 · D08 §3.3#4）
 ///
