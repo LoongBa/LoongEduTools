@@ -68,13 +68,20 @@
 - **版权文案全覆盖**（D09/§1.2 红线 + D11 §8.3）：确认卡片 / 素材归档 Tab / 导出 toast / 导入 toast / ToolboxPanel 底部说明——统一「教材/课件仅供个人教学和学习使用，请勿对外分发」
 - **版本 0.2.4→0.2.5**（五处对齐）
 - 四绿验证：cargo 87/87、tsc 0、vitest 64/64、pnpm build ✓
-- **D11 五阶段全部落地**：P1 观测（f937cf3）→ P2 确认（5bd7fe3）→ P3 归档（92c31a7）→ P4 通知（620df0a）→ P5 打包（本提交）
+- **D11 五阶段全部落地**：P1 观测（f937cf3）→ P2 确认（5bd7fe3）→ P3 归档（92c31a7）→ P4 通知（620df0a）→ P5 打包（f634222）
 
-## 待办（后续会话 · D11 收尾可选优化）
+### D11 收尾 · 静默归档（2026-09-27，本会话完成，版本 0.2.6）
+- `2dc4c3f`: **§5.4 静默归档** —— `Shell.tsx` archive:new 回调接线 `useArchiveRules.matchFor`：
+  - 规则命中 → 跳过确认卡片直接 `api.archiveConfirm(path, rule 四字段)` + 通知（channel=archive、groupKey `archived:学科:版本:年级册次` 与卡片确认同 key 可合并、action=undo-archive、标题「已自动整理」）+ toast「已自动整理」；**失败（源缺失/类型不支持）→ 降级 `archiveAdd` 入 pending 弹卡片** + toast「自动整理失败」
+  - 抽取 `pushArchivedNotify` 共用通知逻辑（卡片确认走「已归档」文案）；`notifyArchiveChanged` 广播 `archive:changed`（归档/撤销成功后触发）
+  - 竞态加固：listen 异步注册 + effect 依赖含 matchFor（规则变更重跑 effect）→ cancelled 标志注销迟到注册，防旧 listener 泄漏重复处理
+- `DownloadExtView.tsx`：「素材归档」Tab 监听 `archive:changed` → 自动刷新（撤销/静默归档后无需手动点刷新）
+- **版本 0.2.5→0.2.6**（五处对齐）
+- 四绿验证：cargo 87/87、tsc 0、vitest 64/64、pnpm build ✓
 
-1. **静默归档**（D11 §5.4 规则命中）：`useArchiveRules.matchFor` 已就绪，接入 `archive:new` 事件处理——命中规则的文件跳过确认卡片直接 `archive_confirm` + 通知（channel=archive 合并）
-2. **归档撤销联动刷新**：通知撤销成功后 DownloadExtView「素材归档」Tab 数据需手动刷新（`onRefresh` 未联动）；可加全局刷新信号（如 `window.dispatchEvent(new Event("archive:changed"))` + Tab 监听）
-3. 长期候选：CF 免费档公网测试、轻量机上线、Win7 真机、IME 吞键实测、B4 在线服务端
+## 待办（后续会话 · 长期候选）
+
+1. CF 免费档公网测试、轻量机上线、Win7 真机、IME 吞键实测、B4 在线服务端
 
 ## 关键决策（D11 §12 决策记录摘要）
 
@@ -112,4 +119,4 @@ cd 教师客户端/src && pnpm build              # EXIT=0
 
 ## 版本
 
-v0.2.5 已统一（Cargo/tauri.conf/package.json/SHELL_VERSION 五处对齐）；**tag `教师客户端-v0.2.5` 已创建并推 origin**（指向 f634222，D11 全部落地）。当前 tag 链：v0.2.0 → v0.2.1 → v0.2.5（0.2.2/0.2.3/0.2.4 为 P2/P3/P4 中间交付未单独打 tag，如需追溯可补打）。下一功能交付时子版本升 0.2.6（tag 需用户另行同意）。
+v0.2.6 已统一（Cargo/tauri.conf/package.json/SHELL_VERSION 五处对齐）；**tag `教师客户端-v0.2.5` 已创建并推 origin**（指向 f634222，D11 五阶段落地）。当前 tag 链：v0.2.0 → v0.2.1 → v0.2.5（0.2.2/0.2.3/0.2.4/0.2.6 为 P2/P3/P4/静默归档中间交付未单独打 tag，如需追溯可补打）。下一功能交付时子版本升 0.2.7（tag 需用户另行同意）。
