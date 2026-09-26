@@ -296,7 +296,7 @@ teacher-client/
 | 文件/对话框 | `tauri-plugin-fs`、`tauri-plugin-dialog` | U 盘导入 / 选择目录 |
 | 序列化 | `serde` / `serde_json` | 全部结构 |
 
-> 注意 Win7：`keyring` 的 Windows 凭证库在 Win7 可用性一般 → 凭证缓存用 **AES 加密文件**（密钥存壳内/DPAPI 兼容层）而非系统 Credential Manager。
+> 注意 Win7：`keyring` 的 Windows 凭证库在 Win7 可用性一般 → 凭证缓存用 **加密文件 `credential.enc`**（Argon2id 派生密钥包裹 + AES-256-GCM；D09 §2 后为服务端签名凭证格式）而非系统 Credential Manager/DPAPI。
 
 ### 7.3 关键 Rust 命令清单（前端 invoke 面）
 
@@ -318,7 +318,7 @@ teacher-client/
 
 | 项 | 方案 | 边界 |
 |---|---|---|
-| 凭证存储 | AES 加密文件（密钥壳内派生 + DPAPI 兼容层） | 挡普通顺手操作；不防专业内存转储 |
+| 凭证存储 | `credential.enc` 加密文件（Argon2id 派生 + AES-256-GCM；D09 §2 签名凭证 credential+signature） | 挡普通顺手操作；不防专业内存转储 |
 | 内容包 | 静态 AES + 口令派生密钥；manifest ed25519 签名 | 挡住 99% 用户；不做强 DRM |
 | 传输 | 全 HTTPS（WeChat/Workers/R2） | — |
 | 时间篡改 | 口令到期本地校验 + 服务端签发时校准；在线刷新时校准本地时钟 | 接受离线改时钟绕过（简单保护定位） |
@@ -346,5 +346,5 @@ teacher-client/
   - **内容包安全**：下载加密 + 运行时鉴权（凭证×口令×范围三重闸门）；
   - **数据上报边界**：只上报授权/使用状态白名单，儿童数据零采集红线不变；
   - **服务端起步**：静态 manifest + R2 手工配包 → 演进内容包市场；
-  - **Win7 凭证存储**：AES 加密文件方案（keyring 在 Win7 可用性一般，备选 DPAPI 兼容层）；
+  - **Win7 凭证存储**：`credential.enc` 加密文件方案（keyring 在 Win7 可用性一般；D09 后为 Argon2id + 签名凭证，无 DPAPI 依赖）；
   - **AI 边界（Oracle 补全同步）**：壳内运行时零 AI——壳不引入 ML 推理依赖、前端不采集音频分析；AI 全部在内容包生产管线（TTS/配图/LLM 练习教案）与在线版备课端（R4/R5），产出经内容包通道进壳；需求补全 R1-R18 与实施分期同步（P0 含 R6/R7，P1 含 R13/R17，P2 首发 R2/R14，P3 含 R1/R4/R5/R12/R18，P4 含 R3/R9/R10/R15/R16）。
