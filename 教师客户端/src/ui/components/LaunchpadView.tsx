@@ -29,7 +29,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { DATA_OPTIONS_BY_TOOL, MOCK_EDU_TOOLS, MOCK_PACKAGES, MOCK_TOOLBOX_MANIFEST } from "@/lib/mockData";
+import { DATA_OPTIONS_BY_TOOL, MOCK_EDU_TOOLS } from "@/lib/mockData";
+import { api } from "@/api";
 import { VIEW_TITLES } from "@/lib/nav";
 import { relativeTime } from "@/lib/format";
 import { ToolboxPanel } from "@/components/ToolboxPanel";
@@ -46,6 +47,7 @@ import type {
   LaunchRecentItem,
   LocalTextbook,
   Notification,
+  ToolboxManifest,
   ToolShortcut,
 } from "@/lib/types";
 
@@ -58,10 +60,10 @@ const EDU_ICONS: Record<string, LucideIcon> = {
   Shapes,
 };
 
-/** pkgId → 清单条目（版本比较用） */
-const PKG_BY_ID: Record<string, { name: string; version: string }> = Object.fromEntries(
-  MOCK_PACKAGES.map((p) => [p.id, { name: p.name, version: p.version }]),
-);
+/** pkgId → 清单条目（版本比较用；由真实 storeListAvailable 派生，见组件内 useMemo） */
+let PKG_BY_ID: Record<string, { name: string; version: string }> = {};
+let TOOL_NAME_BY_ID: Record<string, string> = {};
+let MOCK_PKG_APP_BY_ID: Record<string, { name: string; icon: string; desc: string }> = {};
 
 export function semverLt(a: string, b: string): boolean {
   const pa = a.split(".").map(Number);
@@ -256,6 +258,40 @@ function QuickLaunch({
   const [pendingDelete, setPendingDelete] = useState<Bookmark | null>(null);
   const [cfgTarget, setCfgTarget] = useState<{ itemId: string; name: string } | null>(null);
   const [dlReq, setDlReq] = useState<PendingDownload | null>(null);
+  // 真实清单拉取：storeListAvailable + toolboxManifest → 派生 PKG_BY_ID/TOOL_NAME_BY_ID/MOCK_PKG_APP_BY_ID
+  const [, forceRender] = useState(0);
+  const [toolbox, setToolbox] = useState<ToolboxManifest | null>(null);
+  useEffect(() => {
+    void api
+      .storeListAvailable()
+      .then((list) => {
+        PKG_BY_ID = Object.fromEntries(
+          list.packages.map((p) => [p.package_id, { name: p.name, version: p.package_version }]),
+        );
+        MOCK_PKG_APP_BY_ID = Object.fromEntries(
+          list.packages
+            .filter((p) => p.package_type === "app")
+            .map((p) => [
+              p.package_id,
+              {
+                name: p.name.replace(/（离线应用）/, ""),
+                icon: p.package_id.includes("math-geo") ? "Shapes" : "Calculator",
+                desc: p.description ?? "",
+              },
+            ]),
+        );
+        forceRender((n) => n + 1);
+      })
+      .catch(() => { /* 未登录/离线：保持空，启动中心自会提示 */ });
+    void api
+      .toolboxManifest()
+      .then((m) => {
+        TOOL_NAME_BY_ID = Object.fromEntries(m.tools.map((t) => [t.id, t.name]));
+        setToolbox(m);
+      })
+      .catch(() => { /* 同 storeListAvailable */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 已钉选到侧栏「一键启动」的条目数（弹窗上限提示与拦截用；view 类内置功能页同样计入）
   const menuPinnedCount = Object.keys(configs).filter((id) => isPinnedMenu(configs[id])).length;
@@ -275,9 +311,9 @@ function QuickLaunch({
   const external = useMemo(() => {
     const withPath = shortcuts.filter((s) => s.path);
     const haveIds = new Set(withPath.map((s) => s.tool_id));
-    const recommended = MOCK_TOOLBOX_MANIFEST.tools.filter((t) => t.recommend && !haveIds.has(t.id));
+    const recommended = (toolbox?.tools ?? []).filter((t) => t.recommend && !haveIds.has(t.id));
     return { withPath, recommended };
-  }, [shortcuts]);
+  }, [shortcuts, toolbox]);
 
   const q = query.trim().toLowerCase();
   const hit = (name: string, extra = "") =>
@@ -288,7 +324,7 @@ function QuickLaunch({
     const eduIds = new Set(eduTools.map((t) => `edu:${t.id}`));
     const toolIds = new Set([
       ...shortcuts.map((s) => `tool:${s.tool_id}`),
-      ...MOCK_TOOLBOX_MANIFEST.tools.filter((t) => t.recommend).map((t) => `tool:${t.id}`),
+      ...(toolbox?.tools.filter((t) => t.recommend).map((t) => `tool:${t.id}`) ?? []),
     ]);
     const bmIds = new Set(bookmarks.map((b) => `bm:${b.id}`));
     return Object.entries(configs)
@@ -365,7 +401,8 @@ function QuickLaunch({
       return;
     }
     if (opts.toolId) {
-      const t = MOCK_TOOLBOX_MANIFEST.tools.find((x) => x.id === opts.toolId)!;
+      const t = toolbox?.tools.find((x) => x.id === opts.toolId);
+      if (!t) return;
       setDlReq({
         itemId,
         title,
@@ -959,15 +996,5 @@ function shortcutName(s: ToolShortcut): string {
   return TOOL_NAME_BY_ID[s.tool_id] ?? s.external_name ?? s.tool_id;
 }
 
-// 展示名映射（模拟清单在本机的镜像；避免为取名重复拉取 manifest）
-const TOOL_NAME_BY_ID: Record<string, string> = Object.fromEntries(
-  MOCK_TOOLBOX_MANIFEST.tools.map((t) => [t.id, t.name]),
-);
-
-// 已安装 app 包 → 易教工具卡片的补充元信息
-const MOCK_PKG_APP_BY_ID: Record<string, { name: string; icon: string; desc: string }> = Object.fromEntries(
-  MOCK_PACKAGES.filter((p) => p.package_type === "app").map((p) => [
-    p.id,
-    { name: p.name.replace(/（离线应用）/, ""), icon: p.id.includes("math-geo") ? "Shapes" : "Calculator", desc: p.description ?? "" },
-  ]),
-);
+// 展示名映射（由真实 toolboxManifest 派生，组件内 useEffect 刷新）
+// 已安装 app 包 → 易教工具卡片的补充元信息（由真实 storeListAvailable 派生）
