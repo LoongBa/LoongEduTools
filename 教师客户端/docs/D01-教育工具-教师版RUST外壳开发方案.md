@@ -72,6 +72,15 @@
 └── config.json                # 本地配置（口令到期日/壳版本等）
 ```
 
+**config.json 字段**（v0.3 决策点4 定稿；`recents.rs` 结构化读写，未知字段保留）：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `api_base` | string | **服务端地址（唯一需事先明确的配置）**。解析优先级：config.json 显式字段 > 编译期默认（`LOONGEDU_API_BASE` env，打包时注入）> 空（= P0 离线模式）。示例：`https://edu-api.<workername>.workers.dev`（CF 过渡）/ `https://api.loongba.education`（生产）；详见 A01 §Base URL |
+| `recents` | object | 班级进度断点（`recents_*` 命令读写此子对象）；旧版纯进度 map 顶层格式自动迁移 |
+
+> 生命周期：`config.json` 跟随 exe（U 盘绿色目录形态），换机器即带走；`recents_set` 只更新 `recents` 子对象，**不会覆盖** `api_base`。
+
 ---
 
 ## 3. 认证子系统
