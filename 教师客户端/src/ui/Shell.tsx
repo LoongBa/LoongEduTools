@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { listen } from "@tauri-apps/api/event";
 import { cn } from "@/lib/utils";
 import { detectPatternFor } from "@/lib/archiveDetect";
-import type { ArchiveMeta, Notification, View } from "@/lib/types";
+import type { ArchiveMeta, ArchiveRule, Notification, View } from "@/lib/types";
 import { VIEW_TITLES } from "@/lib/nav";
 import {
   useArchivePending,
@@ -95,29 +95,92 @@ function ShellInner() {
   const [groupCfg] = useNavGroups();
   const { items: notifyItems, push: notifyPush, markAllRead, removeOne, clearAll, unread } = useNotifications();
 
-  // D11 §5 · 素材归档：订阅 archive:new（P1 轮询发现新下载）→ 入待确认队列
+  // D11 §5 · 素材归档：订阅 archive:new（P1 轮询发现新下载）
+  // §5.4 静默归档：回调先查自动整理规则（taoli.archive.rules）——命中 → 跳过卡片直接归档 + 通知合并；
+  // 未命中 / 归档失败 → 降级入待确认队列弹卡片。
   const { items: archivePending, add: archiveAdd, confirm: archiveConfirm, ignore: archiveIgnore } = useArchivePending();
-  const { addRule: archiveAddRule } = useArchiveRules();
+  const { addRule: archiveAddRule, matchFor } = useArchiveRules();
   /** 待确认的第一张卡片（每张处理完自动流转下一张；关闭=跳过保留） */
   const [archiveCardOpen, setArchiveCardOpen] = useState(true);
   const nextPending = archivePending.find((p) => p.status === "pending");
 
+  /** 归档变更广播：下载中心「素材归档」Tab 监听刷新（归档/撤销后无需手动点刷新） */
+  const notifyArchiveChanged = useCallback(() => {
+    window.dispatchEvent(new Event("archive:changed"));
+  }, []);
+
+  /** D11 §7 归档成功通知（channel=archive + groupKey 合并 + 撤销 action）；viaRule=true 文案「已自动整理」 */
+  const pushArchivedNotify = useCallback(
+    (name: string, path: string, meta: ArchiveMeta, viaRule: boolean) => {
+      notifyPush(
+        {
+          kind: "success",
+          channel: "archive",
+          title: `${viaRule ? "已自动整理" : "已归档"}：${meta.subject}·${meta.version}·${meta.grade}${meta.volume}`,
+          body: name,
+          meta: { path, subject: meta.subject },
+          action: "undo-archive",
+        },
+        { groupKey: `archived:${meta.subject}:${meta.version}:${meta.grade}${meta.volume}` },
+      );
+    },
+    [notifyPush],
+  );
+
+  /** §5.4 静默归档：命中规则 → 直接 archive_confirm（不再询问）；失败 → 降级确认卡片 */
+  const silentArchive = useCallback(
+    async (payload: { name: string; path: string; size_bytes: number; at: string }, rule: ArchiveRule) => {
+      const meta: ArchiveMeta = {
+        subject: rule.subject,
+        version: rule.version,
+        grade: rule.grade,
+        volume: rule.volume,
+      };
+      try {
+        await api.archiveConfirm(payload.path, meta);
+      } catch (e) {
+        // 归档失败（源文件缺失/类型不支持等）→ 降级：入待确认队列弹卡片，不静默吞掉
+        archiveAdd(payload);
+        setArchiveCardOpen(true);
+        toast.error("自动整理失败", { description: friendlyErr(e) });
+        return;
+      }
+      pushArchivedNotify(payload.name, payload.path, meta, true);
+      notifyArchiveChanged();
+      toast.success(`已自动整理「${payload.name}」到素材目录`);
+    },
+    [archiveAdd, notifyArchiveChanged, pushArchivedNotify],
+  );
+
   useEffect(() => {
     // listen 在非 Tauri 环境（dev/测试）会抛：catch 静默降级
+    // 竞态防护：listen 是异步注册（promise），依赖变更重跑 effect 时用 cancelled 标志
+    // 注销迟到完成的注册，避免旧 listener 泄漏造成重复处理。
+    let cancelled = false;
     let unlisten: (() => void) | undefined;
     try {
       listen<{ name: string; path: string; size_bytes: number; at: string }>("archive:new", (e) => {
+        // §5.4：先查自动整理规则，命中 → 静默归档（不再弹卡片）
+        const rule = matchFor(e.payload.name);
+        if (rule) {
+          void silentArchive(e.payload, rule);
+          return;
+        }
+        // 未命中规则：入待确认队列弹卡片
         archiveAdd(e.payload);
-        setArchiveCardOpen(true); // 新下载到达 → 弹卡片
+        setArchiveCardOpen(true);
       }).then((un) => {
-        unlisten = un;
+        if (cancelled) un(); // 已清理：立即注销迟到完成的注册
+        else unlisten = un;
       });
     } catch {
       /* 非 Tauri 环境 */
     }
-    return () => unlisten?.();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [archiveAdd]);
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, [archiveAdd, matchFor, silentArchive]);
 
   /** 确认归档：真实调用 archive_confirm（拷贝→staging→rename + 索引）→ 成功标记 archived + 记忆 + 通知 */
   const handleArchiveConfirm = useCallback(
@@ -141,20 +204,11 @@ function ShellInner() {
         });
       }
       // D11 §7：归档通知走 archive 通道 + groupKey 合并（15min 同批次）+ 撤销 action
-      notifyPush(
-        {
-          kind: "success",
-          channel: "archive",
-          title: `已归档：${meta.subject}·${meta.version}·${meta.grade}${meta.volume}`,
-          body: item.name,
-          meta: { path: item.path, subject: meta.subject },
-          action: "undo-archive",
-        },
-        { groupKey: `archived:${meta.subject}:${meta.version}:${meta.grade}${meta.volume}` },
-      );
+      pushArchivedNotify(item.name, item.path, meta, false);
+      notifyArchiveChanged();
       toast.success(`已归档「${item.name}」到素材目录`);
     },
-    [archivePending, archiveConfirm, archiveAddRule, notifyPush],
+    [archivePending, archiveConfirm, archiveAddRule, pushArchivedNotify, notifyArchiveChanged],
   );
 
   /** 忽略：留在下载目录不归档 */
@@ -187,6 +241,7 @@ function ShellInner() {
               description: "源文件仍在浏览器下载目录，可重新整理。",
             });
             removeOne(n.id);
+            notifyArchiveChanged(); // 素材归档 Tab 联动刷新
           } else {
             // 索引中已无此条目（已被撤销/手动删除）：仅清通知
             removeOne(n.id);
@@ -197,7 +252,7 @@ function ShellInner() {
         }
       })();
     },
-    [removeOne],
+    [removeOne, notifyArchiveChanged],
   );
 
   // 侧栏快捷启动项：pinnedMenu 钉选项（view/edu/tool/bm 均可），≤6、按钉入时间排序；失效 bm 自动过滤

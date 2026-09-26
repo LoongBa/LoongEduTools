@@ -142,8 +142,11 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
   }, []);
   useEffect(() => {
     refreshArchives();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // 监听归档变更广播（Shell 归档/撤销成功后触发，素材归档 Tab 自动刷新）
+    const onArchiveChanged = () => refreshArchives();
+    window.addEventListener("archive:changed", onArchiveChanged);
+    return () => window.removeEventListener("archive:changed", onArchiveChanged);
+  }, [refreshArchives]);
   const items: StoreItem[] = useMemo(() => {
     return packages.map((p) => {
       const instVer = installed[p.id];
