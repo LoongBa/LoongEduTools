@@ -488,7 +488,8 @@
     var back = makeEl('button', 'game-back', '‹ 返回');
     back.addEventListener('click', function () { viewHome(); });
     top.appendChild(back);
-    var lvEl = makeEl('div', 'game-prog', (state.level === 'custom' ? customLevels[state.customIdx].name : LEVELS_CFG[state.level].label) + ' · 让机器人到 ⭐');
+    var customName = (state.level === 'custom' && customLevels[state.customIdx]) ? customLevels[state.customIdx].name : '';
+    var lvEl = makeEl('div', 'game-prog', (customName || LEVELS_CFG[state.level].label) + ' · 让机器人到 ⭐');
     lvEl.id = 'game-prog';
     top.appendChild(lvEl);
     var timerEl = makeEl('div', 'game-timer', '⏱ 00.0');
@@ -941,7 +942,8 @@
     // v1.2：自建关卡 2★ 兜底（最优循环解不可简单算；不写 best/recent 防污染三档统计）
     if (state.level === 'custom') {
       markCustomSolved(state.customIdx);
-      var recC = { date: todayStr(), level: 'custom', customName: customLevels[state.customIdx].name, stars: 2, cmds: state.totalCmds };
+      var cn = (state.level === 'custom' && customLevels[state.customIdx]) ? customLevels[state.customIdx].name : '';
+      var recC = { date: todayStr(), level: 'custom', customName: cn, stars: 2, cmds: state.totalCmds };
       store.history.push(recC);
       store.history = store.history.slice(-100);
       saveStore();
@@ -1220,7 +1222,7 @@
     }
   }
 
-  // 末端生长：点相邻格 append；不邻接拦截；已在 trace 拦截
+  // 末端生长：点相邻格 append；不邻接拦截；点已画格 = 回退到该处（v1.2.1 优先级 ①②③④）
   function onEditCellClick(ev) {
     var cell = ev.currentTarget;
     var x = parseInt(cell.getAttribute('data-x'), 10);
@@ -1229,7 +1231,11 @@
     var last = trace[trace.length - 1];
     for (var i = 0; i < trace.length; i++) {
       if (trace[i].x === x && trace[i].y === y) {
-        showEditMsg('这条路绕回自己了');
+        if (i === trace.length - 1) { return; }   // ② 点末端 = 无操作（防误触）
+        // ① 点 trace 中间格 → 回退到该格（删除其后所有格）
+        state.editTrace = trace.slice(0, i + 1);  // 保留 0..i，丢弃 i+1..end
+        showEditMsg('已回退到第 ' + (i + 1) + ' 格');
+        renderEditBoard();
         return;
       }
     }
@@ -1293,7 +1299,7 @@
     var cl = customLevels[idx];
     if (!cl) { viewCustomList(); return; }
     state.gridW = state.gridH = cl.gridW;    // 固定 10
-    state.trace = cl.trace;                  // [{x,y},...] 对象数组
+    state.trace = cl.trace.slice();          // [{x,y},...] 对象数组（v1.2.1：浅拷贝防反向污染存储）
     state.walls = buildCorridor(cl.trace, cl.gridW);
     state.start = { x: 1, y: 1 }; state.startFace = 0;
     state.goal = cl.goal;                    // {x,y} = trace 末端
