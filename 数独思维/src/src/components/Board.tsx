@@ -20,6 +20,8 @@ export interface BoardProps {
   target?: number | null;
   /** 回放标记 */
   replay?: boolean;
+  /** 错题重练：上次填错的位置（replay-mark 浅红标记） */
+  errMarks?: number[];
   onPick?: (i: number) => void;
   className?: string;
 }
@@ -35,12 +37,14 @@ export function Board({
   peerGuide = [],
   target = null,
   replay = false,
+  errMarks = [],
   onPick,
   className,
 }: BoardProps) {
   const n = size * size;
   const selVal = selected != null ? board[selected] : 0;
   const wrongSet = new Set(wrong);
+  const errSet = new Set(errMarks);
   const peerSet = new Set(peerGuide.length ? peerGuide : selected != null ? peersLite(size, selected) : []);
 
   return (
@@ -65,6 +69,7 @@ export function Board({
           const isWrong = wrongSet.has(i);
           const isPeer = peerSet.has(i) && !val;
           const isTarget = target === i;
+          const isErrMark = errSet.has(i) && !isSel && !isWrong;
           return (
             <button
               key={i}
@@ -85,7 +90,9 @@ export function Board({
                 isSame && "bg-hl-same hl-shape-same rounded-md",
                 isSel && "bg-hl-selected hl-shape-selected",
                 isWrong && "bg-hl-wrong hl-shape-wrong",
-                !isSel && !isWrong && !isSame && !isPeer && "bg-transparent hover:bg-muted/60",
+                isErrMark && !val && "bg-hl-wrong/20",
+                isErrMark && val && "ring-1 ring-inset ring-hl-wrong/50",
+                !isSel && !isWrong && !isSame && !isPeer && !isErrMark && "bg-transparent hover:bg-muted/60",
                 onPick ? "press" : "cursor-default",
               )}
             >

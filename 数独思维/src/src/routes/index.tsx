@@ -85,7 +85,7 @@ function Index() {
   }
 
   function replay(it: BookItem) {
-    start({ size: it.size, level: it.level, source: "replay", board: it.board, solution: it.solution });
+    start({ size: it.size, level: it.level, source: "replay", board: it.board, solution: it.solution, errIdx: it.errIdx });
   }
 
   /* ---------- 子视图 ---------- */

@@ -202,7 +202,9 @@ export function BookList({
             </p>
             <p className="mt-1 text-[11px] leading-none text-muted-foreground tnum">
               {new Date(it.ts).toLocaleDateString("zh-CN")}
-              {kind === "mistake" ? ` · 失误 ${it.errors ?? 0} · 提示 ${it.hints ?? 0}` : " · 已收藏"}
+              {kind === "mistake"
+                ? ` · 失误 ${it.errors ?? 0} · 提示 ${it.hints ?? 0}${it.errIdx && it.errIdx.length ? ` · 上次填错 ${it.errIdx.length} 处` : ""}`
+                : " · 已收藏"}
             </p>
           </div>
           <div className="flex shrink-0 flex-col gap-1.5">

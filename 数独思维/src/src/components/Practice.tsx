@@ -24,6 +24,8 @@ export interface StartParams {
   /** 回放（错题/收藏重练）时直接给定盘面 */
   board?: Grid;
   solution?: Grid;
+  /** 错题重练：上次填错的位置索引（replay-mark 标记） */
+  errIdx?: number[];
 }
 
 interface Props {
@@ -102,6 +104,8 @@ export function Practice({ params, onExit, onFinish }: Props) {
   const hintTimer = useRef<number | undefined>(undefined);
   const boardWrapRef = useRef<HTMLDivElement | null>(null);
   const scaleRef = useRef(1);
+  /** 本局填错的位置索引（去重；退出/完成时写入错题本 errIdx） */
+  const errLogRef = useRef<Set<number>>(new Set());
 
   const givenMask = useMemo(() => start.puzzle.map((v) => v > 0), [start.puzzle]);
   const remaining = useMemo(() => remainingMap(board, size), [board, size]);
@@ -226,11 +230,12 @@ export function Practice({ params, onExit, onFinish }: Props) {
       setBoard(nb);
 
       if (clash.length) {
+        errLogRef.current.add(selected);
         flashWrong([selected, ...clash]);
         setErrors((e) => e + 1);
         playSound("wrong");
         setWarn(true);
-        setMsg("这里和同${unitName(clash[0], selected, size)}的数字撞上了，看看是不是换个位置更合适。");
+        setMsg(`这里和同${unitName(clash[0], selected, size)}的数字撞上了，看看是不是换个位置更合适。`);
         window.setTimeout(() => setWarn(false), 1200);
         return;
       }
@@ -397,7 +402,7 @@ export function Practice({ params, onExit, onFinish }: Props) {
         d.mistakes = d.mistakes.filter((m) => toSDString(m.board, m.size) !== sig);
         if (d.mistakes.length < before) unlock("mistakeClear");
       } else if (errors > 0 || hints > 0) {
-        pushMistake(d, g, start.solution, size, level, errors, hints);
+        pushMistake(d, g, start.solution, size, level, errors, hints, [...errLogRef.current]);
       }
       d.cur = null;
       unlockedRef.current = got;
@@ -428,6 +433,7 @@ export function Practice({ params, onExit, onFinish }: Props) {
     setSelected(null);
     setErrors(0);
     setHints(0);
+    errLogRef.current = new Set();
     setMs(0);
     setFinished(false);
     setMsg(introText(source, size));
@@ -440,7 +446,7 @@ export function Practice({ params, onExit, onFinish }: Props) {
     // 退出未完成且有过失误 → 记入错题本（同盘面已存在则跳过；FIFO 50 上限沿用）
     if (!finished && errors > 0) {
       update((d) => {
-        pushMistake(d, start.puzzle, start.solution, size, level, errors, hints);
+        pushMistake(d, start.puzzle, start.solution, size, level, errors, hints, [...errLogRef.current]);
       });
     }
     onExit();
@@ -502,6 +508,7 @@ export function Practice({ params, onExit, onFinish }: Props) {
             okCell={okCell}
             peerGuide={hintCells}
             replay={source === "replay"}
+            errMarks={source === "replay" ? params.errIdx : undefined}
             onPick={(i) => {
               if (finished) return;
               setHintCells([]);
@@ -702,10 +709,10 @@ function introText(source: PracticeSource, size: Size): string {
   return size === 4 ? "先从一行开始看：哪个数字只剩下的一个位置？" : "挑一个数字，逐行逐列把它的可能位置划掉。";
 }
 
-function pushMistake(d: { mistakes: BookItem[] }, board: Grid, solution: Grid, size: Size, level: LevelId, errors: number, hints: number) {
+function pushMistake(d: { mistakes: BookItem[] }, board: Grid, solution: Grid, size: Size, level: LevelId, errors: number, hints: number, errIdx: number[] = []) {
   const sig = toSDString(board, size);
   if (d.mistakes.some((m) => toSDString(m.board, m.size) === sig)) return;
-  d.mistakes.unshift({ id: `${Date.now()}`, ts: Date.now(), level, size, board: board.slice(), solution: solution.slice(), errors, hints });
+  d.mistakes.unshift({ id: `${Date.now()}`, ts: Date.now(), level, size, board: board.slice(), solution: solution.slice(), errors, hints, errIdx });
   if (d.mistakes.length > 50) d.mistakes = d.mistakes.slice(0, 50);
 }
 

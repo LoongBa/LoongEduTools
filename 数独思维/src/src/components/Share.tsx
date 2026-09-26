@@ -8,6 +8,7 @@ import { useStore } from "@/lib/store";
 import { cssVar } from "@/lib/theme";
 import { toSDString, type Grid, type Size } from "@/lib/sudoku";
 import { formatMs } from "./Overlay";
+import qrcode from "@/lib/qrcode.js";
 
 /* ---------- 通用：把盘面画到 canvas ---------- */
 function drawBoard(ctx: CanvasRenderingContext2D, board: Grid, size: Size, x: number, y: number, side: number, opts: { fg: string; line: string; boxLine: string; bg: string; userColor?: string }) {
@@ -57,44 +58,24 @@ function drawBoard(ctx: CanvasRenderingContext2D, board: Grid, size: Size, x: nu
   ctx.stroke();
 }
 
-/* ---------- 伪二维码（确定性图案，用于版式占位说明） ---------- */
-function drawQrBlock(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, seed: string, dark: string, light: string) {
-  const N = 21;
-  const u = size / N;
-  let h = 2166136261 >>> 0;
-  for (let i = 0; i < seed.length; i++) {
-    h ^= seed.charCodeAt(i);
-    h = Math.imul(h, 16777619) >>> 0;
-  }
-  const rnd = () => {
-    h ^= h << 13;
-    h >>>= 0;
-    h ^= h >> 17;
-    h = Math.imul(h, 16777619) >>> 0;
-    h ^= h << 5;
-    h >>>= 0;
-    return h / 4294967296;
-  };
+/* ---------- 真二维码（qrcode.js MIT，UTF-8 编码，4 模块静区；老版本同款绘制） ---------- */
+function drawRealQr(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, size: number, dark: string, light: string) {
+  qrcode.stringToBytes = qrcode.stringToBytesFuncs["UTF-8"];
+  const qr = qrcode(0, "L");
+  qr.addData(text);
+  qr.make();
+  const n = qr.getModuleCount();
+  const module = size / (n + 8);
   ctx.fillStyle = light;
   ctx.fillRect(x, y, size, size);
   ctx.fillStyle = dark;
-  const finder = (fx: number, fy: number) => {
-    ctx.fillRect(x + fx * u, y + fy * u, 7 * u, 7 * u);
-    ctx.fillStyle = light;
-    ctx.fillRect(x + (fx + 1) * u, y + (fy + 1) * u, 5 * u, 5 * u);
-    ctx.fillStyle = dark;
-    ctx.fillRect(x + (fx + 2) * u, y + (fy + 2) * u, 3 * u, 3 * u);
-  };
-  for (let r = 0; r < N; r++) {
-    for (let c = 0; c < N; c++) {
-      const inFinder = (r < 8 && c < 8) || (r < 8 && c > N - 9) || (r > N - 9 && c < 8);
-      if (inFinder) continue;
-      if (rnd() > 0.52) ctx.fillRect(x + c * u, y + r * u, u, u);
+  for (let r = 0; r < n; r++) {
+    for (let c = 0; c < n; c++) {
+      if (qr.isDark(r, c)) {
+        ctx.fillRect(x + (c + 4) * module, y + (r + 4) * module, module + 0.5, module + 0.5);
+      }
     }
   }
-  finder(0, 0);
-  finder(N - 7, 0);
-  finder(0, N - 7);
 }
 
 /* ==================== 分享这道题 ==================== */
@@ -306,15 +287,15 @@ export function ShareResultOverlay({
     ctx.font = `500 36px "PingFang SC",sans-serif`;
     ctx.fillText(`已点亮推理技巧 ${litCount} / 16`, W / 2, 840 + bSide + 120);
 
-    // 二维码区
+    // 二维码区（真码：UTF-8 编码题目 SD 文本，扫码复制后在「导入题目」粘贴练习）
     const qrSize = 260;
     roundRect(ctx, (W - qrSize) / 2 - 26, H - 460, qrSize + 52, qrSize + 52, 28);
     ctx.fillStyle = card;
     ctx.fill();
-    drawQrBlock(ctx, (W - qrSize) / 2, H - 434, qrSize, `sd-${size}-${toSDString(board, size)}`, fg, card);
+    drawRealQr(ctx, `数独思维 · ${size}×${size} 练习题\n题目编码：${toSDString(board, size)}`, (W - qrSize) / 2, H - 434, qrSize, fg, card);
     ctx.fillStyle = muted;
     ctx.font = `400 30px "PingFang SC",sans-serif`;
-    ctx.fillText("扫码进入离线练习页", W / 2, H - 130);
+    ctx.fillText("扫码复制题目，在导入题目里粘贴练习", W / 2, H - 130);
     ctx.fillStyle = fg;
     ctx.font = `500 32px "PingFang SC",sans-serif`;
     ctx.fillText("龙爸乐学 · 数独思维", W / 2, H - 76);

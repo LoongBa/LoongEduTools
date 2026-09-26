@@ -34,6 +34,8 @@ export interface BookItem {
   /** 错题本用：错误次数 / 提示次数 */
   errors?: number;
   hints?: number;
+  /** 错题本用：上次填错的位置索引（重练时 replay-mark 浅红标记） */
+  errIdx?: number[];
 }
 
 export interface Snapshot {
