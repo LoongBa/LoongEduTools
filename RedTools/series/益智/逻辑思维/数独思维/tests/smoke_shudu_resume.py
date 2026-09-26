@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""数独思维 v1.2 断局恢复冒烟测试（Playwright + file://）
+"""数独思维 v1.2/v1.34 断局恢复冒烟测试（Playwright + file://）
 
 用例：
   R1 填数后返回难度页 → 出现「继续上次」入口（含已玩秒/已填格数）
@@ -10,6 +10,9 @@
   R6 重开后「继续上次」消失
   R7 恢复局可正常通关（undo/提示/星级正常）
   R8 全程无 JS 报错
+  R9 (v1.34 P0) 每日挑战中断 → 恢复 → 顶栏保留「每日题」→ 通关记 store.daily
+  R10 (v1.34 P0) 闯关地图中断 → 恢复 → 顶栏保留「关卡」→ 通关记 mapProgress
+  R11 (v1.34 P0) 导入局中断 → 恢复 → 顶栏保留「导入题」→ 通关不计成绩（best 未写）
 """
 import json
 from pathlib import Path
@@ -100,6 +103,32 @@ def wait_game(page, cnt):
     page.wait_for_timeout(150)
 
 
+def wait_any_game(page):
+    """等棋盘出现（每日/闯关/导入难度不定，只等 .cell 数量 > 0）"""
+    for _ in range(30):
+        page.wait_for_timeout(100)
+        if page.locator(".cell").count() > 0:
+            break
+    page.wait_for_timeout(150)
+
+
+def dismiss_landscape_hint(page):
+    """v1.9 E4：9×9 竖屏「建议横屏」提示（周六 9×9 每日题触发）→ 点「知道了」"""
+    ov = page.locator(".overlay", has_text="建议横屏")
+    if ov.count() > 0:
+        page.locator(".overlay .btn-main", has_text="知道了").click()
+        page.wait_for_timeout(200)
+
+
+def read_store(page):
+    return json.loads(page.evaluate("localStorage.getItem('%s')" % STORE_KEY) or "null")
+
+
+def today_str():
+    import datetime
+    return datetime.date.today().strftime("%Y%m%d")
+
+
 def main():
     with sync_playwright() as p:
         browser = p.chromium.launch()
@@ -107,6 +136,8 @@ def main():
         js_errors = []
         page.on("pageerror", lambda e: js_errors.append(str(e)))
         page.goto(URL)
+        page.evaluate("localStorage.clear()")
+        page.reload()
         page.wait_for_timeout(400)
 
         # 进 4×4
@@ -202,6 +233,111 @@ def main():
             page.wait_for_timeout(300)
             check("R6-1 重开后继续入口消失", page.locator(".diff-btn").count() == 3,
                   f"count={page.locator('.diff-btn').count()}")
+
+        # ============ v1.34 P0：三态恢复（每日挑战 / 闯关 / 导入） ============
+        # R9 每日挑战中断 → 恢复 → 顶栏保留「· 每日题」→ 通关记 store.daily
+        page.locator("button:has-text('每日挑战')").click()
+        page.wait_for_timeout(400)
+        dismiss_landscape_hint(page)
+        wait_any_game(page)
+        d_cells = read_board(page)
+        d_size = int(round(len(d_cells) ** 0.5))
+        d_sol = solve_via_page(page, [c["v"] for c in d_cells], d_size)
+        check("R9-0 每日题可解", d_sol is not None)
+        if d_sol:
+            d_empty = [i for i in range(d_size * d_size) if not d_cells[i]["given"] and d_cells[i]["v"] == 0]
+            fill_cell(page, d_empty[0], d_sol[d_empty[0]])
+            page.locator(".topbar .btn-ghost-sm").click()
+            page.wait_for_timeout(300)
+            page.locator(".resume-btn").click()
+            wait_any_game(page)
+            check("R9-1 恢复顶栏保留「· 每日题」",
+                  "每日题" in page.locator(".level-title").inner_text(),
+                  page.locator(".level-title").inner_text())
+            d_cells2 = read_board(page)
+            d_sol2 = solve_via_page(page, [c["v"] for c in d_cells2], d_size)
+            if d_sol2:
+                fill_board(page, d_sol2)
+                page.wait_for_timeout(400)
+                st9 = read_store(page)
+                check("R9-2 通关记 store.daily（当日）",
+                      st9 and st9.get("daily") and st9["daily"].get("date") == today_str(),
+                      str((st9 or {}).get("daily"))[:80])
+        page.locator(".overlay button", has_text="选难度").click()
+        page.wait_for_timeout(300)
+
+        # R10 闯关地图 1-1 中断 → 恢复 → 顶栏保留「· 关卡」→ 通关记 mapProgress
+        page.locator("button:has-text('闯关地图')").click()
+        page.wait_for_timeout(300)
+        page.locator(".map-node", has_text="🔓").click()
+        page.wait_for_timeout(400)
+        wait_any_game(page)
+        m_cells = read_board(page)
+        m_size = int(round(len(m_cells) ** 0.5))
+        m_sol = solve_via_page(page, [c["v"] for c in m_cells], m_size)
+        check("R10-0 闯关 1-1 可解", m_sol is not None)
+        if m_sol:
+            m_empty = [i for i in range(m_size * m_size) if not m_cells[i]["given"] and m_cells[i]["v"] == 0]
+            fill_cell(page, m_empty[0], m_sol[m_empty[0]])
+            page.locator(".topbar .btn-ghost-sm").click()
+            page.wait_for_timeout(300)
+            page.locator(".resume-btn").click()
+            wait_any_game(page)
+            check("R10-1 恢复顶栏保留「· 关卡 1-1」",
+                  "关卡" in page.locator(".level-title").inner_text(),
+                  page.locator(".level-title").inner_text())
+            m_cells2 = read_board(page)
+            m_sol2 = solve_via_page(page, [c["v"] for c in m_cells2], m_size)
+            if m_sol2:
+                fill_board(page, m_sol2)
+                page.wait_for_timeout(400)
+                st10 = read_store(page)
+                comp = (st10 or {}).get("mapProgress", {}).get("completed", [])
+                check("R10-2 通关记 mapProgress 含 1-1（i=0）",
+                      any((isinstance(e, dict) and e.get("i") == 0) or e == 0 for e in comp),
+                      str(comp)[:80])
+        page.locator(".overlay button", has_text="选难度").click()
+        page.wait_for_timeout(300)
+
+        # R11 导入局中断 → 恢复 → 顶栏保留「· 导入题」→ 通关不计成绩（best 快照不变）
+        st_before = read_store(page)
+        best_before = dict((st_before or {}).get("best") or {})
+        imp_puzzle = page.evaluate("window.SUDOKU.genPuzzle(4, 10).puzzle")
+        imp_txt = "数独思维\nSD4:" + ",".join(str(x) for x in imp_puzzle)
+        page.locator("button:has-text('导入题目')").click()
+        page.wait_for_timeout(200)
+        page.locator(".import-zone").fill(imp_txt)
+        page.locator("button:has-text('导入并开始')").click()
+        page.wait_for_timeout(400)
+        wait_any_game(page)
+        check("R11-0 导入局顶栏标记「· 导入题」",
+              "导入题" in page.locator(".level-title small").inner_text())
+        i_cells = read_board(page)
+        i_size = int(round(len(i_cells) ** 0.5))
+        i_sol = solve_via_page(page, [c["v"] for c in i_cells], i_size)
+        check("R11-0b 导入局可解", i_sol is not None)
+        if i_sol:
+            i_empty = [i for i in range(i_size * i_size) if not i_cells[i]["given"] and i_cells[i]["v"] == 0]
+            fill_cell(page, i_empty[0], i_sol[i_empty[0]])
+            page.locator(".topbar .btn-ghost-sm").click()
+            page.wait_for_timeout(300)
+            page.locator(".resume-btn").click()
+            wait_any_game(page)
+            check("R11-1 恢复顶栏保留「· 导入题」",
+                  "导入题" in page.locator(".level-title small").inner_text(),
+                  page.locator(".level-title small").inner_text())
+            i_cells2 = read_board(page)
+            i_sol2 = solve_via_page(page, [c["v"] for c in i_cells2], i_size)
+            if i_sol2:
+                fill_board(page, i_sol2)
+                page.wait_for_timeout(400)
+                st11 = read_store(page)
+                best_after = dict((st11 or {}).get("best") or {})
+                check("R11-2 导入恢复通关不计最佳（best 快照不变）",
+                      best_after == best_before,
+                      "before=%s after=%s" % (best_before, best_after))
+        page.locator(".overlay button", has_text="选难度").click()
+        page.wait_for_timeout(300)
 
         check("R8-1 全程无 JS 报错", len(js_errors) == 0, "; ".join(js_errors))
         browser.close()

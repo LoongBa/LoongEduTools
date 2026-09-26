@@ -191,13 +191,15 @@ var MAP_LEVELS = [
       undos.push({ i: state.undoStack[i].i, val: state.undoStack[i].val,
                    pen: state.undoStack[i].pen ? state.undoStack[i].pen.slice() : null });
     }
-    store.cur = {
+store.cur = {
       level: state.level, N: state.N, givens: state.givens, givensCount: state.givensCount,
       puzzle: state.puzzle.slice(), solution: state.solution.slice(), given: state.given.slice(),
       pencils: pens, undoStack: undos,
       hints: state.hints, errors: state.errors, selected: state.selected,
       penMode: state.penMode, won: false,
       origPuzzle: state.origPuzzle, // v1.6：原始盘面快照（断局恢复后仍可追踪错题）
+      // v1.34 P0：记录局来源标记（每日挑战/闯关/导入），断局恢复后保留归属
+      createdFrom: state.createdFrom, isDaily: state.isDaily, fromMap: state.fromMap,
       ms: state.ms, startStamp: Date.now()
     };
     saveStore();
@@ -247,12 +249,16 @@ var MAP_LEVELS = [
                    pen: cur.undoStack[i].pen ? cur.undoStack[i].pen.slice() : null });
     }
     state.undoStack = undos;
-    state.hints = cur.hints;
+state.hints = cur.hints;
     state.errors = cur.errors;
     state.selected = cur.selected;
     state.penMode = cur.penMode;
     state.won = false;
     state.playing = true;
+    // v1.34 P0：恢复局归属标记（v1.34 前旧快照无此三字段 → 兜底普通局；每日/闯关/导入恢复后保留来源语义）
+    state.createdFrom = (cur.createdFrom === 'import') ? 'import' : 'normal';
+    state.isDaily = !!cur.isDaily;
+    state.fromMap = (typeof cur.fromMap === 'number' && cur.fromMap >= 0) ? cur.fromMap : -1;
     // 计时续算：从保存点继续（startMs 重置为「当前时刻 - 已累计」）
     state.ms = cur.ms;
     state.startMs = performance.now() - cur.ms;
@@ -507,6 +513,9 @@ var MAP_LEVELS = [
     // 构建候选笔记网格：每个候选数字 1..N 一个槽（最多 9 个），flex-wrap 自动排布
     var grid = document.createElement('div');
     grid.className = 'cell-note';
+    // v1.34 P2⑫：无障碍标注（读屏将候选笔记作为分组呈现，不破坏 .cell-note/.note-slot 选择器）
+    grid.setAttribute('role', 'group');
+    grid.setAttribute('aria-label', '候选笔记');
     for (var d = 1; d <= n; d++) {
       var slot = document.createElement('span');
       slot.className = 'note-slot';
@@ -1643,6 +1652,8 @@ var grid = makeEl('div', 'map-grid');
       id: 'f_' + Date.now(), ts: Date.now(), level: state.level,
       board: state.origPuzzle.slice(), solution: state.solution.slice()
     });
+    // v1.34 P2⑨：收藏本 FIFO 上限 50 条（同错题本），防 localStorage 无限膨胀
+    while (store.favorites.length > 50) { store.favorites.shift(); }
     saveStore();
     buildWinOverlay();
   }
@@ -1886,6 +1897,14 @@ function shareTextForCurrent() {
       var v = Number(clean[i]);
       if (v < 0 || v > N) { return { error: '数字必须是 0~' + N }; }
       board.push(v);
+    }
+    // v1.34 P2⑩：导入题最少给定格校验（4×4≥4 / 6×6≥10 / 9×9≥17 线索），
+    // 防「几乎空盘」的无效题（数学上 9×9 最少 17 线索，4×4/6×6 用生成目标半程保守线）
+    var MIN_GIVENS = { 4: 4, 6: 10, 9: 17 };
+    var gCnt = 0;
+    for (i = 0; i < board.length; i++) { if (board[i] !== 0) { gCnt++; } }
+    if (gCnt < MIN_GIVENS[N]) {
+      return { error: '题目已知格太少（' + N + '×' + N + ' 至少 ' + MIN_GIVENS[N] + ' 个已知数）' };
     }
     // 唯一解校验（solveCount 限 2 个解即可判定）
     if (SUDOKU.solveCount(board, N, 2) !== 1) { return { error: '这道题没有唯一解，换一道试试' }; }
@@ -2595,10 +2614,9 @@ function baseSkillCount() {
     state.hintIdx = [];
     state.errMarks = null;
     state.hintExpl = null;
-    state.replayFrom = null;
-    state.createdFrom = 'normal'; // v1.7：断局恢复按普通局计成绩（cur 快照不存 createdFrom）
-    state.isDaily = false;        // v1.12：断局恢复非每日挑战
-    state.fromMap = -1;           // v1.13：断局恢复非闯关关
+state.replayFrom = null;
+    // v1.34 P0：断局恢复的 createdFrom/isDaily/fromMap 由 restoreCur 从快照回填
+    //（旧快照无字段 → 兜底普通局；每日/闯关/导入恢复后保留来源语义，通关仍记 daily/mapProgress/不计成绩）
     renderGameView();
     renderGameFooter();
     startTimer();
