@@ -65,6 +65,8 @@ export interface RemotePkg {
   package_type: string;
   /** 内容/扩展分区标签；服务端旧清单可能缺省（R03 §3.2 方案 A） */
   categories?: string[];
+  /** 展示用简介（S01 §2.2 预留字段，v0.3 启用）；旧清单可能缺省 */
+  description?: string | null;
   required_license_level: number;
   min_shell_version: string;
   size_bytes: number | null;
@@ -84,6 +86,8 @@ export interface StoreItem {
   package_type: string;
   /** 内容/扩展分区标签（壳端恒有值，旧清单缺省后落空数组） */
   categories: string[];
+  /** 展示用简介（S01 §2.2 预留字段，v0.3 启用）；旧清单缺省 null */
+  description: string | null;
   required_license_level: number;
   min_shell_version: string;
   size_bytes: number | null;
@@ -109,6 +113,8 @@ export interface ToolboxTool {
   id: string;
   name: string;
   category: string;
+  /** 搜索词别名（v0.3 设计源对齐）；旧清单缺省空数组 */
+  aliases?: string[];
   tags: string[];
   description: string;
   license: string;
@@ -142,6 +148,8 @@ export interface ToolboxShortcut {
   last_used: string;
   /** "download"（按清单下载）| "manual"（手动添加） */
   source: "download" | "manual";
+  /** 随身工具包导入但当前清单已无该工具时的展示名（v0.3 设计源对齐） */
+  external_name?: string | null;
 }
 
 export interface ToolboxDb {

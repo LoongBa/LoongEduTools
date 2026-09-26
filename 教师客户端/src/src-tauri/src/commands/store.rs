@@ -32,6 +32,9 @@ pub struct RemotePkg {
     /// 内容/扩展分区标签（R03 §3.2 方案 A）；旧服务端 JSON 缺省空数组
     #[serde(default)]
     pub categories: Vec<String>,
+    /// 展示用简介（S01 §2.2 预留字段，v0.3 启用）；旧清单缺省 None
+    #[serde(default)]
+    pub description: Option<String>,
     #[serde(default)]
     pub required_license_level: i32,
     #[serde(default)]
@@ -62,6 +65,7 @@ pub struct StoreItem {
     pub name: String,
     pub package_type: String,
     pub categories: Vec<String>,
+    pub description: Option<String>,
     pub required_license_level: i32,
     pub min_shell_version: String,
     pub size_bytes: Option<u64>,
@@ -533,6 +537,7 @@ pub async fn store_list_available(
                 name: rp.name,
                 package_type: rp.package_type,
                 categories: rp.categories,
+                description: rp.description,
                 required_license_level: rp.required_license_level,
                 min_shell_version: rp.min_shell_version,
                 size_bytes: rp.size_bytes,

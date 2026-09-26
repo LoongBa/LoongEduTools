@@ -1,0 +1,519 @@
+@import "tailwindcss" source(none);
+@source "../ui";
+/* tw-animate-css 未引入（业务组件仅用 Tailwind 内置 animate-spin/pulse +
+   styles.css 自带的 anim-collapse-*/progress-stripes/probe-pulse 动画） */
+
+/* 色值套数：:root（浅色默认）+ .dark（深色默认）两套；
+   配色皮肤通过 html[data-skin] 覆盖语义变量，深浅各一套数值 */
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  /* 侧栏语义令牌（对齐 R03 §2.4 命名） */
+  --color-sidebar-bg: var(--sidebar-bg);
+  --color-sidebar-text: var(--sidebar-text);
+  --color-sidebar-nav: var(--sidebar-nav);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-hover: var(--sidebar-hover);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-sidebar-active-fg: var(--sidebar-active-fg);
+  /* 品牌与状态色 */
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-on-primary: var(--on-primary);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --font-display: var(--font-display);
+}
+
+/* ══════ 浅色 · 默认（暖橙陶土）══════ */
+:root {
+  --radius: 0.5rem;
+  --font-sans: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Noto Serif SC", "Songti SC", "STSong", serif;
+
+  --background: #f9f6f2;
+  --foreground: #261d16;
+  --card: #ffffff;
+  --card-foreground: #261d16;
+  --popover: #ffffff;
+  --popover-foreground: #261d16;
+  --primary: #a94524;
+  --primary-foreground: #fbf8f1;
+  --on-primary: #fbf8f1;
+  --secondary: #f0eae0;
+  --secondary-foreground: #3f2f24;
+  --muted: #efece7;
+  --muted-foreground: #726a63;
+  --accent: #f8e5cb;
+  --accent-foreground: #5c2b13;
+  --destructive: #cc272e;
+  --destructive-foreground: #fbf8f1;
+  --border: #dcd7cf;
+  --input: #dcd7cf;
+  --ring: #a94524;
+
+  --sidebar-bg: #f6f2eb;
+  --sidebar-text: #2b221a;
+  --sidebar-nav: #564b42;
+  --sidebar-muted: #817971;
+  --sidebar-border: #e2ddd5;
+  --sidebar-hover: #efe7d9;
+  --sidebar-active: #a94524;
+  --sidebar-active-fg: #fbf8f1;
+
+  --brand: #a94524;
+  --brand-soft: #fce3c8;
+  --ok: #33854a;
+  --warn: #cd8800;
+}
+
+/* ══════ 深色 · 默认（暖橙夜）══════ */
+.dark {
+  --background: #17110c;
+  --foreground: #ebe7e0;
+  --card: #211a14;
+  --card-foreground: #ebe7e0;
+  --popover: #251e18;
+  --popover-foreground: #ebe7e0;
+  --primary: #e37547;
+  --primary-foreground: #140b06;
+  --on-primary: #140b06;
+  --secondary: #302720;
+  --secondary-foreground: #e1ded7;
+  --muted: #302720;
+  --muted-foreground: #9e978f;
+  --accent: #3a2a1f;
+  --accent-foreground: #f4e0d1;
+  --destructive: #ed5350;
+  --destructive-foreground: #fbf8f1;
+  --border: #3f362f;
+  --input: #3f362f;
+  --ring: #e37547;
+
+  --sidebar-bg: #120c07;
+  --sidebar-text: #e1ded7;
+  --sidebar-nav: #b4ada4;
+  --sidebar-muted: #817971;
+  --sidebar-border: #2a221d;
+  --sidebar-hover: #261d16;
+  --sidebar-active: #e37547;
+  --sidebar-active-fg: #140b06;
+
+  --brand: #e37547;
+  --brand-soft: #462312;
+  --ok: #3da763;
+  --warn: #dca331;
+}
+
+/* ══════ 皮肤：松青（绿）══════ */
+:root[data-skin="pine"] {
+  --background: #f3f9f6;
+  --foreground: #16221d;
+  --card: #ffffff;
+  --card-foreground: #16221d;
+  --popover: #ffffff;
+  --popover-foreground: #16221d;
+  --primary: #1c6d51;
+  --primary-foreground: #f3fbf6;
+  --on-primary: #f3fbf6;
+  --secondary: #e3eee8;
+  --secondary-foreground: #24382f;
+  --muted: #e7efea;
+  --muted-foreground: #5f6d66;
+  --accent: #cfeddc;
+  --accent-foreground: #00402c;
+  --border: #cdd7d1;
+  --input: #cdd7d1;
+  --ring: #1c6d51;
+
+  --sidebar-bg: #ebf4ef;
+  --sidebar-text: #1b2722;
+  --sidebar-nav: #43514a;
+  --sidebar-muted: #6a7871;
+  --sidebar-border: #d3ded7;
+  --sidebar-hover: #d7eadf;
+  --sidebar-active: #1c6d51;
+  --sidebar-active-fg: #f3fbf6;
+
+  --brand: #1c6d51;
+  --brand-soft: #cceeda;
+  --ok: #33854a;
+  --warn: #c09000;
+}
+
+.dark[data-skin="pine"] {
+  --background: #0b1512;
+  --foreground: #e2eae5;
+  --card: #131f1a;
+  --card-foreground: #e2eae5;
+  --popover: #17221e;
+  --popover-foreground: #e2eae5;
+  --primary: #59b387;
+  --primary-foreground: #03110b;
+  --on-primary: #03110b;
+  --secondary: #1f2c27;
+  --secondary-foreground: #d9e0dc;
+  --muted: #1f2c27;
+  --muted-foreground: #8d9c95;
+  --accent: #18342a;
+  --accent-foreground: #d4ebde;
+  --border: #2e3b36;
+  --input: #2e3b36;
+  --ring: #59b387;
+
+  --sidebar-bg: #06100c;
+  --sidebar-text: #d9e0dc;
+  --sidebar-nav: #a3b2ab;
+  --sidebar-muted: #707e77;
+  --sidebar-border: #1b2723;
+  --sidebar-hover: #13231d;
+  --sidebar-active: #59b387;
+  --sidebar-active-fg: #03110b;
+
+  --brand: #59b387;
+  --brand-soft: #043726;
+  --ok: #3da763;
+  --warn: #d4a73e;
+}
+
+/* ══════ 皮肤：靛蓝（冷色专业）══════ */
+:root[data-skin="indigo"] {
+  --background: #f5f8fc;
+  --foreground: #181f2e;
+  --card: #ffffff;
+  --card-foreground: #181f2e;
+  --popover: #ffffff;
+  --popover-foreground: #181f2e;
+  --primary: #3860ac;
+  --primary-foreground: #f4f9ff;
+  --on-primary: #f4f9ff;
+  --secondary: #e5ecf5;
+  --secondary-foreground: #293348;
+  --muted: #e9edf2;
+  --muted-foreground: #626978;
+  --accent: #d9e9ff;
+  --accent-foreground: #1f3969;
+  --border: #ced5de;
+  --input: #ced5de;
+  --ring: #3860ac;
+
+  --sidebar-bg: #edf2fa;
+  --sidebar-text: #1d2433;
+  --sidebar-nav: #454d5e;
+  --sidebar-muted: #6d7584;
+  --sidebar-border: #d5dbe4;
+  --sidebar-hover: #dbe5f6;
+  --sidebar-active: #3860ac;
+  --sidebar-active-fg: #f4f9ff;
+
+  --brand: #3860ac;
+  --brand-soft: #d7e9ff;
+  --ok: #258651;
+  --warn: #c58d04;
+}
+
+.dark[data-skin="indigo"] {
+  --background: #0f121c;
+  --foreground: #e3e8ef;
+  --card: #171b26;
+  --card-foreground: #e3e8ef;
+  --popover: #1b1f2a;
+  --popover-foreground: #e3e8ef;
+  --primary: #6499e8;
+  --primary-foreground: #070d1a;
+  --on-primary: #070d1a;
+  --secondary: #242935;
+  --secondary-foreground: #dadee5;
+  --muted: #242935;
+  --muted-foreground: #9099a8;
+  --accent: #24304a;
+  --accent-foreground: #d9e6f9;
+  --border: #323845;
+  --input: #323845;
+  --ring: #6499e8;
+
+  --sidebar-bg: #0a0d16;
+  --sidebar-text: #dadee5;
+  --sidebar-nav: #a5afbe;
+  --sidebar-muted: #737a8a;
+  --sidebar-border: #1f242f;
+  --sidebar-hover: #191f2e;
+  --sidebar-active: #6499e8;
+  --sidebar-active-fg: #070d1a;
+
+  --brand: #6499e8;
+  --brand-soft: #1a3053;
+  --ok: #33a868;
+  --warn: #d9a440;
+}
+
+/* ══════ 皮肤：玫瑰（浅色系·胭脂粉）══════ */
+:root[data-skin="rose"] {
+  --background: #fdf6f9;
+  --foreground: #2d1c24;
+  --card: #ffffff;
+  --card-foreground: #2d1c24;
+  --popover: #ffffff;
+  --popover-foreground: #2d1c24;
+  --primary: #ab3a5d;
+  --primary-foreground: #fef6f9;
+  --on-primary: #fef6f9;
+  --secondary: #f7e8ee;
+  --secondary-foreground: #492a39;
+  --muted: #f4ecef;
+  --muted-foreground: #7a656e;
+  --accent: #ffdce9;
+  --accent-foreground: #662136;
+  --border: #e1d3d9;
+  --input: #e1d3d9;
+  --ring: #ab3a5d;
+
+  --sidebar-bg: #fbf0f5;
+  --sidebar-text: #322028;
+  --sidebar-nav: #5d4952;
+  --sidebar-muted: #86707a;
+  --sidebar-border: #e9d9e0;
+  --sidebar-hover: #f9e0ea;
+  --sidebar-active: #ab3a5d;
+  --sidebar-active-fg: #fef6f9;
+
+  --brand: #ab3a5d;
+  --brand-soft: #ffdbe9;
+  --ok: #33854a;
+  --warn: #cd8800;
+}
+
+.dark[data-skin="rose"] {
+  --background: #1c1014;
+  --foreground: #efe5e9;
+  --card: #26181d;
+  --card-foreground: #efe5e9;
+  --popover: #2a1c21;
+  --popover-foreground: #efe5e9;
+  --primary: #e6768e;
+  --primary-foreground: #1b0810;
+  --on-primary: #1b0810;
+  --secondary: #35252b;
+  --secondary-foreground: #e5dbdf;
+  --muted: #35252b;
+  --muted-foreground: #a8919b;
+  --accent: #442532;
+  --accent-foreground: #f8dce8;
+  --border: #45343a;
+  --input: #45343a;
+  --ring: #e6768e;
+
+  --sidebar-bg: #160a0f;
+  --sidebar-text: #e5dbdf;
+  --sidebar-nav: #bea7b1;
+  --sidebar-muted: #89737d;
+  --sidebar-border: #2f2026;
+  --sidebar-hover: #2e1921;
+  --sidebar-active: #e6768e;
+  --sidebar-active-fg: #1b0810;
+
+  --brand: #e6768e;
+  --brand-soft: #4c1e32;
+  --ok: #3da763;
+  --warn: #dca331;
+}
+
+/* ══════ 皮肤：墨玉（深色系·近中性冷黑）══════ */
+:root[data-skin="ink"] {
+  --background: #f5f7f9;
+  --foreground: #161b22;
+  --card: #ffffff;
+  --card-foreground: #161b22;
+  --popover: #ffffff;
+  --popover-foreground: #161b22;
+  --primary: #343b45;
+  --primary-foreground: #f6f9fc;
+  --on-primary: #f6f9fc;
+  --secondary: #e8ebef;
+  --secondary-foreground: #292e35;
+  --muted: #ebedf0;
+  --muted-foreground: #5e646c;
+  --accent: #e1e7ee;
+  --accent-foreground: #272e38;
+  --border: #d1d5d9;
+  --input: #d1d5d9;
+  --ring: #343b45;
+
+  --sidebar-bg: #edf0f4;
+  --sidebar-text: #1b2026;
+  --sidebar-nav: #424850;
+  --sidebar-muted: #6c727a;
+  --sidebar-border: #d6d9de;
+  --sidebar-hover: #dee3eb;
+  --sidebar-active: #343b45;
+  --sidebar-active-fg: #f6f9fc;
+
+  --brand: #343b45;
+  --brand-soft: #dee5ef;
+  --ok: #258651;
+  --warn: #bb8300;
+}
+
+.dark[data-skin="ink"] {
+  --background: #0d1013;
+  --foreground: #e9ebee;
+  --card: #16191c;
+  --card-foreground: #e9ebee;
+  --popover: #191c20;
+  --popover-foreground: #e9ebee;
+  --primary: #bdc5ce;
+  --primary-foreground: #0f1216;
+  --on-primary: #0f1216;
+  --secondary: #24272a;
+  --secondary-foreground: #e2e5e8;
+  --muted: #24272a;
+  --muted-foreground: #94999e;
+  --accent: #292e35;
+  --accent-foreground: #e3e8ef;
+  --border: #33363a;
+  --input: #33363a;
+  --ring: #9ba6b1;
+
+  --sidebar-bg: #080a0d;
+  --sidebar-text: #e2e5e8;
+  --sidebar-nav: #a7abb1;
+  --sidebar-muted: #73787d;
+  --sidebar-border: #1f2225;
+  --sidebar-hover: #191d23;
+  --sidebar-active: #bdc5ce;
+  --sidebar-active-fg: #0f1216;
+
+  --brand: #aeb9c4;
+  --brand-soft: #272e38;
+  --ok: #37ab6b;
+  --warn: #d7aa42;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
+
+/* ── 折叠动画（≤200ms，侧栏分组 / 工具箱类别共用语言） ── */
+@keyframes collapse-down {
+  from { height: 0; opacity: 0; }
+  to { height: var(--radix-collapsible-content-height); opacity: 1; }
+}
+@keyframes collapse-up {
+  from { height: var(--radix-collapsible-content-height); opacity: 1; }
+  to { height: 0; opacity: 0; }
+}
+.anim-collapse-down {
+  animation: collapse-down 0.18s ease-out;
+  overflow: hidden;
+}
+.anim-collapse-up {
+  animation: collapse-up 0.15s ease-in;
+  overflow: hidden;
+}
+
+/* chevron 旋转 */
+.nav-chevron {
+  transition: transform 0.18s ease;
+}
+.nav-chevron[data-open="true"] {
+  transform: rotate(90deg);
+}
+
+/* 下载进度条纹 */
+@keyframes progress-stripes {
+  from { background-position: 0 0; }
+  to { background-position: 24px 0; }
+}
+.progress-stripes {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 6px,
+    rgba(255, 255, 255, 0.25) 6px,
+    rgba(255, 255, 255, 0.25) 12px
+  );
+  background-size: 24px 24px;
+  animation: progress-stripes 0.8s linear infinite;
+}
+
+/* 服务器探针呼吸点 */
+@keyframes probe-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.probe-dot {
+  animation: probe-pulse 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-collapse-down,
+  .anim-collapse-up,
+  .progress-stripes,
+  .probe-dot {
+    animation: none !important;
+  }
+  .nav-chevron {
+    transition: none;
+  }
+}
+
+/* 打印：保留 .sidebar 类名约定（checkin/reflection 打印时隐藏侧栏） */
+@media print {
+  .sidebar.print-hide,
+  .banner.print-hide {
+    display: none !important;
+  }
+}
+
+/* 细滚动条，桌面壳质感 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}

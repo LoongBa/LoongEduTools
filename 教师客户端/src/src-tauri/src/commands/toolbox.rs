@@ -34,6 +34,9 @@ pub struct ToolboxTool {
     pub name: String,
     #[serde(default)]
     pub category: String,
+    /// 搜索词别名（v0.3 设计源对齐）；旧清单缺省空数组
+    #[serde(default)]
+    pub aliases: Vec<String>,
     #[serde(default)]
     pub tags: Vec<String>,
     #[serde(default)]
@@ -91,6 +94,9 @@ pub struct ToolboxShortcut {
     /// download=按清单下载 | manual=手动添加本地已有程序
     #[serde(default = "default_source")]
     pub source: String,
+    /// 随身工具包导入但当前清单已无该工具时的展示名（v0.3 设计源对齐）；缺省 None
+    #[serde(default)]
+    pub external_name: Option<String>,
 }
 
 fn default_source() -> String {
@@ -242,6 +248,7 @@ pub fn toolbox_add_manual(app: tauri::AppHandle, path: String) -> Result<Toolbox
         pinned: false,
         last_used: String::new(),
         source: "manual".to_string(),
+        external_name: None,
     });
     write_db(&app, &db)?;
     Ok(db)
@@ -309,6 +316,7 @@ pub async fn toolbox_download(
             pinned: false,
             last_used: String::new(),
             source: "download".to_string(),
+            external_name: None,
         },
     );
     write_db(&app, &db)?;
@@ -460,6 +468,7 @@ mod tests {
             pinned: false,
             last_used: String::new(),
             source: source.to_string(),
+            external_name: None,
         }
     }
 

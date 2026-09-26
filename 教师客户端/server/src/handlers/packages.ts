@@ -16,6 +16,8 @@ interface ManifestPkg {
   package_type: string;
   /** 内容/扩展分区标签（R03 §3.2，方案 A）；旧条目可能缺省 */
   categories?: string[];
+  /** 展示用简介（S01 §2.2 预留字段，非破坏性启用；旧条目可能缺省） */
+  description?: string;
   required_license_level: number;
   min_shell_version: string;
   size_bytes: number;
@@ -127,6 +129,8 @@ export async function packagesUpload(req: Request, env: Env): Promise<Response> 
     .split(",")
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
+  // description：可选简介（S01 §2.2 预留字段）；缺省 undefined
+  const description = String(form.get("description") || "").trim() || undefined;
   const file = form.get("file");
   if (!packageId || !version) throw new BadRequest("package_id / version 必填");
   if (!(file instanceof File)) throw new BadRequest("file 字段必填");
@@ -164,6 +168,7 @@ export async function packagesUpload(req: Request, env: Env): Promise<Response> 
       name,
       package_type: packageType,
       categories,
+      description,
       required_license_level: licenseLevel,
       min_shell_version: minShell,
       size_bytes: buf.byteLength,

@@ -1,15 +1,22 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 // @ts-expect-error type error without @types/node package
 import process from "node:process";
 const host = process.env.TAURI_DEV_HOST;
 
 // D02 §3.1（Oracle 评审）：target 显式 es2022（Chromium 108 完全支持，防默认 'modules' 兼容风险）
-// 壳 UI 不用 Tailwind v4（oklch/color-mix 在 Chromium 108 仅部分支持），用纯 CSS
+// v0.3（R03）：引入 Tailwind v4 样式体系（设计源对齐），但 Win7/Chromium 108 不支持 oklch()——
+// styles.css 令牌已由转换脚本落地为 hex/rgb（vite 构建产物不再含 oklch/color-mix）
 export default defineConfig(() => ({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   // 防 Vite 掩盖 Rust 错误
   clearScreen: false,
+  resolve: {
+    alias: {
+      "@": new URL("./ui", import.meta.url).pathname,
+    },
+  },
   build: {
     target: "es2022",
     sourcemap: false,
