@@ -87,7 +87,7 @@
 - **防篡改语义**：平台私有配置不可伪造——即使 `api_base` 被改成恶意服务器，无签名私钥则验签必然失败。签名私钥仅管理员持有（`scripts/gen_shell_config.py --key keys/<prod>.key`），公钥通过脚本输出后写回 `SHELL_CONFIG_PUBKEYS`。
 - **命令**：`shell_config_fetch`（拉取+验签+加密缓存）/ `shell_config_cached`（读离线缓存+重验）/ `shell_config_key_status`（当前 key_id + 可接受表）。
 - **轮换**：公钥表数组追加新条目（旧配置旧钥可验、新配置新钥可验），与 `package.rs::SIGN_PUBKEYS` 同模式。
-- **A01 契约**：配置包信封对齐 S01 §2.2（`signature{alg,key_id,signed_payload_hash,sig}`），canonical JSON 与内容包 manifest 完全一致（共用 `package::verify_signed_envelope` + `canonical_json_sign_view`）。
+- **完整方案**：威胁模型 / 格式契约 / 部署轮换 / 测试 / 代码索引 → 详见 **D10 服务端签名壳配置方案**。
 
 ---
 
