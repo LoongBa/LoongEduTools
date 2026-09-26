@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { DATA_OPTIONS_BY_TOOL, MOCK_EDU_TOOLS } from "@/lib/mockData";
+import { DATA_OPTIONS_BY_TOOL, EDU_TOOLS } from "@/lib/eduTools";
 import { api } from "@/api";
 import { VIEW_TITLES } from "@/lib/nav";
 import { relativeTime } from "@/lib/format";
@@ -304,7 +304,7 @@ function QuickLaunch({
         const pkg = PKG_APP_BY_ID[id];
         return pkg ? [{ id: `pkg:${id}`, name: pkg.name, icon: pkg.icon, desc: pkg.desc }] : [];
       });
-    return [...MOCK_EDU_TOOLS, ...dynamic];
+    return [...EDU_TOOLS, ...dynamic];
   }, [installed]);
 
   // 外部工具 = 已下载快捷方式 ∪ 清单推荐但未下载（后者带「需下载」徽章）

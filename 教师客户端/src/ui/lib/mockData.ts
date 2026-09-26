@@ -1,4 +1,4 @@
-import type { Bookmark, DataOption, EduTool, LaunchConfigMap, LocalTextbook } from "./types";
+import type { Bookmark, LaunchConfigMap, LocalTextbook } from "./types";
 
 /** 浏览器「教材下载」扩展安装页（Edge 加载项）。后续可能更换地址，集中在此处便于维护 */
 export const TEXTBOOK_EXT_INSTALL_URL =
@@ -62,52 +62,6 @@ export const MOCK_TEXTBOOK_BASELINE: LocalTextbook[] = [
     imported_at: "2026-09-10T01:45:00Z",
   },
 ];
-
-// ── 启动中心：易教工具内置目录（自研工具；已安装的 app 类内容包会动态并入）──
-export const MOCK_EDU_TOOLS: EduTool[] = [
-  {
-    id: "edu-eng-read",
-    name: "英语点读",
-    icon: "Languages",
-    desc: "课本逐句点读、跟读评分。配套点读数据在「下载中心 · 内容」获取。",
-    requiresPkgId: "pkg-pep-eng-g3",
-    // 更新数据时由应用提供年级子包选择，而非直接下整包
-    dataOptions: [
-      { pkgId: "pkg-pep-eng-g4s", label: "四年级上英语点读" },
-      { pkgId: "pkg-pep-eng-g5s", label: "五年级上英语点读" },
-    ],
-  },
-  {
-    id: "edu-char-cards",
-    name: "生字卡片",
-    icon: "Type",
-    desc: "按课文生字自动生成认读卡片，支持大字投影与打印。",
-  },
-  {
-    id: "edu-dictation",
-    name: "听写助手",
-    icon: "AudioLines",
-    desc: "词库自动播报听写，间隔可调，学生平板端同步作答。",
-    requiresPkgId: "pkg-word-junior",
-  },
-  {
-    id: "edu-poem-roll",
-    name: "诗词轮播",
-    icon: "ScrollText",
-    desc: "课前诵读轮播，注音与名家音频随诵读包更新。",
-    requiresPkgId: "pkg-poem-tang",
-    // 更新数据时可选年级子包
-    dataOptions: [
-      { pkgId: "pkg-poem-g4s", label: "四年级上诗词包" },
-      { pkgId: "pkg-poem-g5s", label: "五年级上诗词包" },
-    ],
-  },
-];
-
-/** itemId → 可选数据子包（选包弹窗用；未列出的条目直接整包下载） */
-export const DATA_OPTIONS_BY_TOOL: Record<string, DataOption[]> = Object.fromEntries(
-  MOCK_EDU_TOOLS.filter((t) => t.dataOptions?.length).map((t) => [`edu:${t.id}`, t.dataOptions!]),
-);
 
 // ── 启动中心：网址收藏示例基线 ──
 export const MOCK_BOOKMARK_BASELINE: Bookmark[] = [

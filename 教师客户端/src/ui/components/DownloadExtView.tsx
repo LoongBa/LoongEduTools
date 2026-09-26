@@ -22,7 +22,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { api } from "@/api";
 import { friendlyErr } from "@/errutil";
-import { MOCK_EDU_TOOLS } from "@/lib/mockData";
+import { EDU_TOOLS } from "@/lib/eduTools";
 import { formatBytes, relativeTime } from "@/lib/format";
 import type { ActiveDownloadView } from "@/components/TopBar";
 import type { InstalledMap } from "@/lib/store";
@@ -244,7 +244,7 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
   const todo = useMemo(() => {
     const needPkg = items.filter((i) => !i.installed && i.package_type === "data" && (i.categories?.length ?? 0) > 0);
     const needTool = (toolbox?.tools ?? []).filter((t) => t.recommend && t.download_url);
-    const missingData = MOCK_EDU_TOOLS.filter((t) => t.requiresPkgId && !installed[t.requiresPkgId]);
+    const missingData = EDU_TOOLS.filter((t) => t.requiresPkgId && !installed[t.requiresPkgId]);
     const dataUpdatable = items.filter((i) => i.updatable && i.package_type === "data");
     const appUpdatable = items.filter((i) => i.updatable && i.package_type === "app");
     return { needPkg, needTool, missingData, dataUpdatable, appUpdatable };
