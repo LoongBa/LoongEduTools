@@ -63,7 +63,7 @@ export default function TimerView() {
 
   // 浮层呼出/收起（tool_timer · 失败静默——按钮恒显示，快捷键是否注册不影响此入口）
   function toggleOverlay() {
-    void api.toolTimer().catch(() => {});
+    void api.toolTimer().catch(() => {}); // 窗口已收起/未注册快捷键时失败：静默，UI 状态自会同步
   }
 
   const progress = totalMs > 0 ? remainMs / totalMs : 0;

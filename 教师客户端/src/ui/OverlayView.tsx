@@ -27,6 +27,7 @@ export default function OverlayView() {
   useEffect(() => {
     const un = listen<TimerTickPayload>("timer://tick", (e) => setTick(e.payload));
     return () => {
+      // 卸载时反注册监听；Promise 拒绝（已卸载/事件源消失）静默即可
       un.then((f) => f()).catch(() => {});
     };
   }, []);

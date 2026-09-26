@@ -101,7 +101,7 @@ function emitTick(): void {
   try {
     void getCurrentWebviewWindow()
       .emit("timer://tick", payload)
-      .catch(() => {});
+      .catch(() => {}); // 非 Tauri 环境 emit 无监听者：静默（外层 try/catch 已兜底，这里仅吞 Promise 拒绝）
   } catch {
     /* 浏览器/vitest 等非 Tauri 环境：吞掉，绝不让 dev/test 崩溃 */
   }
@@ -130,7 +130,7 @@ function beep(): void {
       osc.start(t0);
       osc.stop(t0 + 0.3);
     }
-    // 释放资源（蜂鸣结束后关闭）
+    // 释放资源（蜂鸣结束后关闭）；close 在非 Tauri 环境可能失败——静默，不应打扰主流程
     setTimeout(() => ctx.close().catch(() => {}), 1600);
   } catch {
     /* 静默降级：无声但视觉提示仍在 */
