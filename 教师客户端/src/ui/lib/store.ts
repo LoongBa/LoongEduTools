@@ -333,43 +333,67 @@ export function useDownloadTasks() {
   const queueRef = useRef<{ id: string; onDone: (id: string) => void }[]>([]);
   const runningRef = useRef(0);
 
-  /** 从队列取任务开跑，跑完补位（并发上限 3，其余排队） */
+  /** 从队列取任务开跑，跑完补位（并发上限 3，其余排队）*/
   const pump = useCallback(() => {
     while (runningRef.current < DOWNLOAD_CONCURRENCY && queueRef.current.length > 0) {
       const job = queueRef.current.shift()!;
       const id = job.id;
       runningRef.current += 1;
       setMeta((m) => (m[id] ? { ...m, [id]: { ...m[id], queued: false } } : m));
-      setTasks((t) => ({ ...t, [id]: { id, progress: 0, done: false } }));
-
-      let finished = false;
-      const tick = () => {
+      // 视觉反馈：模拟进度递增（真实 Tauri 命令无逐字节回调）；命令完成即置 100
+      setTasks((t) => ({ ...t, [id]: { id, progress: 5, done: false } }));
+      const tick = setInterval(() => {
         setTasks((prev) => {
           const cur = prev[id];
           if (!cur || cur.done) return prev;
-          const next = Math.min(100, cur.progress + 8 + Math.random() * 14);
-          const done = next >= 100;
-          if (done) finished = true;
-          window.setTimeout(done ? () => {} : tick, 260);
-          return { ...prev, [id]: { id, progress: next, done } };
+          const next = Math.min(92, cur.progress + 6 + Math.random() * 8);
+          return { ...prev, [id]: { id, progress: next, done: false } };
         });
-      };
-      // 完成回收：写历史 → 摘除任务与 meta → 回调 → 补位下一个
-      const reap = window.setInterval(() => {
-        if (!finished) return;
-        window.clearInterval(reap);
-        runningRef.current -= 1;
-        const info = metaRef.current[id];
-        setHistory((h) => {
-          const item: DownloadHistoryItem = {
-            id,
-            name: info?.name ?? id,
-            kind: info?.kind ?? "pkg",
-            at: new Date().toISOString(),
-          };
-          return [item, ...h.filter((x) => x.id !== id)].slice(0, HISTORY_MAX);
-        });
-        window.setTimeout(() => {
+      }, 260);
+
+      void (async () => {
+        try {
+          if (id.startsWith("tb:")) {
+            await api.toolboxDownload(id.slice(3));
+          } else {
+            // 内容包：从清单取最新版本下载
+            const list = await api.storeListAvailable();
+            const pkg = list.packages.find((p) => p.package_id === id);
+            if (!pkg) throw new Error("清单中无该内容包");
+            await api.storeDownload(id, pkg.package_version);
+          }
+          // 完成：置 100 → 写历史 → 摘除 → 回调 → 补位
+          clearInterval(tick);
+          setTasks((t) => ({ ...t, [id]: { id, progress: 100, done: true } }));
+          const info2 = metaRef.current[id];
+          setHistory((h) => {
+            const item: DownloadHistoryItem = {
+              id,
+              name: info2?.name ?? id,
+              kind: info2?.kind ?? "pkg",
+              at: new Date().toISOString(),
+            };
+            return [item, ...h.filter((x) => x.id !== id)].slice(0, HISTORY_MAX);
+          });
+          window.setTimeout(() => {
+            setTasks((p) => {
+              const c = { ...p };
+              delete c[id];
+              return c;
+            });
+            setMeta((m) => {
+              const c = { ...m };
+              delete c[id];
+              return c;
+            });
+            runningRef.current -= 1;
+            job.onDone(id);
+            pump();
+          }, 500);
+        } catch (e) {
+          // 失败：清任务 + 提示（保持 running 计数准确）
+          clearInterval(tick);
+          runningRef.current -= 1;
           setTasks((p) => {
             const c = { ...p };
             delete c[id];
@@ -380,13 +404,13 @@ export function useDownloadTasks() {
             delete c[id];
             return c;
           });
+          console.warn(`[download] ${id} 失败`, e);
           job.onDone(id);
           pump();
-        }, 500);
-      }, 300);
-      window.setTimeout(tick, 260);
+        }
+      })();
     }
-  }, [setHistory]);
+  }, [setHistory, setTasks, setMeta]);
 
   const metaRef = useRef<Record<string, ActiveDownload>>({});
   metaRef.current = meta;
