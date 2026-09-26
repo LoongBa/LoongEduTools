@@ -116,6 +116,24 @@
 # 见 D01 RUST 方案 §4 + S01 内容包 Schema
 ```
 
+## 五·B、服务器地址配置（部署必读）
+
+**壳端唯一需事先明确的配置 = 服务端地址（api_base）。** 无 CF Worker 时同样适用：
+直接指向任意可访问的清单/下载源（含静态托管、GitHub 直链、自建服务器），换地址只改一个文件。
+
+**操作方式（U 盘绿色形态）**：
+1. 在 **exe 同目录**放置 `config.json`（模板见 `src/config.example.json`）：
+   ```json
+   {
+     "api_base": "https://你的服务器域名或IP"
+   }
+   ```
+2. 启动即生效（实时读取，无需重启）。**后续更换服务器 = 改这一个字段**，拷贝到教室机同位置即可。
+3. 班级进度自动写入 `recents` 子对象，与 `api_base` 共存，互不覆盖（`recents_*` 命令只更新自己的子对象）。
+
+**解析优先级**：`config.json 的 api_base` → 编译期默认（打包时注入 `LOONGEDU_API_BASE`）→ 空（P0 离线模式）。
+详细信息：D01 §2 config.json 字段定义、A01 Base URL 约定；下载源绝对 `download_url` 支持见 store.rs `store_download`。
+
 ---
 
 ## 七、相关外部资源
