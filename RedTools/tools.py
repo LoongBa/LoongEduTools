@@ -32,7 +32,7 @@ TOOLS: dict[str, ToolConfig] = {
     "数学口算": ToolConfig(
         series="学科",
         tool="数学口算",
-        version="1.2.1",      # v1.2.1（patch）：feedback 迁移 uikit setFeedback（V0.6 行为不变内部替换）；v1.2：防沉迷接入（V0.5）
+        version="1.2.2",      # v1.2.2（patch）：V0.8 UI 流程迁移 LX_SHARED.ui + 补齐结算三选（行为不变内部替换：设置条 guardBar/到点浮层 pauseFlow/拦截 lockHint/日历 checkinCalendar/曲线 lineChart/分享文案 shareText+copyText；结算三选 settleChoices 弹层补齐契约）；v1.2.1：feedback 迁移 uikit setFeedback（V0.6）；v1.2：防沉迷接入（V0.5）
         datasource="static",   # 静态工具：无 book/图片/音频，仅复制 src/
         app_name="数学口算",
         modes=["offline", "online"],

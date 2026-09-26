@@ -24,6 +24,7 @@
     guard: null,
     uikit: null,
     share: null,        /* V0.7：share 模块槽位（register hasOwnProperty 依赖预置） */
+    ui: null,           /* V0.8：ui 模块槽位（register hasOwnProperty 依赖预置） */
     /* 模块注册器：适配层可覆盖默认实现（如在线 storage 换云端桩） */
     register: function (name, impl) {
       if (LX.hasOwnProperty(name)) {
@@ -35,7 +36,7 @@
 
   /* 已加载模块计数（供构建后自检） */
   LX.__loaded = {
-    auth: false, storage: false, progress: false, guard: false, uikit: false, share: false,
+    auth: false, storage: false, progress: false, guard: false, uikit: false, share: false, ui: false,
     count: function () {
       var n = 0;
       for (var k in LX.__loaded) {

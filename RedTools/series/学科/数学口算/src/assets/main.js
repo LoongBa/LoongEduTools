@@ -122,7 +122,6 @@
     function p2(n) { return n < 10 ? '0' + n : '' + n; }
     return '' + d.getFullYear() + p2(d.getMonth() + 1) + p2(d.getDate());
   }
-  function esc(s) { return s; } // textContent 天然安全
 
   /* ---------- 渲染：顶栏 ---------- */
   function renderHeader(title) {
@@ -166,85 +165,11 @@
   var GUARD_GAMES = [10, 20, 30, 0];   // 0=不限（口算题量口径，对齐通用需求 §3 学科类）
   var guardTimerId = null;             // 防沉迷提示浮层定时器
 
-  function renderLimitRow(container) {
-    clearNode(container);
-    /* 分钟档 */
-    GUARD_MINUTES.forEach(function (m) {
-      var b = makeEl('button', 'limit-btn' + (store.guard.minutePref === m ? ' active' : ''), m + ' 分钟');
-      b.addEventListener('click', function () {
-        LX_SHARED.guard.setPrefs({ store: store }, { minute: m });
-        saveStore();
-        renderLimitRows();
-      });
-      container.appendChild(b);
-    });
-    /* 题量档 */
-    GUARD_GAMES.forEach(function (g) {
-      var label = g === 0 ? '不限' : g + ' 题';
-      var b = makeEl('button', 'limit-btn' + (store.guard.gamesPref === g ? ' active' : ''), label);
-      b.addEventListener('click', function () {
-        LX_SHARED.guard.setPrefs({ store: store }, { games: g });
-        saveStore();
-        renderLimitRows();
-      });
-      container.appendChild(b);
-    });
-  }
-  function renderLimitRows() {
-    var row = document.getElementById('limit-row');
-    if (row) { renderLimitRow(row); }
-    renderLimitHint();
-  }
-  function renderLimitHint() {
-    var el = document.getElementById('limit-hint');
-    if (!el) { return; }
-    var today = store.guard.playedToday || 0;
-    var limitLabel = store.guard.gamesPref === 0 ? '不限' : store.guard.gamesPref + ' 题';
-    el.textContent = '本日已练 ' + today + ' 题 · 目标 ' + limitLabel + '（到点提醒，可延迟或自律）';
-  }
-
-  /* 组间到点提醒浮层（延迟/自律二选；复用 24点 limit-overlay 样式） */
-  function showLimitOverlay(reason) {
-    var overlay = makeEl('div', 'limit-overlay');
-    var box = makeEl('div', 'limit-box');
-    var isMin = reason === 'min';
-    box.appendChild(makeEl('div', 'limit-title', isMin ? '练习时间到' : '今日目标完成'));
-    box.appendChild(makeEl('div', 'limit-desc',
-      isMin ? '已练习 ' + store.guard.minutePref + ' 分钟，休息一下吧～' :
-              '已练 ' + store.guard.playedToday + ' 题，完成今日目标！'));
-    var btns = makeEl('div', 'limit-btns');
-    var extendBtn = makeEl('button', 'btn btn-primary', isMin ? '延迟 5 分钟' : '再练 2 题');
-    extendBtn.addEventListener('click', function () {
-      /* ISSUE-1 修复：extend 达上限（延迟 2 次）返回 false → 不再提供延迟，仅剩自律出口 */
-      var ok = LX_SHARED.guard.extend({ store: store }, isMin ? 'min' : 'games');
-      saveStore();
-      if (ok === false) { return; }   // 达上限：保持浮层不关闭（用户须自律）
-      closeOverlay(overlay);
-    });
-    btns.appendChild(extendBtn);
-    var enoughBtn = makeEl('button', 'btn', '我很自律，今天足够了');
-    enoughBtn.addEventListener('click', function () {
-      LX_SHARED.guard.enough({ store: store });
-      saveStore();
-      closeOverlay(overlay);
-      viewGrade();
-    });
-    btns.appendChild(enoughBtn);
-    box.appendChild(btns);
-    overlay.appendChild(box);
-    document.body.appendChild(overlay);
-  }
-  function closeOverlay(overlay) {
-    if (overlay && overlay.parentNode) { overlay.parentNode.removeChild(overlay); }
-  }
-  /* 自律锁拦截：今日已自律 → 提示并阻止进入练习 */
-  function guardBlockIfLocked() {
-    if (LX_SHARED.guard.isLocked({ store: store })) {
-      try { window.alert('今天已经很自律啦，明天见！'); } catch (err) { /* ignore */ }
-      return true;
-    }
-    return false;
-  }
+  /* 到点/拦截/结算 浮层类名（V0.8：LX_SHARED.ui 浮层 cls 可配，复用 limit-overlay 既有 CSS 零改动） */
+  var LIMIT_OVERLAY_CLS = {
+    overlay: 'limit-overlay', card: 'limit-box', title: 'limit-title', sub: 'limit-desc',
+    btns: 'limit-btns', mainBtn: 'btn btn-primary', ghostBtn: 'btn'
+  };
 
   /* ---------- 视图：选年级 ---------- */
   function viewGrade() {
@@ -264,16 +189,34 @@
     }
     viewEl.appendChild(grid);
     // 底部导航（打卡/错题/成就，阶段 3+）
-    /* v1.2 防沉迷/自控力：首页「练习限时」设置行（V0.5 guard 通用能力接入） */
+    /* v1.2 防沉迷/自控力：首页「练习限时」设置行
+       （V0.5 guard 通用能力接入；V0.8：LX_SHARED.ui.guardBar，行为不变内部替换） */
     viewEl.appendChild(makeEl('div', 'mode-title', '练习限时'));
     var limitRow = makeEl('div', 'limit-row');
     limitRow.id = 'limit-row';
-    renderLimitRow(limitRow);
     viewEl.appendChild(limitRow);
     var limitHint = makeEl('div', 'limit-hint', '');
     limitHint.id = 'limit-hint';
     viewEl.appendChild(limitHint);
-    renderLimitHint();
+    var guardBarHandle = null;           // guardBar 返回 { el, refresh }
+    function refreshLimitHint() {
+      var today = store.guard.playedToday || 0;
+      var limitLabel = store.guard.gamesPref === 0 ? '不限' : store.guard.gamesPref + ' 题';
+      limitHint.textContent = '本日已练 ' + today + ' 题 · 目标 ' + limitLabel + '（到点提醒，可延迟或自律）';
+    }
+    guardBarHandle = LX_SHARED.ui.guardBar({
+      container: limitRow,
+      prefs: store.guard,
+      minuteOptions: GUARD_MINUTES,
+      gamesOptions: GUARD_GAMES,
+      onPrefs: function (change) {
+        LX_SHARED.guard.setPrefs({ store: store }, change);
+        saveStore();
+        if (guardBarHandle && guardBarHandle.refresh) { guardBarHandle.refresh(); }
+        refreshLimitHint();
+      }
+    });
+    refreshLimitHint();
     renderFooterNav();
   }
 
@@ -351,8 +294,15 @@
   /* ---------- 视图：练习 ---------- */
   function startQuiz(pointId, timerSec) {
     if (!GEN || !GEN.gen) { return; }
-    /* v1.2 防沉迷/自控力：自律锁拦截（今日已自律 → 不进练习） */
-    if (guardBlockIfLocked()) { return; }
+    /* v1.2 防沉迷/自控力：自律锁拦截（今日已自律 → 温和提示浮层，不进练习）
+       V0.8：LX_SHARED.ui.lockHint 替代 window.alert */
+    if (LX_SHARED.guard.isLocked({ store: store })) {
+      LX_SHARED.ui.lockHint({
+        cls: { overlay: 'limit-overlay', card: 'limit-box', title: 'limit-title', sub: 'limit-desc',
+               btns: 'limit-btns', mainBtn: 'btn' }
+      });
+      return;
+    }
     LX_SHARED.guard.startRound({ store: store });
     var p = POINTS[pointId];
     state.point = pointId;
@@ -573,40 +523,80 @@
     }
     viewEl.appendChild(card);
 
+    /* 结算三选（V0.8：补齐防沉迷 §2.4 契约——结算弹层 再来一局/分享打卡/我很自律，settleChoices 标准文案）
+       打印题卡/返回知识点 保留为工具专属次要动作；弹层 backdrop 用 timer-overlay（z-index 999）
+       低于分享(1000)/到点(1001)，分享弹层不被结算弹层遮挡 */
     var row = makeEl('div', 'btn-row');
-    var again = makeEl('button', 'btn', '再来一组');
-    again.addEventListener('click', function () { startQuiz(state.point); });
     var printBtn = makeEl('button', 'btn', '打印题卡');
     printBtn.addEventListener('click', printCurrentSheet);
-    var shareBtn = makeEl('button', 'btn', '分享打卡');
-    /* 闭包捕获本次成绩，避免依赖可变全局 */
-    shareBtn.addEventListener('click', (function (r, t, c, e, mc) {
-      return function () { openShareOverlay(r, t, c, e, mc); };
-    })(rate, total, state.correct, elapsed, state.maxCombo));
     var back = makeEl('button', 'btn btn-primary', '返回知识点');
     back.addEventListener('click', function () { viewPoint(state.grade); });
-    row.appendChild(again);
     row.appendChild(printBtn);
-    row.appendChild(shareBtn);
     row.appendChild(back);
-    /* v1.2 防沉迷/自控力：结算「我很自律，今天足够了」动作（V0.5 guard）
-       （若今日已自律锁，则不显示「再来一组」——输入由自律锁在 startQuiz 拦截） */
-    var selfBtn = makeEl('button', 'btn', '我很自律，今天足够了');
-    selfBtn.addEventListener('click', function () {
-      LX_SHARED.guard.enough({ store: store });
-      saveStore();
-      viewGrade();
-    });
-    row.appendChild(selfBtn);
     viewEl.appendChild(row);
 
-    /* v1.2 防沉迷/自控力：组间到点 → 叠加「休息一下」浮层（延迟/自律二选）
+    var settleHandle = null;
+    settleHandle = LX_SHARED.ui.settleChoices({
+      title: '练习完成',
+      sub: '正确率 ' + rate + '%',
+      stars: stars,
+      replayLabel: '再来一局',
+      shareLabel: '分享打卡',
+      selfLabel: '我很自律，今天足够了',
+      cls: {
+        overlay: 'timer-overlay', card: 'limit-box', title: 'limit-title', sub: 'limit-desc',
+        btns: 'limit-btns', mainBtn: 'btn btn-primary', ghostBtn: 'btn'
+      },
+      onReplay: function () {
+        if (settleHandle && settleHandle.close) { settleHandle.close(); }
+        startQuiz(state.point);
+      },
+      /* 闭包捕获本次成绩，避免依赖可变全局 */
+      onShare: (function (r, t, c, e, mc) {
+        return function () {
+          if (settleHandle && settleHandle.close) { settleHandle.close(); }
+          openShareOverlay(r, t, c, e, mc);
+        };
+      })(rate, total, state.correct, elapsed, state.maxCombo),
+      onSelf: function () {
+        LX_SHARED.guard.enough({ store: store });
+        saveStore();
+        if (settleHandle && settleHandle.close) { settleHandle.close(); }
+        viewGrade();
+      },
+      selfEnabled: !LX_SHARED.guard.isLocked({ store: store })
+    });
+
+    /* v1.2 防沉迷/自控力：组间到点 → 叠加「休息一下」浮层（延迟/自律二选；V0.8：LX_SHARED.ui.pauseFlow）
        到点不阻断结算展示——浮层固定定位叠于其上；用户选择后继续 */
     if (!LX_SHARED.guard.isLocked({ store: store }) && due.due) {
       window.setTimeout(function () {
         /* ISSUE-4 修复：400ms 内用户可能已点结算「我很自律」→ 复查 isLocked 防竞态浮层 */
+        var isMin = due.reason === 'min';
         if (!LX_SHARED.guard.isLocked({ store: store })) {
-          showLimitOverlay(due.reason);
+          LX_SHARED.ui.pauseFlow({
+            due: {
+              reason: due.reason,
+              title: isMin ? '练习时间到' : '今日目标完成',
+              desc: isMin ? '已练习 ' + store.guard.minutePref + ' 分钟，休息一下吧～' :
+                           '已练 ' + store.guard.playedToday + ' 题，完成今日目标！',
+              extendLabel: isMin ? '延迟 5 分钟' : '再练 2 题',
+              selfLabel: '我很自律，今天足够了'
+            },
+            cls: LIMIT_OVERLAY_CLS,
+            onExtend: function () {
+              /* ISSUE-1 修复：extend 达上限（延迟 2 次）返回 false → 保持浮层不关闭（用户须自律） */
+              var ok = LX_SHARED.guard.extend({ store: store }, isMin ? 'min' : 'games');
+              saveStore();
+              return ok;                       // false 时不关闭（pauseFlow 语义：返回 false 保持浮层）
+            },
+            onSelf: function () {
+              LX_SHARED.guard.enough({ store: store });
+              saveStore();
+              if (settleHandle && settleHandle.close) { settleHandle.close(); }
+              viewGrade();
+            }
+          });
         }
       }, 400);
     }
@@ -693,15 +683,6 @@
     if (rate >= 80) { return '进步明显，继续加油！'; }
     if (rate >= 60) { return '不错哦，再接再厉！'; }
     return '每天练一练，越来越快！';
-  }
-
-  /* 分享文案纯函数（§5.2）：知识点 + 正确率 + 连续打卡天数 */
-  function buildShareText(rate) {
-    var point = POINTS[state.point];
-    var name = point ? point.name : '口算练习';
-    var streak = store.checkin && store.checkin.streak ? store.checkin.streak : 0;
-    return '今天孩子用数学口算完成「' + name + '」练习，正确率 ' + rate +
-           '%！连续打卡 ' + streak + ' 天 📅 口算越来越熟练，继续加油～';
   }
 
   /* 绘制 1080×1920 打卡卡片，返回 canvas（离屏，不挂 DOM） */
@@ -805,33 +786,20 @@
     return canvas;
   }
 
-  /* 复制文案：必须在用户手势内（点击回调）执行 execCommand('copy') */
+  /* 复制文案：必须在用户手势内（点击回调）执行 execCommand('copy'）
+     V0.8：委托 LX_SHARED.share.copyText（textarea+execCommand 内联，onOk/onFail 保持原反馈逻辑） */
   function copyShareText(text, feedbackEl) {
-    var ok = false;
-    var ta = document.createElement('textarea');
-    ta.value = text;
-    ta.setAttribute('readonly', '');
-    ta.style.position = 'fixed';
-    ta.style.left = '-9999px';
-    ta.style.top = '0';
-    document.body.appendChild(ta);
-    ta.select();
-    /* setSelectionRange 提升 iOS 兼容（Chrome 61 亦支持） */
-    if (ta.setSelectionRange) { ta.setSelectionRange(0, text.length); }
-    try {
-      ok = document.execCommand('copy');
-    } catch (err) {
-      ok = false;
-    }
-    document.body.removeChild(ta);
-    if (ok) {
-      /* V0.6：uikit setFeedback（share-feedback ok） */
-      LX_SHARED.uikit.setFeedback(feedbackEl, '已复制，去小红书粘贴发布吧', 'ok', 'share-feedback');
-    } else {
-      /* 保底：文案全文已展示在 .share-text，提示手动长按选择复制 */
-      /* V0.6：uikit setFeedback（share-feedback bad） */
-      LX_SHARED.uikit.setFeedback(feedbackEl, '复制失败，请长按选择复制', 'bad', 'share-feedback');
-    }
+    LX_SHARED.share.copyText(text, {
+      onOk: function () {
+        /* V0.6：uikit setFeedback（share-feedback ok） */
+        LX_SHARED.uikit.setFeedback(feedbackEl, '已复制，去小红书粘贴发布吧', 'ok', 'share-feedback');
+      },
+      onFail: function () {
+        /* 保底：文案全文已展示在 .share-text，提示手动长按选择复制 */
+        /* V0.6：uikit setFeedback（share-feedback bad） */
+        LX_SHARED.uikit.setFeedback(feedbackEl, '复制失败，请长按选择复制', 'bad', 'share-feedback');
+      }
+    });
     /* 2 秒后清空反馈（V0.6：state='' → className=base only，与旧逐字节一致） */
     window.setTimeout(function () {
       LX_SHARED.uikit.setFeedback(feedbackEl, '', '', 'share-feedback');
@@ -856,8 +824,14 @@
 
     box.appendChild(makeEl('div', 'share-hint', '长按图片保存，分享到小红书 / 朋友圈'));
 
-    /* 分享文案（只读文本区，保底路径可手动选择复制） */
-    var text = buildShareText(rate);
+    /* 分享文案（只读文本区，保底路径可手动选择复制；V0.8：LX_SHARED.ui.shareText template 保持逐字节一致） */
+    var point = POINTS[state.point];
+    var shareName = point ? point.name : '口算练习';
+    var shareStreak = store.checkin && store.checkin.streak ? store.checkin.streak : 0;
+    var text = LX_SHARED.ui.shareText({
+      streak: shareStreak, name: shareName, metric: '正确率', value: rate, unit: '%',
+      template: '今天孩子用数学口算完成「{name}」练习，正确率 {value}{unit}！连续打卡 {streak} 天 📅 口算越来越熟练，继续加油～'
+    });
     var textEl = makeEl('textarea', 'share-text');
     textEl.readOnly = true;
     textEl.value = text;
@@ -885,11 +859,6 @@
   function calcStreak(dates) {
     return LX_SHARED.progress.streak(dates);
 }
-
-  function dateStr(d) {
-    function p2(n) { return n < 10 ? '0' + n : '' + n; }
-    return '' + d.getFullYear() + p2(d.getMonth() + 1) + p2(d.getDate());
-  }
 
   /* ---------- 计时挑战 ---------- */
   function startTimer(totalSec) {
@@ -1071,105 +1040,20 @@
       viewEl.appendChild(bestCard);
     }
 
-    /* v1.1 进步曲线：历史最佳之后追加 */
-    viewEl.appendChild(buildProgressCard(store.history || []));
+    /* v1.1 进步曲线：历史最佳之后追加（V0.8：LX_SHARED.ui.lineChart） */
+    var progressCard = makeEl('div', 'progress-card');
+    progressCard.appendChild(makeEl('div', 'page-title', '进步曲线'));
+    var hist = store.history || [];
+    var recent;
+    if (hist.length < 2) {
+      progressCard.appendChild(makeEl('div', 'progress-hint', '完成 2 次练习后展示进步曲线'));
+    } else {
+      recent = hist.slice(-10); // 最近 ≤10 次
+      progressCard.appendChild(LX_SHARED.ui.lineChart({ records: recent, key: 'rate' }).el);
+    }
+    viewEl.appendChild(progressCard);
 
     renderFooterNav();
-  }
-
-  /* ============================================================
-     v1.1 进步曲线：最近 ≤10 次正确率的 SVG 折线图
-     - X 轴：练习次数 1..N；Y 轴：正确率 0-100%
-     - 数据点圆点 + 上方百分比标注 + 网格线/坐标标签
-     - Chrome 61 兼容：仅用基础 SVG 元素（polyline/circle/text/line）
-     ============================================================ */
-  function buildProgressCard(history) {
-    var card = makeEl('div', 'progress-card');
-    card.appendChild(makeEl('div', 'page-title', '进步曲线'));
-    if (history.length < 2) {
-      card.appendChild(makeEl('div', 'progress-hint', '完成 2 次练习后展示进步曲线'));
-      return card;
-    }
-    var recent = history.slice(-10); // 最近 ≤10 次
-    card.appendChild(makeProgressChart(recent));
-    return card;
-  }
-
-  function makeProgressChart(records) {
-    var SVG_NS = 'http://www.w3.org/2000/svg';
-    var W = 320, H = 180;
-    var PL = 36, PR = 14, PT = 18, PB = 26; // 边距：左(Y标签)/右/上/下(X标签)
-    var PW = W - PL - PR, PH = H - PT - PB;
-    var n = records.length;
-
-    function svgEl(tag, attrs) {
-      var el = document.createElementNS(SVG_NS, tag);
-      for (var k in attrs) {
-        if (Object.prototype.hasOwnProperty.call(attrs, k)) { el.setAttribute(k, attrs[k]); }
-      }
-      return el;
-    }
-    function px(i) { return n === 1 ? PL + PW / 2 : PL + PW * i / (n - 1); }
-    function py(rate) { return PT + PH * (1 - rate / 100); }
-
-    var svg = svgEl('svg', {
-      class: 'line-chart',
-      viewBox: '0 0 ' + W + ' ' + H,
-      preserveAspectRatio: 'xMidYMid meet',
-      role: 'img',
-      'aria-label': '进步曲线'
-    });
-
-    /* 网格线 + Y 轴标签（0/25/50/75/100%） */
-    var ticks = [0, 25, 50, 75, 100];
-    for (var t = 0; t < ticks.length; t++) {
-      var gy = py(ticks[t]);
-      svg.appendChild(svgEl('line', {
-        x1: PL, y1: gy, x2: W - PR, y2: gy,
-        stroke: '#e5e6eb', 'stroke-width': 1
-      }));
-      var yl = svgEl('text', {
-        x: PL - 6, y: gy + 3, 'text-anchor': 'end',
-        'font-size': 10, fill: '#8a919f'
-      });
-      yl.textContent = ticks[t] + '%';
-      svg.appendChild(yl);
-    }
-
-    /* X 轴标签：次数 1..n */
-    for (var xi = 0; xi < n; xi++) {
-      var xl = svgEl('text', {
-        x: px(xi), y: H - PB + 14, 'text-anchor': 'middle',
-        'font-size': 10, fill: '#8a919f'
-      });
-      xl.textContent = '' + (xi + 1);
-      svg.appendChild(xl);
-    }
-
-    /* 折线 */
-    var pts = [];
-    for (var p = 0; p < n; p++) {
-      pts.push(px(p) + ',' + py(records[p].rate));
-    }
-    svg.appendChild(svgEl('polyline', {
-      points: pts.join(' '),
-      fill: 'none', stroke: '#165dff', 'stroke-width': 2,
-      'stroke-linejoin': 'round', 'stroke-linecap': 'round'
-    }));
-
-    /* 数据点圆点 + 上方百分比标注 */
-    for (var q = 0; q < n; q++) {
-      var cx = px(q), cy = py(records[q].rate);
-      svg.appendChild(svgEl('circle', { cx: cx, cy: cy, r: 3.5, fill: '#165dff' }));
-      var lb = svgEl('text', {
-        x: cx, y: cy - 7, 'text-anchor': 'middle',
-        'font-size': 10, fill: '#1f2329', 'font-weight': 600
-      });
-      lb.textContent = records[q].rate + '%';
-      svg.appendChild(lb);
-    }
-
-    return svg;
   }
 
   /* ---------- 家长面板 ---------- */
@@ -1249,27 +1133,12 @@
   function viewCheckin() {
     renderHeader('打卡日历');
     clearNode(viewEl);
-    var card = makeEl('div', 'calendar');
-    card.appendChild(makeEl('div', 'page-title', '本月打卡'));
-    var grid = makeEl('div', 'calendar-grid');
-    var now = new Date();
-    var days = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    var t = todayStr();
-    var dates = store.checkin.dates;
-    for (var d = 1; d <= days; d++) {
-      (function (day) {
-        var ds = dateStr(new Date(now.getFullYear(), now.getMonth(), day));
-        var el = makeEl('div', 'cal-day', '' + day);
-        if (dates.indexOf(ds) !== -1) { el.className = 'cal-day done'; }
-        if (ds === t) { el.className += ' today'; }
-        grid.appendChild(el);
-      })(d);
-    }
-    card.appendChild(grid);
-    var streak = calcStreak(store.checkin.dates);
-    card.appendChild(makeEl('div', 'streak-info',
-      '连续打卡 <b>' + streak + '</b> 天' + (streak >= 7 ? ' 🎉' : '')));
-    viewEl.appendChild(card);
+    /* V0.8：迁移 LX_SHARED.ui.checkinCalendar（calendar/cal-day/done/today/streak-info 类名与既有 CSS 一致） */
+    var calEl = LX_SHARED.ui.checkinCalendar({
+      dates: store.checkin.dates,
+      today: todayStr()
+    }).el;
+    viewEl.appendChild(calEl);
     renderFooterNav();
   }
 

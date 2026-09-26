@@ -800,14 +800,14 @@ def copy_static(cfg: ToolConfig, out_dir: Path, mode: str = "offline") -> None:
 
 def merge_shared_js(cfg: ToolConfig, out_dir: Path) -> None:
     """合并 _shared/js/src/*.js → out_dir/_shared/lx-shared.js（构建注入公共模块）。
-    合并顺序：lx-shared-core → storage → progress → auth → guard → ui-kit
+    合并顺序：lx-shared-core → storage → progress → auth → guard → ui-kit → share → ui
     （core 先定义命名空间与 register，各模块随后注册进 LX_SHARED）
     """
     shared_src = ROOT / "_shared" / "js" / "src"
     if not shared_src.exists():
         log("WARN _shared/js/src 不存在，跳过公共模块合并")
         return
-    order = ["lx-shared-core.js", "storage.js", "progress.js", "auth.js", "guard.js", "ui-kit.js", "share.js"]
+    order = ["lx-shared-core.js", "storage.js", "progress.js", "auth.js", "guard.js", "ui-kit.js", "share.js", "ui.js"]
     parts = []
     for name in order:
         f = shared_src / name

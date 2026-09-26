@@ -82,6 +82,18 @@
   S.configure = function (opts) {
     if (opts && opts.toolName) { toolName = opts.toolName; }
   };
+  // 版本迁移模板方法（V0.8，Oracle B1：A8 移入 storage，schema-agnostic）
+  // 读 store.version === from → 调用调用方 migrate(store) → 写回 store.version = to；
+  // storage 不感知具体字段（version 字段名 + 迁移函数均由调用方传，与透传定位一致）
+  S.migrate = function (store, opts) {
+    if (!store || !opts) { return false; }
+    if (store.version === opts.from && typeof opts.migrate === 'function') {
+      opts.migrate(store);
+      store.version = opts.to;
+      return true;
+    }
+    return false;
+  };
 
   /* ---------- 注册进命名空间 ---------- */
   if (window.LX_SHARED && window.LX_SHARED.register) {

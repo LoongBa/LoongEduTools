@@ -51,6 +51,8 @@
     while (dates.length > 365) { dates.shift(); }
     store.checkin.dates = dates;
     store.checkin.streak = calcStreak(dates);
+    /* V0.8：补写 longestStreak 静态峰值（与动态 streak 正交无冲突），供 ui.selfStreakCard 经 P.longest 读取 */
+    store.checkin.longestStreak = Math.max(store.checkin.longestStreak || 0, calcStreak(dates));
   }
 
   /* ---------- 最佳成绩（星级优先，同星级比用时） ---------- */
@@ -78,11 +80,18 @@
     while (store.history.length > 30) { store.history.shift(); }
   }
 
+  /* ---------- 最长连续打卡（静态峰值；V0.8 暴露，工具勿直读字段名） ---------- */
+  function longest(store) {
+    if (!store || !store.checkin) { return 0; }
+    return store.checkin.longestStreak || 0;
+  }
+
   /* ---------- 对外 API ---------- */
   P.checkin = doCheckin;
   P.streak = calcStreak;
   P.best = updateBest;
   P.history = pushHistory;
+  P.longest = longest;
 
   /* ---------- 注册 ---------- */
   if (window.LX_SHARED && window.LX_SHARED.register) {
