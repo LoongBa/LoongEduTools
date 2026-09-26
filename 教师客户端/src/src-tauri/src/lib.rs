@@ -195,9 +195,13 @@ pub fn run() {
             shell_config::shell_config_fetch,
             shell_config::shell_config_cached,
             shell_config::shell_config_key_status,
-            // D11 · P1 下载目录监视观测层（定位/轮询/事件）
+            // D11 · P1 下载目录监视观测层（定位/轮询/事件）+ P3 归档移动（拷贝/撤销/索引）
             archive::archive_watch_dir,
             archive::archive_status,
+            archive::archive_confirm,
+            archive::archive_undo,
+            archive::archive_list,
+            archive::archive_pack_index,
             // WebView2 状态查询（前端启动时调用，决定是否弹引导）
             test_webview2,
         ])

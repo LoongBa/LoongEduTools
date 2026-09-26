@@ -254,8 +254,8 @@ export interface PendingArchive {
   /** 自动识别预填（可编辑，未命中为 null） */
   meta: ArchiveMeta | null;
   confidence: ArchiveConfidence;
-  /** pending=待确认 / confirmed=已确认归档 / ignored=已忽略 */
-  status: "pending" | "confirmed" | "ignored";
+  /** pending=待确认 / confirmed=已确认（P3 后置为真实归档成功）/ archived=已归档 / ignored=已忽略 */
+  status: "pending" | "confirmed" | "archived" | "ignored";
 }
 
 /** 自动整理规则（「下次同类自动整理」记忆；持久化 taoli.archive.rules） */

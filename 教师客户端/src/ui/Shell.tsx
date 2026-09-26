@@ -119,12 +119,19 @@ function ShellInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [archiveAdd]);
 
-  /** 确认归档：更新队列状态 + 记忆偏好写规则 + 通知 */
+  /** 确认归档：真实调用 archive_confirm（拷贝→staging→rename + 索引）→ 成功标记 archived + 记忆 + 通知 */
   const handleArchiveConfirm = useCallback(
-    (id: string, meta: ArchiveMeta, remember: boolean) => {
+    async (id: string, meta: ArchiveMeta, remember: boolean) => {
       const item = archivePending.find((p) => p.id === id);
+      if (!item) return;
+      try {
+        await api.archiveConfirm(item.path, meta);
+      } catch (e) {
+        toast.error("归档失败", { description: friendlyErr(e) });
+        return; // 卡片保持，可修改后重试或忽略
+      }
       archiveConfirm(id, meta);
-      if (remember && item) {
+      if (remember) {
         archiveAddRule({
           pattern: detectPatternFor(item.name),
           subject: meta.subject,
@@ -135,12 +142,12 @@ function ShellInner() {
       }
       notifyPush({
         kind: "success",
-        title: `已确认归档：${item?.name ?? ""}`,
+        title: `已归档：${item.name}`,
         body: remember
           ? `${meta.subject}·${meta.version}·${meta.grade}${meta.volume}（已记住同类自动整理）`
           : `${meta.subject}·${meta.version}·${meta.grade}${meta.volume}`,
       });
-      toast.success(`已归档「${item?.name ?? ""}」到素材目录`);
+      toast.success(`已归档「${item.name}」到素材目录`);
     },
     [archivePending, archiveConfirm, archiveAddRule, notifyPush],
   );

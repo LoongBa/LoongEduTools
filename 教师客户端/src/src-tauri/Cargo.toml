@@ -1,6 +1,6 @@
 [package]
 name = "teacher-client"
-version = "0.2.2"
+version = "0.2.3"
 description = "桃李助手 · 龙爸易教·教师端（Tauri 壳）"
 authors = ["LoongBa"]
 edition = "2021"

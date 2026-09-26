@@ -1,9 +1,11 @@
 // 下载中心（R03 §3 演进）：任务 / 内容（按学科分类）/ 工具（按类型分类）/ 原版教材（本机目录导入）四分区 Tab
 // + 子分类 chips + tag chips + 卡片三态 + 待办总览（需下载/缺数据/数据有更新/有更新 + 一键批量）
+// + D11 §6 素材归档（下载目录监视确认后归档的课件素材清单 + 撤销）
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
   AlertTriangle,
+  Archive,
   CircleCheck,
   Download,
   FolderInput,
@@ -15,12 +17,13 @@ import {
   Package,
   RefreshCw,
   PackageOpen,
+  RotateCcw,
   Trash2,
   Wrench,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { api } from "@/api";
+import { api, ArchiveEntry } from "@/api";
 import { friendlyErr } from "@/errutil";
 import { EDU_TOOLS } from "@/lib/eduTools";
 import { formatBytes, relativeTime } from "@/lib/format";
@@ -29,7 +32,7 @@ import type { InstalledMap } from "@/lib/store";
 import type { DownloadHistoryItem, DownloadKind, LocalTextbook, Notification, StoreItem, ToolboxManifest } from "@/lib/types";
 import { TextbookSection } from "@/components/TextbookSection";
 
-type Section = "tasks" | "content" | "tool" | "textbook";
+type Section = "tasks" | "content" | "tool" | "textbook" | "archive";
 
 /** startDownload 的可选元信息（顶栏下载面板展示名称与类型用） */
 export type StartDownload = (
@@ -128,6 +131,18 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
       .then(setToolbox)
       .catch(() => { /* 清单不可达：待办总览工具项降级为空 */ });
   }, []);
+  // D11 §6 素材归档：已归档索引清单（P3 · archive_list 真实拉取）
+  const [archives, setArchives] = useState<ArchiveEntry[]>([]);
+  const refreshArchives = useCallback(() => {
+    void api
+      .archiveList()
+      .then(setArchives)
+      .catch(() => setArchives([]));
+  }, []);
+  useEffect(() => {
+    refreshArchives();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const items: StoreItem[] = useMemo(() => {
     return packages.map((p) => {
       const instVer = installed[p.id];
@@ -146,8 +161,9 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
       content: items.filter((i) => sectionOf(i) === "content").length,
       tool: items.filter((i) => sectionOf(i) === "tool").length,
       textbook: textbooks.length,
+      archive: archives.length,
     }),
-    [items, textbooks],
+    [items, textbooks, archives],
   );
 
   // 当前分区的子分类 chips：内容=学科，工具=类型（原版教材区自带学科筛选，不走此处）
@@ -289,6 +305,7 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
               { key: "content", label: "内容", n: counts.content },
               { key: "tool", label: "工具", n: counts.tool },
               { key: "textbook", label: "原版教材", n: counts.textbook },
+              { key: "archive", label: "素材归档", n: counts.archive },
             ] as const
           ).map((t) => (
             <button
@@ -356,6 +373,10 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
 
         {phase === "ready" && section === "textbook" && (
           <TextbookSection items={textbooks} onItems={onTextbooks} />
+        )}
+
+        {section === "archive" && (
+          <ArchiveSection entries={archives} onRefresh={refreshArchives} />
         )}
 
         {section === "tasks" && (
@@ -614,6 +635,85 @@ function TasksSection({
                   {h.name}
                 </span>
                 <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">{relativeTime(h.at)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}
+
+/** D11 §6 素材归档：已归档清单 + 撤销（archives/<学科>/<版本>/<年级册次>/，拷贝留原件） */
+function ArchiveSection({ entries, onRefresh }: { entries: ArchiveEntry[]; onRefresh: () => void }) {
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const undo = (entry: ArchiveEntry) => {
+    setBusyId(entry.id);
+    void api
+      .archiveUndo(entry.id)
+      .then(() => {
+        toast.success(`已撤销归档：${entry.name}`, {
+          description: "源文件仍在浏览器下载目录，可重新整理。",
+        });
+        onRefresh();
+      })
+      .catch((e) => toast.error("撤销失败", { description: friendlyErr(e) }))
+      .finally(() => setBusyId(null));
+  };
+
+  return (
+    <div className="space-y-5">
+      <section aria-labelledby="dl-archive" className="rounded-xl border border-border bg-card p-4 shadow-sm">
+        <div className="mb-3 flex items-center gap-2">
+          <Archive size={14} aria-hidden className="text-brand" />
+          <h2 id="dl-archive" className="font-display text-[13px] font-bold tracking-wide">素材归档</h2>
+          <span className="text-[11px] tabular-nums text-muted-foreground">{entries.length} 项</span>
+          <button
+            type="button"
+            className="ml-auto flex h-7 items-center gap-1 rounded px-2 text-[11px] text-muted-foreground transition-colors hover:bg-accent"
+            onClick={onRefresh}
+          >
+            <RefreshCw size={11} aria-hidden />刷新
+          </button>
+        </div>
+
+        <p className="mb-3 rounded-lg border border-warn/30 bg-warn/10 px-3 py-2 text-[11.5px] leading-relaxed text-muted-foreground">
+          归档的教材/课件资料仅供个人教学和学习使用，请勿对外分发。归档为副本，源文件保留在浏览器下载目录。
+        </p>
+
+        {entries.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2 py-12 text-muted-foreground">
+            <Archive size={24} aria-hidden className="opacity-50" />
+            <p className="text-[13px]">还没有归档素材。</p>
+            <p className="text-[11.5px] text-muted-foreground/80">
+              在浏览器下载教材/课件后，客户端检测到新下载会弹出确认卡片，确认后自动归档到这里。
+            </p>
+          </div>
+        ) : (
+          <ul role="list" className="divide-y divide-border">
+            {entries.map((e) => (
+              <li key={e.id} className="flex items-center gap-3 py-2.5">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-brand">
+                  <Archive size={14} aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13px] font-medium" title={e.name}>{e.name}</span>
+                  <span className="block truncate text-[11px] text-muted-foreground" title={e.rel}>
+                    {e.subject}·{e.version}·{e.grade}{e.volume} · {formatBytes(e.size_bytes)}
+                  </span>
+                </span>
+                <span className="shrink-0 text-[10.5px] tabular-nums text-muted-foreground">{relativeTime(e.at)}</span>
+                <button
+                  type="button"
+                  disabled={busyId === e.id}
+                  title="撤销归档（保留下载目录源文件）"
+                  aria-label={`撤销归档 ${e.name}`}
+                  className="flex size-7 shrink-0 items-center justify-center rounded-md border border-input bg-card text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-45"
+                  onClick={() => undo(e)}
+                >
+                  {busyId === e.id ? <Loader size={12} aria-hidden className="animate-spin" /> : <RotateCcw size={12} aria-hidden />}
+                </button>
               </li>
             ))}
           </ul>

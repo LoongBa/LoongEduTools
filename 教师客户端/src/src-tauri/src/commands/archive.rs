@@ -1,8 +1,9 @@
-//! 下载目录监视与课件素材归档（D11 §4 · P1 观测层）
+//! 下载目录监视与课件素材归档（D11 §4-§6 · P1 观测层 + P3 归档移动）
 //!
 //! P1 职责：定位浏览器下载目录 + 轮询监视（Rust 标准库实现，零新增 crate，
 //! 规避 notify 依赖与网络盘限制）+ `archive:new` 事件推前端（发现新文件）。
-//! P2+（确认卡片/归档移动/索引）在后续迭代接入本模块扩展。
+//! P2（确认卡片）在前端；P3 职责：确认后归档移动（拷贝→staging→rename 原子落盘，
+//! 下载目录保留原件可撤销）+ `archives.json` 索引读改写（保留未知字段）。
 //!
 //! 配置：`config.json` 的 `archive` 子对象（D11 §3.1）——目录定位优先级：
 //!   ① 用户显式指定（archive_watch_dir 存储，config.json archive.dir）
@@ -244,6 +245,273 @@ pub fn archive_status(app: tauri::AppHandle) -> serde_json::Value {
     })
 }
 
+// ---------------------------------------------------------------- P3 归档移动（D11 §6）
+
+/// 归档元数据：确认卡片分类结果（学科/版本/年级/册次）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ArchiveMeta {
+    pub subject: String,
+    pub version: String,
+    pub grade: String,
+    /// 册次：上册/下册（归档目录拼 <年级><册次>）
+    pub volume: String,
+}
+
+/// 归档索引条目（archives.json 值对象）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ArchiveEntry {
+    /// 稳定 id（撤销/列表用）
+    pub id: String,
+    /// 归档文件名（含重名后缀）
+    pub name: String,
+    /// 源文件完整路径（下载目录，保留原件可追溯）
+    pub source_path: String,
+    pub subject: String,
+    pub version: String,
+    pub grade: String,
+    pub volume: String,
+    pub size_bytes: u64,
+    /// 归档时间（ISO）
+    pub at: String,
+    /// 相对 archives/ 的路径（/ 分隔），P5 打包索引用
+    pub rel: String,
+}
+
+/// 支持归档的文件类型（D11 §6.3 · 独立于 textbook.rs IMAGE_EXT——教材扫描不含音视频）
+const ARCHIVE_EXT: &[&str] = &[
+    // 教材 PDF
+    "pdf",
+    // 课堂图片
+    "jpg", "jpeg", "png", "gif", "webp", "bmp",
+    // 音频（名师课堂等）
+    "mp3", "m4a", "wav", "ogg", "flac", "aac",
+    // 视频
+    "mp4", "mkv", "avi", "mov", "wmv", "webm", "flv",
+];
+
+fn ext_of(name: &str) -> Option<String> {
+    let ext = name.rsplit_once('.').map(|(_, e)| e.to_lowercase())?;
+    if ARCHIVE_EXT.contains(&ext.as_str()) {
+        Some(ext)
+    } else {
+        None
+    }
+}
+
+/// 归档根：`<exe 同目录>/archives/`（与 packages/ toolbox/ 同级，随 U 盘走）
+fn archives_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    Ok(crate::commands::recents::exe_dir(app)?.join("archives"))
+}
+
+/// 归档索引：`archives/archives.json`（读改写保留未知字段，复用 recents 模式）
+fn archives_index_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    Ok(archives_dir(app)?.join("archives.json"))
+}
+
+/// 读归档索引（无文件/损坏 → 空对象，不 panic）
+fn load_archives_index(path: &Path) -> serde_json::Map<String, serde_json::Value> {
+    fs::read_to_string(path)
+        .ok()
+        .and_then(|raw| serde_json::from_str::<serde_json::Value>(&raw).ok())
+        .and_then(|v| v.get("archives").cloned())
+        .and_then(|a| a.as_object().cloned())
+        .unwrap_or_default()
+}
+
+/// 写归档索引：保留顶层未知字段 + archives 子对象整体替换（仿 recents::save_recents）
+fn save_archives_index(path: &Path, entries: &serde_json::Map<String, serde_json::Value>) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    let root = fs::read_to_string(path)
+        .ok()
+        .and_then(|raw| serde_json::from_str::<serde_json::Value>(&raw).ok())
+        .filter(|v| v.is_object())
+        .unwrap_or_else(|| serde_json::json!({}));
+    let mut root = root;
+    root["archives"] = serde_json::Value::Object(entries.clone());
+    let json = serde_json::to_string_pretty(&root).map_err(|e| format!("序列化失败: {e}"))?;
+    fs::write(path, json).map_err(|e| format!("写入归档索引失败: {e}"))
+}
+
+/// 重名处理：`name (1).ext` / `name (2).ext`（仿浏览器下载惯例）
+fn dedup_name(dir: &Path, name: &str) -> String {
+    if !dir.join(name).exists() {
+        return name.to_string();
+    }
+    let (stem, ext) = match name.rsplit_once('.') {
+        Some((s, e)) => (s.to_string(), e.to_string()),
+        None => (name.to_string(), String::new()),
+    };
+    for i in 1..=99 {
+        let candidate = if ext.is_empty() {
+            format!("{stem} ({i})")
+        } else {
+            format!("{stem} ({i}).{ext}")
+        };
+        if !dir.join(&candidate).exists() {
+            return candidate;
+        }
+    }
+    // 兜底：毫秒时间戳后缀（极端重名场景）
+    let ms = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
+    format!("{stem} ({ms}).{ext}")
+}
+
+fn now_iso() -> String {
+    let ms = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
+    // 与 store 的 nowIso 对齐的 ISO 形态（无 chrono：手工拼 UTC）
+    let secs = ms / 1000;
+    let days = secs / 86400;
+    let rem = secs % 86400;
+    let (y, m, d) = civil_from_days(days as i64);
+    format!("{y:04}-{m:02}-{d:02}T{:02}:{:02}:{:02}.{:03}Z", rem / 3600, (rem % 3600) / 60, rem % 60, (ms % 1000))
+}
+
+/// days → (y, m, d)：Howard Hinnant 民用日历逆变换（无 chrono 依赖）
+fn civil_from_days(z: i64) -> (i64, i64, i64) {
+    let z = z + 719_468;
+    let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146_096) / 365;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    (if m <= 2 { y + 1 } else { y }, m, d)
+}
+
+/// P3 归档：确认卡片 → 拷贝源文件到 `archives/<学科>/<版本>/<年级><册次>/`
+/// 拷贝而非移动（D11 决策 2：下载目录是用户资产，保留原件可撤销）；
+/// staging → rename 原子落盘（复用 store.rs:325 先例）；写索引保留未知字段。
+#[tauri::command]
+pub fn archive_confirm(
+    app: tauri::AppHandle,
+    path: String,
+    meta: ArchiveMeta,
+) -> Result<ArchiveEntry, String> {
+    let src = PathBuf::from(&path);
+    let file_name = src
+        .file_name()
+        .ok_or_else(|| "源路径缺少文件名".to_string())?
+        .to_string_lossy()
+        .into_owned();
+    if !src.is_file() {
+        return Err(format!("源文件不存在: {path}"));
+    }
+    if ext_of(&file_name).is_none() {
+        return Err(format!("不支持的文件类型（仅教材/图片/音频/视频）: {file_name}"));
+    }
+    let size = fs::metadata(&src)
+        .map_err(|e| format!("读取源文件信息失败: {e}"))?
+        .len();
+
+    // 目标目录：archives/<学科>/<版本>/<年级><册次>/
+    let dest_dir = archives_dir(&app)?
+        .join(&meta.subject)
+        .join(&meta.version)
+        .join(format!("{}{}", meta.grade, meta.volume));
+    fs::create_dir_all(&dest_dir).map_err(|e| format!("创建归档目录失败: {e}"))?;
+
+    let dest_name = dedup_name(&dest_dir, &file_name);
+    let dest = dest_dir.join(&dest_name);
+    let staging = dest_dir.join(format!(".{dest_name}.staging"));
+    // 拷贝 → 校验大小一致 → staging→rename 原子落盘（失败清理 staging）
+    fs::copy(&src, &staging).map_err(|e| format!("拷贝文件失败: {e}"))?;
+    let staged_len = fs::metadata(&staging).map(|m| m.len()).unwrap_or(0);
+    if staged_len != size {
+        let _ = fs::remove_file(&staging);
+        return Err("归档拷贝校验失败（大小不一致），已保留源文件".into());
+    }
+    if let Err(e) = fs::rename(&staging, &dest) {
+        let _ = fs::remove_file(&staging);
+        return Err(format!("归档落盘失败: {e}"));
+    }
+
+    // 写索引（保留未知字段）
+    let rel = format!(
+        "{}/{}/{}{}/{}",
+        meta.subject, meta.version, meta.grade, meta.volume, dest_name
+    );
+    let entry = ArchiveEntry {
+        id: format!("arc-{}", now_iso()),
+        name: dest_name,
+        source_path: path,
+        subject: meta.subject,
+        version: meta.version,
+        grade: meta.grade,
+        volume: meta.volume,
+        size_bytes: size,
+        at: now_iso(),
+        rel,
+    };
+    let idx_path = archives_index_path(&app)?;
+    let mut entries = load_archives_index(&idx_path);
+    entries.insert(entry.id.clone(), serde_json::to_value(&entry).map_err(|e| format!("序列化失败: {e}"))?);
+    save_archives_index(&idx_path, &entries)?;
+
+    Ok(entry)
+}
+
+/// P3 撤销归档：删除 archives 副本 + 回写索引（源文件在下载目录天然可恢复）
+#[tauri::command]
+pub fn archive_undo(app: tauri::AppHandle, entry_id: String) -> Result<ArchiveEntry, String> {
+    let idx_path = archives_index_path(&app)?;
+    let mut entries = load_archives_index(&idx_path);
+    let val = entries
+        .get(&entry_id)
+        .cloned()
+        .ok_or_else(|| "归档条目不存在".to_string())?;
+    let entry: ArchiveEntry = serde_json::from_value(val).map_err(|e| format!("索引条目解析失败: {e}"))?;
+
+    // 定位副本：rel 在 archives/ 下的相对路径（/ 分隔 → 平台分隔符）
+    let abs = archives_dir(&app)?.join(&entry.rel.replace('/', std::path::MAIN_SEPARATOR_STR));
+    let _ = fs::remove_file(&abs); // 已不存在（手动删除）也视为撤销成功
+
+    entries.remove(&entry_id);
+    save_archives_index(&idx_path, &entries)?;
+    Ok(entry)
+}
+
+/// P3 归档索引清单（前端「素材归档」分区/打包用）
+#[tauri::command]
+pub fn archive_list(app: tauri::AppHandle) -> Result<Vec<ArchiveEntry>, String> {
+    let idx_path = archives_index_path(&app)?;
+    let entries = load_archives_index(&idx_path);
+    let mut out: Vec<ArchiveEntry> = entries
+        .values()
+        .filter_map(|v| serde_json::from_value(v.clone()).ok())
+        .collect();
+    out.sort_by(|a, b| b.at.cmp(&a.at)); // 新→旧
+    Ok(out)
+}
+
+/// P5 打包索引段：`archives` 元数据（不含实体，与 toolbox-pack.json 既有落差一致）
+#[tauri::command]
+pub fn archive_pack_index(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
+    let list = archive_list(app)?;
+    Ok(serde_json::json!({
+        "entries": list.iter().map(|e| serde_json::json!({
+            "rel": e.rel,
+            "name": e.name,
+            "subject": e.subject,
+            "version": e.version,
+            "grade": e.grade,
+            "volume": e.volume,
+            "size_bytes": e.size_bytes,
+            "at": e.at,
+        })).collect::<Vec<_>>(),
+        "exported_at": now_iso(),
+    }))
+}
+
 // ---------------------------------------------------------------- 测试
 
 #[cfg(test)]
@@ -325,5 +593,69 @@ mod tests {
         assert_eq!(raw["api_base"], "https://edu.example.com");
         assert!(raw["recents"].is_object(), "recents 必须保留");
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ------------------------------------------------ P3 归档移动单测
+
+    fn tmp_archive_meta() -> ArchiveMeta {
+        ArchiveMeta {
+            subject: "英语".into(),
+            version: "人教版".into(),
+            grade: "四年级".into(),
+            volume: "上册".into(),
+        }
+    }
+
+    #[test]
+    fn ext_of_accepts_media_and_rejects_others() {
+        assert_eq!(ext_of("U01.mp4").unwrap(), "mp4");
+        assert_eq!(ext_of("song.MP3").unwrap(), "mp3");
+        assert_eq!(ext_of("a.png").unwrap(), "png");
+        assert!(ext_of("a.pdf").is_some());
+        assert!(ext_of("notes.docx").is_none(), "docx 不支持");
+        assert!(ext_of("noext").is_none());
+    }
+
+    #[test]
+    fn dedup_name_adds_number_suffix() {
+        let dir = std::env::temp_dir().join("archive-dedup-test");
+        let _ = fs::create_dir_all(&dir);
+        fs::write(dir.join("a.mp4"), "1").unwrap();
+        fs::write(dir.join("a (1).mp4"), "2").unwrap();
+        assert_eq!(dedup_name(&dir, "a.mp4"), "a (2).mp4");
+        assert_eq!(dedup_name(&dir, "b.mp4"), "b.mp4");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn archives_index_roundtrip_preserves_unknown_fields() {
+        let dir = std::env::temp_dir().join("archive-idx-test");
+        let _ = fs::create_dir_all(&dir);
+        let path = dir.join("archives.json");
+        // 预置顶层未知字段（config 形态：版本标记等）
+        fs::write(&path, r#"{"schema_version":1}"#).unwrap();
+        let mut entries = serde_json::Map::new();
+        entries.insert(
+            "arc-1".into(),
+            serde_json::json!({"id":"arc-1","name":"a.mp4","source_path":"C:\\dl\\a.mp4","subject":"英语","version":"人教版","grade":"四年级","volume":"上册","size_bytes":10,"at":"2026-09-27T00:00:00.000Z","rel":"英语/人教版/四年级上册/a.mp4"}),
+        );
+        save_archives_index(&path, &entries).unwrap();
+        let raw = fs::read_to_string(&path).unwrap();
+        let v: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(v["schema_version"], 1, "未知字段保留");
+        assert_eq!(v["archives"]["arc-1"]["name"], "a.mp4");
+        // 读回
+        let loaded = load_archives_index(&path);
+        assert_eq!(loaded.len(), 1);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn civil_from_days_known_dates() {
+        // 1970-01-01 = day 0；day 20700 = 2026-09-04（与 Unix 历法比对）
+        let (y0, m0, d0) = civil_from_days(0);
+        assert_eq!((y0, m0, d0), (1970, 1, 1));
+        let (y, m, d) = civil_from_days(20700);
+        assert_eq!((y, m, d), (2026, 9, 4), "day 20700 = 2026-09-04（验证无 chrono 日历）");
     }
 }

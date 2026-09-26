@@ -179,6 +179,29 @@ export interface TextbookScanResult {
   truncated: boolean;
 }
 
+// ---- D11 素材归档（archive.rs · P3 归档移动）----
+
+export interface ArchiveMeta {
+  subject: string;
+  version: string;
+  grade: string;
+  volume: string;
+}
+
+export interface ArchiveEntry {
+  id: string;
+  name: string;
+  source_path: string;
+  subject: string;
+  version: string;
+  grade: string;
+  volume: string;
+  size_bytes: number;
+  at: string;
+  /** 相对 archives/ 的路径（/ 分隔），打包索引用 */
+  rel: string;
+}
+
 // ---- P3 抽卡/分组（roster.rs · D05 §2.4.1/§2.4.2）----
 
 export interface RosterStudent {
@@ -276,6 +299,24 @@ export const api = {
   // ---- v0.3 教材目录扫描（textbook.rs · 设计源 §3.4，字段对齐 pdf-scan.ts）----
   textbookScan: (dirPath: string) =>
     invoke<TextbookScanResult>("textbook_scan", { dirPath }),
+
+  // ---- D11 素材归档（archive.rs · P3 归档移动 / P5 打包索引导出）----
+  archiveWatchDir: (dir: string | null) =>
+    invoke<unknown>("archive_watch_dir", { dir }),
+  archiveStatus: () => invoke<{
+    config: { dir: string | null; poll_ms: number };
+    effective_dir: string;
+    detected_default: string;
+    running: boolean;
+  }>("archive_status"),
+  archiveConfirm: (path: string, meta: ArchiveMeta) =>
+    invoke<ArchiveEntry>("archive_confirm", { path, meta }),
+  archiveUndo: (entryId: string) =>
+    invoke<ArchiveEntry>("archive_undo", { entryId }),
+  archiveList: () => invoke<ArchiveEntry[]>("archive_list"),
+  archivePackIndex: () => invoke<{ entries: ArchiveEntry[]; exported_at: string }>(
+    "archive_pack_index",
+  ),
 
   // ---- P3 白名单上报（report.rs · A01 §5.1 · 零儿童数据）----
   reportProgress: (payload: {

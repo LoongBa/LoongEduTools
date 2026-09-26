@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use tauri::{Emitter, Manager};
 
 /// 当前壳版本（对齐 S01 min_shell_version 语义化比较）
-pub const SHELL_VERSION: &str = "0.2.2";
+pub const SHELL_VERSION: &str = "0.2.3";
 
 /// 内容包 manifest 签名公钥表（key_id → ed25519 公钥 hex · S01 §2.2 signature.key_id）
 /// dev-sign-2026 = scripts/keys/dev-sign.key（gitignored；管线签名钥，D04 §3.4）。

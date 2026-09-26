@@ -557,13 +557,13 @@ export function useArchivePending() {
     [setItems],
   );
 
-  /** 确认归档（meta 为最终确认值）；返回归档条目元信息供通知用 */
+  /** 归档成功（archive_confirm 已落盘）：标记 archived，供通知/回看 */
   const confirm = useCallback(
     (id: string, meta: ArchiveMeta) => {
       setItems((list) =>
         list.map((p) =>
           p.id === id
-            ? { ...p, meta, status: "confirmed" as const, at: new Date().toISOString() }
+            ? { ...p, meta, status: "archived" as const, at: new Date().toISOString() }
             : p,
         ),
       );
