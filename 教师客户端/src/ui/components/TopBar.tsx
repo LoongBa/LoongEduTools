@@ -4,6 +4,7 @@ import { Bell, Check, LogOut, Menu, Settings, UserRound, Wifi, WifiOff, X, Check
 import { cn } from "@/lib/utils";
 import { VIEW_TITLES } from "@/lib/nav";
 import { relativeTime } from "@/lib/format";
+import { api } from "@/api";
 import type { ActiveDownload, DownloadHistoryItem, Notification, View } from "@/lib/types";
 
 /** 顶栏下载面板里的活动任务（含进度） */
@@ -418,7 +419,11 @@ export function TopBar({
                   label="注销并清除本机数据"
                   danger
                   onClick={() => {
-                    window.localStorage.clear();
+                    // 真实壳端：登出清凭证（Rust credential.enc）+ 清 taoli.* 本地数据（设计源持久化键）
+                    void api.authLogout().catch(() => {});
+                    for (const k of Object.keys(window.localStorage)) {
+                      if (k.startsWith("taoli.")) window.localStorage.removeItem(k);
+                    }
                     window.location.reload();
                   }}
                 />
