@@ -76,10 +76,28 @@
   function loadStore() {
     try {
       var raw = LX_SHARED.storage.get('v1');
-      if (raw) { return raw; }
+      if (raw) { return normalizeStore(raw); }
     } catch (err) { /* ignore */ }
-    return { version: 1, profile: { totalCorrect: 0, maxCombo: 0, tier: '青铜', badges: [], best: { rate: 0, combo: 0, elapsedMs: Infinity } },
-             checkin: { dates: [], streak: 0 }, wrongBook: [], history: [] };
+    return defaultStore();
+  }
+  function defaultStore() {
+    return { version: 2, profile: { totalCorrect: 0, maxCombo: 0, tier: '青铜', badges: [], best: { rate: 0, combo: 0, elapsedMs: Infinity } },
+             checkin: { dates: [], streak: 0 }, wrongBook: [], history: [],
+             /* v1.2 防沉迷/自控力（V0.5 guard：对齐通用需求-防沉迷自控力.md §4） */
+             guard: { minutePref: 5, gamesPref: 10, today: '', playedToday: 0, delayMinTimes: 0, delayGamesTimes: 0 },
+             selfDaily: [], selfStreak: 0, selfLocked: false };
+  }
+  /* v1 → v2 迁移（Oracle N-2）：补齐 guard/selfDaily 默认值，无副作用 */
+  function normalizeStore(raw) {
+    if (!raw || typeof raw !== 'object') { return defaultStore(); }
+    if (!raw.guard || typeof raw.guard !== 'object') {
+      raw.guard = { minutePref: 5, gamesPref: 10, today: '', playedToday: 0, delayMinTimes: 0, delayGamesTimes: 0 };
+    }
+    if (!Array.isArray(raw.selfDaily)) { raw.selfDaily = []; }
+    if (typeof raw.selfStreak !== 'number') { raw.selfStreak = 0; }
+    if (typeof raw.selfLocked !== 'boolean') { raw.selfLocked = false; }
+    raw.version = 2;
+    return raw;
   }
   function saveStore() {
     try {
@@ -136,6 +154,98 @@
     headerEl.appendChild(brand);
   }
 
+  /* ============================================================
+     v1.2 防沉迷/自控力（V0.5 guard 通用能力接入）
+     - 档位：分钟 5/10/15（默认 5）+ 题量 10/20/30/不限（默认 10）
+     - 组间到点：finishQuiz 时 addPlayed + checkDue，到点弹「休息一下」（延迟/自律）
+     - 自律锁：isLocked 拦截新练习；结算「我很自律」动作
+     - 交互样式复用 24点 v1.2（limit-row/limit-btn/limit-overlay，Chrome 61 基线）
+     ============================================================ */
+  /* 练习限时档位常量（分钟 / 题量） */
+  var GUARD_MINUTES = [5, 10, 15];
+  var GUARD_GAMES = [10, 20, 30, 0];   // 0=不限（口算题量口径，对齐通用需求 §3 学科类）
+  var guardTimerId = null;             // 防沉迷提示浮层定时器
+
+  function renderLimitRow(container) {
+    clearNode(container);
+    /* 分钟档 */
+    GUARD_MINUTES.forEach(function (m) {
+      var b = makeEl('button', 'limit-btn' + (store.guard.minutePref === m ? ' active' : ''), m + ' 分钟');
+      b.addEventListener('click', function () {
+        LX_SHARED.guard.setPrefs({ store: store }, { minute: m });
+        saveStore();
+        renderLimitRows();
+      });
+      container.appendChild(b);
+    });
+    /* 题量档 */
+    GUARD_GAMES.forEach(function (g) {
+      var label = g === 0 ? '不限' : g + ' 题';
+      var b = makeEl('button', 'limit-btn' + (store.guard.gamesPref === g ? ' active' : ''), label);
+      b.addEventListener('click', function () {
+        LX_SHARED.guard.setPrefs({ store: store }, { games: g });
+        saveStore();
+        renderLimitRows();
+      });
+      container.appendChild(b);
+    });
+  }
+  function renderLimitRows() {
+    var row = document.getElementById('limit-row');
+    if (row) { renderLimitRow(row); }
+    renderLimitHint();
+  }
+  function renderLimitHint() {
+    var el = document.getElementById('limit-hint');
+    if (!el) { return; }
+    var today = store.guard.playedToday || 0;
+    var limitLabel = store.guard.gamesPref === 0 ? '不限' : store.guard.gamesPref + ' 题';
+    el.textContent = '本日已练 ' + today + ' 题 · 目标 ' + limitLabel + '（到点提醒，可延迟或自律）';
+  }
+
+  /* 组间到点提醒浮层（延迟/自律二选；复用 24点 limit-overlay 样式） */
+  function showLimitOverlay(reason) {
+    var overlay = makeEl('div', 'limit-overlay');
+    var box = makeEl('div', 'limit-box');
+    var isMin = reason === 'min';
+    box.appendChild(makeEl('div', 'limit-title', isMin ? '练习时间到' : '今日目标完成'));
+    box.appendChild(makeEl('div', 'limit-desc',
+      isMin ? '已练习 ' + store.guard.minutePref + ' 分钟，休息一下吧～' :
+              '已练 ' + store.guard.playedToday + ' 题，完成今日目标！'));
+    var btns = makeEl('div', 'limit-btns');
+    var extendBtn = makeEl('button', 'btn btn-primary', isMin ? '延迟 5 分钟' : '再练 2 题');
+    extendBtn.addEventListener('click', function () {
+      /* ISSUE-1 修复：extend 达上限（延迟 2 次）返回 false → 不再提供延迟，仅剩自律出口 */
+      var ok = LX_SHARED.guard.extend({ store: store }, isMin ? 'min' : 'games');
+      saveStore();
+      if (ok === false) { return; }   // 达上限：保持浮层不关闭（用户须自律）
+      closeOverlay(overlay);
+    });
+    btns.appendChild(extendBtn);
+    var enoughBtn = makeEl('button', 'btn', '我很自律，今天足够了');
+    enoughBtn.addEventListener('click', function () {
+      LX_SHARED.guard.enough({ store: store });
+      saveStore();
+      closeOverlay(overlay);
+      viewGrade();
+    });
+    btns.appendChild(enoughBtn);
+    box.appendChild(btns);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+  }
+  function closeOverlay(overlay) {
+    if (overlay && overlay.parentNode) { overlay.parentNode.removeChild(overlay); }
+  }
+  /* 自律锁拦截：今日已自律 → 提示并阻止进入练习 */
+  function guardBlockIfLocked() {
+    if (LX_SHARED.guard.isLocked({ store: store })) {
+      try { window.alert('今天已经很自律啦，明天见！'); } catch (err) { /* ignore */ }
+      return true;
+    }
+    return false;
+  }
+
   /* ---------- 视图：选年级 ---------- */
   function viewGrade() {
     renderHeader();
@@ -154,6 +264,16 @@
     }
     viewEl.appendChild(grid);
     // 底部导航（打卡/错题/成就，阶段 3+）
+    /* v1.2 防沉迷/自控力：首页「练习限时」设置行（V0.5 guard 通用能力接入） */
+    viewEl.appendChild(makeEl('div', 'mode-title', '练习限时'));
+    var limitRow = makeEl('div', 'limit-row');
+    limitRow.id = 'limit-row';
+    renderLimitRow(limitRow);
+    viewEl.appendChild(limitRow);
+    var limitHint = makeEl('div', 'limit-hint', '');
+    limitHint.id = 'limit-hint';
+    viewEl.appendChild(limitHint);
+    renderLimitHint();
     renderFooterNav();
   }
 
@@ -231,6 +351,9 @@
   /* ---------- 视图：练习 ---------- */
   function startQuiz(pointId, timerSec) {
     if (!GEN || !GEN.gen) { return; }
+    /* v1.2 防沉迷/自控力：自律锁拦截（今日已自律 → 不进练习） */
+    if (guardBlockIfLocked()) { return; }
+    LX_SHARED.guard.startRound({ store: store });
     var p = POINTS[pointId];
     state.point = pointId;
     state.idx = 0; state.correct = 0; state.combo = 0; state.maxCombo = 0;
@@ -419,6 +542,14 @@
     // 历史记录（滚动 30 天）
     store.history.push({ date: t, point: state.point, rate: rate, count: total, correct: state.correct, elapsedMs: elapsed * 1000 });
     while (store.history.length > 30) { store.history.shift(); }
+
+    /* v1.2 防沉迷/自控力（V0.5 guard）：组间到点判定
+       - 今日题量算 completed 题数（Oracle I-1：count=本组题数，非 +1）
+       - 学科类无「局」概念：ok=true（完成本组 = 达标）；试错豁免分支休眠（N-7） */
+    LX_SHARED.guard.addPlayed({ store: store }, {
+      ok: true, count: total, nowMs: performance.now(), startedAt: state.startMs
+    });
+    var due = LX_SHARED.guard.checkDue({ store: store }, { elapsedMs: elapsed * 1000 });
     saveStore();
 
     // 渲染结果
@@ -458,7 +589,27 @@
     row.appendChild(printBtn);
     row.appendChild(shareBtn);
     row.appendChild(back);
+    /* v1.2 防沉迷/自控力：结算「我很自律，今天足够了」动作（V0.5 guard）
+       （若今日已自律锁，则不显示「再来一组」——输入由自律锁在 startQuiz 拦截） */
+    var selfBtn = makeEl('button', 'btn', '我很自律，今天足够了');
+    selfBtn.addEventListener('click', function () {
+      LX_SHARED.guard.enough({ store: store });
+      saveStore();
+      viewGrade();
+    });
+    row.appendChild(selfBtn);
     viewEl.appendChild(row);
+
+    /* v1.2 防沉迷/自控力：组间到点 → 叠加「休息一下」浮层（延迟/自律二选）
+       到点不阻断结算展示——浮层固定定位叠于其上；用户选择后继续 */
+    if (!LX_SHARED.guard.isLocked({ store: store }) && due.due) {
+      window.setTimeout(function () {
+        /* ISSUE-4 修复：400ms 内用户可能已点结算「我很自律」→ 复查 isLocked 防竞态浮层 */
+        if (!LX_SHARED.guard.isLocked({ store: store })) {
+          showLimitOverlay(due.reason);
+        }
+      }, 400);
+    }
   }
 
   /* ============================================================
