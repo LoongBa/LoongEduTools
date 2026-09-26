@@ -79,6 +79,14 @@
 - **版本 0.2.5→0.2.6**（五处对齐）
 - 四绿验证：cargo 87/87、tsc 0、vitest 64/64、pnpm build ✓
 
+### 设置页服务器地址 UI（2026-09-27，本会话完成，版本 0.2.7）
+- 新建 `src-tauri/src/commands/config.rs`：`config_get`（当前生效 api_base + 来源标记 explicit/detected_default + config_path）+ `config_set_api_base`（读改写 config.json **保留未知字段**（recents/archive 共存）；空串 = 清除显式配置回退编译期默认；http/https scheme 校验；写入即生效——auth::api_base() 每次请求实时读，无需重启）；**4 新增单测**（保留未知字段 / 空串清除 / 坏 scheme 拒绝+trim / 缺文件创建）；**cargo 87→91**
+- `lib.rs`：use 列表 + invoke_handler 注册 `config_get` / `config_set_api_base`
+- `api.ts`：`ConfigStatus` 接口（api_base/explicit/detected_default/config_path）+ configGet / configSetApiBase
+- `SettingsView.tsx`：新增「服务器」组——当前地址徽章（含来源：显式配置/编译期默认/P0 离线）+ 输入框「保存并验证」（configSetApiBase → serverPing 连通性 toast）+「恢复默认」+ config_path 展示 + 网页演示版降级（非 Tauri configGet 失败 → 只读提示不可配置）
+- **版本 0.2.6→0.2.7**（五处对齐）
+- 四绿验证：cargo 91/91、tsc 0、vitest 64/64、pnpm build ✓
+
 ## 待办（后续会话 · 长期候选）
 
 1. CF 免费档公网测试、轻量机上线、Win7 真机、IME 吞键实测、B4 在线服务端
@@ -119,4 +127,4 @@ cd 教师客户端/src && pnpm build              # EXIT=0
 
 ## 版本
 
-v0.2.6 已统一（Cargo/tauri.conf/package.json/SHELL_VERSION 五处对齐）；**tag `教师客户端-v0.2.5` 已创建并推 origin**（指向 f634222，D11 五阶段落地）。当前 tag 链：v0.2.0 → v0.2.1 → v0.2.5（0.2.2/0.2.3/0.2.4/0.2.6 为 P2/P3/P4/静默归档中间交付未单独打 tag，如需追溯可补打）。下一功能交付时子版本升 0.2.7（tag 需用户另行同意）。
+v0.2.7 已统一（Cargo/tauri.conf/package.json/SHELL_VERSION 五处对齐）；**tag `教师客户端-v0.2.5`（指向 f634222，D11 五阶段落地）与 `教师客户端-v0.2.6`（指向 2dc4c3f，D11 静默归档）已创建并推 origin**。当前 tag 链：v0.2.0 → v0.2.1 → v0.2.5 → v0.2.6（0.2.2/0.2.3/0.2.4/0.2.7 为中间交付未单独打 tag，如需追溯可补打）。下一功能交付时子版本升 0.2.8（tag 需用户另行同意）。
