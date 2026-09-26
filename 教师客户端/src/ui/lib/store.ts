@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   ActiveDownload,
+  ArchiveMeta,
+  ArchiveRule,
   Bookmark,
   DownloadHistoryItem,
   DownloadKind,
@@ -10,9 +12,11 @@ import type {
   LocalTextbook,
   NavGroupConfig,
   Notification,
+  PendingArchive,
   ToolShortcut,
 } from "./types";
 import { MOCK_BOOKMARK_BASELINE, MOCK_TEXTBOOK_BASELINE, QUICKSTART_PIN_SEED, LAUNCH_ICON_SEED_MIGRATION_KEY, LEGACY_SEED_ICON_IDS, MOCK_USER } from "./mockData";
+import { detectArchiveMeta } from "./archiveDetect";
 import { api } from "@/api";
 
 // localStorage keys —— 折叠态 / 主题 / 登录态 / 探针 / 已装包 / 快捷方式 / 下载任务 / 启动中心
@@ -33,6 +37,8 @@ const K = {
   notifyItems: "taoli.notify.items",
   textbooks: "taoli.textbooks.local",
   downloadHistory: "taoli.downloads.history",
+  archivePending: "taoli.archive.pending",
+  archiveRules: "taoli.archive.rules",
 } as const;
 
 function load<T>(key: string, fallback: T): T {
@@ -507,4 +513,125 @@ export function useDownloadTasks() {
   const clearHistory = useCallback(() => setHistory([]), [setHistory]);
 
   return { tasks, start, history, clearHistory, activeList };
+}
+
+// ── D11 素材归档：待确认队列（taoli.archive.pending）+ 自动整理规则（taoli.archive.rules）──
+
+const ARCHIVE_PENDING_MAX = 50;
+
+/** 归档规则数上限（「下次同类自动整理」记忆防膨胀） */
+const ARCHIVE_RULES_MAX = 30;
+
+/**
+ * D11 §5 待确认队列：订阅 archive:new 事件入队 + 自动识别预填；
+ * 确认/忽略后状态变更，条目保留供通知回看（上限内）。
+ */
+export function useArchivePending() {
+  const [items, setItems] = usePersistentState<PendingArchive[]>(K.archivePending, []);
+
+  /** archive:new 事件 → 入队（同 path 去重 + 自动识别） */
+  const add = useCallback(
+    (payload: { name: string; path: string; size_bytes: number; at: string }) => {
+      setItems((list) => {
+        if (list.some((p) => p.path === payload.path)) return list; // 已存在（轮询重复事件）
+        const { meta, confidence } = detectArchiveMeta(payload.name);
+        const item: PendingArchive = {
+          id: `arch-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          name: payload.name,
+          path: payload.path,
+          size_bytes: payload.size_bytes,
+          at: payload.at,
+          meta,
+          confidence,
+          status: "pending",
+        };
+        // 待确认项与已处理项分开裁剪：pending 保留更多，历史仅留少量回看
+        const pendingCount = list.filter((p) => p.status === "pending").length;
+        const keep =
+          pendingCount < ARCHIVE_PENDING_MAX
+            ? list
+            : [...list, item].filter((_, i, arr) => arr[i].status === "pending").slice(0, ARCHIVE_PENDING_MAX);
+        return [item, ...keep.filter((p) => p.id !== item.id)].slice(0, ARCHIVE_PENDING_MAX);
+      });
+    },
+    [setItems],
+  );
+
+  /** 确认归档（meta 为最终确认值）；返回归档条目元信息供通知用 */
+  const confirm = useCallback(
+    (id: string, meta: ArchiveMeta) => {
+      setItems((list) =>
+        list.map((p) =>
+          p.id === id
+            ? { ...p, meta, status: "confirmed" as const, at: new Date().toISOString() }
+            : p,
+        ),
+      );
+    },
+    [setItems],
+  );
+
+  /** 忽略：留在下载目录不归档 */
+  const ignore = useCallback(
+    (id: string) => {
+      setItems((list) =>
+        list.map((p) =>
+          p.id === id ? { ...p, status: "ignored" as const, at: new Date().toISOString() } : p,
+        ),
+      );
+    },
+    [setItems],
+  );
+
+  /** 清除已处理条目（确认/忽略的历史回看项） */
+  const clearDone = useCallback(
+    () => setItems((list) => list.filter((p) => p.status === "pending")),
+    [setItems],
+  );
+
+  return { items, add, confirm, ignore, clearDone };
+}
+
+/**
+ * D11 §5.4 自动整理规则：确认卡片勾选「下次同类自动整理」→ 记忆 pattern → taoli.archive.rules。
+ * 命中同 pattern 的后续下载可静默归档（P3 接入）。
+ */
+export function useArchiveRules() {
+  const [rules, setRules] = usePersistentState<ArchiveRule[]>(K.archiveRules, []);
+
+  /** 新增规则（由确认卡片的记忆偏好写入；同 pattern 去重） */
+  const addRule = useCallback(
+    (rule: Omit<ArchiveRule, "id" | "created_at">) => {
+      setRules((list) => {
+        if (list.some((r) => r.pattern === rule.pattern && r.subject === rule.subject)) return list;
+        const next: ArchiveRule = {
+          ...rule,
+          id: `rule-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          created_at: new Date().toISOString(),
+        };
+        return [next, ...list].slice(0, ARCHIVE_RULES_MAX);
+      });
+    },
+    [setRules],
+  );
+
+  /** 删除规则（规则管理入口用） */
+  const removeRule = useCallback(
+    (id: string) => setRules((list) => list.filter((r) => r.id !== id)),
+    [setRules],
+  );
+
+  /** 命中测试：文件名是否触发任一规则（静默归档判定，P3 消费） */
+  const matchFor = useCallback(
+    (filename: string) => {
+      try {
+        return rules.find((r) => new RegExp(r.pattern, "i").test(filename)) ?? null;
+      } catch {
+        return null;
+      }
+    },
+    [rules],
+  );
+
+  return { rules, addRule, removeRule, matchFor };
 }

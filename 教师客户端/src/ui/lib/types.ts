@@ -228,6 +228,48 @@ export interface Notification {
   read: boolean;
 }
 
+// ── D11 素材归档：确认卡片 / 待确认队列 / 自动整理规则 ──
+
+/** 归档元数据：确认卡片的分类结果（学科/版本/年级/册次） */
+export interface ArchiveMeta {
+  subject: string;
+  version: string;
+  grade: string;
+  volume: "上册" | "下册";
+}
+
+/** 识别置信度：高=文件名含明确词；中=只匹配局部；低=未命中 */
+export type ArchiveConfidence = "high" | "medium" | "low";
+
+/** 待确认下载文件（archive:new 事件入队；持久化 taoli.archive.pending） */
+export interface PendingArchive {
+  /** 与事件 name 对齐的去重键：downloads/<文件名> */
+  id: string;
+  /** 文件名（不含路径） */
+  name: string;
+  /** 完整源路径（P3 归档移动用） */
+  path: string;
+  size_bytes: number;
+  at: string;
+  /** 自动识别预填（可编辑，未命中为 null） */
+  meta: ArchiveMeta | null;
+  confidence: ArchiveConfidence;
+  /** pending=待确认 / confirmed=已确认归档 / ignored=已忽略 */
+  status: "pending" | "confirmed" | "ignored";
+}
+
+/** 自动整理规则（「下次同类自动整理」记忆；持久化 taoli.archive.rules） */
+export interface ArchiveRule {
+  id: string;
+  /** 触发文件名关键词（正则源串；命中即静默归档） */
+  pattern: string;
+  subject: string;
+  version: string;
+  grade: string;
+  volume: "上册" | "下册";
+  created_at: string;
+}
+
 // ── 顶栏「下载」面板 / 下载中心任务分区：任务展示所需元信息 ──
 export type DownloadKind = "pkg" | "tool";
 /** 正在下载 / 等待中的任务条目 */

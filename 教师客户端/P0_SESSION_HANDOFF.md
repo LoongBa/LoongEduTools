@@ -20,13 +20,23 @@
   - **版本统一 0.2.1**（Cargo.toml/tauri.conf.json/Cargo.lock/前端 package.json 0.1.0→0.2.1/SHELL_VERSION 常量 0.1.0→0.2.1，对齐 tag 教师客户端-v0.2.1）
 - `2c98216`: 看板回写
 
-## 待办（后续会话 P2-P5）
+### D11 P2 确认卡片（2026-09-27，本会话完成，版本 0.2.2）
+- `emit_new` payload 补 `path` 字段（dir.join(name)）——确认卡片与 P3 归档需要完整路径
+- `types.ts` 新增：`ArchiveMeta`（学科/版本/年级/册次）/ `PendingArchive`（待确认队列）/ `ArchiveRule`（自动整理规则）/ `ArchiveConfidence`（三档）
+- 新建 `ui/lib/archiveDetect.ts`：两级识别（整体规则 `U0[1-4]`=四上 / `U0[5-8]`=四下 → 完整 meta 高置信；维度降级学科/年级/册次/版本独立打分 → 中置信；全无 → 低置信 meta=null）+ 级联数据源（学科→版本 `VERSIONS_BY_SUBJECT` / 年级 1-6 / 册次上下）+ 规则工具（`escapeRegex`/`detectPatternFor`/`ruleMatches`）+ 文件类型标签
+- 新建 `ui/lib/archiveDetect.test.ts`：**17 单测**（高/中/低置信 / 单元号册次推断 / 版本默认 / 级联数据源 / 规则转义匹配 / 类型标签）
+- `store.ts` 新增：`useArchivePending`（待确认队列持久化 `taoli.archive.pending`，同 path 去重，上限 50）+ `useArchiveRules`（自动整理规则 `taoli.archive.rules`，同 pattern 去重，上限 30，`matchFor` 供 P3 静默归档判定）
+- 新建 `ui/components/ArchiveConfirmCard.tsx`：检测到新下载卡片——文件名+大小+类型 / 版权红线（仅供个人教学和学习使用）/ 置信度徽章（绿=自动识别、黄=部分识别请确认、灰=请手动归类）/ 级联四字段（父未选→子禁用、父变更→子清空）/ 册次 radio / 「下次同类文件自动整理」记忆勾选（显示同类关键词）/ 忽略+确认归档
+- `Shell.tsx`：`listen("archive:new")` 订阅（非 Tauri 环境 catch 降级）→ 入队 + 弹卡片；确认 → 状态 confirmed + 记忆写规则 + 通知 + toast；忽略 → 通知；关闭 → 保留待确认
+- **版本 0.2.1→0.2.2**（Cargo.toml/tauri.conf.json/Cargo.lock/package.json/SHELL_VERSION 五处对齐）
+- 四绿验证：cargo 83/83、tsc 0、vitest 59/59（42 原有+17 新增）、pnpm build ✓
 
-1. **P2 确认卡片**（D11 §5）：前端订阅 `archive:new` + 卡片（学科/版本/年级/册次级联 + 文件名自动识别预填 + 置信度 + 「下次同类自动整理」记忆 → taoli.archive.rules）
-2. **P3 归档移动**（D11 §6）：Rust `archive_confirm`（拷贝→staging→rename 原子落盘 + archives.json 索引读改写）+ `archive_undo`（撤销副本+回写索引）+ `archive_list`；目录 `<exe>/archives/<学科>/<版本>/<年级册次>/`
-3. **P4 通知扩展**（D11 §7）：types.ts Notification 加 `channel: "plugin"|"content"|"textbook"|"archive"`（勿扩展 kind 严重度——TopBar KIND_ICON 字面量索引会编译失败）+ `meta`/`action` 字段 + `push` 加 groupKey 合并（count++ + 时间窗 15min/24h）+ DownloadExtView TasksSection 按 channel 分组
-4. **P5 打包**（D11 §8）：ToolboxPanel exportPack 加 media_archive 索引段（不含实体，与既有 JSON 落差一致）+ 「仅供个人教学和学习使用」文案全覆盖
-5. **前置修复**（P4 前必做）：`LaunchpadView.tsx:97` startDownload prop 缺 info 参数 → 工具下载被标 "pkg" 的存量脏数据；`taoli.settings.notifyLaunch` 死开关补读取闭环
+## 待办（后续会话 P3-P5）
+
+1. **P3 归档移动**（D11 §6）：Rust `archive_confirm`（拷贝→staging→rename 原子落盘 + archives.json 索引读改写，复用 `recents.rs::save_recents` 保留未知字段模式）+ `archive_undo`（撤销副本+回写索引）+ `archive_list`；目录 `<exe>/archives/<学科>/<版本>/<年级册次>/`；前端确认动作从「标记 confirmed」升级为真实调用 `archive_confirm`
+2. **P4 通知扩展**（D11 §7）：types.ts Notification 加 `channel: "plugin"|"content"|"textbook"|"archive"`（勿扩展 kind 严重度——TopBar KIND_ICON 字面量索引会编译失败）+ `meta`/`action` 字段 + `push` 加 groupKey 合并（count++ + 时间窗 15min/24h）+ DownloadExtView TasksSection 按 channel 分组
+3. **P5 打包**（D11 §8）：ToolboxPanel exportPack 加 media_archive 索引段（不含实体，与既有 JSON 落差一致）+ 「仅供个人教学和学习使用」文案全覆盖
+4. **前置修复**（P4 前必做）：`LaunchpadView.tsx:97` startDownload prop 缺 info 参数 → 工具下载被标 "pkg" 的存量脏数据；`taoli.settings.notifyLaunch` 死开关补读取闭环
 
 ## 关键决策（D11 §12 决策记录摘要）
 
@@ -64,4 +74,4 @@ cd 教师客户端/src && pnpm build              # EXIT=0
 
 ## 版本
 
-v0.2.1 已统一（Cargo/tauri.conf/package.json/SHELL_VERSION 五处对齐）；tag 教师客户端-v0.2.1 已存在。下一功能交付时子版本升 0.2.2（需用户同意 tag）。
+v0.2.2 已统一（Cargo/tauri.conf/package.json/SHELL_VERSION 五处对齐；0.2.1 版为 D11 P1 交付）；tag 教师客户端-v0.2.2 需用户另行同意。下一功能交付（P3）时子版本升 0.2.3。

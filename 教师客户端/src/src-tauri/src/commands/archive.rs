@@ -178,7 +178,7 @@ pub fn spawn_watch_thread(app: tauri::AppHandle, dir: PathBuf, poll_ms: u64) {
             if is_new == Some(true) || baseline.get(name).is_none() {
                 // 大小稳定判定：等一个轮询周期后确认文件不再增长（粗粒度，P1 够用；
                 // P2 引入下载完成事件细节时可按大小分档采样）
-                emit_new(&app, name, *size);
+                emit_new(&app, &dir, name, *size);
             }
         }
         baseline = now;
@@ -186,10 +186,12 @@ pub fn spawn_watch_thread(app: tauri::AppHandle, dir: PathBuf, poll_ms: u64) {
     });
 }
 
-fn emit_new(app: &tauri::AppHandle, name: &str, size: u64) {
+/// P2 确认卡片所需：完整文件路径（dir.join(name)）+ 大小 + 类型由前端按扩展名判断
+fn emit_new(app: &tauri::AppHandle, dir: &Path, name: &str, size: u64) {
     let payload = serde_json::json!({
         "type": "new-file",
         "name": name,
+        "path": dir.join(name).to_string_lossy().into_owned(),
         "size_bytes": size,
         "at": chrono_like_now(),
     });

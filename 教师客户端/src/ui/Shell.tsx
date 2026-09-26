@@ -6,10 +6,14 @@ import { useCallback, useEffect, useState } from "react";
 import { Toaster } from "sonner";
 import { ChevronRight } from "lucide-react";
 import { toast } from "sonner";
+import { listen } from "@tauri-apps/api/event";
 import { cn } from "@/lib/utils";
-import type { View } from "@/lib/types";
+import { detectPatternFor } from "@/lib/archiveDetect";
+import type { ArchiveMeta, View } from "@/lib/types";
 import { VIEW_TITLES } from "@/lib/nav";
 import {
+  useArchivePending,
+  useArchiveRules,
   useBookmarks,
   useDownloadTasks,
   useInstalledPackages,
@@ -29,6 +33,7 @@ import { isPinnedMenu, SIDEBAR_MENU_MAX } from "@/components/LaunchConfigDialog"
 import { Sidebar, type SidebarQuickItem } from "@/components/Sidebar";
 import { TopBar } from "@/components/TopBar";
 import { DownloadExtView } from "@/components/DownloadExtView";
+import { ArchiveConfirmCard } from "@/components/ArchiveConfirmCard";
 import { LaunchpadView } from "@/components/LaunchpadView";
 import { SpecDocView } from "@/components/SpecDocView";
 import { ProfileView } from "@/components/ProfileView";
@@ -90,6 +95,70 @@ function ShellInner() {
   const [groupCfg] = useNavGroups();
   const { items: notifyItems, push: notifyPush, markAllRead, removeOne, clearAll, unread } = useNotifications();
 
+  // D11 §5 · 素材归档：订阅 archive:new（P1 轮询发现新下载）→ 入待确认队列
+  const { items: archivePending, add: archiveAdd, confirm: archiveConfirm, ignore: archiveIgnore } = useArchivePending();
+  const { addRule: archiveAddRule } = useArchiveRules();
+  /** 待确认的第一张卡片（每张处理完自动流转下一张；关闭=跳过保留） */
+  const [archiveCardOpen, setArchiveCardOpen] = useState(true);
+  const nextPending = archivePending.find((p) => p.status === "pending");
+
+  useEffect(() => {
+    // listen 在非 Tauri 环境（dev/测试）会抛：catch 静默降级
+    let unlisten: (() => void) | undefined;
+    try {
+      listen<{ name: string; path: string; size_bytes: number; at: string }>("archive:new", (e) => {
+        archiveAdd(e.payload);
+        setArchiveCardOpen(true); // 新下载到达 → 弹卡片
+      }).then((un) => {
+        unlisten = un;
+      });
+    } catch {
+      /* 非 Tauri 环境 */
+    }
+    return () => unlisten?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [archiveAdd]);
+
+  /** 确认归档：更新队列状态 + 记忆偏好写规则 + 通知 */
+  const handleArchiveConfirm = useCallback(
+    (id: string, meta: ArchiveMeta, remember: boolean) => {
+      const item = archivePending.find((p) => p.id === id);
+      archiveConfirm(id, meta);
+      if (remember && item) {
+        archiveAddRule({
+          pattern: detectPatternFor(item.name),
+          subject: meta.subject,
+          version: meta.version,
+          grade: meta.grade,
+          volume: meta.volume,
+        });
+      }
+      notifyPush({
+        kind: "success",
+        title: `已确认归档：${item?.name ?? ""}`,
+        body: remember
+          ? `${meta.subject}·${meta.version}·${meta.grade}${meta.volume}（已记住同类自动整理）`
+          : `${meta.subject}·${meta.version}·${meta.grade}${meta.volume}`,
+      });
+      toast.success(`已归档「${item?.name ?? ""}」到素材目录`);
+    },
+    [archivePending, archiveConfirm, archiveAddRule, notifyPush],
+  );
+
+  /** 忽略：留在下载目录不归档 */
+  const handleArchiveIgnore = useCallback(
+    (id: string) => {
+      const item = archivePending.find((p) => p.id === id);
+      archiveIgnore(id);
+      notifyPush({
+        kind: "info",
+        title: `已忽略：${item?.name ?? ""}`,
+        body: "文件保留在浏览器下载目录，未归档。",
+      });
+    },
+    [archivePending, archiveIgnore, notifyPush],
+  );
+
   // 侧栏快捷启动项：pinnedMenu 钉选项（view/edu/tool/bm 均可），≤6、按钉入时间排序；失效 bm 自动过滤
   const quickItems: SidebarQuickItem[] = Object.entries(configs)
     .filter(([, c]) => isPinnedMenu(c))
@@ -133,6 +202,17 @@ function ShellInner() {
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
       <Toaster position="top-center" richColors theme={resolved} />
+
+      {/* D11 §5 确认卡片：有待确认下载且用户未关闭时悬浮展示 */}
+      {archiveCardOpen && nextPending && (
+        <ArchiveConfirmCard
+          key={nextPending.id}
+          item={nextPending}
+          onConfirm={handleArchiveConfirm}
+          onIgnore={handleArchiveIgnore}
+          onClose={() => setArchiveCardOpen(false)}
+        />
+      )}
 
       {/* 桌面侧栏（可收拢为图标条，让右侧最大化） */}
       <div className="relative hidden md:flex md:h-full">
