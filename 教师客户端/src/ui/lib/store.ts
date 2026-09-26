@@ -78,12 +78,28 @@ export function useNavRail() {
   return usePersistentState<boolean>(K.navRail, false);
 }
 
-// ── 登录态 / 服务器探针 ──
+// ── 登录态 / 服务器探针（初始探测真实状态；保留手动切换契约供演示/降级）──
 export function useLoggedIn() {
-  return usePersistentState<boolean>(K.loggedIn, true);
+  const [loggedIn, setLoggedIn] = usePersistentState<boolean>(K.loggedIn, false);
+  useEffect(() => {
+    void api
+      .authStatus()
+      .then((a) => setLoggedIn(a.logged_in))
+      .catch(() => { /* 未登录/离线：保持本地态 */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return [loggedIn, setLoggedIn] as const;
 }
 export function useProbeOnline() {
-  return usePersistentState<boolean>(K.probeOnline, true);
+  const [online, setOnline] = usePersistentState<boolean>(K.probeOnline, false);
+  useEffect(() => {
+    void api
+      .serverPing()
+      .then(() => setOnline(true))
+      .catch(() => setOnline(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return [online, setOnline] as const;
 }
 
 // ── 内容包安装状态：tool → 已装版本号 ──
