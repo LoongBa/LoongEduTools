@@ -1,7 +1,7 @@
 @import "tailwindcss" source(none);
 @source "../ui";
-/* tw-animate-css 未引入（业务组件仅用 Tailwind 内置 animate-spin/pulse +
-   styles.css 自带的 anim-collapse-*/progress-stripes/probe-pulse 动画） */
+/* tw-animate-css 未引入：业务组件仅用 Tailwind 内置 animate-spin/pulse 与
+   styles.css 自带的 anim-collapse-down/up、progress-stripes、probe-pulse 动画 */
 
 /* 色值套数：:root（浅色默认）+ .dark（深色默认）两套；
    配色皮肤通过 html[data-skin] 覆盖语义变量，深浅各一套数值 */

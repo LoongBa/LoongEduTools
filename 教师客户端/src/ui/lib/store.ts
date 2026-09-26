@@ -1,0 +1,375 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type {
+  ActiveDownload,
+  Bookmark,
+  DownloadHistoryItem,
+  DownloadKind,
+  DownloadTask,
+  LaunchConfigMap,
+  LaunchRecentItem,
+  LocalTextbook,
+  NavGroupConfig,
+  Notification,
+  ToolShortcut,
+} from "./types";
+import { MOCK_BOOKMARK_BASELINE, MOCK_INSTALLED_BASELINE, MOCK_SHORTCUT_BASELINE, MOCK_TEXTBOOK_BASELINE, QUICKSTART_PIN_SEED, LAUNCH_ICON_SEED_MIGRATION_KEY, LEGACY_SEED_ICON_IDS } from "./mockData";
+
+// localStorage keys —— 折叠态 / 主题 / 登录态 / 探针 / 已装包 / 快捷方式 / 下载任务 / 启动中心
+const K = {
+  navCollapse: "taoli.nav.collapse",
+  navRail: "taoli.nav.railCollapsed",
+  toolCollapse: "taoli.toolbox.collapse",
+  theme: "taoli.theme",
+  loggedIn: "taoli.auth.loggedIn",
+  probeOnline: "taoli.server.probeOnline",
+  installed: "taoli.packages.installed",
+  shortcuts: "taoli.toolbox.shortcuts",
+  tasks: "taoli.downloads.tasks",
+  bookmarks: "taoli.launch.bookmarks",
+  launchRecent: "taoli.launch.recent",
+  launchConfig: "taoli.launch.config",
+  navGroups: "taoli.nav.groups",
+  notifyItems: "taoli.notify.items",
+  textbooks: "taoli.textbooks.local",
+  downloadHistory: "taoli.downloads.history",
+} as const;
+
+function load<T>(key: string, fallback: T): T {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function save<T>(key: string, value: T): void {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* 隐私模式等场景静默降级为内存态 */
+  }
+}
+
+/** 通用：state + localStorage 持久化 hook */
+export function usePersistentState<T>(key: string, initial: T) {
+  const [state, setState] = useState<T>(() => load(key, initial));
+  useEffect(() => {
+    save(key, state);
+  }, [key, state]);
+  return [state, setState] as const;
+}
+
+// ── 侧栏分组折叠态：首装全部展开（{} 表示无折叠记录）──
+import type { CollapseMap } from "./types";
+export type { CollapseMap };
+export function useNavCollapse() {
+  return usePersistentState<CollapseMap>(K.navCollapse, {});
+}
+
+export function useToolCollapse() {
+  return usePersistentState<CollapseMap>(K.toolCollapse, {});
+}
+
+// ── 侧栏收拢（rail 图标模式）：持久化，刷新保留 ──
+export function useNavRail() {
+  return usePersistentState<boolean>(K.navRail, false);
+}
+
+// ── 登录态 / 服务器探针 ──
+export function useLoggedIn() {
+  return usePersistentState<boolean>(K.loggedIn, true);
+}
+export function useProbeOnline() {
+  return usePersistentState<boolean>(K.probeOnline, true);
+}
+
+// ── 内容包安装状态：tool → 已装版本号 ──
+export interface InstalledMap {
+  [pkgId: string]: string;
+}
+export function useInstalledPackages() {
+  const [installed, setInstalled] = usePersistentState<InstalledMap>(
+    K.installed,
+    MOCK_INSTALLED_BASELINE,
+  );
+  const markInstalled = useCallback(
+    (id: string, version: string) =>
+      setInstalled((m) => ({ ...m, [id]: version })),
+    [setInstalled],
+  );
+  return { installed, markInstalled, setInstalled };
+}
+
+// ── 工具箱本地快捷方式（唯一本地业务状态）──
+export function useShortcuts() {
+  const [shortcuts, setShortcuts] = usePersistentState<ToolShortcut[]>(
+    K.shortcuts,
+    MOCK_SHORTCUT_BASELINE,
+  );
+
+  const upsert = useCallback(
+    (next: ToolShortcut[]) => setShortcuts(next),
+    [setShortcuts],
+  );
+
+  /** 下载完成 → 自动生成本地快捷方式 */
+  const addDownloaded = useCallback(
+    (toolId: string, path: string) =>
+      setShortcuts((list) =>
+        list.some((s) => s.tool_id === toolId)
+          ? list
+          : [...list, { tool_id: toolId, path, pinned: false, last_used: null, source: "download" }],
+      ),
+    [setShortcuts],
+  );
+
+  const togglePin = useCallback(
+    (toolId: string) =>
+      setShortcuts((list) => {
+        if (list.some((s) => s.tool_id === toolId)) {
+          return list.map((s) =>
+            s.tool_id === toolId ? { ...s, pinned: !s.pinned } : s,
+          );
+        }
+        // 未下载也可先收藏（清单可达时展示信息）
+        return [
+          ...list,
+          { tool_id: toolId, path: "", pinned: true, last_used: null, source: "manual" },
+        ];
+      }),
+    [setShortcuts],
+  );
+
+  /** 成功启动 → LRU 置顶，上限 10 */
+  const markUsed = useCallback(
+    (toolId: string) =>
+      setShortcuts((list) => {
+        const rest = list.filter((s) => s.tool_id !== toolId);
+        const target = list.find((s) => s.tool_id === toolId);
+        if (!target) return list;
+        const used: ToolShortcut = { ...target, last_used: new Date().toISOString() };
+        const head = [used, ...rest];
+        // pinned 项永不因 LRU 丢失：仅裁剪非 pinned 的尾部
+        const trimmed = head.slice(0, Math.max(10, head.filter((s) => s.pinned).length));
+        return trimmed;
+      }),
+    [setShortcuts],
+  );
+
+  const remove = useCallback(
+    (toolId: string) => setShortcuts((list) => list.filter((s) => s.tool_id !== toolId)),
+    [setShortcuts],
+  );
+
+  return { shortcuts, setShortcuts: upsert, addDownloaded, togglePin, markUsed, remove };
+}
+
+// ── 启动中心：网址收藏 CRUD ──
+export function useBookmarks() {
+  return usePersistentState<Bookmark[]>(K.bookmarks, MOCK_BOOKMARK_BASELINE);
+}
+
+// ── 下载中心·原版教材：本机教材目录导入项（不提供云端下载，随工具包打包）──
+export function useLocalTextbooks() {
+  return usePersistentState<LocalTextbook[]>(K.textbooks, MOCK_TEXTBOOK_BASELINE);
+}
+
+// ── 启动中心：最近使用（跨易教/外部工具，LRU 上限 10）──
+const LAUNCH_LRU_MAX = 10;
+export function useLaunchRecent() {
+  const [recent, setRecent] = usePersistentState<LaunchRecentItem[]>(K.launchRecent, []);
+  const markLaunch = useCallback(
+    (key: string, name: string) =>
+      setRecent((list) => {
+        const item: LaunchRecentItem = { key, name, at: new Date().toISOString() };
+        return [item, ...list.filter((r) => r.key !== key)].slice(0, LAUNCH_LRU_MAX);
+      }),
+    [setRecent],
+  );
+  return { recent, markLaunch, setRecent };
+}
+
+// ── 一键启动配置：条目图标/菜单名/双通道钉选（种子含内置「一键开课」钉选项）──
+export function useLaunchConfig() {
+  const [configs, setConfigs] = usePersistentState<LaunchConfigMap>(K.launchConfig, QUICKSTART_PIN_SEED);
+  // 一次性清洗：历史种子给内置 view 条目写入过 iconKind/iconText，会让侧栏菜单项显示大色块；
+  // 用户若未自行改过图标则清除该字段，使其回退为与其它导航项一致的矢量图标。
+  useEffect(() => {
+    if (window.localStorage.getItem(LAUNCH_ICON_SEED_MIGRATION_KEY)) return;
+    try {
+      window.localStorage.setItem(LAUNCH_ICON_SEED_MIGRATION_KEY, "1");
+    } catch {
+      /* 隐私模式下仅本次会话内生效 */
+    }
+    setConfigs((m) => {
+      let changed = false;
+      const next: LaunchConfigMap = {};
+      for (const [id, c] of Object.entries(m)) {
+        if (LEGACY_SEED_ICON_IDS.includes(id as (typeof LEGACY_SEED_ICON_IDS)[number]) && (c.iconKind || c.iconText)) {
+          const { iconKind: _k, iconText: _t, ...rest } = c;
+          next[id] = rest;
+          changed = true;
+        } else {
+          next[id] = c;
+        }
+      }
+      return changed ? next : m;
+    });
+  }, [setConfigs]);
+  /** 局部合并写入某条目的配置；传 null 语义字段由调用方保证 */
+  const patchConfig = useCallback(
+    (itemId: string, patch: LaunchConfigMap[string]) =>
+      setConfigs((m) => ({ ...m, [itemId]: { ...m[itemId], ...patch } })),
+    [setConfigs],
+  );
+  return { configs, setConfigs, patchConfig };
+}
+
+// ── 分组配置：组名可改、条目可隐藏出侧栏 ──
+export function useNavGroups() {
+  return usePersistentState<NavGroupConfig>(K.navGroups, {});
+}
+
+// ── 通知中心：本地事件流（下载完成/钉选上限/条目失效等），FIFO 上限 50 ──
+const NOTIFY_MAX = 50;
+export function useNotifications() {
+  const [items, setItems] = usePersistentState<Notification[]>(K.notifyItems, []);
+  /** 追加一条通知；kind=warn 用于拦截与失效提醒 */
+  const push = useCallback(
+    (n: Omit<Notification, "id" | "at" | "read">) =>
+      setItems((list) => {
+        const item: Notification = {
+          ...n,
+          id: `nt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          at: new Date().toISOString(),
+          read: false,
+        };
+        return [item, ...list].slice(0, NOTIFY_MAX);
+      }),
+    [setItems],
+  );
+  const markAllRead = useCallback(
+    () => setItems((list) => (list.every((i) => i.read) ? list : list.map((i) => ({ ...i, read: true })))),
+    [setItems],
+  );
+  const removeOne = useCallback(
+    (id: string) => setItems((list) => list.filter((i) => i.id !== id)),
+    [setItems],
+  );
+  const clearAll = useCallback(() => setItems([]), [setItems]);
+  const unread = items.reduce((acc, i) => acc + (i.read ? 0 : 1), 0);
+  return { items, push, markAllRead, removeOne, clearAll, unread };
+}
+
+// ── 下载任务（并发队列 + 进度模拟；已完成写入持久化历史，刷新后仍可见）──
+export interface TaskMap {
+  [id: string]: DownloadTask;
+}
+const DOWNLOAD_CONCURRENCY = 3;
+const HISTORY_MAX = 60;
+
+export function useDownloadTasks() {
+  const [tasks, setTasks] = useState<TaskMap>({});
+  const [meta, setMeta] = useState<Record<string, ActiveDownload>>({});
+  const [history, setHistory] = usePersistentState<DownloadHistoryItem[]>(K.downloadHistory, []);
+  const queueRef = useRef<{ id: string; onDone: (id: string) => void }[]>([]);
+  const runningRef = useRef(0);
+
+  /** 从队列取任务开跑，跑完补位（并发上限 3，其余排队） */
+  const pump = useCallback(() => {
+    while (runningRef.current < DOWNLOAD_CONCURRENCY && queueRef.current.length > 0) {
+      const job = queueRef.current.shift()!;
+      const id = job.id;
+      runningRef.current += 1;
+      setMeta((m) => (m[id] ? { ...m, [id]: { ...m[id], queued: false } } : m));
+      setTasks((t) => ({ ...t, [id]: { id, progress: 0, done: false } }));
+
+      let finished = false;
+      const tick = () => {
+        setTasks((prev) => {
+          const cur = prev[id];
+          if (!cur || cur.done) return prev;
+          const next = Math.min(100, cur.progress + 8 + Math.random() * 14);
+          const done = next >= 100;
+          if (done) finished = true;
+          window.setTimeout(done ? () => {} : tick, 260);
+          return { ...prev, [id]: { id, progress: next, done } };
+        });
+      };
+      // 完成回收：写历史 → 摘除任务与 meta → 回调 → 补位下一个
+      const reap = window.setInterval(() => {
+        if (!finished) return;
+        window.clearInterval(reap);
+        runningRef.current -= 1;
+        const info = metaRef.current[id];
+        setHistory((h) => {
+          const item: DownloadHistoryItem = {
+            id,
+            name: info?.name ?? id,
+            kind: info?.kind ?? "pkg",
+            at: new Date().toISOString(),
+          };
+          return [item, ...h.filter((x) => x.id !== id)].slice(0, HISTORY_MAX);
+        });
+        window.setTimeout(() => {
+          setTasks((p) => {
+            const c = { ...p };
+            delete c[id];
+            return c;
+          });
+          setMeta((m) => {
+            const c = { ...m };
+            delete c[id];
+            return c;
+          });
+          job.onDone(id);
+          pump();
+        }, 500);
+      }, 300);
+      window.setTimeout(tick, 260);
+    }
+  }, [setHistory]);
+
+  const metaRef = useRef<Record<string, ActiveDownload>>({});
+  metaRef.current = meta;
+
+  /** 发起下载：登记名称/类型元信息 → 入队 → 满 3 个则标记为等待中 */
+  const start = useCallback(
+    (
+      id: string,
+      onDone: (id: string) => void,
+      info?: { name?: string; kind?: DownloadKind },
+    ) => {
+      if (tasks[id] || queueRef.current.some((q) => q.id === id)) return;
+      setMeta((m) => ({
+        ...m,
+        [id]: {
+          id,
+          name: info?.name ?? id,
+          kind: info?.kind ?? "pkg",
+          queued: runningRef.current >= DOWNLOAD_CONCURRENCY,
+        },
+      }));
+      queueRef.current.push({ id, onDone });
+      pump();
+    },
+    [tasks, pump],
+  );
+
+  /** 活动任务列表（含排队态与实时进度），供顶栏面板与下载中心「任务」分区共用 */
+  const activeList = useMemo(
+    () =>
+      Object.values(meta).map((m) => ({
+        ...m,
+        queued: !tasks[m.id],
+        progress: tasks[m.id]?.progress ?? 0,
+      })),
+    [meta, tasks],
+  );
+
+  const clearHistory = useCallback(() => setHistory([]), [setHistory]);
+
+  return { tasks, start, history, clearHistory, activeList };
+}

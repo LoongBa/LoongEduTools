@@ -1,7 +1,8 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App";
+import Shell from "./Shell";
 import OverlayView from "./OverlayView";
+import "./styles.css";
 
 // 主题引导：首帧渲染前同步设置主题（未设置视为 "system"），浅/深/跟随系统由 data-theme 驱动
 document.documentElement.dataset.theme = localStorage.getItem("theme") || "system";
@@ -12,6 +13,6 @@ const isOverlay = location.hash === "#/overlay";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    {isOverlay ? <OverlayView /> : <App />}
+    {isOverlay ? <OverlayView /> : <Shell />}
   </React.StrictMode>,
 );
