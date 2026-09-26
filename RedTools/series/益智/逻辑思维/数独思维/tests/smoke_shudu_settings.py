@@ -50,9 +50,9 @@ def main():
         check("B4 音效初始开态", toggle.count() == 1 and "on" in toggle.first.get_attribute("class")
               and toggle.first.inner_text() == "开")
         check("B5 清除进度行存在", page.locator(".settings-row", has_text="清除").count() == 1)
-        check("B6 关于含版本 v1.28",
-              "v1.28" in page.locator(".settings-about").inner_text()
-              or "v1.28" in page.locator(".view").inner_text())
+        check("B6 关于含版本 v1.29",
+              "v1.29" in page.locator(".settings-about").inner_text()
+              or "v1.29" in page.locator(".view").inner_text())
 
         # C. 音效 toggle
         toggle.first.click()

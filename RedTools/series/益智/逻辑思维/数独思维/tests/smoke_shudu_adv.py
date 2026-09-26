@@ -102,18 +102,19 @@ def main():
         check("B1 标题'自由解题·进阶'",
               "自由解题" in page.locator(".page-title").inner_text())
         adv_cards = page.locator(".teach-btn.badge-card")
-        check("B2 进阶卡 7 张", adv_cards.count() == 7)
+        check("B2 进阶卡 8 张", adv_cards.count() == 8)
         adv_heads = adv_cards.locator(".teach-btn-head").all_inner_texts()
-        check("B3 含唯一余数 / X-Wing / 数对占位 / 隐性数对 / 三数组 / 隐性三数组 / XY-Wing",
+        check("B3 含唯一余数 / X-Wing / 数对占位 / 隐性数对 / 三数组 / 隐性三数组 / XY-Wing / 剑鱼",
               any("唯一余数" in h for h in adv_heads)
               and any("X-Wing" in h for h in adv_heads)
               and any("数对占位" in h for h in adv_heads)
               and any("隐性数对" in h for h in adv_heads)
               and any("三数组" in h for h in adv_heads)
               and any("隐性三数组" in h for h in adv_heads)
-              and any("XY-Wing" in h for h in adv_heads))
-        check("B4 未点亮 💎 7 张",
-              page.locator(".teach-btn.badge-card .teach-btn-head", has_text="💎").count() == 7)
+              and any("XY-Wing" in h for h in adv_heads)
+              and any("剑鱼" in h for h in adv_heads))
+        check("B4 未点亮 💎 8 张",
+              page.locator(".teach-btn.badge-card .teach-btn-head", has_text="💎").count() == 8)
 
         # C. 唯一余数教学关（第一张卡）
         adv_cards.nth(0).click()
@@ -150,11 +151,11 @@ def main():
 
         # D. 返回自由解题 view，唯一余数卡点亮 ✨
         check("D1 返回自由解题（非徽章墙）",
-              page.locator(".teach-btn.badge-card").count() == 7
+              page.locator(".teach-btn.badge-card").count() == 8
               and "自由解题" in page.locator(".page-title").inner_text())
-        check("D2 已点亮 ✨ 1 + 未点亮 💎 6",
+        check("D2 已点亮 ✨ 1 + 未点亮 💎 7",
               page.locator(".teach-btn.badge-card .teach-btn-head", has_text="✨").count() == 1
-              and page.locator(".teach-btn.badge-card .teach-btn-head", has_text="💎").count() == 6)
+              and page.locator(".teach-btn.badge-card .teach-btn-head", has_text="💎").count() == 7)
 
         # E. X-Wing 教学关（第二张卡）
         page.locator(".teach-btn.badge-card").nth(1).click()
@@ -177,7 +178,7 @@ def main():
               page.locator(".overlay-title").inner_text().strip() == "🎉 学会啦！")
         page.locator(".overlay .btn-main").click()
         check("E7 返回自由解题",
-              page.locator(".teach-btn.badge-card").count() == 7)
+              page.locator(".teach-btn.badge-card").count() == 8)
         check("E8 X-Wing 已点亮 ✨", page.locator(".teach-btn.badge-card .teach-btn-head", has_text="✨").count() == 2)
 
         # G. 三数组教学关（第五张卡，nth(4)）
@@ -200,10 +201,10 @@ def main():
         check("G6 三数组徽章弹窗",
               page.locator(".overlay-title").inner_text().strip() == "🎉 学会啦！")
         page.locator(".overlay .btn-main").click()
-        check("G7 返回自由解题 ✨ 3 + 💎 4",
-              page.locator(".teach-btn.badge-card").count() == 7
+        check("G7 返回自由解题 ✨ 3 + 💎 5",
+              page.locator(".teach-btn.badge-card").count() == 8
               and page.locator(".teach-btn.badge-card .teach-btn-head", has_text="✨").count() == 3
-              and page.locator(".teach-btn.badge-card .teach-btn-head", has_text="💎").count() == 4)
+              and page.locator(".teach-btn.badge-card .teach-btn-head", has_text="💎").count() == 5)
 
         # H. 隐性三数组教学关（第六张卡，nth(5)）
         page.locator(".teach-btn.badge-card").nth(5).click()
@@ -225,10 +226,10 @@ def main():
         check("H6 隐性三数组徽章弹窗",
               page.locator(".overlay-title").inner_text().strip() == "🎉 学会啦！")
         page.locator(".overlay .btn-main").click()
-        check("H7 返回自由解题 ✨ 4 + 💎 3",
-              page.locator(".teach-btn.badge-card").count() == 7
+        check("H7 返回自由解题 ✨ 4 + 💎 4",
+              page.locator(".teach-btn.badge-card").count() == 8
               and page.locator(".teach-btn.badge-card .teach-btn-head", has_text="✨").count() == 4
-              and page.locator(".teach-btn.badge-card .teach-btn-head", has_text="💎").count() == 3)
+              and page.locator(".teach-btn.badge-card .teach-btn-head", has_text="💎").count() == 4)
 
         # I. XY-Wing 教学关（第七张卡，nth(6)）
         page.locator(".teach-btn.badge-card").nth(6).click()
@@ -250,9 +251,34 @@ def main():
         check("I6 XY-Wing 徽章弹窗",
               page.locator(".overlay-title").inner_text().strip() == "🎉 学会啦！")
         page.locator(".overlay .btn-main").click()
-        check("I7 返回自由解题 ✨ 5 + 💎 2",
-              page.locator(".teach-btn.badge-card").count() == 7
+        check("I7 返回自由解题 ✨ 5 + 💎 3",
+              page.locator(".teach-btn.badge-card").count() == 8
               and page.locator(".teach-btn.badge-card .teach-btn-head", has_text="✨").count() == 5
+              and page.locator(".teach-btn.badge-card .teach-btn-head", has_text="💎").count() == 3)
+
+        # J. 剑鱼教学关（第八张卡，nth(7)）
+        page.locator(".teach-btn.badge-card").nth(7).click()
+        check("J1 标题含'剑鱼'",
+              "剑鱼" in page.locator(".level-title").inner_text())
+        check("J2 教学盘 36 格", page.locator("#skill-board .cell").count() == 36)
+        hl_sf = page.locator("#skill-board .cell-inner.peer")
+        check("J3 剑鱼三行高亮 7 格", hl_sf.count() == 7)
+        # step1：目标格 idx24 落 5
+        page.locator("#skill-board .cell:nth-child(25)").click()  # 目标格 idx24 (r4c0)
+        page.locator(".num-btn:nth-child(5)").click()  # 落 5
+        check("J4 落子 5",
+              page.locator("#skill-board .cell:nth-child(25) .skill-num").inner_text().strip() == "5")
+        # step2：目标格 idx28 落 4
+        page.locator("#skill-board .cell:nth-child(29)").click()  # idx28 (r4c4)
+        page.locator(".num-btn:nth-child(4)").click()  # 落 4
+        check("J5 落子 4",
+              page.locator("#skill-board .cell:nth-child(29) .skill-num").inner_text().strip() == "4")
+        check("J6 剑鱼徽章弹窗",
+              page.locator(".overlay-title").inner_text().strip() == "🎉 学会啦！")
+        page.locator(".overlay .btn-main").click()
+        check("J7 返回自由解题 ✨ 6 + 💎 2",
+              page.locator(".teach-btn.badge-card").count() == 8
+              and page.locator(".teach-btn.badge-card .teach-btn-head", has_text="✨").count() == 6
               and page.locator(".teach-btn.badge-card .teach-btn-head", has_text="💎").count() == 2)
 
         # 返回难度页
@@ -283,7 +309,7 @@ def main():
 
         browser.close()
 
-    print("\n=== 结果：%d 项，失败 %d ===" % (43, len(FAILS)))
+    print("\n=== 结果：%d 项，失败 %d ===" % (50, len(FAILS)))
     if FAILS:
         print("失败项:", ", ".join(FAILS))
         raise SystemExit(1)
