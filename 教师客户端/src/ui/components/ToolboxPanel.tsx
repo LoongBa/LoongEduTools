@@ -170,7 +170,18 @@ export function ToolboxPanel({
   // ── 随身工具包：导出 / 导入 ──
   const packedTextbooks = (textbooks ?? []).filter((t) => t.packed);
 
-  const exportPack = () => {
+  /** D11 §8 导出：拉取素材归档索引（media_archive 段，不含实体）→ 生成 toolbox-pack.json */
+  const exportPack = async () => {
+    let mediaArchive: ToolboxPackFile["media_archive"] | undefined;
+    try {
+      const idx = await api.archivePackIndex();
+      mediaArchive = {
+        entries: idx.entries,
+        exported_at: idx.exported_at,
+      };
+    } catch {
+      /* 归档索引不可达（如未启动归档/命令缺失）：导出不含 media_archive 段，不阻断 */
+    }
     const pack: ToolboxPackFile = {
       kind: "taoli-toolbox-pack",
       exported_at: new Date().toISOString(),
@@ -183,6 +194,7 @@ export function ToolboxPanel({
           path: s.path,
         })),
       textbooks: packedTextbooks,
+      media_archive: mediaArchive,
     };
     const blob = new Blob([JSON.stringify(pack, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -192,7 +204,7 @@ export function ToolboxPanel({
     a.click();
     URL.revokeObjectURL(url);
     toast.success("已导出随身工具包 toolbox-pack.json", {
-      description: `含快捷方式清单、已下载工具索引与 ${packedTextbooks.length} 套原版教材；换电脑后用「导入」恢复。`,
+      description: `含快捷方式清单、已下载工具索引、${packedTextbooks.length} 套原版教材与 ${mediaArchive?.entries.length ?? 0} 项素材归档索引。教材/课件仅供个人教学和学习使用，请勿对外分发。`,
     });
   };
 
@@ -227,8 +239,12 @@ export function ToolboxPanel({
           tbCount++;
         }
         if (tbCount > 0 && onTextbooks) onTextbooks(tbMerged);
+        // D11 §8：media_archive 索引入口（不含实体，随 U 盘目录走）——导入仅校验/计数
+        const maCount = data.media_archive?.entries?.length ?? 0;
         toast.success("随身工具包已导入", {
-          description: `收藏、最近使用与已下载状态按 tool_id 对齐恢复${tbCount > 0 ? `，并合并 ${tbCount} 套原版教材索引` : ""}。`,
+          description: `收藏、最近使用与已下载状态按 tool_id 对齐恢复${tbCount > 0 ? `，并合并 ${tbCount} 套原版教材索引` : ""}${
+            maCount > 0 ? `，素材归档 ${maCount} 项（实体随 archives/ 目录走，U 盘拷贝时一并携带）` : ""
+          }。教材/课件仅供个人教学和学习使用，请勿对外分发。`,
         });
       } catch {
         toast.error("导入失败：文件格式不正确，现有数据未受影响");
@@ -503,6 +519,9 @@ export function ToolboxPanel({
             <div className="mt-8 border-t border-border pt-4 text-center">
               <p className="text-[11px] text-muted-foreground">
                 已下载的工具会出现在「快捷启动」的外部工具区；自研教学工具与内容包在「下载中心」获取。
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground/80">
+                随身工具包含教材/课件索引，仅供个人教学和学习使用，请勿对外分发。
               </p>
             </div>
           </>

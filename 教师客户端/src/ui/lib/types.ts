@@ -119,6 +119,25 @@ export interface ToolboxPackFile {
   downloaded_tools: { tool_id: string; name: string; path: string }[];
   /** 随身工具包一并带走的原版教材（本机目录导入项中 packed=true 者） */
   textbooks?: LocalTextbook[];
+  /**
+   * D11 §8 素材归档索引（P5 打包）：不含音视频实体，仅元数据索引——
+   * 与 downloaded_tools.path 相对路径引用、textbooks 目录索引的既有落差一致；
+   * U 盘拷贝时 archives/ 目录随 exe 一起走，索引帮助换机后重新挂载/核对。
+   */
+  media_archive?: {
+    entries: {
+      /** 相对 archives/ 的路径（/ 分隔），如 英语/人教版/四年级上册/U01.mp4 */
+      rel: string;
+      name: string;
+      subject: string;
+      version: string;
+      grade: string;
+      volume: string;
+      size_bytes: number;
+      at: string;
+    }[];
+    exported_at: string;
+  };
 }
 
 // ── 启动中心：易教工具（自研，内置目录 + 已装 app 包动态并入）──

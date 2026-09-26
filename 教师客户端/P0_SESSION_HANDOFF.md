@@ -61,11 +61,20 @@
 - **版本 0.2.3→0.2.4**（五处对齐）
 - 四绿验证：cargo 87/87、tsc 0、vitest 64/64（59 原有+5 新增）、pnpm build ✓
 
-## 待办（后续会话 P5）
+### D11 P5 打包（2026-09-27，本会话完成，版本 0.2.5 · D11 全部落地）
+- `types.ts`：`ToolboxPackFile` 加 `media_archive?: { entries: {rel,name,subject,version,grade,volume,size_bytes,at}[], exported_at }`（不含实体，与 downloaded_tools/textbooks 的索引式落差一致）
+- `ToolboxPanel.exportPack` 改异步：`api.archivePackIndex()`（Rust P3 已就绪）→ 嵌入 media_archive；失败不阻断（导出不含该段）；toast 显示 `N 项素材归档索引`
+- `ToolboxPanel.importPack`：解析 media_archive 计数展示（「素材归档 N 项（实体随 archives/ 目录走，U 盘拷贝时一并携带）」）
+- **版权文案全覆盖**（D09/§1.2 红线 + D11 §8.3）：确认卡片 / 素材归档 Tab / 导出 toast / 导入 toast / ToolboxPanel 底部说明——统一「教材/课件仅供个人教学和学习使用，请勿对外分发」
+- **版本 0.2.4→0.2.5**（五处对齐）
+- 四绿验证：cargo 87/87、tsc 0、vitest 64/64、pnpm build ✓
+- **D11 五阶段全部落地**：P1 观测（f937cf3）→ P2 确认（5bd7fe3）→ P3 归档（92c31a7）→ P4 通知（620df0a）→ P5 打包（本提交）
 
-1. **P5 打包**（D11 §8）：ToolboxPanel exportPack 加 `media_archive` 索引段（Rust `archive_pack_index` 已就绪，直接 `api.archivePackIndex()` 嵌入；不含实体，与既有 JSON 落差一致）+ 「仅供个人教学和学习使用」文案全覆盖（ToolboxPanel 导出提示 / ToolboxPackFile 类型 / importPack 解析）
-2. **静默归档**（D11 §5.4 规则命中）：`useArchiveRules.matchFor` 已就绪，接入 `archive:new` 事件处理——命中规则的文件跳过确认卡片直接 `archive_confirm` + 通知（channel=archive 合并）
-3. 可选体验补强：归档通知撤销成功后 DownloadExtView「素材归档」Tab 数据需手动刷新（`onRefresh` 未联动）；可加全局刷新信号
+## 待办（后续会话 · D11 收尾可选优化）
+
+1. **静默归档**（D11 §5.4 规则命中）：`useArchiveRules.matchFor` 已就绪，接入 `archive:new` 事件处理——命中规则的文件跳过确认卡片直接 `archive_confirm` + 通知（channel=archive 合并）
+2. **归档撤销联动刷新**：通知撤销成功后 DownloadExtView「素材归档」Tab 数据需手动刷新（`onRefresh` 未联动）；可加全局刷新信号（如 `window.dispatchEvent(new Event("archive:changed"))` + Tab 监听）
+3. 长期候选：CF 免费档公网测试、轻量机上线、Win7 真机、IME 吞键实测、B4 在线服务端
 
 ## 关键决策（D11 §12 决策记录摘要）
 
@@ -103,4 +112,4 @@ cd 教师客户端/src && pnpm build              # EXIT=0
 
 ## 版本
 
-v0.2.4 已统一（Cargo/tauri.conf/package.json/SHELL_VERSION 五处对齐；0.2.3 版为 D11 P3 交付）；tag 教师客户端-v0.2.4 需用户另行同意。下一功能交付（P5）时子版本升 0.2.5。
+v0.2.5 已统一（Cargo/tauri.conf/package.json/SHELL_VERSION 五处对齐；0.2.4 版为 D11 P4 交付）；tag 教师客户端-v0.2.5 需用户另行同意。下一功能交付时子版本升 0.2.6。
