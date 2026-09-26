@@ -79,18 +79,143 @@ pub fn recents_set(
 
 // ---------------------------------------------------------------- 持久化工具
 
+/// 读取全部班级进度
+/// config.json 为结构化对象：`{ "recents": {...}, "api_base": "..." }`（未知字段保留）。
+/// 兼容旧格式（纯进度 map）：`{ class_id: ClassProgress }`。
 fn load_recents(path: &Path) -> HashMap<String, ClassProgress> {
-    fs::read_to_string(path)
-        .ok()
-        .and_then(|raw| serde_json::from_str(&raw).ok())
-        .unwrap_or_default()
+    let Ok(raw) = fs::read_to_string(path) else {
+        return HashMap::new();
+    };
+    let Ok(v) = serde_json::from_str::<serde_json::Value>(&raw) else {
+        return HashMap::new();
+    };
+    // 新格式：进度在 recents 子对象（api_base 等其他字段共存于顶层）
+    if let Some(obj) = v.get("recents") {
+        if let Ok(all) = serde_json::from_value::<HashMap<String, ClassProgress>>(obj.clone()) {
+            return all;
+        }
+    }
+    // 旧格式兼容：顶层直接就是进度 map
+    serde_json::from_value::<HashMap<String, ClassProgress>>(v).unwrap_or_default()
 }
 
 fn save_recents(path: &Path, data: &HashMap<String, ClassProgress>) {
     if let Some(parent) = path.parent() {
         let _ = fs::create_dir_all(parent);
     }
-    if let Ok(json) = serde_json::to_string_pretty(data) {
-        let _ = fs::write(path, json);
+    // 读现有配置 → 保留未知字段（api_base 等），仅更新 recents 子对象，避免整文件覆盖
+    let root = fs::read_to_string(path)
+        .ok()
+        .and_then(|raw| serde_json::from_str::<serde_json::Value>(&raw).ok());
+    let mut root = match root {
+        // 新格式/含 api_base：对象原样保留
+        Some(v) if v.is_object() && (v.get("recents").is_some() || v.get("api_base").is_some()) => v,
+        // 旧格式：顶层整体是进度 map → 迁移进 recents 子对象
+        Some(v) => serde_json::json!({ "recents": v }),
+        // 无文件：全新对象
+        None => serde_json::json!({}),
+    };
+    if let Ok(all) = serde_json::to_value(data) {
+        root["recents"] = all;
+        if let Ok(json) = serde_json::to_string_pretty(&root) {
+            let _ = fs::write(path, json);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample(id: &str) -> ClassProgress {
+        ClassProgress {
+            class_id: id.into(),
+            class_name: format!("三年级{id}班"),
+            package_id: "pkg-a".into(),
+            unit: "u1".into(),
+            section: "s1".into(),
+            updated_at: "1700000000".into(),
+        }
+    }
+
+    fn tmp_path(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join("loongedu-recents-tests");
+        let _ = fs::create_dir_all(&dir);
+        dir.join(name)
+    }
+
+    #[test]
+    fn save_preserves_unknown_fields() {
+        let p = tmp_path("preserve.json");
+        // 预置含 api_base 的 config.json（真实场景：老师或运维手工写入服务器地址）
+        fs::write(&p, r#"{"api_base":"https://edu.example.com"}"#).unwrap();
+
+        let mut data = HashMap::new();
+        data.insert("c1".into(), sample("c1"));
+        save_recents(&p, &data);
+
+        let raw = fs::read_to_string(&p).unwrap();
+        let v: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(v["api_base"], "https://edu.example.com", "api_base 不能被覆盖");
+        assert!(v["recents"].is_object(), "进度应写入 recents 子对象");
+        assert_eq!(v["recents"]["c1"]["class_id"], "c1");
+        fs::remove_file(&p).ok();
+    }
+
+    #[test]
+    fn load_reads_recents_subobject() {
+        let p = tmp_path("read-new.json");
+        fs::write(
+            &p,
+            r#"{"api_base":"https://edu.example.com","recents":{"c1":{"class_id":"c1","class_name":"三1班","package_id":"p","unit":"u","section":"s","updated_at":"1"}}}"#,
+        )
+        .unwrap();
+        let all = load_recents(&p);
+        assert_eq!(all.len(), 1);
+        assert_eq!(all["c1"].class_name, "三1班");
+        fs::remove_file(&p).ok();
+    }
+
+    #[test]
+    fn old_flat_format_still_loads() {
+        let p = tmp_path("old-flat.json");
+        // 旧格式：顶层直接是进度 map（无 api_base）
+        fs::write(
+            &p,
+            r#"{"c1":{"class_id":"c1","class_name":"三1班","package_id":"p","unit":"u","section":"s","updated_at":"1"}}"#,
+        )
+        .unwrap();
+        let all = load_recents(&p);
+        assert_eq!(all.len(), 1);
+        assert_eq!(all["c1"].class_id, "c1");
+        fs::remove_file(&p).ok();
+    }
+
+    #[test]
+    fn old_flat_format_migrates_on_save() {
+        let p = tmp_path("old-migrate.json");
+        fs::write(
+            &p,
+            r#"{"c1":{"class_id":"c1","class_name":"三1班","package_id":"p","unit":"u","section":"s","updated_at":"1"}}"#,
+        )
+        .unwrap();
+        let mut data = load_recents(&p);
+        data.insert("c2".into(), sample("c2"));
+        save_recents(&p, &data);
+
+        let raw = fs::read_to_string(&p).unwrap();
+        let v: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        assert!(v.get("recents").is_some(), "旧格式应迁移进 recents 子对象");
+        assert_eq!(v["recents"]["c2"]["class_id"], "c2");
+        fs::remove_file(&p).ok();
+    }
+
+    #[test]
+    fn corrupted_file_returns_empty() {
+        let p = tmp_path("corrupt.json");
+        fs::write(&p, "{ not json !!!").unwrap();
+        let all = load_recents(&p);
+        assert!(all.is_empty(), "损坏文件应兜底为空 map，不 panic");
+        fs::remove_file(&p).ok();
     }
 }
