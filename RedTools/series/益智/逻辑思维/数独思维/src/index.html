@@ -14,6 +14,9 @@
     <div id="view" class="view"></div>
   </main>
   <footer id="app-footer" class="app-footer"></footer>
+  <!-- ⚠️ 本目录为开发源码，data.js 与 _shared/lx-shared.js 为构建产物，源码目录双击不会运行（会白屏报 LX_SHARED is not defined）。
+       运行请用构建产物：`python build_all.py --tool 数独思维` 后打开 dist/益智/数独思维/offline/index.html，
+       或直接双击 publish/益智/数独思维_解压测试版/index.html（最新 v1.34 可跑版本）。 -->
   <!-- 加载顺序：data.js（构建生成 meta）→ lx-shared.js → solver.js（数独核心算法）→ qrcode.js（二维码生成，MIT 第三方）→ main.js（游戏逻辑，运行期引用 window.SUDOKU / window.qrcode） -->
   <script src="./data.js"></script>
   <script src="./_shared/lx-shared.js"></script>

@@ -3089,8 +3089,8 @@ state.replayFrom = null;
     }
   }
   function skillSelect(i) {
-    if (skill.given[i]) { showSkillMsg('这是题目给的格子，不用填'); return; }
-    if (skill.board[i] !== 0) { showSkillMsg('这格已填好，看下一步的格子哦'); return; }
+    if (skill.given[i]) { showSkillMsg('这是题目给的格子，不用填'); sndWrong(); return; }
+    if (skill.board[i] !== 0) { showSkillMsg('这格已填好，看下一步的格子哦'); sndWrong(); return; }
     skill.selected = (skill.selected === i) ? -1 : i;
     refreshSkillCells();
     sndClick();

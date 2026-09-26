@@ -68,6 +68,10 @@
 
 ## 构建与测试
 
+> ⚠️ **运行入口**：`src/` 是开发源码，`data.js` 与 `_shared/lx-shared.js` 由构建生成、不在源码目录，**直接双击 `src/index.html` 会白屏**（`LX_SHARED is not defined`）。要玩/测请走构建产物：
+> - 最新可跑版：`publish/益智/数独思维_解压测试版/index.html`（双击即用，v1.34）
+> - 或重新构建：`python build_all.py --tool 数独思维` 后打开 `dist/益智/数独思维/offline/index.html`
+
 ```bash
 python build_all.py --tool 数独思维
 python .skill/minitool-zip-builder/scripts/audit_artifact.py dist/益智/数独思维
