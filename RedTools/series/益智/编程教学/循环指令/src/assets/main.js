@@ -45,6 +45,17 @@
   var store = loadStore();
   saveStore();
 
+  /* ---------- 自建关卡数据层（v1.2 关卡编辑器） ---------- */
+  // 存储键：'customLevels'（LX_SHARED.storage → redtools.xunhuan.customLevels，独立集合，无 .v1. 段）
+  function loadCustomLevels() {
+    var r = LX_SHARED.storage.get('customLevels');
+    return Array.isArray(r) ? r : [];
+  }
+  function saveCustomLevels(arr) {
+    LX_SHARED.storage.set('customLevels', arr);
+  }
+  var customLevels = loadCustomLevels();
+
   /* ---------- 难度档 ---------- */
   var LEVELS_CFG = {
     easy:   { key: 'easy',   label: '简单', size: 6, patternLen: 3, rep: 3 },   // [F,F,R] → 螺旋走廊
@@ -78,7 +89,10 @@
     curPos: null, curFace: 0,   // 执行时机器人状态
     firstFail: null,  // {iterK, bodyIdx}（循环块级定位）
     startMs: 0, elapsed: 0, timerId: null,
-    finished: false
+    finished: false,
+    customIdx: null,      // v1.2：当前自建关卡下标（custom 模式）
+    editIdx: -1,          // v1.2：编辑器当前编辑下标（-1 新建 / ≥0 编辑已有）
+    editTrace: []         // v1.2：编辑器轨迹 [{x,y},...]（末端生长）
   };
 
   /* ---------- 小工具 ---------- */
@@ -327,6 +341,13 @@
       wrap.appendChild(card);
     });
 
+    // v1.2：自建关卡入口（创作闭环）
+    var customCard = makeEl('button', 'level-card');
+    customCard.appendChild(makeEl('div', 'level-name', '🛠 自建关卡 (' + customLevels.length + ')'));
+    customCard.appendChild(makeEl('div', 'level-best', '画一条走廊，出题！'));
+    customCard.addEventListener('click', function () { viewCustomList(); });
+    wrap.appendChild(customCard);
+
     var checkinBtn = makeEl('button', 'btn btn-checkin', store.checkin.dates.indexOf(todayStr()) >= 0 ? '✅ 今日已打卡' : '📅 今日打卡');
     checkinBtn.addEventListener('click', function () { doCheckin(checkinBtn); });
     wrap.appendChild(checkinBtn);
@@ -367,7 +388,10 @@
     if (hist.length) {
       wrap.appendChild(makeEl('h3', 'parent-sub', '最近记录'));
       hist.forEach(function (h) {
-        wrap.appendChild(makeEl('div', 'parent-row small', h.date + ' · ' + (LEVELS_CFG[h.level] ? LEVELS_CFG[h.level].label : h.level) + ' · ' + h.stars + '★'));
+        var lbl;
+        if (h.level === 'custom') { lbl = '自建关卡·' + (h.customName || ''); }
+        else { lbl = LEVELS_CFG[h.level] ? LEVELS_CFG[h.level].label : h.level; }
+        wrap.appendChild(makeEl('div', 'parent-row small', h.date + ' · ' + lbl + ' · ' + h.stars + '★'));
       });
     }
     var back = makeEl('button', 'btn', '‹ 返回');
@@ -377,6 +401,8 @@
     clearBtn.addEventListener('click', function () {
       if (window.confirm('确定清除所有练习数据？此操作不可恢复。')) {
         LX_SHARED.storage.remove('v1');
+        LX_SHARED.storage.remove('customLevels');   // v1.2：自建关卡一并清除
+        customLevels = [];
         store = loadStore();
         saveStore();
         viewHome();
@@ -395,6 +421,7 @@
     state.cmds = [];
     state.firstFail = null;
     state.totalCmds = 0;   // 编写量（循环块1 + 内部指令1，不乘 N）
+    editCtx.loopIdx = -1; editCtx.innerIdx = -1;   // v1.2：防两层编辑残留（与 startCustom/nextLevel 对齐）
     var lv = genLevel(level);
     state.gridW = state.gridH = LEVELS_CFG[level].size;
     state.walls = lv.walls;
@@ -461,7 +488,7 @@
     var back = makeEl('button', 'game-back', '‹ 返回');
     back.addEventListener('click', function () { viewHome(); });
     top.appendChild(back);
-    var lvEl = makeEl('div', 'game-prog', LEVELS_CFG[state.level].label + ' · 让机器人到 ⭐');
+    var lvEl = makeEl('div', 'game-prog', (state.level === 'custom' ? customLevels[state.customIdx].name : LEVELS_CFG[state.level].label) + ' · 让机器人到 ⭐');
     lvEl.id = 'game-prog';
     top.appendChild(lvEl);
     var timerEl = makeEl('div', 'game-timer', '⏱ 00.0');
@@ -911,6 +938,17 @@
 
   /* ---------- 星级 / 结算 ---------- */
   function finishLevel() {
+    // v1.2：自建关卡 2★ 兜底（最优循环解不可简单算；不写 best/recent 防污染三档统计）
+    if (state.level === 'custom') {
+      markCustomSolved(state.customIdx);
+      var recC = { date: todayStr(), level: 'custom', customName: customLevels[state.customIdx].name, stars: 2, cmds: state.totalCmds };
+      store.history.push(recC);
+      store.history = store.history.slice(-100);
+      saveStore();
+      var fbC = document.getElementById('game-feedback');
+      if (fbC) { fbC.textContent += '（2★，自建关卡）'; }
+      return;   // 不进入 optimal 公式代码
+    }
     var total = state.totalCmds;
     var stars = 1;
     if (total <= state.optimal * 1.5) { stars = 3; }
@@ -930,6 +968,7 @@
   }
 
   function nextLevel() {
+    if (state.level === 'custom') { viewCustomList(); return; }   // v1.2：自建关无下一题，回关卡库
     state.execLock = false; state.execDone = false; state.won = false;
     state.cmds = []; state.totalCmds = 0; state.firstFail = null;
     editCtx.loopIdx = -1; editCtx.innerIdx = -1;   // v1.1：下一题重置两层编辑上下文
@@ -943,6 +982,326 @@
     state.curPos = { x: lv.start.x, y: lv.start.y };
     state.curFace = lv.startFace;
     renderGame();
+  }
+
+  /* ============================================================
+     v1.2 关卡编辑器（创作闭环：画走廊 → 校验 → 保存 → 挑战）
+     ============================================================ */
+
+  /* ---------- 自建关卡存取（§2.1） ---------- */
+  function addCustomLevel(trace, name) {
+    if (customLevels.length >= 20) {
+      window.alert('自建关卡最多 20 个');
+      return null;
+    }
+    if (name.length > 12) { name = name.slice(0, 12); }
+    var last = trace[trace.length - 1];
+    var cl = {
+      id: Date.now() + '-' + Math.random().toString(36).slice(2, 5),
+      name: name,
+      trace: trace.slice(),
+      gridW: 10,
+      gridH: 10,
+      goal: { x: last.x, y: last.y },
+      createdAt: Date.now(),
+      solved: false
+    };
+    customLevels.push(cl);
+    saveCustomLevels(customLevels);
+    return cl.id;
+  }
+
+  // Oracle I2：编辑已有关保存 = 覆盖同 id（改 trace/name/goal，保留 id/createdAt，solved 重置 false）
+  function updateCustomLevel(idx, trace, name) {
+    var cl = customLevels[idx];
+    if (!cl) { return; }
+    if (name.length > 12) { name = name.slice(0, 12); }
+    var last = trace[trace.length - 1];
+    cl.name = name;
+    cl.trace = trace.slice();
+    cl.goal = { x: last.x, y: last.y };
+    cl.solved = false;
+    saveCustomLevels(customLevels);
+  }
+
+  function removeCustomLevel(id) {
+    for (var i = 0; i < customLevels.length; i++) {
+      if (customLevels[i].id === id) { customLevels.splice(i, 1); break; }
+    }
+    saveCustomLevels(customLevels);
+  }
+
+  function markCustomSolved(idx) {
+    if (customLevels[idx]) {
+      customLevels[idx].solved = true;
+      saveCustomLevels(customLevels);
+    }
+  }
+
+  /* ---------- 唯一路径校验（全部复用现成纯函数，零新算法） ---------- */
+  function checkCorridor(trace) {
+    if (trace.length < 4) { return { ok: false, msg: '至少走 4 格' }; }
+    if (trace.length > 64) { return { ok: false, msg: '最多 64 格' }; }
+    for (var i = 0; i < trace.length; i++) {
+      var p = trace[i];
+      if (p.x < 0 || p.x > 9 || p.y < 0 || p.y > 9) {
+        return { ok: false, msg: '格子超出范围了（0-9）' };
+      }
+    }
+    for (var j = 1; j < trace.length; j++) {
+      var a = trace[j - 1], b = trace[j];
+      if (Math.abs(a.x - b.x) + Math.abs(a.y - b.y) !== 1) {
+        return { ok: false, msg: '路径有断开' };
+      }
+    }
+    if (!noNear(trace, 10)) { return { ok: false, msg: '这条路离太近，会抄近道' }; }
+    var goal = trace[trace.length - 1];
+    var uniq = verifyUniquePath(trace, buildCorridor(trace, 10), 10, { x: 1, y: 1 }, goal);
+    if (!uniq) { return { ok: false, msg: '不止一条路能到终点' }; }
+    var msg = '✓ 唯一路径！可以保存（' + trace.length + ' 格）';
+    if (trace.length >= 40) {
+      msg += '，路径较长，执行约 ' + Math.ceil(trace.length * 0.26) + ' 秒';
+    }
+    return { ok: true, msg: msg };
+  }
+
+  /* ---------- 关卡库视图（§2.2） ---------- */
+  function viewCustomList() {
+    stopTimer();
+    state.finished = false;
+    renderHeader();
+    clearNode(viewEl);
+    var wrap = makeEl('div', 'custom-wrap');
+    var top = makeEl('div', 'custom-top');
+    var back = makeEl('button', 'game-back', '‹ 返回');
+    back.addEventListener('click', function () { viewHome(); });
+    top.appendChild(back);
+    top.appendChild(makeEl('span', 'custom-title', '🛠 自建关卡'));
+    wrap.appendChild(top);
+
+    if (!customLevels.length) {
+      wrap.appendChild(makeEl('p', 'custom-empty', '还没有自建关卡，来画一条走廊吧！'));
+    }
+    for (var i = 0; i < customLevels.length; i++) {
+      (function (ci) {
+        var cl = customLevels[ci];
+        var row = makeEl('div', 'custom-row');
+        var info = makeEl('div', 'custom-info');
+        info.appendChild(makeEl('div', 'custom-name', cl.name));
+        var meta = makeEl('div', 'custom-meta', '路径 ' + cl.trace.length + ' 格 · ');
+        meta.appendChild(makeEl('span', 'custom-badge' + (cl.solved ? ' solved' : ''), cl.solved ? '✅ 已解' : '🔒 未解'));
+        info.appendChild(meta);
+        row.appendChild(info);
+        var editBtn = makeEl('button', 'btn btn-small', '✏ 编辑');
+        editBtn.addEventListener('click', function () { viewEditor(ci); });
+        row.appendChild(editBtn);
+        var playBtn = makeEl('button', 'btn btn-small btn-primary', '▶ 挑战');
+        playBtn.addEventListener('click', function () { startCustom(ci); });
+        row.appendChild(playBtn);
+        var delBtn = makeEl('button', 'btn btn-small btn-danger', '🗑 删除');
+        delBtn.addEventListener('click', function () {
+          if (window.confirm('确定删除这个自建关卡？')) {
+            removeCustomLevel(cl.id);
+            viewCustomList();
+          }
+        });
+        row.appendChild(delBtn);
+        wrap.appendChild(row);
+      })(i);
+    }
+
+    var newBtn = makeEl('button', 'btn btn-primary btn-block', '+ 新建关卡');
+    newBtn.addEventListener('click', function () { viewEditor(-1); });
+    wrap.appendChild(newBtn);
+
+    viewEl.appendChild(wrap);
+    renderFooter('');
+  }
+
+  /* ---------- 编辑器视图（§2.3，末端生长模型） ---------- */
+  function viewEditor(idx) {
+    stopTimer();
+    state.finished = false;
+    state.editIdx = idx;
+    renderHeader();
+    clearNode(viewEl);
+    var wrap = makeEl('div', 'editor-wrap');
+    var top = makeEl('div', 'custom-top');
+    var back = makeEl('button', 'game-back', '‹ 返回');
+    back.addEventListener('click', function () { viewCustomList(); });
+    top.appendChild(back);
+    top.appendChild(makeEl('span', 'custom-title', '🛠 走廊编辑器'));
+    top.appendChild(makeEl('span', 'custom-sub', '⏱ 10×10'));
+    wrap.appendChild(top);
+
+    var nameRow = makeEl('div', 'edit-name-row');
+    nameRow.appendChild(makeEl('span', 'edit-name-label', '名称：'));
+    var nameInput = makeEl('input', 'edit-name-input');
+    nameInput.type = 'text';
+    nameInput.maxLength = 12;
+    nameInput.value = (idx >= 0 && customLevels[idx]) ? customLevels[idx].name : ('我的走廊 ' + (customLevels.length + 1));
+    nameInput.id = 'edit-name-input';
+    nameRow.appendChild(nameInput);
+    wrap.appendChild(nameRow);
+
+    var board = makeEl('div', 'edit-board');
+    board.id = 'edit-board';
+    wrap.appendChild(board);
+
+    var tools = makeEl('div', 'edit-tools');
+    tools.appendChild(makeEl('span', 'edit-tool-hint', '✏ 从 S 开始，一格一格接着画'));
+    var undoBtn = makeEl('button', 'btn btn-small', '🧹 撤销末端');
+    undoBtn.addEventListener('click', function () { undoEdit(); });
+    tools.appendChild(undoBtn);
+    var clearBtn = makeEl('button', 'btn btn-small', '↺ 清空');
+    clearBtn.addEventListener('click', function () { clearEdit(); });
+    tools.appendChild(clearBtn);
+    wrap.appendChild(tools);
+
+    var ctrl = makeEl('div', 'edit-ctrl');
+    var checkBtn = makeEl('button', 'btn btn-primary', '✓ 检查路径');
+    checkBtn.addEventListener('click', function () { doCheckEdit(); });
+    ctrl.appendChild(checkBtn);
+    var saveBtn = makeEl('button', 'btn', '💾 保存');
+    saveBtn.addEventListener('click', function () { saveCustom(); });
+    ctrl.appendChild(saveBtn);
+    wrap.appendChild(ctrl);
+
+    var fb = makeEl('div', 'edit-feedback', '从 S 开始，一格一格画过去！');
+    fb.id = 'edit-feedback';
+    wrap.appendChild(fb);
+
+    // 载入轨迹：新建 = [起点]；编辑已有 = cl.trace 精确保留
+    if (idx >= 0 && customLevels[idx]) {
+      state.editTrace = customLevels[idx].trace.slice();
+    } else {
+      state.editTrace = [{ x: 1, y: 1 }];
+    }
+
+    viewEl.appendChild(wrap);
+    renderEditBoard();
+    renderFooter('');
+  }
+
+  // 10×10 编辑网格渲染（格坐标 0..9，起点 S 固定 (1,1)）
+  function boardHtmlEdit() {
+    var parts = ['<div class="edit-grid">'];
+    var last = state.editTrace[state.editTrace.length - 1];
+    for (var y = 0; y < 10; y++) {
+      for (var x = 0; x < 10; x++) {
+        var isStart = (x === 1 && y === 1);
+        var isEnd = (last && last.x === x && last.y === y);
+        var isTrace = false;
+        for (var t = 0; t < state.editTrace.length; t++) {
+          if (state.editTrace[t].x === x && state.editTrace[t].y === y) { isTrace = true; break; }
+        }
+        var cls = 'edit-cell';
+        if (isTrace) { cls += ' trace'; }
+        if (isStart) { cls += ' start'; }
+        if (isEnd) { cls += ' end'; }
+        parts.push('<div class="' + cls + '" data-x="' + x + '" data-y="' + y + '">');
+        if (isStart) { parts.push('<span class="edit-mark">S</span>'); }
+        else if (isEnd) { parts.push('<span class="edit-mark">⭐</span>'); }
+        else if (isTrace) { parts.push('<span class="edit-dot"></span>'); }
+        parts.push('</div>');
+      }
+    }
+    parts.push('</div>');
+    return parts.join('');
+  }
+
+  function renderEditBoard() {
+    var board = document.getElementById('edit-board');
+    if (!board) { return; }
+    board.innerHTML = boardHtmlEdit();
+    var cells = board.querySelectorAll('.edit-cell');
+    for (var i = 0; i < cells.length; i++) {
+      cells[i].addEventListener('click', onEditCellClick);
+    }
+  }
+
+  // 末端生长：点相邻格 append；不邻接拦截；已在 trace 拦截
+  function onEditCellClick(ev) {
+    var cell = ev.currentTarget;
+    var x = parseInt(cell.getAttribute('data-x'), 10);
+    var y = parseInt(cell.getAttribute('data-y'), 10);
+    var trace = state.editTrace;
+    var last = trace[trace.length - 1];
+    for (var i = 0; i < trace.length; i++) {
+      if (trace[i].x === x && trace[i].y === y) {
+        showEditMsg('这条路绕回自己了');
+        return;
+      }
+    }
+    if (Math.abs(x - last.x) + Math.abs(y - last.y) === 1) {
+      trace.push({ x: x, y: y });
+      renderEditBoard();
+    } else {
+      showEditMsg('要从上一格接着画');
+    }
+  }
+
+  function undoEdit() {
+    if (state.editTrace.length > 1) {
+      state.editTrace.pop();
+      renderEditBoard();
+    }
+  }
+
+  function clearEdit() {
+    state.editTrace = [{ x: 1, y: 1 }];
+    renderEditBoard();
+  }
+
+  function showEditMsg(msg) {
+    var fb = document.getElementById('edit-feedback');
+    if (fb) { fb.textContent = msg; }
+  }
+
+  function doCheckEdit() {
+    var r = checkCorridor(state.editTrace);
+    showEditMsg(r.msg);
+  }
+
+  // 保存：校验通过才可保存；新建 → addCustomLevel / 编辑已有 → updateCustomLevel
+  function saveCustom() {
+    var nameInput = document.getElementById('edit-name-input');
+    var name = nameInput ? (nameInput.value || '我的走廊') : '我的走廊';
+    var r = checkCorridor(state.editTrace);
+    if (!r.ok) {
+      showEditMsg('请先检查：' + r.msg);
+      return;
+    }
+    if (state.editIdx < 0) {
+      var newId = addCustomLevel(state.editTrace, name);
+      if (!newId) { return; }   // 上限 20 拦截（addCustomLevel 已提示）
+    } else {
+      updateCustomLevel(state.editIdx, state.editTrace, name);
+    }
+    showEditMsg('✓ 保存成功');
+    viewCustomList();
+  }
+
+  /* ---------- 自建关卡练习（§2.4，2★ 兜底） ---------- */
+  function startCustom(idx) {
+    stopTimer();
+    state.finished = false;
+    state.execLock = false; state.execDone = false; state.won = false;
+    state.cmds = []; state.totalCmds = 0; state.firstFail = null;
+    editCtx.loopIdx = -1; editCtx.innerIdx = -1;
+    state.level = 'custom'; state.customIdx = idx;
+    var cl = customLevels[idx];
+    if (!cl) { viewCustomList(); return; }
+    state.gridW = state.gridH = cl.gridW;    // 固定 10
+    state.trace = cl.trace;                  // [{x,y},...] 对象数组
+    state.walls = buildCorridor(cl.trace, cl.gridW);
+    state.start = { x: 1, y: 1 }; state.startFace = 0;
+    state.goal = cl.goal;                    // {x,y} = trace 末端
+    state.optimal = 0;                       // Oracle I1-refine：显式重置 0
+    state.curPos = { x: 1, y: 1 }; state.curFace = 0;
+    renderGame();
+    state.startMs = Date.now();
+    startTimer();
   }
 
   /* ---------- 计时 ---------- */
@@ -987,5 +1346,19 @@
   M.locateFailStep = locateFailStep;
   M.dirName = dirName;
   M.loopDepth = loopDepth;
+  /* v1.2 关卡编辑器导出（Oracle I3 显式清单，供单元测试） */
+  M.checkCorridor = checkCorridor;
+  M.loadCustomLevels = loadCustomLevels;
+  M.saveCustomLevels = saveCustomLevels;
+  M.addCustomLevel = addCustomLevel;
+  M.updateCustomLevel = updateCustomLevel;
+  M.removeCustomLevel = removeCustomLevel;
+  M.markCustomSolved = markCustomSolved;
+  M.startCustom = startCustom;
+  M.viewCustomList = viewCustomList;
+  M.viewEditor = viewEditor;
+  M.noNear = noNear;
+  M.verifyUniquePath = verifyUniquePath;
+  M.buildCorridor = buildCorridor;
   window.M = M;
 })();

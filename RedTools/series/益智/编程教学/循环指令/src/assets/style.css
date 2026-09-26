@@ -444,3 +444,215 @@ body {
   flex: 0 0 auto;
   padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
 }
+
+/* ============================================================
+   v1.2 自建关卡：关卡库 + 编辑器（Chrome 61 基线：无 flex gap）
+   ============================================================ */
+.custom-wrap { text-align: center; }
+
+.custom-top {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: justify;
+  -webkit-justify-content: space-between;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.custom-title { font-size: 17px; font-weight: 600; color: #1f2329; }
+
+.custom-sub { font-size: 13px; color: #86909c; }
+
+.custom-empty {
+  font-size: 14px;
+  color: #86909c;
+  padding: 24px 0;
+}
+
+/* 关卡库列表行 */
+.custom-row {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-flex-wrap: wrap;
+  flex-wrap: wrap;
+  background: #ffffff;
+  border: 1px solid #e5e6eb;
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  text-align: left;
+}
+
+.custom-info {
+  -webkit-box-flex: 1;
+  -webkit-flex: 1 1 auto;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.custom-name { font-size: 15px; font-weight: 600; color: #1f2329; }
+
+.custom-meta { font-size: 12px; color: #86909c; margin-top: 2px; }
+
+.custom-badge {
+  display: inline-block;
+  background: #f2f4f7;
+  border: 1px solid #c9cdd4;
+  border-radius: 10px;
+  padding: 1px 8px;
+  font-size: 12px;
+  color: #4e5969;
+  margin-left: 4px;
+}
+
+.custom-badge.solved {
+  background: #e8f8ee;
+  border-color: #95ddb0;
+  color: #23824c;
+}
+
+.btn-block { display: block; width: 100%; margin: 12px 0 0; }
+
+/* ---------- 编辑器 ---------- */
+.editor-wrap { text-align: center; }
+
+.edit-name-row {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.edit-name-label { font-size: 14px; color: #4e5969; margin-right: 6px; }
+
+.edit-name-input {
+  width: 200px;
+  max-width: 100%;
+  border: 1px solid #c9cdd4;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 14px;
+  color: #1f2329;
+  background: #ffffff;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.edit-board {
+  display: inline-block;
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 10px;
+  box-shadow: 0 2px 8px rgba(31, 35, 41, 0.06);
+  margin-bottom: 10px;
+}
+
+.edit-grid {
+  display: block;
+  font-size: 0;   /* 消除 inline-block 空白间隙（Chrome 61 无 gap 方案） */
+}
+
+.edit-cell {
+  display: inline-block;
+  width: 30px;
+  height: 30px;
+  margin: 1px;
+  border-radius: 4px;
+  background: #fafafc;
+  border: 1px solid #f0f0f2;
+  font-size: 14px;
+  line-height: 28px;
+  text-align: center;
+  vertical-align: top;
+  cursor: pointer;
+}
+
+.edit-cell.trace {
+  background: #f0f2f5;
+  border-color: #e0e3e8;
+}
+
+.edit-cell.start {
+  background: #e6f0fd;
+  border-color: #3a7bd5;
+}
+
+.edit-cell.end {
+  background: #e6f0fd;
+  border-color: #f5c518;
+}
+
+.edit-cell:active { background: #e8ecf1; }
+
+.edit-mark {
+  display: inline-block;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 28px;
+}
+
+.edit-cell.start .edit-mark { color: #3a7bd5; }
+
+.edit-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #d5dbe0;
+  margin-top: 10px;
+  vertical-align: top;
+}
+
+.edit-tools {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  -webkit-flex-wrap: wrap;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.edit-tool-hint {
+  font-size: 12px;
+  color: #86909c;
+  margin-right: 8px;
+}
+
+.edit-ctrl {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  -webkit-flex-wrap: wrap;
+  flex-wrap: wrap;
+}
+
+.edit-feedback {
+  text-align: center;
+  font-size: 14px;
+  min-height: 24px;
+  padding: 10px 0 0;
+  color: #4e5969;
+}
