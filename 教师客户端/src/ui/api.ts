@@ -23,6 +23,19 @@ export interface ClassProgress {
   updated_at: string;
 }
 
+// ---- 服务端地址配置（config.rs · 设置页「服务器」组）----
+
+export interface ConfigStatus {
+  /** 当前生效的服务端地址（显式 > 编译期默认；空 = P0 离线模式） */
+  api_base: string;
+  /** 是否为 config.json 显式配置（false = 编译期默认 / 未配置） */
+  explicit: boolean;
+  /** 编译期默认（打包时注入 LOONGEDU_API_BASE；未注入为空） */
+  detected_default: string;
+  /** 配置文件绝对路径（exe 同目录 config.json） */
+  config_path: string;
+}
+
 // ---- P1 认证 / 口令（A01 / auth.rs / license.rs）----
 
 export interface Teacher {
@@ -245,6 +258,11 @@ export const api = {
   serverPing: () => invoke<string>("server_ping"),
   openRunDir: () => invoke<void>("open_run_dir"),
   openServerPage: (url: string) => invoke<void>("open_server_page", { url }),
+
+  // ---- 设置页 · 服务端地址（config.json api_base 读改写，保留未知字段；写入即生效）----
+  configGet: () => invoke<ConfigStatus>("config_get"),
+  configSetApiBase: (apiBase: string) =>
+    invoke<ConfigStatus>("config_set_api_base", { apiBase }),
 
   testWebview2: () => invoke<string | null>("test_webview2"),
 

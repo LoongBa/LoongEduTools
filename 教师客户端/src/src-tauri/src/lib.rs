@@ -3,8 +3,8 @@ mod state;
 mod webview2;
 
 use crate::commands::{
-    archive, auth, credential, license, package, protocol, recents, report, roster, shell_config,
-    store, textbook, toolbox, window,
+    archive, auth, config, credential, license, package, protocol, recents, report, roster,
+    shell_config, store, textbook, toolbox, window,
 };
 use crate::state::AppState;
 use tauri::Manager as _;
@@ -202,6 +202,9 @@ pub fn run() {
             archive::archive_undo,
             archive::archive_list,
             archive::archive_pack_index,
+            // 设置页 · 服务端地址（config.json api_base 读改写，保留未知字段）
+            config::config_get,
+            config::config_set_api_base,
             // WebView2 状态查询（前端启动时调用，决定是否弹引导）
             test_webview2,
         ])

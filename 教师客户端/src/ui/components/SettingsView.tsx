@@ -1,13 +1,15 @@
-// 设置：通用 / 外观（主题模式 + 配色皮肤）/ 账号 / 存储与数据
-import { useState } from "react";
+// 设置：通用 / 服务器 / 外观（主题模式 + 配色皮肤）/ 账号 / 存储与数据
+import { useCallback, useEffect, useState } from "react";
 import {
   AlertTriangle,
   Check,
   DownloadCloud,
   FolderOpen,
   Info,
+  Loader,
   Monitor,
   Moon,
+  Server,
   Star,
   Sun,
   Trash2,
@@ -18,6 +20,8 @@ import { useAccountInfo } from "@/lib/store";
 import { SKIN_META, useThemeCtx, type SkinId, type ThemeMode } from "@/lib/theme";
 import type { InstalledMap } from "@/lib/store";
 import type { ToolShortcut } from "@/lib/types";
+import { api, type ConfigStatus } from "@/api";
+import { friendlyErr } from "@/errutil";
 
 interface SettingsViewProps {
   loggedIn: boolean;
@@ -141,6 +145,11 @@ export function SettingsView({
           />
         </Group>
 
+        {/* ── 服务器 ── */}
+        <Group title="服务器" hint="服务端地址（api_base）：换服务器/下载托管源只改这一处，保存后立即生效">
+          <ServerEditor />
+        </Group>
+
         {/* ── 账号 ── */}
         <Group title="账号" hint={acct.real ? "真实壳端登录态" : "演示环境无真实账号体系"}>
           <Row label="登录状态" desc={loggedIn ? "已登录 · 本机授权，可下载安装内容包" : "未登录 · 仅可浏览，不能下载"}>
@@ -227,6 +236,123 @@ export function SettingsView({
         </Group>
       </div>
     </div>
+  );
+}
+
+/** 服务端地址编辑器：真实读写 config.json api_base（config.rs，保留未知字段）→ serverPing 验证 */
+function ServerEditor() {
+  const [status, setStatus] = useState<ConfigStatus | null>(null);
+  const [value, setValue] = useState("");
+  const [busy, setBusy] = useState(false);
+  // 非 Tauri 环境（网页演示版）configGet 抛错 → 降级只读提示
+  const [unavailable, setUnavailable] = useState(false);
+
+  useEffect(() => {
+    void api
+      .configGet()
+      .then((s) => {
+        setStatus(s);
+        setValue(s.api_base);
+      })
+      .catch(() => setUnavailable(true));
+  }, []);
+
+  /** 保存（空串 = 恢复默认/清除显式配置）→ 写回状态 → serverPing 验证连通 */
+  const apply = useCallback(async (next: string) => {
+    setBusy(true);
+    try {
+      const s = await api.configSetApiBase(next);
+      setStatus(s);
+      setValue(s.api_base);
+      try {
+        await api.serverPing();
+        toast.success("服务器地址已保存并连通", {
+          description: s.api_base ? `立即生效：${s.api_base}` : "已清除显式配置，当前为 P0 离线模式",
+        });
+      } catch {
+        toast.warning("地址已保存，但暂时无法连接服务器", {
+          description: "地址立即生效；请核对地址是否正确、网络是否可达。",
+        });
+      }
+    } catch (e) {
+      toast.error("保存失败", { description: friendlyErr(e) });
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
+  if (unavailable) {
+    return (
+      <div className="px-4 py-3.5">
+        <div className="text-[13.5px] font-medium">服务端地址</div>
+        <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
+          网页演示版不接真实配置，服务器地址请在桌面版 exe 同目录的 config.json 中配置。
+        </p>
+        <span className="mt-2 inline-flex h-7 items-center gap-1 rounded-full bg-muted px-2.5 text-[11px] text-muted-foreground">
+          <Server size={11} aria-hidden /> 演示环境不可配置
+        </span>
+      </div>
+    );
+  }
+
+  const sourceLabel = status?.explicit
+    ? "config.json 显式配置"
+    : status?.detected_default
+      ? "编译期默认（打包注入）"
+      : "未配置 · P0 离线模式";
+
+  return (
+    <>
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 px-4 py-3.5">
+        <div className="min-w-0">
+          <div className="text-[13.5px] font-medium">当前服务端地址</div>
+          <div className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground" title={status?.config_path}>
+            来源：{sourceLabel}
+            {status?.config_path ? ` · 配置：${status.config_path}` : ""}
+          </div>
+        </div>
+        <span className="inline-flex h-7 max-w-64 items-center gap-1 overflow-hidden text-ellipsis whitespace-nowrap rounded-full bg-brand-soft px-2.5 text-[11px] font-medium text-brand" title={status?.api_base}>
+          <Server size={11} aria-hidden className="shrink-0" />
+          {status?.api_base || "P0 离线模式"}
+        </span>
+      </div>
+      <div className="space-y-2.5 px-4 py-3.5">
+        <div className="text-[13.5px] font-medium">更换地址</div>
+        <input
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="https://api.loongba.education"
+          aria-label="服务器地址"
+          className="h-9 w-full rounded-md border border-input bg-card px-3 text-[12.5px] text-foreground outline-none transition-colors focus:border-brand"
+        />
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            disabled={busy}
+            className="flex h-8 items-center gap-1.5 rounded-md bg-primary px-3.5 text-[12px] font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-45"
+            onClick={() => apply(value.trim())}
+          >
+            {busy ? <Loader size={11} aria-hidden className="animate-spin" /> : <Check size={11} aria-hidden />}
+            保存并验证
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            title="清空显式配置，回退编译期默认地址"
+            className="flex h-8 items-center rounded-md border border-input bg-card px-3 text-[12px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-45"
+            onClick={() => apply("")}
+          >
+            恢复默认
+          </button>
+          {status?.detected_default && !status.explicit && (
+            <span className="text-[10.5px] text-muted-foreground">默认 {status.detected_default}</span>
+          )}
+        </div>
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          保存后立即生效（每次请求实时读取 config.json，无需重启客户端）；换机器/U 盘拷贝时随 exe 一起带走。
+        </p>
+      </div>
+    </>
   );
 }
 
