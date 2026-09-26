@@ -81,6 +81,14 @@
 
 > 生命周期：`config.json` 跟随 exe（U 盘绿色目录形态），换机器即带走；`recents_set` 只更新 `recents` 子对象，**不会覆盖** `api_base`。
 
+**服务端签名配置（v0.3 决策点4 · `shell_config.rs`）**：
+
+- **信任链**：`config.json` 的 `api_base`（明文引导，可改——改坏最多连不上）→ `GET {api_base}/shell/config.signed.json`（**静态托管即可服务，无需服务端端点**）→ 壳端 ed25519 验签（`key_id=shell-config-2026`，公钥硬编码于 `SHELL_CONFIG_PUBKEYS`）→ 通过 → 采信 + AES-256-GCM 加密落盘 `config.enc`（离线可解密重验）；失败 → 拒绝。
+- **防篡改语义**：平台私有配置不可伪造——即使 `api_base` 被改成恶意服务器，无签名私钥则验签必然失败。签名私钥仅管理员持有（`scripts/gen_shell_config.py --key keys/<prod>.key`），公钥通过脚本输出后写回 `SHELL_CONFIG_PUBKEYS`。
+- **命令**：`shell_config_fetch`（拉取+验签+加密缓存）/ `shell_config_cached`（读离线缓存+重验）/ `shell_config_key_status`（当前 key_id + 可接受表）。
+- **轮换**：公钥表数组追加新条目（旧配置旧钥可验、新配置新钥可验），与 `package.rs::SIGN_PUBKEYS` 同模式。
+- **A01 契约**：配置包信封对齐 S01 §2.2（`signature{alg,key_id,signed_payload_hash,sig}`），canonical JSON 与内容包 manifest 完全一致（共用 `package::verify_signed_envelope` + `canonical_json_sign_view`）。
+
 ---
 
 ## 3. 认证子系统

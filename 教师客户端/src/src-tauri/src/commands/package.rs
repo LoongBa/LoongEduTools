@@ -266,11 +266,15 @@ pub fn version_lt(a: &str, b: &str) -> bool {
     false
 }
 
-/// 验签 manifest（S01 §2.2 · D04 §3.1）：剔除 signature/checksum 后规范化 JSON（对齐
+/// 验签通用信封（S01 §2.2 · D04 §3.1）：剔除 signature 后规范化 JSON（对齐
 /// scripts/gen_manifest.py：sort_keys + separators=(",",":") + ensure_ascii=False），
 /// 用 key_id 对应公钥验 ed25519；另校 signed_payload_hash = sha256(canon)。
 /// 签名缺失 / key_id 不在表 / 验签失败 / hash 不符 → Err。
-pub fn verify_manifest_signature(v: &serde_json::Value) -> Result<(), String> {
+/// 公钥表参数化：内容包 manifest（SIGN_PUBKEYS）与壳配置（shell_config::SHELL_CONFIG_PUBKEYS）共用。
+pub fn verify_signed_envelope(
+    v: &serde_json::Value,
+    pubkeys: &[(&str, &str)],
+) -> Result<(), String> {
     let sig_obj = v.get("signature").ok_or("缺少 signature 块（S01 §2.2）")?;
     let alg = sig_obj
         .get("alg")
@@ -283,7 +287,7 @@ pub fn verify_manifest_signature(v: &serde_json::Value) -> Result<(), String> {
         .get("key_id")
         .and_then(|x| x.as_str())
         .ok_or("signature.key_id 缺失")?;
-    let pub_hex = SIGN_PUBKEYS
+    let pub_hex = pubkeys
         .iter()
         .find(|(k, _)| *k == key_id)
         .map(|(_, h)| *h)
@@ -312,6 +316,11 @@ pub fn verify_manifest_signature(v: &serde_json::Value) -> Result<(), String> {
     let key = UnparsedPublicKey::new(&ED25519, &pub_bytes);
     key.verify(canon_bytes, &sig_bytes)
         .map_err(|_| "ed25519 验签失败（内容被篡改或非本管线签发）".to_string())
+}
+
+/// 兼容入口：内容包 manifest 验签
+pub fn verify_manifest_signature(v: &serde_json::Value) -> Result<(), String> {
+    verify_signed_envelope(v, SIGN_PUBKEYS)
 }
 
 /// 规范化 JSON：剔除 signature/checksum 后递归排序键、紧凑分隔符、非 ASCII 原样 UTF-8

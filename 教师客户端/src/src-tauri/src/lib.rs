@@ -3,8 +3,8 @@ mod state;
 mod webview2;
 
 use crate::commands::{
-    auth, credential, license, package, protocol, recents, report, roster, store, textbook,
-    toolbox, window,
+    auth, credential, license, package, protocol, recents, report, roster, shell_config, store,
+    textbook, toolbox, window,
 };
 use crate::state::AppState;
 use tauri::Manager as _;
@@ -180,6 +180,10 @@ pub fn run() {
             // P3 抽卡/分组 名单持久化（D05 §2.4.1/§2.4.2 · 本地 roster.json 零上报）
             roster::roster_save,
             roster::roster_load,
+            // v0.3 决策点4 · 服务端签名壳配置（静态托管 + 验签 + 加密缓存）
+            shell_config::shell_config_fetch,
+            shell_config::shell_config_cached,
+            shell_config::shell_config_key_status,
             // WebView2 状态查询（前端启动时调用，决定是否弹引导）
             test_webview2,
         ])

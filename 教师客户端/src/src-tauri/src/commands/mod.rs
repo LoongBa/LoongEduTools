@@ -8,6 +8,7 @@ pub mod protocol;
 pub mod recents;
 pub mod report;
 pub mod roster;
+pub mod shell_config;
 pub mod store;
 pub mod textbook;
 pub mod toolbox;
