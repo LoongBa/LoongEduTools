@@ -1,5 +1,7 @@
 //! 认证命令层 · D01 §3 / A01 §2 / D05 §2.1
-//! 凭证缓存：AES-256-GCM 加密文件 credential.enc（exe 同级，U 盘跟随）
+//! 凭证缓存：AES-256-GCM 加密文件 session.enc（exe 同级，U 盘跟随）——D09 §2.1 C1：
+//! 原 credential.enc 的 AES-GCM JWT 结构**改名迁移**为 session.enc（仅改名，结构/派生不变）。
+//! 签名凭证新格式已独立为新模块 credential.rs（credential.enc，Ed25519 签名）。
 //! 离线兜底：7 天窗口；api_base 空 = P0 模式（不联网，不阻断本地内容包）
 
 use crate::commands::fingerprint::fingerprint;
@@ -99,12 +101,16 @@ struct ApiErrorBody {
 
 /// 读 config.json 的 api_base（空 = P0 模式）
 /// pub：供 store.rs（下载扩展）复用，避免重复实现读取逻辑
+/// 解析优先级：config.json 显式字段 > 编译期默认（LOONGEDU_API_BASE env，打包时注入）
+/// —— 运维预置策略：CF 起步版打包时定默认地址，老师开箱即用；config.json 可覆盖。
 pub fn api_base(app: &tauri::AppHandle) -> String {
     let path = crate::commands::recents::config_path(app).unwrap_or_default();
     std::fs::read_to_string(path)
         .ok()
         .and_then(|raw| serde_json::from_str::<serde_json::Value>(&raw).ok())
         .and_then(|v| v.get("api_base").and_then(|x| x.as_str()).map(String::from))
+        .filter(|s| !s.is_empty())
+        .or_else(|| option_env!("LOONGEDU_API_BASE").map(String::from))
         .unwrap_or_default()
 }
 
@@ -150,14 +156,18 @@ pub async fn post_json(
 
 fn cred_key() -> [u8; 32] {
     // 简单保护：设备指纹 + 固定盐 → SHA256（D01 §8：挡顺手操作，不防专业逆向）
+    // 注：D09 §2.1 弃用本派生用于签名凭证路径（credential.rs 已改 Argon2id KEK）；
+    // session.enc 按 C1"仅改名"保留既有 AES-GCM 派生（JWT 缓存 7 天窗口独立于凭证硬断，
+    // 启动读缓存不应依赖 PIN——见 D09 §2.7 联动矩阵）。
     let mut h = Sha256::new();
     h.update(fingerprint().as_bytes());
     h.update(b"|edu-teacher-credential-v1");
     h.finalize().into()
 }
 
+/// JWT 缓存文件：session.enc（D09 §2.1 改名；原 credential.enc）
 fn cred_path(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
-    Ok(exe_dir(app)?.join("credential.enc"))
+    Ok(exe_dir(app)?.join("session.enc"))
 }
 
 pub fn load_credential(app: &tauri::AppHandle) -> Option<Credential> {

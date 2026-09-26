@@ -248,23 +248,31 @@ pub async fn store_download(
     // manifest 条目中的 checksum：严格校验（B2 加固）——必须在清单内且带有效 sha256，
     // 否则拒绝下载（原「不在清单内也放行」使完整性校验形同虚设）
     let manifest = manifest_inner(&app).await?;
-    let checksum = manifest
+    let entry = manifest
         .packages
         .iter()
         .find(|p| p.package_id == package_id && p.package_version == version)
-        .and_then(|p| p.checksum.clone())
+        .ok_or_else(|| format!("清单中不存在 {package_id} v{version}"))?;
+    let checksum = entry
+        .checksum
+        .clone()
         .ok_or_else(|| {
             format!("清单未提供 {package_id} v{version} 的 checksum，拒绝下载（完整性校验必需）")
         })?;
     let expect = parse_sha256_hex(&checksum)
         .ok_or_else(|| format!("manifest checksum 格式无效: {checksum}"))?;
 
-    let url = format!(
-        "{}/api/edu/packages/{}/{}",
-        base.trim_end_matches('/'),
-        package_id,
-        version
-    );
+    // 下载源解析：清单条目 download_url（绝对 http(s)，静默托管/第三方镜像可用）
+    // 优先于默认 `{api_base}/api/edu/packages/{id}/{ver}`（保留原路径作为缺省兜底）
+    let url = match entry.download_url.as_deref() {
+        Some(u) if u.starts_with("http://") || u.starts_with("https://") => u.to_string(),
+        _ => format!(
+            "{}/api/edu/packages/{}/{}",
+            base.trim_end_matches('/'),
+            package_id,
+            version
+        ),
+    };
     let tmp = temp_zip_path(&package_id, &version);
     let got_hex = download_stream(&url, &cred.jwt, &tmp).await?;
 
@@ -391,8 +399,9 @@ fn hex_lower(bytes: &[u8]) -> String {
 // ------------------------------------------------------------------ 命令③：store_import_usb
 
 /// U 盘导入：读 zip 内 package.json 预检（S01 §2.4：file_count/encrypted）→ 读 manifest.json
-/// 校验 min_shell_version ≤ SHELL_VERSION → 解包 packages/{id}-{ver}/ → 刷新索引。
-/// 结构不符/签名块不完整/版本守卫不过 → Err 且不在 packages 落盘破坏本地。
+/// 全量 ed25519 验签（D09 §7 步骤1：先验签后解压，复用 package.rs verify_manifest_signature）
+/// 并校验 min_shell_version ≤ SHELL_VERSION → 解包 packages/{id}-{ver}/ → 刷新索引。
+/// 结构不符/验签失败/版本守卫不过 → Err 且不在 packages 落盘破坏本地（恶意 zip 验签失败零磁盘写入）。
 #[tauri::command]
 pub async fn store_import_usb(
     app: tauri::AppHandle,
@@ -445,18 +454,10 @@ pub async fn store_import_usb(
             "包要求壳 {min_shell}，当前壳 {SHELL_VERSION}，请先升级客户端"
         ));
     }
-    // 签名块结构预检（轻量第一关；真正验签在解包后 read_manifest → verify_manifest_signature，B1）
-    if let Some(sig) = mj.get("signature") {
-        let ok = sig.get("alg").and_then(|v| v.as_str()).is_some()
-            && sig.get("sig").and_then(|v| v.as_str()).is_some()
-            && sig
-                .get("signed_payload_hash")
-                .and_then(|v| v.as_str())
-                .is_some();
-        if !ok {
-            return Err("manifest 签名块结构不符（S01 §2.2 signature）".into());
-        }
-    }
+    // D09 §7 步骤1：先验签后解压──对 zip 内 manifest 做全量 ed25519 验签（复用 package.rs
+    // verify_manifest_signature，S01 §2.2 signature），不触碰磁盘任何字节；
+    // 签名缺失 / 未知 key_id / 验签失败 → 解压落盘前即拒绝，恶意 zip 零磁盘写入。
+    package::verify_manifest_signature(&mj).map_err(|e| format!("manifest 签名校验失败: {e}"))?;
 
     // 版本守卫：不降级、不覆盖同版本（失败不落盘不破坏本地）
     let local = installed_map(&state);
@@ -674,16 +675,35 @@ fn entry_data(buf: &[u8], e: &ZipEntryInfo) -> Result<Vec<u8>, String> {
 }
 
 /// 解压全部条目到目标目录（跳过目录项；路径越界拒绝）
+/// D09 §7 步骤1：zip 炸弹双上限——条目数 ≤ MAX_ENTRIES、累计解压字节 ≤ MAX_TOTAL_BYTES，
+/// 任一超限即 Err（调用方负责清理暂存目录，同现有失败处理）。
 /// pub(crate)：toolbox.rs 复用（第三方工具 zip 同式解包）
 pub(crate) fn extract_zip(buf: &[u8], dest: &Path) -> Result<(), String> {
+    const MAX_ENTRIES: usize = 2000; // 解包条目数上限（防海量小文件炸弹）
+    const MAX_TOTAL_BYTES: usize = 500 * 1024 * 1024; // 累计解压字节上限 500MB（防解压放大炸弹）
     let entries = parse_cd(buf)?;
     fs::create_dir_all(dest).map_err(|e| format!("创建目录失败: {e}"))?;
+    let mut written_entries: usize = 0;
+    let mut total_bytes: usize = 0;
     for e in &entries {
         if e.name.ends_with('/') || e.name.is_empty() {
             continue;
         }
+        written_entries += 1;
+        if written_entries > MAX_ENTRIES {
+            return Err(format!(
+                "zip 解压条目数超过上限 {MAX_ENTRIES} 个（D09 §7 防 zip 炸弹）"
+            ));
+        }
         let rel = safe_rel_path(&e.name)?;
         let data = entry_data(buf, e)?;
+        total_bytes += data.len();
+        if total_bytes > MAX_TOTAL_BYTES {
+            return Err(format!(
+                "zip 解压总量超过上限 {}MB（D09 §7 防 zip 炸弹）",
+                MAX_TOTAL_BYTES / (1024 * 1024)
+            ));
+        }
         let out_path = dest.join(&rel);
         if let Some(parent) = out_path.parent() {
             fs::create_dir_all(parent).map_err(|err| format!("创建目录失败: {err}"))?;
