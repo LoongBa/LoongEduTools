@@ -190,13 +190,21 @@ def main() -> int:
     (out / "api/edu/packages/manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
-    print(f"packages/manifest: {len(manifest['packages'])} 包")
+    # 无后缀副本：壳端 store.rs 请求 `{base}/api/edu/packages/manifest`（无 .json），
+    # CF Pages 只自动补 .html 不补 .json → 必须提供精确无后缀路径文件（2026-09-28 本地验证发现）
+    (out / "api/edu/packages/manifest").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    print(f"packages/manifest: {len(manifest['packages'])} 包（含无后缀副本）")
 
     # 2) 工具箱清单（首发种子）
     (out / "api/edu/toolbox/manifest.json").write_text(
         json.dumps(DEFAULT_TOOLBOX, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
-    print(f"toolbox/manifest: {len(DEFAULT_TOOLBOX['tools'])} 工具")
+    (out / "api/edu/toolbox/manifest").write_text(
+        json.dumps(DEFAULT_TOOLBOX, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    print(f"toolbox/manifest: {len(DEFAULT_TOOLBOX['tools'])} 工具（含无后缀副本）")
 
     # 3) 拷贝内容包 zip → packs/（download_url 指向）
     copied = 0
