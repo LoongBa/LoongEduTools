@@ -12,7 +12,7 @@
 - 初始版本 **V0.1.0**（用户定夺：V0.1.0 起始迭代）；唯一权威字段 = `src/package.json` 的 `version`（发布/迭代时同步修改）。
 - 升级规则：**微调（bug fix / 样式 / 文案）→ 升子版本号**；**较大调整（新功能 / 交互改进）→ 升次版本号**；**主版本号升级必须经用户同意**。
 - tag 命名：`数学巧算-v0.3.x`；打 tag 前先征得用户同意。
-- 当前版本 **V0.5.0**（2026-09-27：薄弱方法统计 + 下周建议——家长报告增强，错题聚合诊断）。
+- 当前版本 **V0.6.0**（2026-09-27：打印讲义——每讲 A4 原理+例题+练习单+答案区，离线纸张练习）。
 
 ## 三架构产品中的位置
 
@@ -46,6 +46,7 @@
     │   ├── lib/guard.ts             #   防沉迷/自控力纯逻辑（对齐 RedTools 通用需求 §4）
     │   ├── lib/recite.ts            #   原理复述卡纯逻辑（applyRecite，engine L7 单测）
     │   ├── lib/weak.ts              #   薄弱方法/下周建议纯逻辑（engine L8 单测，注入 STAGES）
+    │   ├── lib/handout.ts           #   打印讲义纯逻辑（engine L9 单测，engine 注入）
     │   ├── components/ui-kit.tsx    #   基础件（Btn/Panel/PageHead/Progress/Stars）
     │   ├── views/                   #   七视图（Home/Stage/Lesson/Recite/Practice/Warmup/Me/Report）
     │   ├── assets/smart_gen/        #   巧算引擎（sg_tools + stage 文件 + 主入口）
@@ -82,7 +83,7 @@
 ## 快速入口
 
 ```powershell
-# 数学巧算 React 工程（V0.5.0 已迭代）
+# 数学巧算 React 工程（V0.6.0 已迭代）
 cd 数学巧算\src
 pnpm dev                # 开发（3016）
 pnpm build              # 离线 minitool 包（Chrome 61 基线 + 经典脚本，dist/）
@@ -117,3 +118,4 @@ node scripts/gen_stages.mjs   # content/*.json → src/data/stages.generated.ts
 - [x] minitool zip 打包 + 发布 SOP（publish_offline.py 6 步管线 + SOP 文档）→ **V0.3.0**
 - [x] 原理复述卡（每讲复述"为什么能这样算" + 三层入口 + store v3 + 家长报告回看）→ **V0.4.0**
 - [x] 薄弱方法统计 + 下周建议（错题聚合 TOP3 + 未完成推荐 + 阶段薄弱标记 + 家长报告增强）→ **V0.5.0**
+- [x] 打印讲义（每讲 A4 原理+例题+练习单+答案区，JSX .handout-sheet + @media print）→ **V0.6.0**

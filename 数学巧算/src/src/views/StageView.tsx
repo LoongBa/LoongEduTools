@@ -18,10 +18,12 @@ export function StageView({
   stageKey,
   onBack,
   onOpenLesson,
+  onOpenHandout,
 }: {
   stageKey: number | string;
   onBack: () => void;
   onOpenLesson: (lesson: string) => void;
+  onOpenHandout: (lesson: string) => void;
 }) {
   const { store } = useProgress();
   const key = String(stageKey);
@@ -60,10 +62,18 @@ export function StageView({
           const best = bestVals.length ? Math.max(...bestVals) : 0;
           return (
             <li key={l.lesson_id}>
-              <button
-                type="button"
+              {/* I1：外层用 div role=button（HTML 禁 button 嵌套 button），内层 🖨️ 独立 button + stopPropagation */}
+              <div
+                role="button"
+                tabIndex={0}
                 onClick={() => onOpenLesson(l.lesson_id)}
-                className="panel-border tap-target flex w-full items-center gap-3 rounded-3xl border bg-card p-3 text-left shadow-soft transition-transform active:scale-[0.985]"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onOpenLesson(l.lesson_id);
+                  }
+                }}
+                className="panel-border tap-target flex w-full cursor-pointer items-center gap-3 rounded-3xl border bg-card p-3 text-left shadow-soft transition-transform active:scale-[0.985]"
               >
                 <span
                   className={
@@ -91,7 +101,19 @@ export function StageView({
                     <Pill tone="idle">未开始</Pill>
                   )}
                 </span>
-              </button>
+                {/* V0.6 打印讲义按钮（stopPropagation 防触发行点击） */}
+                <button
+                  type="button"
+                  aria-label={`打印讲义 ${l.title}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenHandout(l.lesson_id);
+                  }}
+                  className="tap-target -mr-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[15px] text-muted-foreground hover:bg-secondary"
+                >
+                  🖨️
+                </button>
+              </div>
             </li>
           );
         })}

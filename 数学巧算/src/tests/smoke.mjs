@@ -55,6 +55,7 @@ server.listen(0, "127.0.0.1", async () => {
     await page.locator("text=四年级").first().click();
     await page.waitForTimeout(400);
     ok("阶段页渲染讲次列表", (await page.locator("text=简便运算系统化").count()) > 0);
+    ok("阶段页讲次行渲染打印讲义按钮（V0.6）", (await page.locator("button[aria-label^='打印讲义']").count()) > 0);
 
     // 进入第一讲（运算律总览）
     await page.locator("text=运算律总览").first().click();
@@ -86,6 +87,22 @@ server.listen(0, "127.0.0.1", async () => {
     await page.locator("button[aria-label='返回']").first().click();
     await page.waitForTimeout(400);
     ok("课堂页 banner 显示已复述", (await page.locator("text=原理已讲过").count()) > 0);
+
+    // V0.6 打印讲义：LessonView 顶部入口 → HandoutView 渲染断言 → 返回
+    const handoutEntry = page.locator("button:has-text('打印讲义')");
+    ok("课堂页渲染打印讲义入口", (await handoutEntry.count()) > 0);
+    await handoutEntry.first().click();
+    await page.waitForTimeout(400);
+    ok("讲义视图渲染标题", (await page.locator("text=打印讲义").count()) > 0);
+    ok("讲义渲染练习单分区", (await page.locator("text=练习单").count()) > 0);
+    ok("讲义渲染基础题小标题", (await page.locator("text=一、基础题").count()) > 0);
+    const handoutBody = await page.evaluate(() => document.body.innerText);
+    ok("讲义练习单含题面", /[=＝]/.test(handoutBody));
+    ok("讲义渲染答案区（家长批改）", /答案（家长/.test(handoutBody));
+    await page.locator("button[aria-label='返回']").first().click();
+    await page.waitForTimeout(400);
+    ok("讲义返回后回课堂页", (await page.locator("text=原理已讲过").count()) > 0);
+
     for (let i = 0; i < 7; i++) {
       const nxt = page.locator("button:has-text('下一步')");
       if (await nxt.count()) { await nxt.first().click(); await page.waitForTimeout(250); }

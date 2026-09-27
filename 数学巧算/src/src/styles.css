@@ -295,12 +295,28 @@ html.dark .panel-border {
   .print-truncate .recite-row .recite-text-preview {
     display: block;
   }
+  /* V0.6 打印讲义：分区防切页 + 答案区强制新页（I2 防孩子翻页见答案） */
+  .handout-sheet {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 12px 0 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+  .handout-sheet .print-block {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .handout-answer-area {
+    break-before: page;
+    page-break-before: always;
+  }
+}
+
+/* 屏幕态规则（V0.6 修正 V0.4 遗留：这些规则此前误入 @media print 块内，导致屏上不生效） */
 .recite-row .recite-text-preview {
   display: none;
 }
-
-/* 屏幕态隐藏 print-only（报告页脚等仅打印元素对齐数独思维模式） */
 .print-only {
   display: none;
-}
 }

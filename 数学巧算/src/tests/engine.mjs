@@ -8,6 +8,7 @@ import { dirname } from "path";
 import { checkDue, extend, enough, isLocked, todayReset } from "../src/lib/guard.ts";
 import { applyRecite } from "../src/lib/recite.ts";
 import { buildLessonIndex, suggestWeek, topWeakMethods } from "../src/lib/weak.ts";
+import { buildHandout, generatePractice } from "../src/lib/handout.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SG_DIR = resolve(__dirname, "../src/assets/smart_gen");
@@ -363,6 +364,50 @@ let l8bad = 0;
   if (single.size !== sug.length) { l8bad++; console.log("  L8 sug-dupe FAIL"); }
 }
 
+// ---------- L9：打印讲义纯逻辑（buildHandout 纯变换 + generatePractice 引擎注入，零全局污染） ----------
+let l9bad = 0;
+{
+  // mock lesson（结构对齐 SmartLesson 子集）
+  const mockLesson = {
+    title: "结合律配对",
+    principle: "25 找 4，125 找 8，先结对再相乘",
+    explore: { model: "area", steps: ["先找能凑整的一对", "先算它们", "再算剩下的"] },
+    method: { rhyme: "先配对，再相乘", steps: [] },
+    examples: [
+      { expr: "25×16×4", normal: "25×16=400, 400×4=1600", smart: "25×4=100, 100×16=1600", why: "25 找 4" },
+      { expr: "125×8×7", normal: "125×8=1000, 1000×7=7000", smart: "125×8=1000, 1000×7=7000", why: "125 找 8" },
+      { expr: "4×37×25", normal: "4×37=148, 148×25=3700", smart: "4×25=100, 100×37=3700", why: "4 找 25" },
+      { expr: "9×16×125", normal: "9×16=144, 144×125=18000", smart: "16×125=2000, 2000×9=18000", why: "16 找 125" },
+    ],
+  };
+  const h = buildHandout(mockLesson, "四年级");
+  if (h.lessonTitle !== "结合律配对" || h.grade !== "四年级") { l9bad++; console.log("  L9 handout-head FAIL"); }
+  if (h.principle.indexOf("25 找 4") < 0) { l9bad++; console.log("  L9 handout-principle FAIL"); }
+  if (h.exploreSteps.length !== 3) { l9bad++; console.log("  L9 handout-explore FAIL"); }
+  if (h.methodRhyme !== "先配对，再相乘") { l9bad++; console.log("  L9 handout-rhyme FAIL"); }
+  if (h.examples.length !== 3) { l9bad++; console.log(`  L9 handout-examples-trunc: ${h.examples.length}（应 3，第 4 个被截断）`); }
+
+  // 缺省兜底：无 explore/method/examples
+  const h2 = buildHandout({ title: "空讲", principle: "" }, "一年级");
+  if (h2.exploreSteps.length !== 0 || h2.methodRhyme !== "" || h2.examples.length !== 0) { l9bad++; console.log("  L9 handout-empty-fallback FAIL"); }
+
+  // generatePractice：mock engine 生成 count 题（B1 引擎必填注入）
+  const mockEngine = {
+    gen: (name) => {
+      if (name !== "combo_basic") return null;
+      return { text: "30 + 18 + 9 =", answer: 57 };
+    },
+  };
+  const p1 = generatePractice("combo_basic", 3, mockEngine);
+  if (p1.length !== 3) { l9bad++; console.log(`  L9 practice-count: ${p1.length}（应 3）`); }
+  if (p1[0].text.indexOf("=") < 0 || p1[0].answer !== 57) { l9bad++; console.log("  L9 practice-text FAIL"); }
+  // B2：engine null → []；gen 返回 null → []；genName 空 → []；count ≤ 0 → []
+  if (generatePractice("combo_basic", 3, null).length !== 0) { l9bad++; console.log("  L9 practice-engine-null FAIL"); }
+  if (generatePractice("combo_advance", 3, mockEngine).length !== 0) { l9bad++; console.log("  L9 practice-gen-null FAIL"); }
+  if (generatePractice("", 3, mockEngine).length !== 0) { l9bad++; console.log("  L9 practice-empty-gen FAIL"); }
+  if (generatePractice("combo_basic", 0, mockEngine).length !== 0) { l9bad++; console.log("  L9 practice-zero-count FAIL"); }
+}
+
 // ---------- 输出 ----------
 console.log("== smart_gen 引擎单测 ==");
 console.log(`生成器数: ${NAMES.length} 个（${new Set(NAMES.map((n) => n.split("_").slice(0, -1).join("_"))).size} 方法 × 3 档）`);
@@ -374,7 +419,8 @@ console.log(`L5 口算热身 validate: ${kouTotal - kouInvalid}/${kouTotal} 通�
 console.log(`L6 guard 纯逻辑: ${l6bad === 0 ? "全部通过" : `${l6bad} 项失败`}`);
 console.log(`L7 recite 纯逻辑: ${l7bad === 0 ? "全部通过" : `${l7bad} 项失败`}`);
 console.log(`L8 weak 纯逻辑: ${l8bad === 0 ? "全部通过" : `${l8bad} 项失败`}`);
+console.log(`L9 handout 纯逻辑: ${l9bad === 0 ? "全部通过" : `${l9bad} 项失败`}`);
 const l2fail = l2total - l2ok;
-const totalBad = failed + invalid + l2fail + l4bad + kouInvalid + l5bad + l6bad + l7bad + l8bad;
+const totalBad = failed + invalid + l2fail + l4bad + kouInvalid + l5bad + l6bad + l7bad + l8bad + l9bad;
 console.log(`FAIL 计数: ${totalBad}`);
 process.exit(totalBad ? 1 : 0);

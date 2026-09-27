@@ -8,6 +8,7 @@ import { HomeView } from "@/views/HomeView";
 import { StageView } from "@/views/StageView";
 import { LessonView } from "@/views/LessonView";
 import { ReciteView } from "@/views/ReciteView";
+import { HandoutView } from "@/views/HandoutView";
 import { PracticeView } from "@/views/PracticeView";
 import { WarmupView } from "@/views/WarmupView";
 import { MeView } from "@/views/MeView";
@@ -17,6 +18,7 @@ export type View =
   | { name: "stage"; stage: number | string }
   | { name: "lesson"; stage: number | string; lesson: string }
   | { name: "recite"; stage: number | string; lesson: string }
+  | { name: "handout"; stage: number | string; lesson: string }
   | { name: "practice"; stage: number | string; lesson: string; level: "basic" | "advance" | "challenge" }
   | { name: "warmup" }
   | { name: "me" };
@@ -40,6 +42,7 @@ export function App() {
             stageKey={view.stage}
             onBack={() => setView({ name: "home" })}
             onOpenLesson={(lesson) => setView({ name: "lesson", stage: view.stage, lesson })}
+            onOpenHandout={(lesson) => setView({ name: "handout", stage: view.stage, lesson })}
           />
         )}
         {view.name === "lesson" && (
@@ -48,11 +51,19 @@ export function App() {
             lessonId={view.lesson}
             onBack={() => setView({ name: "stage", stage: view.stage })}
             onOpenRecite={() => setView({ name: "recite", stage: view.stage, lesson: view.lesson })}
+            onOpenHandout={() => setView({ name: "handout", stage: view.stage, lesson: view.lesson })}
             onPractice={(level) => setView({ name: "practice", stage: view.stage, lesson: view.lesson, level })}
           />
         )}
         {view.name === "recite" && (
           <ReciteView
+            stageKey={view.stage}
+            lessonId={view.lesson}
+            onBack={() => setView({ name: "lesson", stage: view.stage, lesson: view.lesson })}
+          />
+        )}
+        {view.name === "handout" && (
+          <HandoutView
             stageKey={view.stage}
             lessonId={view.lesson}
             onBack={() => setView({ name: "lesson", stage: view.stage, lesson: view.lesson })}

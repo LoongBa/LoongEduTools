@@ -14,12 +14,14 @@ export function LessonView({
   lessonId,
   onBack,
   onOpenRecite,
+  onOpenHandout,
   onPractice,
 }: {
   stageKey: number | string;
   lessonId: string;
   onBack: () => void;
   onOpenRecite: () => void;
+  onOpenHandout: () => void;
   onPractice: (level: "basic" | "advance" | "challenge") => void;
 }) {
   const key = String(stageKey);
@@ -68,7 +70,7 @@ export function LessonView({
         type="button"
         onClick={onOpenRecite}
         className={
-          "tap-target mb-4 flex w-full items-center justify-between rounded-2xl border px-4 py-2.5 text-left " +
+          "tap-target mb-2 flex w-full items-center justify-between rounded-2xl border px-4 py-2.5 text-left " +
           (recite
             ? "border-[var(--lit)]/30 bg-lit-soft"
             : "border-[var(--warm)]/40 bg-warm-soft/60")
@@ -77,6 +79,16 @@ export function LessonView({
         <span className="text-[13px] font-semibold">
           {recite ? "✓ 原理已讲过 · 可再改" : "🧠 讲一讲原理（讲得出才算学会）"}
         </span>
+        <span className="text-[16px] text-[var(--warm)]">→</span>
+      </button>
+
+      {/* V0.6 打印讲义次级入口（与复述 banner 并列，不打断主流程） */}
+      <button
+        type="button"
+        onClick={onOpenHandout}
+        className="tap-target mb-4 flex w-full items-center justify-between rounded-2xl border border-border bg-secondary/40 px-4 py-2 text-left hover:bg-secondary"
+      >
+        <span className="text-[13px] font-semibold">🖨️ 打印讲义（A4 纸张练习）</span>
         <span className="text-[16px] text-[var(--warm)]">→</span>
       </button>
 
