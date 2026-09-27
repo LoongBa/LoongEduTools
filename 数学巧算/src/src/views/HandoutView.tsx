@@ -208,7 +208,7 @@ export function HandoutView({
 
         {/* 页脚（N1：生成日期） */}
         <p className="mt-5 border-t border-border pt-2 text-center text-[11px] text-muted-foreground">
-          生成日期：{todayStr()} · 巧算乐学 V0.6.0
+          生成日期：{todayStr()} · 巧算乐学 V1.0.0
         </p>
       </div>
     </div>

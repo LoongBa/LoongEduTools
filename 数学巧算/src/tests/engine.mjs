@@ -9,6 +9,7 @@ import { checkDue, extend, enough, isLocked, todayReset } from "../src/lib/guard
 import { applyRecite } from "../src/lib/recite.ts";
 import { buildLessonIndex, suggestWeek, topWeakMethods } from "../src/lib/weak.ts";
 import { buildHandout, generatePractice } from "../src/lib/handout.ts";
+import { STAGES } from "../src/data/stages.generated.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SG_DIR = resolve(__dirname, "../src/assets/smart_gen");
@@ -408,6 +409,27 @@ let l9bad = 0;
   if (generatePractice("combo_basic", 0, mockEngine).length !== 0) { l9bad++; console.log("  L9 practice-zero-count FAIL"); }
 }
 
+// ---------- L10：教程库 → 生成器契约（32 讲 × 3 档 practice.gen 全部合法；全阶回归内容侧） ----------
+let l10bad = 0;
+{
+  const genNames = new Set(SG.list);
+  let checked = 0;
+  for (const st of STAGES) {
+    for (const l of st.lessons || []) {
+      const p = l.practice || {};
+      for (const level of ["basic", "advance", "challenge"]) {
+        const g = p[level]?.gen;
+        checked++;
+        if (!g || !genNames.has(g)) {
+          l10bad++;
+          if (l10bad <= 10) console.log(`  L10 gen-missing: stage${st.stage}:${l.lesson_id} ${level} → ${g}`);
+        }
+      }
+    }
+  }
+  if (checked !== 96) { l10bad++; console.log(`  L10 lesson-ref-count: ${checked}（应 96 = 32 讲 × 3 档）`); }
+}
+
 // ---------- 输出 ----------
 console.log("== smart_gen 引擎单测 ==");
 console.log(`生成器数: ${NAMES.length} 个（${new Set(NAMES.map((n) => n.split("_").slice(0, -1).join("_"))).size} 方法 × 3 档）`);
@@ -420,7 +442,8 @@ console.log(`L6 guard 纯逻辑: ${l6bad === 0 ? "全部通过" : `${l6bad} 项�
 console.log(`L7 recite 纯逻辑: ${l7bad === 0 ? "全部通过" : `${l7bad} 项失败`}`);
 console.log(`L8 weak 纯逻辑: ${l8bad === 0 ? "全部通过" : `${l8bad} 项失败`}`);
 console.log(`L9 handout 纯逻辑: ${l9bad === 0 ? "全部通过" : `${l9bad} 项失败`}`);
+console.log(`L10 教程库→生成器契约: ${l10bad === 0 ? "全部通过" : `${l10bad} 项失败`}`);
 const l2fail = l2total - l2ok;
-const totalBad = failed + invalid + l2fail + l4bad + kouInvalid + l5bad + l6bad + l7bad + l8bad + l9bad;
+const totalBad = failed + invalid + l2fail + l4bad + kouInvalid + l5bad + l6bad + l7bad + l8bad + l9bad + l10bad;
 console.log(`FAIL 计数: ${totalBad}`);
 process.exit(totalBad ? 1 : 0);

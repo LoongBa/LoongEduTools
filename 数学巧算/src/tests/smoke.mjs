@@ -150,6 +150,41 @@ server.listen(0, "127.0.0.1", async () => {
     ok("阶段5引擎出题（含小数点）", /[.．]/.test(decBody) && /[=＝]/.test(decBody));
     ok("阶段5小数点键盘可用", (await page.locator("button:has-text('.')").count()) > 0);
 
+    // 全阶回归（阶段 3 收官）：6 阶段 + 拓展逐阶走查 —— 阶段页渲染 / 打印讲义按钮 / 首讲七步 / 引擎出题 / 提交反馈
+    const FULL_STAGES = [
+      { card: "凑十破十平十", title: "10 的分与合（凑十歌）" },
+      { card: "凑整与搬家", title: "补数与凑整（连加）" },
+      { card: "拆数与特殊数", title: "乘法分配律 · 面积模型" },
+      { card: "简便运算系统化", title: "运算律总览 · 补数凑整" },
+      { card: "小数巧算", title: "化整还原（小数数位）" },
+      { card: "分数与综合巧算", title: "乘前先约分" },
+      { card: "思维进阶", title: "等差数列求和（高斯配对）" },
+    ];
+    for (const st of FULL_STAGES) {
+      await page.goto("file:///" + DIST.replace(/\\/g, "/") + "/index.html", { waitUntil: "load" });
+      await page.waitForTimeout(400);
+      await page.locator(`text=${st.card}`).first().click();
+      await page.waitForTimeout(400);
+      ok(`全阶[${st.card}]阶段页渲染+打印讲义按钮`, (await page.locator("button[aria-label^='打印讲义']").count()) > 0);
+      await page.locator(`text=${st.title}`).first().click();
+      await page.waitForTimeout(400);
+      ok(`全阶[${st.card}]首讲课堂渲染（前置检查）`, (await page.locator("text=前置知识检查").count()) > 0);
+      for (let i = 0; i < 7; i++) {
+        const next = page.locator("button:has-text('下一步')");
+        if (await next.count()) { await next.first().click(); await page.waitForTimeout(200); }
+      }
+      ok(`全阶[${st.card}]七步走查后出现开始练习`, (await page.locator("button:has-text('开始练习')").count()) > 0);
+      await page.locator("button:has-text('开始练习')").first().click();
+      await page.waitForTimeout(500);
+      const qBody = await page.evaluate(() => document.body.innerText);
+      ok(`全阶[${st.card}]引擎出题（题面含 = 或 □）`, /[=＝]/.test(qBody));
+      await page.locator("button:has-text('1')").first().click();
+      await page.locator("button[aria-label='提交']").first().click();
+      await page.waitForTimeout(400);
+      const fbBody = await page.evaluate(() => document.body.innerText);
+      ok(`全阶[${st.card}]提交有反馈`, /答对|答案|错题/.test(fbBody));
+    }
+
     // 口算热身入口
     await page.goto("file:///" + DIST.replace(/\\/g, "/") + "/index.html", { waitUntil: "load" });
     await page.waitForTimeout(400);
