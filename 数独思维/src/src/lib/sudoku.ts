@@ -259,10 +259,7 @@ export function findLogicStep(grid: Grid, size: Size): LogicStep | null {
     }
   }
 
-  // ⑤ 隐性数对 —— 已裁剪（V1.4.0 实施决策，oracle I1 收敛）：
-  //   真实触发条件「数字 {a,b} 候选位重叠于同 2 格」在小学规格盘面极为稀有
-  //   （24000 盘零命中实证）；标准定义数字候选格 ⊆ sel 亦难构造与稳定测试。
-  //   留 V1.5+ 与 analyzeTechniques「模式识别标注」方案一并实现（避免单步落子语义硬塞）。
+  // ⑤ 隐性数对 —— 单步落子已在 V1.4.0 裁剪（24000 盘零命中「排除后变单」落子）；V1.5.0 落为独立纯模式识别 findHiddenPairPattern（标注不落子，见其定义）。
 
   // ⑥ X-Wing（行向 + 列向对称）：数字 v 在两行候选位各恰 2 个且列对齐 → 这两列其他格排除 v
   for (const v of rangeOf(size)) {
@@ -302,6 +299,50 @@ export function findLogicStep(grid: Grid, size: Size): LogicStep | null {
     }
   }
 
+  return null;
+}
+
+/** 隐性数对模式标注（V1.5.0）：某单元内数字对 {a,b} 的候选位置集全集落于同 2 格（藏身格）。
+ *  纯模式识别，不产出落子——与 findLogicStep 单步落子语义分离（V1.4.0 裁剪根因）。
+ *  排除显性数对误报：藏身格候选集中至少一格 ≥3 候选（两格候选恰 {a,b} 是显性数对，findLogicStep ④ 已覆盖）。
+ *  前置条件（I5）：调用方应确保 findLogicStep(grid) 返回 null（即无隐性唯一/宫排除/行列排除可推进）——
+ *   否则对「某数字唯一位=1 格」的 pair 结构会漏检（该结构已被 ②③ 覆盖，属预期）。
+ *  返回 null = 无隐性数对模式。 */
+export interface HiddenPairPattern {
+  /** 藏身两格 (locked cells) */
+  cells: [number, number];
+  /** 被藏的两个数字 */
+  values: [number, number];
+  /** 所在单元（row/col/box） */
+  unitKind: "row" | "col" | "box";
+  unitIdx: number;
+}
+
+export function findHiddenPairPattern(grid: Grid, size: Size): HiddenPairPattern | null {
+  const max = size;
+  // row → col → box 固定序（稳定可测，I6-3）
+  for (const kind of ["row", "col", "box"] as const) {
+    for (let u = 0; u < unitCount(size, kind); u++) {
+      const cells = unitCells(size, kind, u).filter((i) => !grid[i]);
+      if (cells.length < 3) continue; // 藏身 2 格 + 至少 1 排除对象
+      // 单元内每个数字的候选位集合（懒计算单格候选；9×9 轻量，不跨调用缓存）
+      const posOf = (v: number): number[] => cells.filter((i) => candidatesFor(grid, size, i).indexOf(v) >= 0);
+      for (let x = 1; x <= max; x++) {
+        const px = posOf(x);
+        if (px.length !== 2) continue; // 前置条件下：1=隐性唯一（②③已覆盖）、0=已放置、>2=非数对
+        for (let y = x + 1; y <= max; y++) {
+          const py = posOf(y);
+          if (py.length !== 2 || px[0] !== py[0] || px[1] !== py[1]) continue; // 交集=并集=同 2 格
+          // 显性数对排除：两格候选均恰 {x,y} → ④ 裸对；至少一格 ≥3 才是隐性（I6-1 允许「一格恰2另一格≥3」）
+          const c1 = px[0], c2 = px[1];
+          const c1n = candidatesFor(grid, size, c1).length;
+          const c2n = candidatesFor(grid, size, c2).length;
+          if (c1n === 2 && c2n === 2) continue;
+          return { cells: [c1, c2], values: [x, y], unitKind: kind, unitIdx: u };
+        }
+      }
+    }
+  }
   return null;
 }
 
@@ -518,10 +559,12 @@ const TECHNIQUE_MAX_ROUNDS = 100;
 const techniqueCache = new Map<string, string[]>();
 
 /**
- * 题面技巧画像（V1.3.0）：模拟完整推理链，收集去重的 findLogicStep technique 集合。
+ * 题面技巧画像（V1.3.0+V1.5.0）：模拟完整推理链，收集去重的 findLogicStep technique 集合。
  * 语义边界（oracle B2）：结果是「题面推理链前段（基础技巧可推进部分）涉及的技巧近似标签」，
  * 不等于孩子填错那格对应的技巧；findLogicStep 只能诚实识别唯一候选/宫内排除/行列排除，
  * 卡住（需进阶技巧）时返回已收集子集，不抛错。
+ * V1.5.0（I1 修订）：卡住时补一次 findHiddenPairPattern 探测——命中即 add「隐性数对」并终止
+ * （不猜测、不推进，保持「诚实子集」语义；least-constrained 猜测会引入伪阳性标签）。
  */
 export function analyzeTechniques(board: Grid, size: Size): string[] {
   const sig = `${size}:${toSDString(board, size)}`;
@@ -534,6 +577,11 @@ export function analyzeTechniques(board: Grid, size: Size): string[] {
     if (!step) break; // 卡住（需进阶技巧）或已解完
     set.add(step.technique);
     grid[step.index] = step.value; // 每轮必填一格 → ≤size² 轮必然终止（N1）
+  }
+  // V1.5.0：卡住时探测隐性数对模式（纯标注；命中可能=卡住原因），非卡住（已解完）不探测
+  if (!findLogicStep(grid, size)) {
+    const pattern = findHiddenPairPattern(grid, size);
+    if (pattern) set.add("隐性数对");
   }
   const out = [...set];
   if (techniqueCache.size > 200) techniqueCache.clear(); // FIFO 上限

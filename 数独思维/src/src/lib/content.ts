@@ -112,6 +112,7 @@ export const TECHNIQUE_LESSON_MAP: Record<string, string> = {
   行排除: "rowColElim",
   列排除: "rowColElim",
   显性数对: "nakedPair",
+  隐性数对: "hiddenPair", // V1.5.0 B1：V1.4.0 裁剪时一并遗漏，补回以关联 hiddenPair 教学关
   "X-Wing": "xwing",
 };
 
@@ -134,7 +135,7 @@ export const TECHNIQUE_GROUPS: TechniqueGroupMeta[] = [
   { id: "unique", name: "唯一候选", lessonKey: TECHNIQUE_LESSON_MAP["唯一候选"] ?? null, techniques: ["唯一候选"] },
   { id: "box", name: "宫内排除", lessonKey: TECHNIQUE_LESSON_MAP["宫内排除"] ?? null, techniques: ["宫内排除"] },
   { id: "rowcol", name: "行列排除", lessonKey: TECHNIQUE_LESSON_MAP["行排除"] ?? null, techniques: ["行排除", "列排除"] },
-  { id: "adv", name: "进阶观察", lessonKey: null, techniques: ["显性数对", "X-Wing"], tier: "adv" },
+  { id: "adv", name: "进阶观察", lessonKey: null, techniques: ["显性数对", "隐性数对", "X-Wing"], tier: "adv" },
   { id: "mixed", name: "需综合", lessonKey: null, techniques: [] },
 ];
 

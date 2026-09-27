@@ -2,8 +2,8 @@
 // 断言：generatePuzzle 挖洞命中目标已知格、解合法（行/列/宫 1..N 各一次）、solve 唯一解、SD 往返一致。
 // V1.0.4 增：parseImportedText 全分支、长度不变式、协议串 round-trip。
 // V1.3.0 增：analyzeTechniques 题面技巧画像。
-import { generatePuzzle, solve, boxOf, toSDString, fromSDString, validateImported, parseImportedText, analyzeTechniques, findLogicStep } from "../src/lib/sudoku.ts";
-import { TECHNIQUE_LESSON_MAP, ADV_SKILLS } from "../src/lib/content.ts";
+import { generatePuzzle, solve, boxOf, toSDString, fromSDString, validateImported, parseImportedText, analyzeTechniques, findLogicStep, findHiddenPairPattern } from "../src/lib/sudoku.ts";
+import { TECHNIQUE_LESSON_MAP, ADV_SKILLS, LESSON_DATA, TECHNIQUE_GROUPS } from "../src/lib/content.ts";
 
 let failed = 0;
 const ok = (name, cond, extra = "") => {
@@ -195,6 +195,36 @@ for (const size of [4, 6, 9]) {
   ok("X-Wing 映射 xwing", TECHNIQUE_LESSON_MAP["X-Wing"] === "xwing");
   ok("显性数对名对齐 ADV_SKILLS", ADV_SKILLS.find((s) => s.key === "nakedPair")?.name === "显性数对");
   ok("X-Wing 名对齐 ADV_SKILLS", ADV_SKILLS.find((s) => s.key === "xwing")?.name === "X-Wing");
+}
+
+// V1.5.0 隐性数对模式标注
+// B1 一致性：LESSON map + adv 组 techniques 均含「隐性数对」（V1.4.0 裁剪时遗漏，V1.5.0 B1 补回）
+{
+  ok("隐性数对映射 hiddenPair", TECHNIQUE_LESSON_MAP["隐性数对"] === "hiddenPair");
+  ok("隐性数对入 adv 组", TECHNIQUE_GROUPS.find((g) => g.id === "adv")?.techniques.includes("隐性数对"));
+  ok("隐性数对名对齐 ADV_SKILLS", ADV_SKILLS.find((s) => s.key === "hiddenPair")?.name === "隐性数对");
+}
+// B2：手工构造盘（findLogicStep 卡住 + findHiddenPairPattern 确定性命中）——不依赖教学盘作 fixture
+{
+  const board = [0,0,0,0,0,0,0,5,0,4,1,0,0,2,3,0,0,0,0,1,5,0,0,0,5,0,4,0,0,1,0,4,1,6,0,0]; // generatePuzzle(6,18) 挖格衍生
+  ok("人工盘 findLogicStep 卡住", findLogicStep(board.slice(), 6) === null);
+  const p = findHiddenPairPattern(board.slice(), 6);
+  ok("人工盘命中隐性数对", p !== null && p.unitKind === "col" && p.unitIdx === 0, `p=${JSON.stringify(p)}`);
+  ok("隐性数对藏身格", !!p && p.cells[0] === 0 && p.cells[1] === 12, p ? `cells=${p.cells}` : "null");
+  ok("隐性数对数字对", !!p && p.values[0] === 1 && p.values[1] === 4, p ? `values=${p.values}` : "null");
+  ok("重复调用稳定", !!p && JSON.stringify(p) === JSON.stringify(findHiddenPairPattern(board.slice(), 6)));
+  // I1：analyzeTechniques 命中即 add「隐性数对」
+  const tips = analyzeTechniques(board.slice(), 6);
+  ok("analyzeTechniques 含隐性数对", tips.includes("隐性数对"), `tips=${JSON.stringify(tips)}`);
+}
+// 显性数对不误报 + 空盘/已解盘 null（oracle N1 B2/I6）
+{
+  const np = LESSON_DATA.nakedPair.board;
+  ok("裸数对教学盘 findLogicStep 非卡住", findLogicStep(np.slice(), 6) !== null);
+  ok("裸数对盘不误报隐性", findHiddenPairPattern(np.slice(), 6) === null);
+  ok("空盘无模式", findHiddenPairPattern(new Array(36).fill(0), 6) === null);
+  const solved = [1,2,3,4,5,6,4,5,6,1,2,3,2,3,1,6,4,5,5,6,4,3,1,2,3,1,2,5,6,4,6,4,5,2,3,1];
+  ok("已解盘无模式", findHiddenPairPattern(solved.slice(), 6) === null);
 }
 
 console.log(`\n引擎单测 ${failed ? "FAIL " + failed : "全部通过"}`);

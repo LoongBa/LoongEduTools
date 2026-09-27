@@ -22,6 +22,8 @@ export interface BoardProps {
   replay?: boolean;
   /** 错题重练：上次填错的位置（replay-mark 浅红标记） */
   errMarks?: number[];
+  /** V1.5.0：隐性数对观察标注（藏身两格，hl-pattern 视觉；与 peerGuide 排除源格语义区分） */
+  pattern?: { cells: number[]; tone: "hidden-pair" } | null;
   /** 刚被选中的格（瞬时闪光，300ms 内清除；参照 okCell 范式） */
   selCell?: number | null;
   onPick?: (i: number) => void;
@@ -40,6 +42,7 @@ export function Board({
   target = null,
   replay = false,
   errMarks = [],
+  pattern = null,
   selCell = null,
   onPick,
   className,
@@ -49,6 +52,7 @@ export function Board({
   const wrongSet = new Set(wrong);
   const errSet = new Set(errMarks);
   const peerSet = new Set(peerGuide.length ? peerGuide : selected != null ? peersLite(size, selected) : []);
+  const patternSet = new Set(pattern?.cells ?? []); // V1.5.0 I3：藏身格
 
   return (
     <div
@@ -71,6 +75,7 @@ export function Board({
           const isSame = selVal > 0 && val === selVal && !isSel;
           const isWrong = wrongSet.has(i);
           const isPeer = peerSet.has(i) && !val;
+          const isPattern = patternSet.has(i) && !val; // V1.5.0 I3：藏身格必空；仅空格生效
           const isTarget = target === i;
           const isErrMark = errSet.has(i) && !isSel && !isWrong;
           return (
@@ -93,9 +98,10 @@ export function Board({
                 isSame && "bg-hl-same hl-shape-same rounded-md",
                 isSel && "bg-hl-selected hl-shape-selected",
                 isWrong && "bg-hl-wrong hl-shape-wrong",
+                isPattern && "bg-hl-pattern/30 ring-1 ring-inset ring-hl-pattern/60",
                 isErrMark && !val && "bg-hl-wrong/20",
                 isErrMark && val && "ring-1 ring-inset ring-hl-wrong/50",
-                !isSel && !isWrong && !isSame && !isPeer && !isErrMark && "bg-transparent hover:bg-muted/60",
+                !isSel && !isWrong && !isSame && !isPeer && !isPattern && !isErrMark && "bg-transparent hover:bg-muted/60",
                 onPick ? "press" : "cursor-default",
               )}
             >

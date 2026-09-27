@@ -12,7 +12,7 @@ import { GROUP_IN_PROGRESS, GROUP_PROGRESS, GROUP_PROGRESS_DONE } from "@/lib/co
 import { levelName } from "./Walls";
 import type { PracticeSource } from "@/lib/store";
 import { calcStars, markCheckin, todayStr, useStore, type BookItem, type HistoryItem, type LevelId, type Snapshot } from "@/lib/store";
-import { colOf, countGiven, findLogicStep, generatePuzzle, peersOf, remainingMap, rowOf, toSDString, analyzeTechniques, type Grid, type Size } from "@/lib/sudoku";
+import { colOf, countGiven, findHiddenPairPattern, findLogicStep, generatePuzzle, peersOf, remainingMap, rowOf, toSDString, analyzeTechniques, type Grid, type Size } from "@/lib/sudoku";
 import { SharePuzzleOverlay, ShareResultOverlay } from "./Share";
 import { StepReview } from "./StepReview";
 
@@ -106,6 +106,8 @@ export function Practice({ params, onExit, onFinish }: Props) {
   const [review, setReview] = useState(false);
   const [toast, setToast] = useState("");
   const [hintCells, setHintCells] = useState<number[]>([]);
+  /** V1.5.0：隐性数对观察标注（藏身两格；提示消失机制与 hintCells 同款，走 Board pattern prop） */
+  const [pattern, setPattern] = useState<{ cells: number[]; tone: "hidden-pair" } | null>(null);
   const [scale, setScale] = useState(1);
   const pinchRef = useRef<{ dist: number; start: number } | null>(null);
   const hintTimer = useRef<number | undefined>(undefined);
@@ -337,6 +339,18 @@ export function Practice({ params, onExit, onFinish }: Props) {
     }
     const step = findLogicStep(board, size);
     if (!step) {
+      // V1.5.0：单步落子卡住 → 退化「隐性数对观察标注」（指出模式，不替孩子填数）
+      const pattern = findHiddenPairPattern(board, size);
+      if (pattern) {
+        setWarn(false);
+        const unitLabel = pattern.unitKind === "row" ? `第 ${pattern.unitIdx + 1} 行` : pattern.unitKind === "col" ? `第 ${pattern.unitIdx + 1} 列` : `第 ${pattern.unitIdx + 1} 宫`;
+        setPattern({ cells: pattern.cells, tone: "hidden-pair" });
+        setMsg(`💡 ${unitLabel}里，数字 ${pattern.values[0]} 和 ${pattern.values[1]} 只藏在这两个格子里——这两个格子把 ${pattern.values[0]}、${pattern.values[1]} 悄悄锁住了。想想这对数字应该怎么放？`);
+        playSound("tap");
+        window.clearTimeout(hintTimer.current);
+        hintTimer.current = window.setTimeout(() => setPattern(null), 3200);
+        return;
+      }
       setMsg("这一步需要更长的推理链，先把能确定的格子填上，线索会更多。");
       return;
     }
@@ -522,6 +536,7 @@ export function Practice({ params, onExit, onFinish }: Props) {
             peerGuide={hintCells}
             replay={source === "replay"}
             errMarks={source === "replay" ? params.errIdx : undefined}
+            pattern={pattern}
             selCell={selCell}
             onPick={(i) => {
               if (finished) return;
