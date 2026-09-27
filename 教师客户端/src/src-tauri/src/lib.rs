@@ -3,7 +3,7 @@ mod state;
 mod webview2;
 
 use crate::commands::{
-    archive, auth, config, credential, license, package, protocol, recents, report, roster,
+    archive, auth, close, config, credential, license, package, protocol, recents, report, roster,
     shell_config, store, textbook, toolbox, window,
 };
 use crate::state::AppState;
@@ -61,9 +61,13 @@ pub fn run() {
         .manage(AppState::default())
         // ---- 插件注册（D02 §3.2 Oracle 必改）----
         // 单实例：防教师双击开两实例争抢 config.json（Oracle G-2）
+        // 兜底：main 窗口不存在 = 进程孤儿态（旧版 Bug2 遗留：hidden 窗口让首实例关不掉、
+        // 二次启动回调拿 None 静默返回 = 「再运行无效」）——直接退出本实例避免双份状态。
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             if let Some(w) = app.get_webview_window("main") {
                 let _ = w.set_focus();
+            } else {
+                app.exit(0);
             }
         }))
         .plugin(tauri_plugin_store::Builder::default().build())
@@ -140,6 +144,11 @@ pub fn run() {
                     .unwrap_or_else(archive::detect_downloads_dir);
                 archive::spawn_watch_thread(app.handle().clone(), dir, cfg.poll_ms);
             }
+            // ⑥ 关闭行为托盘（需求4：最小化到任务栏图标）——初始隐藏，仅 min_to_tray 时出现；
+            //    失败仅 log 不阻断启动（无托盘时「最小化到托盘」会显式报错，其余路径不受影响）。
+            if let Err(e) = close::init_tray(app.handle()) {
+                eprintln!("[tray] 托盘图标初始化失败: {e}");
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -205,6 +214,11 @@ pub fn run() {
             // 设置页 · 服务端地址（config.json api_base 读改写，保留未知字段）
             config::config_get,
             config::config_set_api_base,
+            // 设置页 · 关闭行为（ask/quit/tray 持久化）+ 退出/托盘动作（Bug2：真退出必须 exit(0)）
+            close::close_behavior_get,
+            close::close_behavior_set,
+            close::app_quit,
+            close::min_to_tray,
             // WebView2 状态查询（前端启动时调用，决定是否弹引导）
             test_webview2,
         ])

@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod archive;
+pub mod close;
 pub mod config;
 pub mod contentkey;
 pub mod credential;

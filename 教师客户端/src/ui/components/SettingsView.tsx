@@ -20,7 +20,7 @@ import { useAccountInfo } from "@/lib/store";
 import { SKIN_META, useThemeCtx, type SkinId, type ThemeMode } from "@/lib/theme";
 import type { InstalledMap } from "@/lib/store";
 import type { ToolShortcut } from "@/lib/types";
-import { api, type ConfigStatus } from "@/api";
+import { api, type CloseBehavior, type ConfigStatus } from "@/api";
 import { friendlyErr } from "@/errutil";
 
 interface SettingsViewProps {
@@ -148,6 +148,11 @@ export function SettingsView({
         {/* ── 服务器 ── */}
         <Group title="服务器" hint="服务端地址（api_base）：换服务器/下载托管源只改这一处，保存后立即生效">
           <ServerEditor />
+        </Group>
+
+        {/* ── 关闭行为（需求3/4：ask 弹框 / tray 托盘 / quit 直退，持久化 shell_close.json）── */}
+        <Group title="关闭行为" hint="点击窗口关闭按钮时的处理；选「每次询问」可随时在弹框中勾选「记住」改回直退或托盘">
+          <CloseBehaviorPicker />
         </Group>
 
         {/* ── 账号 ── */}
@@ -353,6 +358,70 @@ function ServerEditor() {
         </p>
       </div>
     </>
+  );
+}
+
+/** 关闭行为三态（需求3/4）：mount 读 close_behavior_get，点选即写 shell_close.json + toast */
+const CLOSE_BEHAVIOR: { id: CloseBehavior; label: string; desc: string }[] = [
+  { id: "ask", label: "每次询问", desc: "点关闭弹确认框，可临时选择退出或托盘（勾选「记住」即改默认）" },
+  { id: "tray", label: "最小化到托盘", desc: "关窗后驻留任务栏托盘，点击图标恢复窗口" },
+  { id: "quit", label: "直接退出", desc: "点关闭即完全退出，不驻留后台" },
+];
+
+function CloseBehaviorPicker() {
+  const [value, setValue] = useState<CloseBehavior>("ask");
+
+  useEffect(() => {
+    let alive = true;
+    void api
+      .closeBehaviorGet()
+      .then((b) => {
+        if (alive) setValue(b);
+      })
+      .catch(() => {
+        /* 读取失败按默认 ask 展示 */
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const pick = (b: CloseBehavior) => {
+    if (b === value) return;
+    setValue(b);
+    void api
+      .closeBehaviorSet(b)
+      .then(() => toast.success(`关闭行为已设为「${CLOSE_BEHAVIOR.find((x) => x.id === b)?.label ?? b}」`))
+      .catch((e) => {
+        setValue(value); // 写失败回滚选中态
+        toast.error(friendlyErr(e));
+      });
+  };
+
+  return (
+    <Row label="关闭窗口时" desc="保存于本机（shell_close.json），立即生效">
+      <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="关闭行为">
+        {CLOSE_BEHAVIOR.map((b) => (
+          <button
+            key={b.id}
+            type="button"
+            role="radio"
+            aria-checked={value === b.id}
+            title={b.desc}
+            disabled={value === null}
+            onClick={() => pick(b.id)}
+            className={cn(
+              "flex min-h-10 items-center justify-center rounded-lg border px-2 text-[12.5px] transition-colors",
+              value === b.id
+                ? "border-brand bg-brand-soft font-medium text-brand"
+                : "border-border text-muted-foreground hover:bg-accent hover:text-foreground",
+            )}
+          >
+            {b.label}
+          </button>
+        ))}
+      </div>
+    </Row>
   );
 }
 

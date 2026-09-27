@@ -7,6 +7,7 @@ import { Toaster } from "sonner";
 import { ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { cn } from "@/lib/utils";
 import { detectPatternFor } from "@/lib/archiveDetect";
 import type { ArchiveMeta, ArchiveRule, Notification, View } from "@/lib/types";
@@ -38,6 +39,7 @@ import { LaunchpadView } from "@/components/LaunchpadView";
 import { SpecDocView } from "@/components/SpecDocView";
 import { ProfileView } from "@/components/ProfileView";
 import { SettingsView } from "@/components/SettingsView";
+import { CloseConfirmDialog } from "@/components/CloseConfirmDialog";
 import { ThemeProvider, useThemeCtx } from "@/lib/theme";
 import { QuickstartView } from "@/components/ClassroomViews";
 // 壳端真实课堂工具视图
@@ -47,7 +49,7 @@ import CheckinView from "./CheckinView";
 import ReflectionView from "./ReflectionView";
 import TimerView from "./TimerView";
 import DisciplineView from "./DisciplineView";
-import { api, ClassProgress } from "./api";
+import { api, ClassProgress, type CloseBehavior } from "./api";
 import { friendlyErr } from "./errutil";
 
 export default function Shell() {
@@ -76,6 +78,57 @@ function ShellInner() {
   useEffect(() => {
     void refreshRecents();
   }, [refreshRecents]);
+
+  // ---- 关闭行为（需求3/4 + Bug2 修复）----
+  // 恒 preventDefault：配置的 content/timer-overlay 两个 hidden 窗口常驻，Tauri 仅在
+  // 「全部窗口销毁」时退出 —— 默认关闭只销毁 main，进程残留且二次启动被单实例回调
+  // 静默吞掉（实测「关闭后再运行无效」）。所有真退出统一走 app_quit（exit(0)）。
+  const [closeDialogOpen, setCloseDialogOpen] = useState(false);
+  const runExit = useCallback(async (remember: boolean) => {
+    setCloseDialogOpen(false);
+    try {
+      if (remember) await api.closeBehaviorSet("quit");
+      await api.appQuit();
+    } catch (e) {
+      toast.warning(`退出失败：${friendlyErr(e)}`);
+    }
+  }, []);
+  const runMinimize = useCallback(async (remember: boolean) => {
+    setCloseDialogOpen(false);
+    try {
+      if (remember) await api.closeBehaviorSet("tray");
+      await api.minToTray();
+    } catch (e) {
+      toast.warning(`最小化到托盘失败：${friendlyErr(e)}`);
+    }
+  }, []);
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let disposed = false;
+    void (async () => {
+      try {
+        const win = getCurrentWindow();
+        unlisten = await win.onCloseRequested(async (e) => {
+          e.preventDefault();
+          try {
+            const b: CloseBehavior = await api.closeBehaviorGet();
+            if (b === "quit") await api.appQuit();
+            else if (b === "tray") await api.minToTray();
+            else setCloseDialogOpen(true); // ask（默认）/ 非法值由 Rust 侧归一为 ask
+          } catch {
+            setCloseDialogOpen(true); // 读取失败按「每次询问」兜底
+          }
+        });
+        if (disposed) unlisten();
+      } catch {
+        /* 浏览器直开（无 Tauri API）：不拦截，走浏览器默认关闭 */
+      }
+    })();
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, []);
 
   const { resolved } = useThemeCtx();
   const [collapse, setCollapse] = useNavCollapse();
@@ -457,6 +510,14 @@ function ShellInner() {
         </div>
       </main>
       {err && <div className="sr-only">{err}</div>}
+
+      {/* 关闭确认（默认行为 ask 时由 onCloseRequested 拉起；记住的选择写 shell_close.json） */}
+      <CloseConfirmDialog
+        open={closeDialogOpen}
+        onExit={(remember) => void runExit(remember)}
+        onMinimize={(remember) => void runMinimize(remember)}
+        onCancel={() => setCloseDialogOpen(false)}
+      />
     </div>
   );
 }

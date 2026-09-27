@@ -36,6 +36,11 @@ export interface ConfigStatus {
   config_path: string;
 }
 
+// ---- 关闭行为（close.rs · 设置页「关闭行为」组 / CloseConfirmDialog）----
+
+/** 点关闭按钮的行为：ask=每次询问（默认）/ quit=直接退出 / tray=最小化到托盘 */
+export type CloseBehavior = "ask" | "quit" | "tray";
+
 // ---- P1 认证 / 口令（A01 / auth.rs / license.rs）----
 
 export interface Teacher {
@@ -263,6 +268,13 @@ export const api = {
   configGet: () => invoke<ConfigStatus>("config_get"),
   configSetApiBase: (apiBase: string) =>
     invoke<ConfigStatus>("config_set_api_base", { apiBase }),
+
+  // ---- 关闭行为（ask/quit/tray · 需求3/4；appQuit=exit(0) 保证 hidden 窗口不残留进程）----
+  closeBehaviorGet: () => invoke<CloseBehavior>("close_behavior_get"),
+  closeBehaviorSet: (behavior: CloseBehavior) =>
+    invoke<void>("close_behavior_set", { behavior }),
+  appQuit: () => invoke<void>("app_quit"),
+  minToTray: () => invoke<void>("min_to_tray"),
 
   testWebview2: () => invoke<string | null>("test_webview2"),
 
