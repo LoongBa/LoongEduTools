@@ -125,10 +125,10 @@ export function Sidebar({
       )}
       aria-label="主导航"
     >
-      {/* 品牌区：rail 下保留 logo 图标 */}
+      {/* 品牌区：rail 下保留 logo 图标（RailWrap 是 w-full block，父级 justify-center 无效 → logo 用 mx-auto 居中） */}
       <div className={cn("flex items-center gap-2.5 px-4 pb-4 pt-5", rail && "justify-center px-0")}>
         <RailWrap rail={rail} label="桃李助手">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand text-on-primary shadow-sm">
+          <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand text-on-primary shadow-sm", rail && "mx-auto")}>
             <GraduationCap size={18} strokeWidth={2} aria-hidden />
           </span>
         </RailWrap>
@@ -162,8 +162,9 @@ export function Sidebar({
                       <button
                         type="button"
                         className={cn(
-                          "flex w-full items-center gap-2.5 rounded-md text-left text-[14px] text-sidebar-nav transition-colors hover:bg-sidebar-hover hover:text-sidebar-text",
-                          rail ? "mx-auto size-9 justify-center" : "min-h-10 px-3 py-1.5",
+                          "flex items-center gap-2.5 rounded-md text-left text-[14px] text-sidebar-nav transition-colors hover:bg-sidebar-hover hover:text-sidebar-text",
+                          // rail：36px 方形图标居中（base 不带 w-full，避免与 size-9 宽度冲突导致错位）
+                          rail ? "mx-auto size-9 justify-center" : "min-h-10 w-full px-3 py-1.5",
                         )}
                         aria-label={label}
                         onClick={() => onLaunchQuick?.(item)}
@@ -390,7 +391,7 @@ export function Sidebar({
               type="button"
               className={cn(
                 "relative flex min-h-9 items-center justify-center rounded-md text-sidebar-muted transition-colors hover:bg-sidebar-hover hover:text-sidebar-text",
-                rail ? "size-9 w-full" : "w-9 shrink-0",
+                rail ? "h-9 w-full" : "w-9 shrink-0",
               )}
               title={rail ? "展开侧栏" : "收拢侧栏"}
               aria-label={rail ? "展开侧栏" : "收拢侧栏"}
@@ -406,7 +407,7 @@ export function Sidebar({
             type="button"
             className={cn(
               "relative flex min-h-9 items-center justify-center rounded-md transition-colors hover:bg-sidebar-hover hover:text-sidebar-text",
-              rail ? "size-9 w-full" : "w-9 shrink-0",
+              rail ? "h-9 w-full" : "w-9 shrink-0",
               view === "launchpad" ? "bg-sidebar-hover text-brand" : "text-sidebar-muted",
             )}
             title="启动中心：管理快捷方式与一键启动钉选项"
@@ -427,7 +428,7 @@ export function Sidebar({
             type="button"
             className={cn(
               "flex min-h-9 items-center justify-center rounded-md text-sidebar-muted transition-colors hover:bg-sidebar-hover hover:text-sidebar-text",
-              rail ? "size-9 w-full" : "w-9 shrink-0",
+              rail ? "h-9 w-full" : "w-9 shrink-0",
             )}
             title="全屏（F11，Tauri 窗口全屏）"
             onClick={async () => {
@@ -449,7 +450,10 @@ export function Sidebar({
         <RailWrap rail={rail} label={resolved === "light" ? "切换深色主题" : "切换浅色主题"}>
           <button
             type="button"
-            className="flex size-9 items-center justify-center rounded-md text-sidebar-muted transition-colors hover:bg-sidebar-hover hover:text-sidebar-text"
+            className={cn(
+              "flex items-center justify-center rounded-md text-sidebar-muted transition-colors hover:bg-sidebar-hover hover:text-sidebar-text",
+              rail ? "h-9 w-full" : "size-9",
+            )}
             title={resolved === "light" ? "切换深色主题" : "切换浅色主题"}
             aria-label="切换深浅主题"
             onClick={toggleDark}
@@ -461,7 +465,8 @@ export function Sidebar({
           <button
             type="button"
             className={cn(
-              "flex size-9 items-center justify-center rounded-md text-sidebar-muted transition-colors hover:bg-sidebar-hover hover:text-sidebar-text",
+              "flex items-center justify-center rounded-md text-sidebar-muted transition-colors hover:bg-sidebar-hover hover:text-sidebar-text",
+              rail ? "h-9 w-full" : "size-9",
               view === "settings" && "bg-sidebar-hover text-sidebar-text",
             )}
             title="设置"
