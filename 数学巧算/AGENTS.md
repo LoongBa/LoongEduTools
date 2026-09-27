@@ -11,7 +11,8 @@
 
 - 初始版本 **V0.1.0**（用户定夺：V0.1.0 起始迭代）；唯一权威字段 = `src/package.json` 的 `version`（发布/迭代时同步修改）。
 - 升级规则：**微调（bug fix / 样式 / 文案）→ 升子版本号**；**较大调整（新功能 / 交互改进）→ 升次版本号**；**主版本号升级必须经用户同意**。
-- tag 命名：`数学巧算-v0.1.x`；打 tag 前先征得用户同意。
+- tag 命名：`数学巧算-v0.2.x`；打 tag 前先征得用户同意。
+- 当前版本 **V0.2.0**（2026-09-27：smart_gen 引擎族 7-10 补齐，15 方法 → 全 31 方法 × 3 档）。
 
 ## 三架构产品中的位置
 
@@ -32,7 +33,7 @@
 │   ├── 数学巧算_需求分析与功能设计文档.md   # ★ 需求分析 + 功能设计（v0.1）
 │   └── 数学巧算_smart_gen实现方案.md      # smart_gen 引擎实现蓝图（Oracle 评审）
 ├── content/                         # 教程库 SSOT（stages.json + stageN_*.json，32 讲）
-└── src/                             # ★ React 工程（V0.1.0 已迭代）
+└── src/                             # ★ React 工程（V0.2.0 已迭代）
     ├── scripts/gen_stages.mjs       #   教程库 → src/data/stages.generated.ts
     ├── public/theme-boot.js         #   离线主题预置 + Chrome 61 兜底
     ├── src/
@@ -71,13 +72,13 @@
 ## 快速入口
 
 ```powershell
-# 数学巧算 React 工程（V0.1.0 已迭代）
+# 数学巧算 React 工程（V0.2.0 已迭代）
 cd 数学巧算\src
 pnpm dev                # 开发（3016）
 pnpm build              # 离线 minitool 包（Chrome 61 基线 + 经典脚本，dist/）
 pnpm build:online       # 在线形态（Web 部署，现代浏览器）
 pnpm typecheck          # tsc --noEmit
-pnpm test:engine        # smart_gen 引擎单测（16 方法 × 3 档 validate + 独立答案验证）
+pnpm test:engine        # smart_gen 引擎单测（31 方法 × 3 档 validate + 独立答案验证）
 pnpm test               # 浏览器冒烟（需 CHROMIUM_PATH，file:// 直开 = minitool 形态）
 
 # 教程库 SSOT（改内容后需重生成）
@@ -98,7 +99,7 @@ node scripts/gen_stages.mjs   # content/*.json → src/data/stages.generated.ts
 - [x] 教程库 content SSOT（32 讲，gen_stages.mjs 内联）
 - [x] smart_gen.js 引擎族 1-6（16 方法 × 3 档，9600 题 validate 0 失败）
 - [x] 五视图（课程地图/七步课堂/三档练习/打卡/我的，参考英语陪练 UI）
-- [ ] 引擎补齐族 7-10（小数/分数/拓展 15 方法，含 Fraction/Decimal 精确类）
+- [x] 引擎补齐族 7-10（15 方法：减法/除法性质 + 小数 4 + 分数 4 + 拓展 3，含 Fraction/Decimal 精确类）→ **V0.2.0**
 - [ ] 口算热身模块（复用数学口算 generators.js 接入）
 - [ ] 家长报告打印 + 防沉迷限时
 - [ ] minitool zip 打包 + 发布 SOP（对齐点读陪练 publish 管线）

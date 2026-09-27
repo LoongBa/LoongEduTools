@@ -91,6 +91,24 @@ server.listen(0, "127.0.0.1", async () => {
     await page.waitForTimeout(400);
     ok("我的页渲染", (await page.locator("text=每日练习").count()) > 0);
 
+    // 阶段 5（小数巧算）：验证新引擎族 8（小数）出题 + 小数点键盘
+    await page.goto("file:///" + DIST.replace(/\\/g, "/") + "/index.html", { waitUntil: "load" });
+    await page.waitForTimeout(400);
+    await page.locator("text=五年级").first().click();
+    await page.waitForTimeout(400);
+    ok("阶段5渲染（小数巧算）", (await page.locator("text=小数巧算").count()) > 0);
+    await page.locator("text=化整还原").first().click();
+    await page.waitForTimeout(400);
+    for (let i = 0; i < 7; i++) {
+      const next = page.locator("button:has-text('下一步')");
+      if (await next.count()) { await next.first().click(); await page.waitForTimeout(250); }
+    }
+    await page.locator("button:has-text('开始练习')").first().click();
+    await page.waitForTimeout(500);
+    const decBody = await page.evaluate(() => document.body.innerText);
+    ok("阶段5引擎出题（含小数点）", /[.．]/.test(decBody) && /[=＝]/.test(decBody));
+    ok("阶段5小数点键盘可用", (await page.locator("button:has-text('.')").count()) > 0);
+
   } catch (e) {
     ok("冒烟流程无异常", false, String(e).slice(0, 200));
   }

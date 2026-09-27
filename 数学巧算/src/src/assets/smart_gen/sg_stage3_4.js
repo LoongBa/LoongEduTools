@@ -1,7 +1,8 @@
-// 数学巧算 · smart_gen 阶段 3+4：族 4-6 方法 × 三档（经典脚本，注册进 SG_REGISTRY）
+// 数学巧算 · smart_gen 阶段 3+4：族 4-7 方法 × 三档（经典脚本，注册进 SG_REGISTRY）
 // 族4 分配律：area_split_mul / distributive_forward / extract_common_factor
 // 族5 特殊数：combine_special_num / combine_25_125
 // 族6 基准数/商不变：baseline_num / quotient_invariant / complement_sum
+// 族7 运算性质：subtraction_property / division_property / multiplication_trick / comprehensive_strategy
 (function (global) {
   "use strict";
   var R = global.SG_REGISTRY;
@@ -232,5 +233,162 @@
         hint: x1 + " 与 " + y1 + " 凑 1000",
       };
     },
+  };
+
+  // ================= 族 7：运算性质（减法/除法性质 + 两位数口诀 + 综合策略） =================
+
+  // 减法性质：a − b − c = a − (b+c)，减数和凑整；或去括号 a − (b+c) = a − b − c
+  function mkSubProp(R, bracket) {
+    if (bracket) {
+      // 去括号：a − (b + c)，其中 a − b 得整百（round）
+      var round = [200, 300, 400, 500][ri(0, 3)];
+      var a = ri(round + 120, round + 500);
+      var b = a - round;               // a − b = round（整百）
+      var c = ri(11, 99);
+      return {
+        type: "subtraction_property",
+        text: a + " − (" + b + " + " + c + ") =",
+        answer: round - c,
+        hint: "去括号变号：" + a + " − " + b + " − " + c + "，" + a + " − " + b + " = " + round + "，再 − " + c + " = " + (round - c),
+      };
+    }
+    var a = ri(R + 50, R + 400);
+    var b = ri(11, Math.floor(R / 2) - 1);
+    var c = R - b;
+    var ans = a - R;
+    return {
+      type: "subtraction_property",
+      text: a + " − " + b + " − " + c + " =",
+      answer: ans,
+      hint: b + " + " + c + " = " + R + "，" + a + " − " + R + " = " + ans,
+    };
+  }
+  R.subtraction_property = {
+    gen_basic: function () { return mkSubProp(100, false); },
+    gen_advance: function () { return Math.random() < 0.5 ? mkSubProp(200, false) : mkSubProp(100, true); },
+    gen_challenge: function () { return Math.random() < 0.5 ? mkSubProp(500, false) : mkSubProp(300, true); },
+  };
+
+  // 除法性质：a ÷ b ÷ c = a ÷ (b×c)（b×c 凑整）；或 a ÷ 25 → ×4、a ÷ 125 → ×8
+  var DIV_PAIRS = [[7, 9], [8, 9], [9, 9], [6, 9], [5, 9], [4, 9], [7, 8], [8, 8]]; // 积 63/72/81/54/45/36/56/64
+  function mkDivProp(kind) {
+    if (kind === 1) {
+      // ÷25：同乘 4 变 ÷100
+      var q = ri(4, 40);
+      return {
+        type: "division_property",
+        text: (25 * q) + " ÷ 25 =",
+        answer: q,
+        hint: "同乘 4：" + (25 * q * 4) + " ÷ 100 = " + q,
+      };
+    }
+    if (kind === 2) {
+      // ÷125：同乘 8 变 ÷1000
+      var q2 = ri(2, 19);
+      return {
+        type: "division_property",
+        text: (125 * q2) + " ÷ 125 =",
+        answer: q2,
+        hint: "同乘 8：" + (125 * q2 * 8) + " ÷ 1000 = " + q2,
+      };
+    }
+    // 连除：a ÷ b ÷ c = a ÷ (b×c)
+    var pair = DIV_PAIRS[ri(0, DIV_PAIRS.length - 1)];
+    var b = pair[0], c = pair[1];
+    var prod = b * c;
+    var q3 = ri(2, 12);
+    return {
+      type: "division_property",
+      text: (prod * q3) + " ÷ " + b + " ÷ " + c + " =",
+      answer: q3,
+      hint: b + " × " + c + " = " + prod + "，" + (prod * q3) + " ÷ " + prod + " = " + q3,
+    };
+  }
+  R.division_property = {
+    gen_basic: function () { return mkDivProp(0); },
+    gen_advance: function () { return Math.random() < 0.5 ? mkDivProp(1) : mkDivProp(0); },
+    gen_challenge: function () { return Math.random() < 0.5 ? mkDivProp(2) : mkDivProp(1); },
+  };
+
+  // 两位数口算诀：头同尾合十 / 尾同头合十
+  // 头同尾合十：t×(t+1) 接 u×v（u+v=10）；尾同头合十：(m×n+u) 接 u²（m+n=10）
+  function mkMulTrick(kind) {
+    if (kind === 0) {
+      var t = ri(1, 9), u = ri(1, 9), v = 10 - u;
+      var n1 = t * 10 + u, n2 = t * 10 + v;
+      var head = t * (t + 1), tail = u * v;
+      return {
+        type: "multiplication_trick",
+        text: n1 + " × " + n2 + " =",
+        answer: n1 * n2,
+        hint: "头同" + t + "：头×（头+1）=" + head + "，尾×尾=" + tail + " → " + head + " 接 " + tail,
+      };
+    }
+    var u2 = ri(1, 9), m = ri(1, 9), n = 10 - m;
+    var a = m * 10 + u2, b2 = n * 10 + u2;
+    var head2 = m * n + u2, tail2 = u2 * u2;
+    return {
+      type: "multiplication_trick",
+      text: a + " × " + b2 + " =",
+      answer: a * b2,
+      hint: "尾同" + u2 + "：头×头+尾=" + head2 + "，尾×尾=" + tail2 + " → " + head2 + " 接 " + tail2,
+    };
+  }
+  R.multiplication_trick = {
+    gen_basic: function () { return mkMulTrick(0); },
+    gen_advance: function () { return mkMulTrick(0); },
+    gen_challenge: function () { return mkMulTrick(1); },
+  };
+
+  // 综合策略四步法：随机选一种已学策略（提公因数 / 基准数 / 凑整减 / 特殊数）
+  function mkComp(kind) {
+    if (kind === 0) {
+      // 提公因数：a×m + a×n，m+n 凑整
+      var a = ri(2, 25), m = ri(2, 97), n = 100 - m;
+      return {
+        type: "comprehensive_strategy",
+        text: a + " × " + m + " + " + a + " × " + n + " =",
+        answer: a * 100,
+        hint: "提公因数 " + a + "：(" + m + "+" + n + ") = 100",
+      };
+    }
+    if (kind === 1) {
+      // 基准数：4 个数围绕整百
+      var B = 100, diffs = [], sum = 0;
+      for (var i = 0; i < 4; i++) { var d = ri(-8, 8); diffs.push(d); sum += d; }
+      var nums = diffs.map(function (x) { return B + x; });
+      return {
+        type: "comprehensive_strategy",
+        text: nums.join(" + ") + " =",
+        answer: 400 + sum,
+        hint: "基准 100 × 4 个，差额 " + (sum >= 0 ? "+" : "") + sum,
+      };
+    }
+    if (kind === 2) {
+      // 凑整减：a − b，b 接近整百（198 → 200−2）
+      var a2 = ri(300, 999);
+      var r = ri(1, 9);
+      var b2 = 100 * ri(1, 8) - r;
+      var ans = a2 - b2;
+      return {
+        type: "comprehensive_strategy",
+        text: a2 + " − " + b2 + " =",
+        answer: ans,
+        hint: b2 + " 接近 " + (b2 + r) + "：多减 " + r + " 要加回 → " + (a2 - (b2 + r)) + " + " + r,
+      };
+    }
+    // 特殊数：125 × 88（88 = 8×11）
+    var k = ri(2, 9);
+    return {
+      type: "comprehensive_strategy",
+      text: "125 × " + (8 * k) + " =",
+      answer: 1000 * k,
+      hint: (8 * k) + " = 8×" + k + "：125 找 8 → 1000 × " + k,
+    };
+  }
+  R.comprehensive_strategy = {
+    gen_basic: function () { return Math.random() < 0.5 ? mkComp(0) : mkComp(1); },
+    gen_advance: function () { return Math.random() < 0.5 ? mkComp(2) : mkComp(0); },
+    gen_challenge: function () { return Math.random() < 0.5 ? mkComp(3) : mkComp(1); },
   };
 })(typeof window !== "undefined" ? window : globalThis);

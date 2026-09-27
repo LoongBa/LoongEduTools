@@ -7,6 +7,8 @@ import "./styles.css";
 import "@/assets/smart_gen/sg_tools";
 import "@/assets/smart_gen/sg_stage1_2";
 import "@/assets/smart_gen/sg_stage3_4";
+import "@/assets/smart_gen/sg_stage5_6";
+import "@/assets/smart_gen/sg_stageX";
 import "@/assets/smart_gen/smart_gen";
 
 /**
