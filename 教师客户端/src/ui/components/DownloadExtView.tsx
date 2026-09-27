@@ -269,7 +269,15 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
   const todo = useMemo(() => {
     const needPkg = items.filter((i) => !i.installed && i.package_type === "data" && (i.categories?.length ?? 0) > 0);
     const needTool = (toolbox?.tools ?? []).filter((t) => t.recommend && t.download_url);
-    const missingData = EDU_TOOLS.filter((t) => t.requiresPkgId && !installed[t.requiresPkgId]);
+    // 缺数据 = 工具要求的配套包「已在服务端发布且本机未装」——配套包未发布（requiresPkgId
+    // 在 manifest 中不存在）时补无可补，不计入缺数据，避免「一键补全」加 0 个假动作
+    // （2026-09-28 实测：EDU_TOOLS requiresPkgId 为规划值 pkg-*，与已发布 pep-reader-* 不一致）。
+    const missingData = EDU_TOOLS.filter(
+      (t) =>
+        !!t.requiresPkgId &&
+        !installed[t.requiresPkgId] &&
+        items.some((i) => i.id === t.requiresPkgId),
+    );
     const dataUpdatable = items.filter((i) => i.updatable && i.package_type === "data");
     const appUpdatable = items.filter((i) => i.updatable && i.package_type === "app");
     return { needPkg, needTool, missingData, dataUpdatable, appUpdatable };
