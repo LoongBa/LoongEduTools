@@ -8,6 +8,10 @@ import {
   Archive,
   CircleCheck,
   Download,
+  FileAudio,
+  FileImage,
+  FileText,
+  FileVideo,
   FolderInput,
   Hash,
   Inbox,
@@ -668,6 +672,90 @@ function TasksSection({
 }
 
 /** D11 §6 素材归档：已归档清单 + 撤销（archives/<学科>/<版本>/<年级册次>/，拷贝留原件） */
+
+/** 监控格式分组（与 Rust ARCHIVE_EXT 对齐；默认仅 pdf——md 等杂项不触发确认卡片） */
+const WATCH_FORMATS: { id: string; label: string; icon: typeof FileText; exts: string[] }[] = [
+  { id: "pdf", label: "PDF", icon: FileText, exts: ["pdf"] },
+  { id: "image", label: "图片", icon: FileImage, exts: ["jpg", "jpeg", "png", "gif", "webp", "bmp"] },
+  { id: "audio", label: "音频", icon: FileAudio, exts: ["mp3", "m4a", "wav", "ogg", "flac", "aac"] },
+  { id: "video", label: "视频", icon: FileVideo, exts: ["mp4", "mkv", "avi", "mov", "wmv", "webm", "flv"] },
+];
+
+/** 监控格式设置：挂载读 archiveStatus.config.extensions，点选即存（archive_watch_extensions） */
+function WatchFormatChips() {
+  const [exts, setExts] = useState<string[] | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    void api
+      .archiveStatus()
+      .then((s) => {
+        if (alive) setExts(s.config.extensions ?? ["pdf"]);
+      })
+      .catch(() => {
+        if (alive) setExts(["pdf"]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const groupOn = (g: (typeof WATCH_FORMATS)[number]) => g.exts.every((e) => exts?.includes(e) ?? false);
+
+  const toggle = (g: (typeof WATCH_FORMATS)[number]) => {
+    if (!exts || saving) return;
+    const next = groupOn(g)
+      ? exts.filter((e) => !g.exts.includes(e))
+      : [...new Set([...exts, ...g.exts])];
+    setSaving(true);
+    void api
+      .archiveWatchExtensions(next)
+      .then(() => {
+        setExts(next);
+        toast.success(`监控格式已更新：${next.length ? next.join(" / ") : "不监控任何格式"}`);
+      })
+      .catch((e) => toast.error("保存监控格式失败", { description: friendlyErr(e) }))
+      .finally(() => setSaving(false));
+  };
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 shadow-sm" aria-label="监控格式设置">
+      <div className="mb-2.5 flex items-center gap-2">
+        <ListChecks size={14} aria-hidden className="text-brand" />
+        <h3 className="font-display text-[12.5px] font-bold tracking-wide">下载监控 · 触发格式</h3>
+      </div>
+      <p className="mb-3 text-[11.5px] leading-relaxed text-muted-foreground">
+        仅勾选的格式会触发「素材归档」确认卡片；未勾选的（如 .md 文档、压缩包等）静默不打扰。默认仅 PDF。
+      </p>
+      <div className="flex flex-wrap gap-2" role="group" aria-label="监控格式">
+        {WATCH_FORMATS.map((g) => {
+          const on = groupOn(g);
+          return (
+            <button
+              key={g.id}
+              type="button"
+              disabled={!exts || saving}
+              aria-pressed={on}
+              onClick={() => toggle(g)}
+              className={cn(
+                "flex min-h-8 items-center gap-1.5 rounded-full border px-3 text-[12px] transition-colors disabled:opacity-50",
+                on
+                  ? "border-brand bg-brand-soft font-medium text-brand"
+                  : "border-border text-muted-foreground hover:bg-accent hover:text-foreground",
+              )}
+            >
+              <g.icon size={12} aria-hidden />
+              {g.label}
+              {on && <CircleCheck size={11} aria-hidden className="text-ok" />}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function ArchiveSection({ entries, onRefresh }: { entries: ArchiveEntry[]; onRefresh: () => void }) {
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -687,6 +775,8 @@ function ArchiveSection({ entries, onRefresh }: { entries: ArchiveEntry[]; onRef
 
   return (
     <div className="space-y-5">
+      {/* 监控格式设置（用户 2026-09-27 反馈：下载 md 文档触发确认卡片 → 默认仅 pdf） */}
+      <WatchFormatChips />
       <section aria-labelledby="dl-archive" className="rounded-xl border border-border bg-card p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2">
           <Archive size={14} aria-hidden className="text-brand" />

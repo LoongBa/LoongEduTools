@@ -28,6 +28,10 @@ pub struct ArchiveConfig {
     /// 轮询间隔毫秒（默认 2000；网络盘建议提至 3000-5000）
     #[serde(default = "default_poll_ms")]
     pub poll_ms: u64,
+    /// 触发 archive:new 的扩展名白名单（小写、无点；默认仅 pdf——
+    /// 避免导出 .md 文档等杂项落下载目录也弹确认卡片；扩展包等可在此追加约定扩展名）
+    #[serde(default = "default_extensions")]
+    pub extensions: Vec<String>,
     /// 上次快照时间（诊断用，非必须）
     #[serde(default)]
     pub last_scan_at: Option<String>,
@@ -35,6 +39,11 @@ pub struct ArchiveConfig {
 
 fn default_poll_ms() -> u64 {
     2000
+}
+
+/// 默认监控格式：仅 pdf（用户 2026-09-27 实测反馈：下载 md 文档触发监控卡片）
+fn default_extensions() -> Vec<String> {
+    vec!["pdf".to_string()]
 }
 
 /// 单进程原子开关：轮询线程运行标志（重启即重置；多窗口/二次启动防重复 spawn）
@@ -129,6 +138,19 @@ fn is_temp_suffix(name: &str) -> bool {
         || lower.ends_with(".download")
 }
 
+/// 小写扩展名（无点）；无扩展名返回 None
+fn ext_lower(name: &str) -> Option<String> {
+    name.rsplit_once('.').map(|(_, e)| e.to_lowercase()).filter(|e| !e.is_empty())
+}
+
+/// 是否命中监控格式白名单（空白名单 = 不监控任何格式）
+fn ext_watched(name: &str, extensions: &[String]) -> bool {
+    match ext_lower(name) {
+        Some(ext) => extensions.iter().any(|e| e == &ext),
+        None => false,
+    }
+}
+
 /// 目录快照：文件名 → (大小, 修改时间戳)（仅一层，不做递归——下载目录本质上应扁平）
 type Snapshot = std::collections::HashMap<String, (u64, u128)>;
 
@@ -155,7 +177,8 @@ fn snapshot(dir: &Path) -> Snapshot {
 
 /// P1 轮询监视：单线程循环，发现"完成"的新文件 → emit("archive:new")
 /// 采用 std 实现（D11 §4.1）：2s 快照 diff + :crdownload 排除 + 大小稳定判定。
-pub fn spawn_watch_thread(app: tauri::AppHandle, dir: PathBuf, poll_ms: u64) {
+/// `extensions` 为监控格式白名单（默认仅 pdf），不命中的新文件不触发事件。
+pub fn spawn_watch_thread(app: tauri::AppHandle, dir: PathBuf, poll_ms: u64, extensions: Vec<String>) {
     // 防重复 spawn（第二次启动/窗口重建时 WATCH_RUNNING 仍 true → 跳过）
     if WATCH_RUNNING.swap(true, Ordering::SeqCst) {
         eprintln!("[archive] 轮询线程已运行，跳过重复启动");
@@ -174,6 +197,9 @@ pub fn spawn_watch_thread(app: tauri::AppHandle, dir: PathBuf, poll_ms: u64) {
         for (name, (size, modified)) in &now {
             if is_temp_suffix(name) {
                 continue; // 下载未完成（:crdownload/.part）
+            }
+            if !ext_watched(name, &extensions) {
+                continue; // 不在监控格式白名单（如 .md/.docx 等杂项）→ 不弹确认卡片
             }
             let is_new = baseline.get(name).map(|(s, m)| *s != *size || *m != *modified);
             if is_new == Some(true) || baseline.get(name).is_none() {
@@ -224,7 +250,35 @@ pub fn archive_watch_dir(app: tauri::AppHandle, dir: Option<String>) -> Result<s
         Some(d) if !d.trim().is_empty() => PathBuf::from(d),
         _ => detect_downloads_dir(),
     };
-    spawn_watch_thread(app.clone(), target, cfg.poll_ms);
+    spawn_watch_thread(app.clone(), target, cfg.poll_ms, cfg.extensions);
+    Ok(archive_status(app))
+}
+
+/// 设置监控格式白名单（小写扩展名列表；空 = 不监控任何格式）
+/// 存储到 config.json archive.extensions，重启轮询线程。
+#[tauri::command]
+pub fn archive_watch_extensions(app: tauri::AppHandle, extensions: Vec<String>) -> Result<serde_json::Value, String> {
+    let mut cfg = load_archive_config(&app);
+    // 规范化：去空白、去前导点、转小写、去重、非空
+    let mut cleaned: Vec<String> = Vec::new();
+    for raw in extensions {
+        let e = raw.trim().trim_start_matches('.').to_lowercase();
+        if e.is_empty() || cleaned.contains(&e) {
+            continue;
+        }
+        cleaned.push(e);
+    }
+    cfg.extensions = cleaned;
+    cfg.last_scan_at = Some(chrono_like_now());
+    save_archive_config(&app, &cfg)?;
+    // 重启用轮询线程（新格式白名单）
+    WATCH_RUNNING.store(false, Ordering::SeqCst);
+    let target = cfg
+        .dir
+        .clone()
+        .map(PathBuf::from)
+        .unwrap_or_else(detect_downloads_dir);
+    spawn_watch_thread(app.clone(), target, cfg.poll_ms, cfg.extensions.clone());
     Ok(archive_status(app))
 }
 
@@ -524,6 +578,35 @@ mod tests {
         assert!(is_temp_suffix("video.mp4.part"));
         assert!(!is_temp_suffix("file.pdf"));
         assert!(!is_temp_suffix("U01_Greetings.mp4"));
+    }
+
+    #[test]
+    fn default_extensions_is_pdf_only() {
+        assert_eq!(default_extensions(), vec!["pdf".to_string()]);
+    }
+
+    #[test]
+    fn ext_lower_handles_case_and_none() {
+        assert_eq!(ext_lower("U01.PDF").as_deref(), Some("pdf"));
+        assert_eq!(ext_lower("notes.md").as_deref(), Some("md"));
+        assert_eq!(ext_lower("noext"), None);
+        assert_eq!(ext_lower("trailing."), None); // 空扩展名视为无扩展名
+    }
+
+    #[test]
+    fn ext_watched_filters_by_whitelist() {
+        let pdf = vec!["pdf".to_string()];
+        assert!(ext_watched("U01_Greetings.PDF", &pdf));
+        assert!(!ext_watched("notes.md", &pdf));
+        assert!(!ext_watched("archive.zip", &pdf));
+        assert!(!ext_watched("noext", &pdf));
+        // 空白名单 = 不监控任何格式
+        assert!(!ext_watched("a.pdf", &[]));
+        // 多格式
+        let media = vec!["pdf".to_string(), "mp4".to_string()];
+        assert!(ext_watched("lesson.mp4", &media));
+        assert!(ext_watched("lesson.MP4", &media));
+        assert!(!ext_watched("lesson.mp3", &media));
     }
 
     #[test]

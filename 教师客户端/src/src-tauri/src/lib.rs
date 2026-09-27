@@ -142,7 +142,7 @@ pub fn run() {
                     .clone()
                     .map(std::path::PathBuf::from)
                     .unwrap_or_else(archive::detect_downloads_dir);
-                archive::spawn_watch_thread(app.handle().clone(), dir, cfg.poll_ms);
+                archive::spawn_watch_thread(app.handle().clone(), dir, cfg.poll_ms, cfg.extensions);
             }
             // ⑥ 关闭行为托盘（需求4：最小化到任务栏图标）——初始隐藏，仅 min_to_tray 时出现；
             //    失败仅 log 不阻断启动（无托盘时「最小化到托盘」会显式报错，其余路径不受影响）。
@@ -206,6 +206,7 @@ pub fn run() {
             shell_config::shell_config_key_status,
             // D11 · P1 下载目录监视观测层（定位/轮询/事件）+ P3 归档移动（拷贝/撤销/索引）
             archive::archive_watch_dir,
+            archive::archive_watch_extensions,
             archive::archive_status,
             archive::archive_confirm,
             archive::archive_undo,

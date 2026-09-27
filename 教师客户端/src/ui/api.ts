@@ -333,8 +333,11 @@ export const api = {
   // ---- D11 素材归档（archive.rs · P3 归档移动 / P5 打包索引导出）----
   archiveWatchDir: (dir: string | null) =>
     invoke<unknown>("archive_watch_dir", { dir }),
+  /** 设置监控格式白名单（小写扩展名列表；空 = 不监控任何格式） */
+  archiveWatchExtensions: (extensions: string[]) =>
+    invoke<unknown>("archive_watch_extensions", { extensions }),
   archiveStatus: () => invoke<{
-    config: { dir: string | null; poll_ms: number };
+    config: { dir: string | null; poll_ms: number; extensions: string[] };
     effective_dir: string;
     detected_default: string;
     running: boolean;
