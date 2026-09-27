@@ -7,4 +7,7 @@ __pycache__/
 keys/*.key
 
 # 打包产物（pack_content.py 输出，可再生）
-dist/
+# 2026-09-28 三层分发·层1：dist/* 排除构建杂物，但放行 static-site/（部署产物入库 → push 即部署）
+# 注意：必须用 dist/* 而非 dist/（被整目录排除的路径无法再用 ! 反选）
+dist/*
+!dist/static-site/

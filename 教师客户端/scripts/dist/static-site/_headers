@@ -1,0 +1,8 @@
+/packs/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/api/edu/*
+  Cache-Control: no-cache
+
+/shell/*
+  Cache-Control: no-cache

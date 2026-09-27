@@ -233,6 +233,22 @@ def main() -> int:
     print(f"shell/config.signed.json 已签名（key_id=shell-config-2026）")
     print(f"公钥 raw 32B hex（与壳端 shell_config.rs SHELL_CONFIG_PUBKEYS 对比）: {pub}")
 
+    # 5) CF Pages 缓存策略（_headers，随站点根部署；2026-09-28 三层分发设计·层2）
+    #    - packs 文件名带版本 → immutable 永久缓存，命中即不回源
+    #    - manifest/壳配置 → no-cache，客户端 If-None-Match 轮询（304=无更新），保证更新信号即时
+    (out / "_headers").write_text(
+        "/packs/*\n"
+        "  Cache-Control: public, max-age=31536000, immutable\n"
+        "\n"
+        "/api/edu/*\n"
+        "  Cache-Control: no-cache\n"
+        "\n"
+        "/shell/*\n"
+        "  Cache-Control: no-cache\n",
+        encoding="utf-8",
+    )
+    print("_headers: packs=immutable，manifest/shell=no-cache")
+
     print(f"\n完成 → {out}")
     print("部署：把该目录内容拖入 CF Pages 项目根目录（api/ shell/ packs/ 与页面根平级）")
     return 0

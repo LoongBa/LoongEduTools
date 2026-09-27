@@ -1,0 +1,11 @@
+{
+  "api_base": "https://edu-teacher-test.pages.dev",
+  "schema_version": "1.0",
+  "signature": {
+    "alg": "ed25519",
+    "key_id": "shell-config-2026",
+    "nonce": "1de59e741784f1b2",
+    "signed_payload_hash": "sha256:ea21fe986f46f6ce12da8ba2962d12e72107f823955dec288f0e27703f2586bc",
+    "sig": "e24bbff3c007dd127af437eec0b8993027f65cf4f54d6155f855524ddf7d6ff264d62989db34bf22a9a429531a840b47f4e1242a82e5f11fee5fb3ddb88fff0f"
+  }
+}

@@ -1,0 +1,137 @@
+{
+  "version": "1.0",
+  "updated_at": "2026-09-25T00:00:00Z",
+  "categories": [
+    {
+      "id": "capture",
+      "name": "截屏录屏"
+    },
+    {
+      "id": "annotate",
+      "name": "屏幕标注"
+    },
+    {
+      "id": "keys",
+      "name": "按键显示"
+    },
+    {
+      "id": "keyboard",
+      "name": "虚拟键盘"
+    }
+  ],
+  "tools": [
+    {
+      "id": "snip-easy",
+      "name": "SnipEasy 截图",
+      "type": "exe",
+      "source": "builtin",
+      "platforms": [
+        "windows"
+      ],
+      "description": "轻量截图标注（课堂演示用）",
+      "download_url": null,
+      "size_bytes": null,
+      "checksum": null,
+      "categories": [
+        "capture"
+      ]
+    },
+    {
+      "id": "win-shot",
+      "name": "Windows 截图",
+      "type": "builtin",
+      "source": "os",
+      "platforms": [
+        "windows"
+      ],
+      "description": "系统自带截图（Win+Shift+S）",
+      "download_url": null,
+      "size_bytes": null,
+      "checksum": null,
+      "categories": [
+        "capture"
+      ]
+    },
+    {
+      "id": "snipaste",
+      "name": "Snipaste",
+      "type": "exe",
+      "source": "download",
+      "platforms": [
+        "windows"
+      ],
+      "description": "截图贴图工具",
+      "download_url": null,
+      "size_bytes": null,
+      "checksum": null,
+      "categories": [
+        "capture",
+        "annotate"
+      ]
+    },
+    {
+      "id": "inkeys",
+      "name": "Inkey 屏幕标注",
+      "type": "exe",
+      "source": "download",
+      "platforms": [
+        "windows"
+      ],
+      "description": "白板标注/画笔",
+      "download_url": null,
+      "size_bytes": null,
+      "checksum": null,
+      "categories": [
+        "annotate"
+      ]
+    },
+    {
+      "id": "marker-on",
+      "name": "Marker On",
+      "type": "exe",
+      "source": "download",
+      "platforms": [
+        "windows"
+      ],
+      "description": "鼠标指针高亮",
+      "download_url": null,
+      "size_bytes": null,
+      "checksum": null,
+      "categories": [
+        "annotate"
+      ]
+    },
+    {
+      "id": "keyviz",
+      "name": "Keyviz 按键显示",
+      "type": "exe",
+      "source": "download",
+      "platforms": [
+        "windows"
+      ],
+      "description": "实时按键可视化",
+      "download_url": null,
+      "size_bytes": null,
+      "checksum": null,
+      "categories": [
+        "keys"
+      ]
+    },
+    {
+      "id": "osk",
+      "name": "虚拟键盘",
+      "type": "builtin",
+      "source": "os",
+      "platforms": [
+        "windows"
+      ],
+      "description": "系统屏幕键盘（osk.exe）",
+      "download_url": null,
+      "size_bytes": null,
+      "checksum": null,
+      "categories": [
+        "keyboard"
+      ]
+    }
+  ]
+}

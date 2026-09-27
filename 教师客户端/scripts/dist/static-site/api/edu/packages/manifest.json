@@ -1,0 +1,69 @@
+{
+  "updated_at": "2026-09-27T19:38:06Z",
+  "packages": [
+    {
+      "package_id": "game-review-pack",
+      "package_version": "1.0.0",
+      "name": "游戏复习",
+      "package_type": "app",
+      "categories": [
+        "复习",
+        "游戏"
+      ],
+      "description": "成语配对 + 反义词配对（本地静态，无排行零采集）",
+      "required_license_level": 1,
+      "min_shell_version": "0.1.0",
+      "size_bytes": 1048604,
+      "checksum": "sha256:23e5a46745358b93053e18210396b1574b27b8e8d71c375acee7bd9a64b7e906",
+      "download_url": "https://edu-teacher-test.pages.dev/packs/game-review-pack-1.0.0.zip"
+    },
+    {
+      "package_id": "pep-reader-u01",
+      "package_version": "1.3.3",
+      "name": "教材点读",
+      "package_type": "app",
+      "categories": [
+        "教材",
+        "英语"
+      ],
+      "description": "PEP 四上 Unit 01 离线点读（预装）",
+      "required_license_level": 1,
+      "min_shell_version": "0.1.0",
+      "size_bytes": 5058755,
+      "checksum": "sha256:a97821f32f67845dcf2b1430c2c1a7ee32aedcb9004d5c8b4f2d2aac11771fb7",
+      "download_url": "https://edu-teacher-test.pages.dev/packs/pep-reader-u01-1.3.3.zip"
+    },
+    {
+      "package_id": "pep-reader-u02",
+      "package_version": "1.3.3",
+      "name": "教材点读",
+      "package_type": "app",
+      "categories": [
+        "教材",
+        "英语"
+      ],
+      "description": "PEP 四上 Unit 02 离线点读（下载）",
+      "required_license_level": 1,
+      "min_shell_version": "0.1.0",
+      "size_bytes": 5830039,
+      "checksum": "sha256:434d498fb5165866a5028f77a3fdb28506f14317f092251febb6968e32662a1a",
+      "download_url": "https://edu-teacher-test.pages.dev/packs/pep-reader-u02-1.3.3.zip"
+    },
+    {
+      "package_id": "substitute-kit",
+      "package_version": "1.0.0",
+      "name": "代课应急包",
+      "package_type": "data",
+      "categories": [
+        "代课",
+        "应急"
+      ],
+      "description": "单元应急教案（5 分钟流程/板书/备用活动）",
+      "required_license_level": 1,
+      "min_shell_version": "0.1.0",
+      "size_bytes": 6127,
+      "checksum": "sha256:1fccc722123da6f1f0cc60e9d600f3bb384ec29efa3bda30d002644b9c079bfe",
+      "download_url": "https://edu-teacher-test.pages.dev/packs/substitute-kit-1.0.0.zip"
+    }
+  ]
+}
