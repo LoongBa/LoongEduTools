@@ -1,0 +1,103 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-09-27",
+  "source": "docs/草稿/小学数学巧算_教程/",
+  "stages": [
+    {
+      "no": 1,
+      "grade": "一年级",
+      "theme": "20 以内加减 · 凑十破十平十",
+      "file": "stage1_凑十破十平十.json",
+      "lessons": [
+        "s1l1",
+        "s1l2",
+        "s1l3",
+        "s1l4"
+      ],
+      "status": "done"
+    },
+    {
+      "no": 2,
+      "grade": "二年级",
+      "theme": "百以内加减 · 凑整与搬家",
+      "file": "stage2_凑整与搬家.json",
+      "lessons": [
+        "s2l1",
+        "s2l2",
+        "s2l3",
+        "s2l4"
+      ],
+      "status": "done"
+    },
+    {
+      "no": 3,
+      "grade": "三年级",
+      "theme": "多位数乘除 · 拆数与特殊数",
+      "file": "stage3_拆数与特殊数.json",
+      "lessons": [
+        "s3l1",
+        "s3l2",
+        "s3l3",
+        "s3l4"
+      ],
+      "status": "done"
+    },
+    {
+      "no": 4,
+      "grade": "四年级",
+      "theme": "简便运算系统化（枢纽）",
+      "file": "stage4_简便运算系统化.json",
+      "lessons": [
+        "s4l1",
+        "s4l2",
+        "s4l3",
+        "s4l4",
+        "s4l5",
+        "s4l6",
+        "s4l7",
+        "s4l8",
+        "s4l9"
+      ],
+      "status": "done"
+    },
+    {
+      "no": 5,
+      "grade": "五年级",
+      "theme": "小数巧算",
+      "file": "stage5_小数巧算.json",
+      "lessons": [
+        "s5l1",
+        "s5l2",
+        "s5l3",
+        "s5l4"
+      ],
+      "status": "done"
+    },
+    {
+      "no": 6,
+      "grade": "六年级",
+      "theme": "分数与综合巧算",
+      "file": "stage6_分数巧算.json",
+      "lessons": [
+        "s6l1",
+        "s6l2",
+        "s6l3",
+        "s6l4"
+      ],
+      "status": "done"
+    },
+    {
+      "no": "X",
+      "grade": "四~六年级",
+      "theme": "思维进阶",
+      "file": "stageX_思维进阶.json",
+      "lessons": [
+        "sxl1",
+        "sxl2",
+        "sxl3"
+      ],
+      "status": "done"
+    }
+  ],
+  "total_lessons": 28
+}
