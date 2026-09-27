@@ -1,9 +1,9 @@
-// V1.0.2 分享题二维码验证（oracle 复核 B1 闭环）：解一局 4×4 → 结算 → 分享题浮层 → canvas 扩高 + drawRealQr 无错。
+// V1.0.4 分享题二维码验证：解一局 4×4 → 结算 → 分享题浮层 → canvas 扩高 + drawRealQr 无错 + 协议串断言（data-qr-text）。
 // 用法：pnpm test:share（需 chromium，同 smoke.mjs 探测）
 import { createServer } from "vite";
 import { existsSync, readdirSync } from "node:fs";
 import { chromium } from "playwright-core";
-import { solve } from "../src/lib/sudoku.ts";
+import { solve, toSDString } from "../src/lib/sudoku.ts";
 
 const PORT = 3014;
 const BASE = `http://localhost:${PORT}/`;
@@ -87,6 +87,14 @@ async function main() {
   const h = await cv.evaluate((el) => el.height).catch(() => 0);
   ok("分享题 canvas 存在且扩高(≥900)", (await cv.count()) >= 1 && h >= 900, `w=${w} h=${h}`);
   ok("无 JS 错误（含 drawRealQr 路径）", jsErrors.length === 0, jsErrors.slice(0, 3).join(";"));
+
+  // V1.0.4（I3/I4）：二维码内容 = 协议串，正则 ^SD4:[0-9.]+$ 且长度 4+16=20
+  const qrText = await cv.getAttribute("data-qr-text").catch(() => null);
+  ok("data-qr-text 钩子存在", !!qrText, `qr=${qrText}`);
+  ok("二维码内容为协议串 SD4:", !!qrText && /^SD4:[0-9.]+$/.test(qrText), `qr=${qrText}`);
+  ok("协议串长度=4+4²=20", !!qrText && qrText.length === 20, `len=${qrText ? qrText.length : 0}`);
+  ok("协议串与盘面 givens 一致", !!qrText && qrText.slice(4) === toSDString(givens, 4),
+    `qr=${qrText && qrText.slice(4)} givens=${toSDString(givens, 4)}`);
 
   console.log(results.join("\n"));
   console.log(`\n分享题二维码验证 ${results.filter((r) => r.startsWith("PASS")).length}/${results.length}`);

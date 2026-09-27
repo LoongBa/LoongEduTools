@@ -16,6 +16,7 @@ import { ShareResultOverlay } from "@/components/Share";
 import { SkillWall, AchievementWall, BookList, Calendar, WeekCard, levelName } from "@/components/Walls";
 import { useStore, todayStr, type BookItem, type LevelId } from "@/lib/store";
 import { APP_VERSION } from "@/lib/version";
+import { PRIVACY_BADGE } from "@/lib/copy";
 import { BASE_SKILLS, ADV_SKILLS, ACHIEVEMENTS, FREE_TIERS, HOME_SKILL_KEYS, MAP_LEVELS, dailyFor, skillByKey, type MapLevel, type Technique } from "@/lib/content";
 import { countGiven, solve, type Size } from "@/lib/sudoku";
 import { formatMs } from "@/components/Overlay";
@@ -498,7 +499,7 @@ function HomeView(props: {
       </SectionGroup>
 
       <p className="px-1 text-center text-[10.5px] leading-relaxed text-muted-foreground">
-        无账号 · 无云同步 · 无排行 · 数据只存本机
+        {PRIVACY_BADGE}
       </p>
       <p className="px-1 text-center text-[10px] leading-relaxed text-muted-foreground/70">
         数独思维 · 版本 V{APP_VERSION}

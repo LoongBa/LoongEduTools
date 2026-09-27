@@ -276,22 +276,68 @@ export function fromSDString(s: string, size: Size): Grid | null {
 /** 各规格下的最少已知格数：低于该值无法保证唯一推理（9×9 数学下界 17，4×4/6×6 取生成目标半程保守线） */
 export const MIN_GIVENS: Record<Size, number> = { 4: 4, 6: 10, 9: 17 };
 
-/** 题面是否合法：无冲突、线索充足且唯一解 */
-export function validateImported(grid: Grid, size: Size): { ok: boolean; message: string } {
+/** 导入解析错误码（引擎层零文案，中文映射见 lib/copy.ts importMsg） */
+export type ImportError =
+  | "EMPTY" // 未识别到任何数字
+  | "BAD_LEN" // 数字点串长度与规格不符
+  | "BAD_CHAR" // 有超出规格的字符/数字
+  | "CONFLICT" // 行/列/宫重复
+  | "TOO_FEW" // 线索不足
+  | "NO_SOLUTION" // 无解
+  | "MULTI_SOLUTION"; // 多解
+
+/** 导入文本解析结果 */
+export interface ParseResult {
+  size: Size | null;
+  board: Grid | null;
+  /** 错误码；null = 校验通过可开始 */
+  error: ImportError | null;
+  /** 纯净数字点串长度（供 BAD_LEN 消息动态拼接） */
+  cleanLen: number;
+}
+
+export function parseImportedText(text: string): ParseResult {
+  // ① SD{N}: 前缀格式（分享题编码协议串）：SD4:/SD6:/SD9: 后可接逗号或空白分隔的 N×N 个数字
+  const sd = /SD(4|6|9)\s*:\s*([0-9.,\s]+)/.exec(text);
+  if (sd) {
+    const size = Number(sd[1]) as Size;
+    return finishParse({ text: sd[2], size });
+  }
+  // ② 无前缀：纯数字按长度判规格（16/36/81 → 4/6/9）
+  const clean = text.replace(/[^0-9.\s]/g, "").replace(/\s+/g, "");
+  const size: Size | null = clean.length === 16 ? 4 : clean.length === 36 ? 6 : clean.length === 81 ? 9 : null;
+  if (!size) return { size, board: null, error: clean.length ? "BAD_LEN" : "EMPTY", cleanLen: clean.length };
+  return finishParse({ text: clean, size });
+}
+
+/** ①/② 共用：从给定文本解析出纯净数字点串 → 校验格式与规则 */
+function finishParse(seg: { text: string; size: Size }): ParseResult {
+  // clean = 保留 [0-9.]（. 与 0 均表空），仅剥离 [,\s]
+  const clean = seg.text.replace(/[^0-9.]/g, "");
+  const need = seg.size * seg.size;
+  if (clean.length !== need) return { size: seg.size, board: null, error: "BAD_LEN", cleanLen: clean.length };
+  const board = fromSDString(clean, seg.size);
+  if (!board) return { size: seg.size, board: null, error: "BAD_CHAR", cleanLen: clean.length };
+  const v = validateImported(board, seg.size);
+  return { size: seg.size, board: v.ok ? board : null, error: v.error, cleanLen: clean.length };
+}
+
+/** 题面是否合法：无冲突、线索充足且唯一解（返回错误码，文案见 copy.ts） */
+export function validateImported(grid: Grid, size: Size): { ok: boolean; error: ImportError | null } {
   const total = size * size;
   for (let i = 0; i < total; i++) {
     if (!grid[i]) continue;
     if (peersOf(size, i).some((j) => grid[j] === grid[i])) {
-      return { ok: false, message: "题面有冲突：同一行/列/宫里出现了重复数字。" };
+      return { ok: false, error: "CONFLICT" };
     }
   }
   if (countGiven(grid) < MIN_GIVENS[size]) {
-    return { ok: false, message: `题面线索太少：至少需要 ${MIN_GIVENS[size]} 个已知数才能保证唯一推理。` };
+    return { ok: false, error: "TOO_FEW" };
   }
   const sols = solve(grid, size, 2);
-  if (sols.length === 0) return { ok: false, message: "这道题无解，请检查填入的数字。" };
-  if (sols.length > 1) return { ok: false, message: "这道题不止一个答案，请再补充几个数字。" };
-  return { ok: true, message: "" };
+  if (sols.length === 0) return { ok: false, error: "NO_SOLUTION" };
+  if (sols.length > 1) return { ok: false, error: "MULTI_SOLUTION" };
+  return { ok: true, error: null };
 }
 
 export function countGiven(grid: Grid): number {

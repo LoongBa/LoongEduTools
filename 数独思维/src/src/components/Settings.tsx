@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { SCHEMES, useTheme, type ModeId } from "@/lib/theme";
 import { useStore } from "@/lib/store";
 import { APP_VERSION } from "@/lib/version";
+import { PRIVACY_BADGE } from "@/lib/copy";
 import { Card, Btn } from "./ui/kit";
 import { Overlay } from "./Overlay";
 import { APP_ICON_URL } from "./Shell";
@@ -144,7 +145,7 @@ export function Settings({ onBack }: { onBack: () => void }) {
         <br />
         无竞技 · 无排行 · 不比较，只和孩子自己的上一次对照。
         <br />
-        无账号 · 无云同步 · 无排行 · 数据只存本机
+        {PRIVACY_BADGE}
       </p>
 
       <div className="mt-4">

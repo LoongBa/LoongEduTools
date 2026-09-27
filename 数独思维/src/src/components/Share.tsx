@@ -7,6 +7,7 @@ import { Btn } from "./ui/kit";
 import { useStore } from "@/lib/store";
 import { cssVar } from "@/lib/theme";
 import { toSDString, type Grid, type Size } from "@/lib/sudoku";
+import { sdProtocol, IMPORT_PROMPT_LABEL } from "@/lib/copy";
 import { formatMs } from "./Overlay";
 import qrcode from "@/lib/qrcode.js";
 
@@ -98,9 +99,11 @@ export function SharePuzzleOverlay({
   const [showAnswer, setShowAnswer] = useState(false);
   const ref = useRef<HTMLCanvasElement | null>(null);
   const sd = useMemo(() => toSDString(board, size), [board, size]);
-  const text = `数独思维 · ${size}×${size} 练习题\n题目编码：${sd}${skillName ? `\n[技巧标签：${skillName}]` : ""}\n提示：先找「只剩一个位置」的数字，从行和列一起排除。`;
-  /** 二维码内容（与成绩卡一致短版：标题 + 题目编码；不含提示/技巧标签行，防文本过长且便于识别） */
-  const qrText = `数独思维 · ${size}×${size} 练习题\n题目编码：${sd}`;
+  // 协议串：SD{N}:<sd>（V1.0.4，二维码与「导入编码」行共用，粘贴即被导入分支识别）
+  const proto = useMemo(() => sdProtocol(size, sd), [size, sd]);
+  const text = `数独思维 · ${size}×${size} 练习题${skillName ? `\n[技巧标签：${skillName}]` : ""}\n${IMPORT_PROMPT_LABEL}：${proto}\n提示：先找「只剩一个位置」的数字，从行和列一起排除。`;
+  /** 二维码内容 = 纯协议串（ASCII 短码，识别稳；无中文混排） */
+  const qrText = proto;
 
   useEffect(() => {
     const cv = ref.current;
@@ -176,7 +179,7 @@ export function SharePuzzleOverlay({
           onFocus={(e) => e.currentTarget.select()}
           className="h-24 w-full resize-none rounded-xl border border-border bg-secondary/50 p-3 text-[12px] leading-relaxed text-foreground outline-none focus:border-primary"
         />
-        <canvas ref={ref} className="w-full rounded-xl border border-border bg-card" style={{ aspectRatio: skillName ? "1 / 1.56" : "1 / 1.5" }} />
+        <canvas ref={ref} data-qr-text={qrText} className="w-full rounded-xl border border-border bg-card" style={{ aspectRatio: skillName ? "1 / 1.56" : "1 / 1.5" }} />
         <p className="text-center text-[11px] text-muted-foreground">📸 长按图片可保存或发给朋友 · 📱 二维码扫码复制题目编码</p>
       </div>
     </Overlay>
@@ -298,12 +301,12 @@ export function ShareResultOverlay({
     ctx.font = `500 36px "PingFang SC",sans-serif`;
     ctx.fillText(`已点亮推理技巧 ${litCount} / 16`, W / 2, 840 + bSide + 120);
 
-    // 二维码区（真码：UTF-8 编码题目 SD 文本，扫码复制后在「导入题目」粘贴练习）
+    // 二维码区（真码：协议串 SD{N}:<sd>，V1.0.4 与分享题卡片一致，扫码复制后在「导入题目」粘贴练习）
     const qrSize = 260;
     roundRect(ctx, (W - qrSize) / 2 - 26, H - 460, qrSize + 52, qrSize + 52, 28);
     ctx.fillStyle = card;
     ctx.fill();
-    drawRealQr(ctx, `数独思维 · ${size}×${size} 练习题\n题目编码：${toSDString(board, size)}`, (W - qrSize) / 2, H - 434, qrSize, fg, card);
+    drawRealQr(ctx, sdProtocol(size, toSDString(board, size)), (W - qrSize) / 2, H - 434, qrSize, fg, card);
     ctx.fillStyle = muted;
     ctx.font = `400 30px "PingFang SC",sans-serif`;
     ctx.fillText("扫码复制题目，在导入题目里粘贴练习", W / 2, H - 130);
@@ -335,7 +338,7 @@ export function ShareResultOverlay({
       }
     >
       <div className="space-y-3">
-        <canvas ref={ref} className="mx-auto w-full max-w-[240px] rounded-xl border border-border shadow-soft" style={{ aspectRatio: "9 / 16" }} />
+        <canvas ref={ref} data-qr-text={sdProtocol(size, toSDString(board, size))} className="mx-auto w-full max-w-[240px] rounded-xl border border-border shadow-soft" style={{ aspectRatio: "9 / 16" }} />
         <textarea
           readOnly
           value={text}

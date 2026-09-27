@@ -154,14 +154,15 @@ async function main() {
   await page.locator("text=←").first().evaluate((el) => el.click()).catch(() => {});
   await page.waitForTimeout(400);
   await tapText(page, "返回难度");
-  await page.waitForTimeout(500);
+await page.waitForTimeout(500);
 
-  // ⑤ 导入 SD4: 前缀 + 少线索拒绝
+  // ⑤ 导入 SD4: 前缀 + 少线索拒绝（V1.0.4 协议串）
   await tapText(page, "导入题目");
   await page.waitForTimeout(500);
   await page.locator('textarea[aria-label="题目编码输入"]').fill("SD4:1,0,3,4,3,4,0,2,2,1,4,3,4,3,2,1");
   await page.waitForTimeout(400);
   ok("SD4: 导入可开始", !(await page.locator("text=开始练习这道题").isDisabled().catch(() => true)));
+  ok("协议串导入提示已通过", await vis(page, "校验通过，可以直接开始"));
   await page.locator('textarea[aria-label="题目编码输入"]').fill("SD4:1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0");
   await page.waitForTimeout(400);
   ok("SD4: 少线索被拒", await vis(page, "线索太少"));
