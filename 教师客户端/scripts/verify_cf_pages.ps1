@@ -39,6 +39,20 @@ function Get-Text {
 Write-Host "=== CF Pages 公网验证：$BaseUrl ===" -ForegroundColor Cyan
 
 # JSON 内容断言用 .json 后缀路径（CF 返回 application/json；无后缀副本主要为壳端请求形态）
+Assert-Get "/api/edu/packages/manifest" {
+  param($resp)
+  # 壳端 store.rs 真实请求形态：GET {base}/api/edu/packages/manifest（无后缀）
+  # 内容与 manifest.json 相同（双写副本），此处只断言 200 + 可解析为含 packages 的 JSON
+  $j = (Get-Text $resp.Content) | ConvertFrom-Json
+  @($j.packages).Count -eq 4
+} "manifest（无后缀·壳端真实路径）200 · 4 包"
+
+Assert-Get "/api/edu/toolbox/manifest" {
+  param($resp)
+  $j = (Get-Text $resp.Content) | ConvertFrom-Json
+  @($j.tools).Count -eq 7
+} "toolbox（无后缀·壳端真实路径）200 · 7 工具"
+
 Assert-Get "/api/edu/packages/manifest.json" {
   param($resp)
   $j = (Get-Text $resp.Content) | ConvertFrom-Json
