@@ -10,6 +10,8 @@ import "@/assets/smart_gen/sg_stage3_4";
 import "@/assets/smart_gen/sg_stage5_6";
 import "@/assets/smart_gen/sg_stageX";
 import "@/assets/smart_gen/smart_gen";
+// 口算热身引擎（内联数学口算 generators.js，挂 window.KOU_GENERATORS + KOU_META；与巧算引擎共存）
+import "@/assets/kou_gen/kou_gen";
 
 /**
  * flex gap 能力检测（minitool 明禁 CSS.supports('gap')）— 行为测量

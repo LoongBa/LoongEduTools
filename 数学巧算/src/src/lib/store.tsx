@@ -1,8 +1,22 @@
 // 数学巧算 · 本地进度中枢（localStorage，单一 key，儿童数据最小化）
 // 参考英语陪练 WebH5 store.ts 模式：只存本地进度/打卡/错题，不上传个人数据。
 // key: redtools.qiaosuanlein.v1（产品代号「巧算乐学」）
+// V0.3：version 1→2 迁移（补 guard/selfDaily/selfStreak/selfLocked 默认值，B3 修订 load 硬编码 version:1）
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  checkDue,
+  enough,
+  extend,
+  GUARD_DEFAULT,
+  isLocked,
+  streak as guardStreak,
+  todayReset,
+  todayStr,
+  type DueInfo,
+  type GuardShape,
+  type SelfState,
+} from "@/lib/guard";
 
 const KEY = "redtools.qiaosuanlein.v1";
 
@@ -19,7 +33,7 @@ export interface LessonRecord {
 }
 
 export interface StoreShape {
-  /** 每讲记录：key = `${stageKey}:${lessonId}` */
+  /** 每讲记录：key = `${stageKey}:${lessonId}`（warmup:* 为口算热身记录，MeView 阶段进度跳过） */
   lessons: Record<string, LessonRecord>;
   /** 每日打卡日期（YYYY-MM-DD） */
   checkin: string[];
@@ -27,18 +41,20 @@ export interface StoreShape {
   streak: number;
   /** 汇总错题（key = `${lessonId}:${expr}`，去重） */
   mistakes: { key: string; lessonId: string; expr: string; answer: number | string; wrongCount: number }[];
-  /** 防沉迷：今日练习秒数 */
+  /** 防沉迷：今日练习秒数（展示用；跨日由 guard.todayReset 同步清零） */
   todaySec: number;
+  /** 防沉迷 guard（对齐契约 §4 字段名，学科类口径=题量档） */
+  guard: GuardShape;
+  /** 自律退出天数（YYYY-MM-DD，去重滚动 365） */
+  selfDaily: string[];
+  /** 连续自律天数 */
+  selfStreak: number;
+  /** 今日自律锁（跨日自动复位） */
+  selfLocked: boolean;
   /** 设置 */
   settings: { sound: boolean };
-  /** 版本迁移位（未来结构升级用） */
-  version: 1;
-}
-
-export function todayStr(d = new Date()): string {
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${d.getFullYear()}-${m}-${day}`;
+  /** 版本迁移位 */
+  version: 1 | 2;
 }
 
 function emptyStore(): StoreShape {
@@ -48,17 +64,28 @@ function emptyStore(): StoreShape {
     streak: 0,
     mistakes: [],
     todaySec: 0,
+    guard: { ...GUARD_DEFAULT, today: todayStr() },
+    selfDaily: [],
+    selfStreak: 0,
+    selfLocked: false,
     settings: { sound: true },
-    version: 1,
+    version: 2,
   };
 }
 
+/** V0.3 迁移：旧 store（version 1 / 无 guard）补默认值并写回（对齐数学口算 normalizeStore 模式） */
 function load(): StoreShape {
   if (typeof window === "undefined") return emptyStore();
   try {
     const raw = window.localStorage.getItem(KEY);
     if (!raw) return emptyStore();
     const parsed = JSON.parse(raw) as Partial<StoreShape>;
+    const today = todayStr();
+    const guard: GuardShape = parsed.guard
+      ? todayReset(parsed.guard)
+      : { ...GUARD_DEFAULT, today };
+    // 跨日时 selfLocked 复位
+    const selfLocked = guard.today === today && !!parsed.selfLocked;
     return {
       ...emptyStore(),
       ...parsed,
@@ -66,7 +93,12 @@ function load(): StoreShape {
       lessons: parsed.lessons || {},
       checkin: parsed.checkin || [],
       mistakes: parsed.mistakes || [],
-      version: 1,
+      todaySec: parsed.todaySec || 0,
+      guard,
+      selfDaily: parsed.selfDaily || [],
+      selfStreak: parsed.selfStreak || 0,
+      selfLocked,
+      version: 2,
     };
   } catch {
     return emptyStore();
@@ -104,6 +136,20 @@ export interface ProgressApi {
   clearAll: () => void;
   /** 更新设置 */
   setSetting: <K extends keyof StoreShape["settings"]>(k: K, v: StoreShape["settings"][K]) => void;
+  /** 防沉迷：设置时长档/题量档（写入 guard） */
+  setGuardPref: (kind: "minute" | "games", value: number) => void;
+  /** 防沉迷：跨日重置后查询到点（结算处调） */
+  dueInfo: () => DueInfo | null;
+  /** 防沉迷：延迟（时长 +5min / 题量 +10，上限 2 次） */
+  extendDue: (kind: "time" | "questions") => void;
+  /** 防沉迷：我很自律（记今日 + 重算连续 + 置锁） */
+  enoughNow: () => void;
+  /** 防沉迷：今日是否自律锁 */
+  locked: () => boolean;
+  /** 防沉迷：连续自律天数 */
+  selfStreakCount: () => number;
+  /** 防沉迷：本组完成时累加题量（count=本组题数） */
+  addPlayed: (count: number) => void;
 }
 
 const ProgressContext = createContext<ProgressApi | null>(null);
@@ -168,9 +214,82 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const setGuardPref = useCallback((kind: "minute" | "games", value: number) => {
+    setStore((s) => {
+      const g = todayReset(s.guard);
+      return { ...s, guard: { ...g, minutePref: kind === "minute" ? value : g.minutePref, gamesPref: kind === "games" ? value : g.gamesPref } };
+    });
+  }, []);
+
+  /* ---------- 防沉迷 API（纯逻辑在 guard.ts，store 只做持久化接线） ---------- */
+
+  const dueInfo = useCallback((): DueInfo | null => {
+    let due: DueInfo | null = null;
+    setStore((s) => {
+      const g = todayReset(s.guard);
+      due = checkDue(g, s.todaySec, g.playedToday);
+      return g === s.guard ? s : { ...s, guard: g, todaySec: g.today !== s.guard.today ? 0 : s.todaySec };
+    });
+    return due;
+  }, []);
+
+  const extendDue = useCallback((kind: "time" | "questions") => {
+    setStore((s) => {
+      const g = todayReset(s.guard);
+      return { ...s, guard: extend(g, kind) };
+    });
+  }, []);
+
+  const enoughNow = useCallback(() => {
+    setStore((s) => {
+      const self: SelfState = { selfDaily: s.selfDaily, selfStreak: s.selfStreak, selfLocked: s.selfLocked };
+      const next = enough(self);
+      return { ...s, selfDaily: next.selfDaily, selfStreak: next.selfStreak, selfLocked: next.selfLocked };
+    });
+  }, []);
+
+  const locked = useCallback((): boolean => {
+    let out = false;
+    setStore((s) => {
+      const g = todayReset(s.guard);
+      out = isLocked(g, s.selfLocked);
+      return g === s.guard ? s : { ...s, guard: g, todaySec: g.today !== s.guard.today ? 0 : s.todaySec };
+    });
+    return out;
+  }, []);
+
+  const selfStreakCount = useCallback((): number => {
+    let out = 0;
+    setStore((s) => {
+      out = guardStreak(s.selfDaily);
+      return s;
+    });
+    return out;
+  }, []);
+
+  const addPlayed = useCallback((count: number) => {
+    setStore((s) => {
+      const g = todayReset(s.guard);
+      return { ...s, guard: { ...g, playedToday: g.playedToday + count } };
+    });
+  }, []);
+
   const api = useMemo<ProgressApi>(
-    () => ({ store, recordPractice, pushMistake, clearAll, setSetting }),
-    [store, recordPractice, pushMistake, clearAll, setSetting],
+    () => ({
+      store,
+      recordPractice,
+      pushMistake,
+      clearAll,
+      setSetting,
+      setGuardPref,
+      dueInfo,
+      extendDue,
+      enoughNow,
+      locked,
+      selfStreakCount,
+      addPlayed,
+    }),
+    [store, recordPractice, pushMistake, clearAll, setSetting, setGuardPref, dueInfo, extendDue, enoughNow, locked, selfStreakCount, addPlayed],
   );
 
   return <ProgressContext.Provider value={api}>{children}</ProgressContext.Provider>;

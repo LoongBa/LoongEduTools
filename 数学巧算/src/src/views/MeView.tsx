@@ -1,13 +1,17 @@
-// 数学巧算 · 我的：今日打卡/阶段完成度/错题列表/设置/清空数据（纯本地，儿童数据最小化）
+// 数学巧算 · 我的：今日打卡/阶段完成度/错题列表/设置/防沉迷/家长报告/清空数据（纯本地，儿童数据最小化）
 import { useMemo, useState } from "react";
 import { BackBtn, Btn, PageHead, Panel, Pill, ProgressBar } from "@/components/ui-kit";
 import { STAGES } from "@/data/stages.generated";
 import { useProgress } from "@/lib/store";
+import { ReportView } from "@/views/ReportView";
 
 export function MeView({ onBack }: { onBack: () => void }) {
-  const { store, clearAll, setSetting } = useProgress();
+  const { store, clearAll, setSetting, setGuardPref } = useProgress();
   const [confirmClear, setConfirmClear] = useState(false);
   const [showMistakes, setShowMistakes] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [reportTap, setReportTap] = useState(0); // 家长门槛：5 秒内连点 5 次
+  const [guardOpen, setGuardOpen] = useState(false);
 
   const stageProgress = useMemo(() => {
     return STAGES.map((s) => {
@@ -19,6 +23,21 @@ export function MeView({ onBack }: { onBack: () => void }) {
   }, [store.lessons]);
 
   const recentMistakes = useMemo(() => store.mistakes.slice(0, 10), [store.mistakes]);
+
+  /* 家长报告入口门槛：5 秒内连点 5 次（对齐数学口算家长面板） */
+  const handleReportTap = () => {
+    const n = reportTap + 1;
+    setReportTap(n);
+    window.setTimeout(() => setReportTap((v) => (v === n ? 0 : v)), 5000);
+    if (n >= 5) {
+      setReportTap(0);
+      setShowReport(true);
+    }
+  };
+
+  if (showReport) {
+    return <ReportView onBack={() => setShowReport(false)} />;
+  }
 
   return (
     <div className="anim-fade-in-up">
@@ -57,6 +76,9 @@ export function MeView({ onBack }: { onBack: () => void }) {
             </span>
           ))}
         </div>
+        {store.selfStreak > 0 && (
+          <p className="mt-2 text-[12px] text-[var(--lit)]">🛡 我很自律 · 连续 {store.selfStreak} 天</p>
+        )}
       </Panel>
 
       {/* 阶段完成度 */}
@@ -101,6 +123,66 @@ export function MeView({ onBack }: { onBack: () => void }) {
             ))}
           </div>
         )}
+      </Panel>
+
+      {/* 防沉迷设置 */}
+      <Panel className="mb-4 px-5 py-4">
+        <button type="button" onClick={() => setGuardOpen((v) => !v)} className="flex w-full items-center justify-between">
+          <p className="text-[14px] font-bold text-foreground">⏱ 防沉迷设置</p>
+          <span className="text-[18px] text-muted-foreground">{guardOpen ? "−" : "+"}</span>
+        </button>
+        {guardOpen && (
+          <div className="mt-3 flex flex-col gap-3">
+            <div>
+              <p className="mb-1.5 text-[12.5px] font-semibold text-muted-foreground">
+                单次练习时长：{store.guard.minutePref} 分钟
+              </p>
+              <div className="flex gap-2">
+                {[5, 10, 15].map((m) => (
+                  <Btn
+                    key={m}
+                    size="sm"
+                    variant={store.guard.minutePref === m ? "primary" : "soft"}
+                    onClick={() => setGuardPref("minute", m)}
+                  >
+                    {m} 分
+                  </Btn>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="mb-1.5 text-[12.5px] font-semibold text-muted-foreground">
+                今日练习量：{store.guard.gamesPref === 0 ? "不限" : `${store.guard.gamesPref} 题`}
+              </p>
+              <div className="flex gap-2">
+                {[10, 20, 30, 0].map((q) => (
+                  <Btn
+                    key={q}
+                    size="sm"
+                    variant={store.guard.gamesPref === q ? "primary" : "soft"}
+                    onClick={() => setGuardPref("games", q)}
+                  >
+                    {q === 0 ? "不限" : `${q} 题`}
+                  </Btn>
+                ))}
+              </div>
+            </div>
+            <p className="text-[11.5px] leading-relaxed text-muted-foreground">
+              到点后孩子可选择「再练一会儿」或「我很自律，今天足够了」。数据只存本机。
+            </p>
+          </div>
+        )}
+      </Panel>
+
+      {/* 家长报告入口（连点 5 次进） */}
+      <Panel className="mb-4 px-5 py-4">
+        <button type="button" onClick={handleReportTap} className="flex w-full items-center justify-between">
+          <p className="text-[14px] font-bold text-foreground">📊 家长报告</p>
+          <span className="text-[12px] text-muted-foreground">{reportTap > 0 ? `再点 ${5 - reportTap} 次` : "→"}</span>
+        </button>
+        <p className="mt-2 text-[11.5px] leading-relaxed text-muted-foreground">
+          今日反馈 / 近 7 天 / 阶段掌握度 / 错题摘要 · 可打印导出（连点上方 5 次进入，防孩子误触）
+        </p>
       </Panel>
 
       {/* 设置 */}
@@ -160,7 +242,7 @@ export function MeView({ onBack }: { onBack: () => void }) {
         </p>
       </Panel>
 
-      <p className="pb-2 text-center text-[11px] text-muted-foreground">巧算乐学 · V0.1.0</p>
+      <p className="pb-2 text-center text-[11px] text-muted-foreground">巧算乐学 · V0.2.0</p>
     </div>
   );
 }

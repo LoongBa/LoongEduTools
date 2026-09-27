@@ -243,9 +243,11 @@ html.dark .panel-border {
   font-variant-numeric: tabular-nums;
 }
 
-/* 打印（家长报告预留）：A4 纵向、与屏幕主题解耦 */
+/* 打印（家长报告）：A4 纵向、与屏幕主题解耦（对齐数独思维 v1.23）
+   仅 ReportView 条件渲染时打印，隐藏导航/按钮，报告区区块化分页 */
 @media print {
-  .no-print {
+  .no-print,
+  .print-hidden {
     display: none !important;
   }
   .print-clean {
@@ -254,5 +256,19 @@ html.dark .panel-border {
   }
   body {
     background: #fff !important;
+  }
+  .report-root {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .report-root .panel-border {
+    box-shadow: none !important;
+    border-color: #ddd !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .report-root > * {
+    break-after: auto;
   }
 }

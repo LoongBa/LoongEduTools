@@ -8,6 +8,7 @@ import { HomeView } from "@/views/HomeView";
 import { StageView } from "@/views/StageView";
 import { LessonView } from "@/views/LessonView";
 import { PracticeView } from "@/views/PracticeView";
+import { WarmupView } from "@/views/WarmupView";
 import { MeView } from "@/views/MeView";
 
 export type View =
@@ -15,6 +16,7 @@ export type View =
   | { name: "stage"; stage: number | string }
   | { name: "lesson"; stage: number | string; lesson: string }
   | { name: "practice"; stage: number | string; lesson: string; level: "basic" | "advance" | "challenge" }
+  | { name: "warmup" }
   | { name: "me" };
 
 export function App() {
@@ -27,6 +29,7 @@ export function App() {
           <HomeView
             stages={STAGES}
             onOpenStage={(stage) => setView({ name: "stage", stage })}
+            onOpenWarmup={() => setView({ name: "warmup" })}
             onOpenMe={() => setView({ name: "me" })}
           />
         )}
@@ -54,6 +57,7 @@ export function App() {
           />
         )}
         {view.name === "me" && <MeView onBack={() => setView({ name: "home" })} />}
+        {view.name === "warmup" && <WarmupView onExit={() => setView({ name: "home" })} />}
       </div>
     </ProgressProvider>
   );

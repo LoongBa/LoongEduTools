@@ -27,10 +27,12 @@ const STAGE_EMOJI: Record<string, string> = {
 export function HomeView({
   stages,
   onOpenStage,
+  onOpenWarmup,
   onOpenMe,
 }: {
   stages: SmartStage[];
   onOpenStage: (stage: number | string) => void;
+  onOpenWarmup: () => void;
   onOpenMe: () => void;
 }) {
   const { store } = useProgress();
@@ -68,6 +70,19 @@ export function HomeView({
         </div>
         <ProgressBar value={stats.total ? stats.done / stats.total : 0} tone="lit" className="mt-3" />
       </Panel>
+
+      {/* 口算热身入口 */}
+      <button
+        type="button"
+        onClick={onOpenWarmup}
+        className="panel-border tap-target mb-4 flex w-full items-center justify-between rounded-3xl border bg-gradient-to-r from-[#E3F4E3] to-[#C9EAC9] px-4 py-3.5 text-left shadow-soft transition-transform active:scale-[0.985]"
+      >
+        <div>
+          <p className="text-[15px] font-extrabold text-foreground">🏃 口算热身</p>
+          <p className="mt-0.5 text-[12px] text-muted-foreground">10 题口算打底 · 一年级到三年级</p>
+        </div>
+        <span className="text-[22px]">→</span>
+      </button>
 
       <div className="grid grid-cols-1 gap-3">
         {stages.map((s) => {

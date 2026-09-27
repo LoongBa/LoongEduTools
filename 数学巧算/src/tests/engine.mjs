@@ -5,17 +5,29 @@ import { readFileSync } from "fs";
 import { resolve } from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+import { checkDue, extend, enough, isLocked, todayReset } from "../src/lib/guard.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SG_DIR = resolve(__dirname, "../src/assets/smart_gen");
 
 global.window = global;
 // 加载工具核 → 阶段文件 → 主入口（经典脚本 IIFE 依次执行）
-const files = ["sg_tools.js", "sg_stage1_2.js", "sg_stage3_4.js", "sg_stage5_6.js", "sg_stageX.js", "smart_gen.js"];
+const files = [
+  "sg_tools.js",
+  "sg_stage1_2.js",
+  "sg_stage3_4.js",
+  "sg_stage5_6.js",
+  "sg_stageX.js",
+  "smart_gen.js",
+];
 for (const f of files) {
   const code = readFileSync(resolve(SG_DIR, f), "utf-8");
   new Function(code)();
 }
+// 口算热身引擎（内联数学口算 generators.js，挂 window.KOU_GENERATORS + KOU_META）
+const KOU_DIR = resolve(SG_DIR, "../kou_gen");
+const kouCode = readFileSync(resolve(KOU_DIR, "kou_gen.js"), "utf-8");
+new Function(kouCode)();
 
 const SG = global.SMART_GENERATORS;
 const T = global.SG_TOOLS;
@@ -206,6 +218,70 @@ for (const name of NAMES) {
   }
 }
 
+// ---------- L5：口算热身引擎（KOU_GENERATORS）全量 validate + KOU_META 完整性 ----------
+const KOU = global.KOU_GENERATORS;
+const KOU_META = global.KOU_META || [];
+let kouTotal = 0;
+let kouInvalid = 0;
+for (const type of KOU.list) {
+  for (let i = 0; i < 50; i++) {
+    const q = KOU.gen(type);
+    kouTotal++;
+    if (!q || !KOU.validate(q)) kouInvalid++;
+  }
+}
+let l5bad = 0;
+// KOU_META 25 条且与 list 一一对应
+if (KOU_META.length !== 25) { l5bad++; console.log(`  L5 meta-count: ${KOU_META.length}（应 25）`); }
+for (const m of KOU_META) {
+  if (!KOU.list.includes(m.id)) { l5bad++; console.log(`  L5 meta-orphan: ${m.id}`); }
+}
+
+// ---------- L6：防沉迷 guard 纯逻辑（checkDue/extend/enough/跨日重置） ----------
+let l6bad = 0;
+const GUARD_DEFAULT_T = {
+  minutePref: 5,
+  gamesPref: 10,
+  today: "",
+  playedToday: 0,
+  delayMinTimes: 0,
+  delayGamesTimes: 0,
+};
+{
+  // 跨日重置：today 变化清零
+  const g1 = { ...GUARD_DEFAULT_T, today: "2026-09-26", playedToday: 8, delayMinTimes: 1, delayGamesTimes: 1 };
+  const g2 = todayReset(g1, new Date(2026, 8, 27)); // 2026-09-27
+  if (g2.playedToday !== 0 || g2.delayMinTimes !== 0) { l6bad++; console.log("  L6 cross-day reset FAIL"); }
+  // 同日不重置
+  const g3 = todayReset(g1, new Date(2026, 8, 26));
+  if (g3.playedToday !== 8) { l6bad++; console.log("  L6 same-day reset FAIL"); }
+  // checkDue：时长到点
+  const dueT = checkDue({ ...GUARD_DEFAULT_T, today: "2026-09-27" }, 5 * 60, 2);
+  if (!dueT || dueT.kind !== "time" || dueT.canExtend !== true) { l6bad++; console.log("  L6 due-time FAIL"); }
+  // checkDue：题量到点
+  const dueQ = checkDue({ ...GUARD_DEFAULT_T, gamesPref: 10, today: "2026-09-27" }, 10, 10);
+  if (!dueQ || dueQ.kind !== "questions") { l6bad++; console.log("  L6 due-q FAIL"); }
+  // checkDue：未到点
+  const dueNone = checkDue({ ...GUARD_DEFAULT_T, gamesPref: 10, today: "2026-09-27" }, 10, 3);
+  if (dueNone !== null) { l6bad++; console.log("  L6 due-none FAIL"); }
+  // extend：时长 +5，上限 2
+  let g4 = { ...GUARD_DEFAULT_T, today: "2026-09-27", delayMinTimes: 0 };
+  g4 = extend(g4, "time");
+  if (g4.minutePref !== 10 || g4.delayMinTimes !== 1) { l6bad++; console.log("  L6 extend-time-1 FAIL"); }
+  g4 = extend(g4, "time");
+  if (g4.minutePref !== 15 || g4.delayMinTimes !== 2) { l6bad++; console.log("  L6 extend-time-2 FAIL"); }
+  const g5 = extend(g4, "time");
+  if (g5.minutePref !== 15 || g5.delayMinTimes !== 2) { l6bad++; console.log("  L6 extend-time-cap FAIL"); }
+  // enough：记今日 + 锁 + 连续自律
+  const e1 = enough({ selfDaily: [], selfStreak: 0, selfLocked: false }, new Date(2026, 8, 27));
+  if (!e1.selfLocked || e1.selfDaily.length !== 1 || e1.selfStreak !== 1) { l6bad++; console.log("  L6 enough-1 FAIL"); }
+  const e2 = enough({ selfDaily: ["2026-09-26"], selfStreak: 1, selfLocked: false }, new Date(2026, 8, 27));
+  if (e2.selfStreak !== 2) { l6bad++; console.log("  L6 enough-streak FAIL"); }
+  // isLocked：今日锁 true / 跨日 false
+  if (!isLocked({ ...GUARD_DEFAULT_T, today: "2026-09-27" }, true, new Date(2026, 8, 27))) { l6bad++; console.log("  L6 locked-today FAIL"); }
+  if (isLocked({ ...GUARD_DEFAULT_T, today: "2026-09-26" }, true, new Date(2026, 8, 27))) { l6bad++; console.log("  L6 locked-crossday FAIL"); }
+}
+
 // ---------- 输出 ----------
 console.log("== smart_gen 引擎单测 ==");
 console.log(`生成器数: ${NAMES.length} 个（${new Set(NAMES.map((n) => n.split("_").slice(0, -1).join("_"))).size} 方法 × 3 档）`);
@@ -213,6 +289,9 @@ console.log(`L1 全量 validate: ${total - invalid}/${total} 通过`);
 console.log(`L2 独立答案验证: ${l2ok}/${l2total}（跳过 ${l2skip}）`);
 console.log(`L3 难度断言: ${l3ok}/${l3total}`);
 console.log(`L4 规范形断言: ${l4total - l4bad}/${l4total} 通过`);
+console.log(`L5 口算热身 validate: ${kouTotal - kouInvalid}/${kouTotal} 通过 + KOU_META ${KOU_META.length} 条完整（bad=${l5bad}）`);
+console.log(`L6 guard 纯逻辑: ${l6bad === 0 ? "全部通过" : `${l6bad} 项失败`}`);
 const l2fail = l2total - l2ok;
-console.log(`FAIL 计数: ${failed + invalid + l2fail + l4bad}`);
-process.exit(failed || invalid || l2fail || l4bad ? 1 : 0);
+const totalBad = failed + invalid + l2fail + l4bad + kouInvalid + l5bad + l6bad;
+console.log(`FAIL 计数: ${totalBad}`);
+process.exit(totalBad ? 1 : 0);

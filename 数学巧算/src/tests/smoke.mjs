@@ -109,6 +109,46 @@ server.listen(0, "127.0.0.1", async () => {
     ok("阶段5引擎出题（含小数点）", /[.．]/.test(decBody) && /[=＝]/.test(decBody));
     ok("阶段5小数点键盘可用", (await page.locator("button:has-text('.')").count()) > 0);
 
+    // 口算热身入口
+    await page.goto("file:///" + DIST.replace(/\\/g, "/") + "/index.html", { waitUntil: "load" });
+    await page.waitForTimeout(400);
+    ok("首页渲染口算热身入口", (await page.locator("text=口算热身").count()) > 0);
+    await page.locator("button:has-text('口算热身')").first().click();
+    await page.waitForTimeout(400);
+    ok("热身选档页渲染（一年级/二年级/三年级）", (await page.locator("text=一年级").count()) > 0);
+    await page.locator("button:has-text('一年级')").first().click();
+    await page.waitForTimeout(500);
+    const warmBody = await page.evaluate(() => document.body.innerText);
+    ok("热身引擎出题（题面含 = 或 □）", /[=＝]/.test(warmBody));
+    // 作答反馈
+    await page.locator("button:has-text('1')").first().click();
+    await page.locator("button:has-text('提交')").first().click();
+    await page.waitForTimeout(400);
+    const warmAfter = await page.evaluate(() => document.body.innerText);
+    ok("热身提交有反馈", /答对|答案|错题/.test(warmAfter));
+
+    // 家长报告（连点 5 次进入）
+    await page.goto("file:///" + DIST.replace(/\\/g, "/") + "/index.html", { waitUntil: "load" });
+    await page.waitForTimeout(400);
+    await page.locator("button:has-text('👤')").first().click();
+    await page.waitForTimeout(400);
+    for (let i = 0; i < 5; i++) {
+      await page.locator("button:has-text('家长报告')").first().click();
+      await page.waitForTimeout(120);
+    }
+    await page.waitForTimeout(300);
+    ok("家长报告视图渲染", (await page.locator("text=今日反馈").count()) > 0);
+    ok("家长报告打印按钮存在", (await page.locator("button:has-text('打印')").count()) > 0);
+
+    // 防沉迷设置区
+    await page.goto("file:///" + DIST.replace(/\\/g, "/") + "/index.html", { waitUntil: "load" });
+    await page.waitForTimeout(400);
+    await page.locator("button:has-text('👤')").first().click();
+    await page.waitForTimeout(400);
+    await page.locator("button:has-text('防沉迷设置')").first().click();
+    await page.waitForTimeout(300);
+    ok("防沉迷设置渲染（时长/题量档）", (await page.locator("text=分钟").count()) > 0 && (await page.locator("text=题").count()) > 0);
+
   } catch (e) {
     ok("冒烟流程无异常", false, String(e).slice(0, 200));
   }

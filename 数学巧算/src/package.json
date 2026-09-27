@@ -1,6 +1,6 @@
 {
   "name": "math-smart-calc",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,7 +10,7 @@
     "preview": "vite preview --port 3016 --host 0.0.0.0",
     "typecheck": "tsc --noEmit",
     "test": "node tests/smoke.mjs",
-    "test:engine": "node tests/engine.mjs"
+    "test:engine": "node --experimental-strip-types tests/engine.mjs"
   },
   "sideEffects": [
     "./src/assets/smart_gen/*.js",
