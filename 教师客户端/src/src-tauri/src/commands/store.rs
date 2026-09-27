@@ -181,26 +181,23 @@ pub(crate) async fn get_json(
     }
 }
 
-/// 拉 manifest：登录态走网络（成功写缓存）；未登录/无网 → 返回缓存或明确错误
+/// 拉 manifest：优先网络（有 JWT 带凭证，无 JWT 也匿名拉取——服务端 A01 §4.1
+/// 已于 2026-09-27 放开匿名读 manifest，静态托管/未登录场景均可浏览下载扩展）；
+/// 网络失败/未配 api_base → 回退本地缓存或明确错误。
 async fn manifest_inner(app: &tauri::AppHandle) -> Result<StoreManifest, String> {
     let jwt = load_credential(app).map(|c| c.jwt);
     let cache = read_manifest_cache(app);
-    match jwt {
-        None => match cache {
+    let jwt_str = jwt.as_deref();
+    match get_json(app, "packages/manifest", jwt_str).await {
+        Ok(v) => {
+            let m: StoreManifest =
+                serde_json::from_value(v).map_err(|e| format!("manifest 解析失败: {e}"))?;
+            let _ = write_manifest_cache(app, &m);
+            Ok(m)
+        }
+        Err(e) => match cache {
             Some(c) => Ok(c),
-            None => Err("未登录，请先登录后浏览下载扩展".into()),
-        },
-        Some(jwt) => match get_json(app, "packages/manifest", Some(&jwt)).await {
-            Ok(v) => {
-                let m: StoreManifest =
-                    serde_json::from_value(v).map_err(|e| format!("manifest 解析失败: {e}"))?;
-                let _ = write_manifest_cache(app, &m);
-                Ok(m)
-            }
-            Err(e) => match cache {
-                Some(c) => Ok(c),
-                None => Err(e),
-            },
+            None => Err(e),
         },
     }
 }
