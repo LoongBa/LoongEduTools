@@ -40,6 +40,8 @@ export const GROUP_ADV_HINT = "数对、X-Wing 等更深的推理环节，按需
 /** V1.4.1：同类专项连做进度文案 */
 export const GROUP_PROGRESS = (done: number, total: number) => `已完成 ${done}/${total} 题 · 还剩 ${total - done} 道`;
 export const GROUP_PROGRESS_DONE = (total: number) => `已完成 ${total}/${total} 题 · 本组已完成`;
+/** V1.4.2：同类专项连做练习中进度文案（正在做语境；与结算层「已完成 x/n · 还剩 m 道」区分）。idx 为 0-based 组内序号，函数内自管 +1 */
+export const GROUP_IN_PROGRESS = (idx: number, total: number) => `第 ${idx + 1}/${total} 题`;
 
 /** 导入解析错误 → 文案（静态消息） */
 const IMPORT_MSG_STATIC: Record<ImportError, string> = {

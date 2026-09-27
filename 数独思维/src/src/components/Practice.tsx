@@ -8,7 +8,7 @@ import { Overlay, ResultSummary, OverlayBtns, formatMs } from "./Overlay";
 import { Btn, Card, Toast, Bar } from "./ui/kit";
 import { APP_ICON_URL, OrientationHint } from "./Shell";
 import { HINT_LIMIT, LEVEL_GIVEN, MAP_LEVELS, skillByKey } from "@/lib/content";
-import { GROUP_PROGRESS, GROUP_PROGRESS_DONE } from "@/lib/copy";
+import { GROUP_IN_PROGRESS, GROUP_PROGRESS, GROUP_PROGRESS_DONE } from "@/lib/copy";
 import { levelName } from "./Walls";
 import type { PracticeSource } from "@/lib/store";
 import { calcStars, markCheckin, todayStr, useStore, type BookItem, type HistoryItem, type LevelId, type Snapshot } from "@/lib/store";
@@ -499,6 +499,12 @@ export function Practice({ params, onExit, onFinish }: Props) {
             {source === "map" && params.mapIndex != null ? ` · 关卡 ${["1-1", "1-2", "1-3", "2-1", "2-2", "2-3", "3-1", "3-2", "3-3", "3-4"][params.mapIndex]}` : ""}
           </div>
         </div>
+        {/* V1.4.2：同类专项连做练习中进度（第 x/n 题；total≤1 不显示，与结算层规则一致） */}
+        {params.group && params.group.total > 1 ? (
+          <span className="tnum shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-[12px] font-bold text-primary">
+            {GROUP_IN_PROGRESS(params.group.idx, params.group.total)}
+          </span>
+        ) : null}
         <span className="tnum shrink-0 rounded-full bg-secondary px-2.5 py-1 text-[12px] font-bold text-secondary-foreground">⏱ {formatMs(ms)}</span>
       </div>
 
