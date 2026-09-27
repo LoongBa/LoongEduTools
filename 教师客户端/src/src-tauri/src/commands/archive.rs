@@ -21,7 +21,7 @@ use winreg::enums::HKEY_CURRENT_USER;
 use winreg::RegKey;
 
 /// 下载目录监视配置（config.json `archive` 子对象）
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ArchiveConfig {
     /// 用户显式指定的监视目录（空 = 自动定位）
     pub dir: Option<String>,
@@ -35,6 +35,17 @@ pub struct ArchiveConfig {
     /// 上次快照时间（诊断用，非必须）
     #[serde(default)]
     pub last_scan_at: Option<String>,
+}
+
+impl Default for ArchiveConfig {
+    fn default() -> Self {
+        Self {
+            dir: None,
+            poll_ms: default_poll_ms(),
+            extensions: default_extensions(),
+            last_scan_at: None,
+        }
+    }
 }
 
 fn default_poll_ms() -> u64 {
@@ -191,8 +202,19 @@ pub fn spawn_watch_thread(app: tauri::AppHandle, dir: PathBuf, poll_ms: u64, ext
     let poll = Duration::from_millis(poll_ms.max(500));
     // 启动快照：把已有文件当 baseline，只报告新出现/变化的文件
     let mut baseline = snapshot(&dir);
+    // 预热标志：首轮 sleep 后只更新 baseline 不 emit（见循环内注释）
+    let mut first_round = true;
     std::thread::spawn(move || loop {
+        // 预热窗口（首轮）：启动瞬间文件写入/mtime 抖动若立刻比对会误报
+        // 「已有文件被提示」（用户 2026-09-27 反馈：启动即提示监控到下载有文件）。
+        // 首轮 sleep 后快照只当 baseline 更新、不 emit；次轮起才是真正的检测循环。
+        std::thread::sleep(poll);
         let now = snapshot(&dir);
+        if first_round {
+            baseline = now;
+            first_round = false;
+            continue;
+        }
         // 检测新文件或大小变化的文件（baseline 里没有、或大小/时间不同的文件）
         for (name, (size, modified)) in &now {
             if is_temp_suffix(name) {
@@ -209,7 +231,6 @@ pub fn spawn_watch_thread(app: tauri::AppHandle, dir: PathBuf, poll_ms: u64, ext
             }
         }
         baseline = now;
-        std::thread::sleep(poll);
     });
 }
 

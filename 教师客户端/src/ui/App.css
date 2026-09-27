@@ -197,14 +197,14 @@ body {
 }
 
 /* ---------- 侧栏 ---------- */
+/* 宽度/内边距已由 Tailwind 类接管（Sidebar.tsx w-[200px]/w-[56px] rail 收起）：
+   此处不再设 width，避免未分层 CSS 压过 Tailwind layered utility 导致 rail 收不起。 */
 .sidebar {
-  width: 200px;
   flex-shrink: 0;
   background: var(--sidebar-bg);
   color: var(--sidebar-text);
   display: flex;
   flex-direction: column;
-  padding: 16px 12px;
 }
 
 .brand {

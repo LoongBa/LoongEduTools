@@ -17,7 +17,8 @@ use tauri::Manager;
 const VALID: [&str; 3] = ["ask", "quit", "tray"];
 
 /// setup 期创建的托盘句柄（TrayIcon 不可按 id 兜底查询，句柄入 state 最稳）。
-/// 初始隐藏；`min_to_tray` 显示，托盘左键点击恢复窗口后隐藏。
+/// 常驻显示（2026-09-27 实测反馈：不应只在"最小化到托盘"时才出现图标，不一致）；
+/// 左键点击恢复窗口，图标保持常驻。
 pub struct TrayState(pub tauri::tray::TrayIcon);
 
 /// shell_close.json 路径（app_config_dir，如 %APPDATA%\<bundle-id>\ —— 用户级 UI 设置，
@@ -68,7 +69,7 @@ pub fn app_quit(app: tauri::AppHandle) {
     app.exit(0);
 }
 
-/// 最小化到托盘：隐藏 main（webview 存活，恢复时状态不丢）+ 显示托盘图标。
+/// 最小化到托盘：隐藏 main（webview 存活，恢复时状态不丢）+ 显示托盘图标（常驻，无需再显式显示）。
 /// content/timer-overlay 本就 hidden，无需处理。
 #[tauri::command]
 pub fn min_to_tray(app: tauri::AppHandle) -> Result<(), String> {
@@ -81,7 +82,7 @@ pub fn min_to_tray(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-/// setup 期创建托盘（默认隐藏）。左键点击 → 恢复 main 并聚焦 + 隐藏托盘。
+/// setup 期创建托盘（常驻显示）。左键点击 → 恢复 main 并聚焦（图标保持常驻）。
 /// 图标用应用默认图标（tauri.conf 打包图标集），无菜单（托盘仅作恢复入口，D09 无菜单需求）。
 pub fn init_tray(app: &tauri::AppHandle) -> Result<(), String> {
     let icon = app
@@ -102,13 +103,13 @@ pub fn init_tray(app: &tauri::AppHandle) -> Result<(), String> {
                     let _ = w.show();
                     let _ = w.set_focus();
                 }
-                let _ = tray.set_visible(false);
             }
         })
         .build(app)
         .map_err(|e| e.to_string())?;
-    // 初始隐藏：托盘只在「最小化到托盘」期间出现，避免常驻多一个图标
-    tray.set_visible(false).map_err(|e| e.to_string())?;
+    // 常驻显示（2026-09-27 实测反馈 1：不应只在"最小化到托盘"期间出现，改为默认常驻——
+    // 与"无论是否缩小都在通知栏有图标"的一致体验一致）
+    tray.set_visible(true).map_err(|e| e.to_string())?;
     app.manage(TrayState(tray));
     Ok(())
 }

@@ -681,9 +681,10 @@ const WATCH_FORMATS: { id: string; label: string; icon: typeof FileText; exts: s
   { id: "video", label: "视频", icon: FileVideo, exts: ["mp4", "mkv", "avi", "mov", "wmv", "webm", "flv"] },
 ];
 
-/** 监控格式设置：挂载读 archiveStatus.config.extensions，点选即存（archive_watch_extensions） */
+/** 监控格式设置：初始 ["pdf"]（与 Rust 默认对齐，避免加载前全灰与运行时实际监控不一致）；
+ *  挂载读 archiveStatus.config.extensions 覆盖，点选即存（archive_watch_extensions） */
 function WatchFormatChips() {
-  const [exts, setExts] = useState<string[] | null>(null);
+  const [exts, setExts] = useState<string[]>(["pdf"]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -701,10 +702,10 @@ function WatchFormatChips() {
     };
   }, []);
 
-  const groupOn = (g: (typeof WATCH_FORMATS)[number]) => g.exts.every((e) => exts?.includes(e) ?? false);
+  const groupOn = (g: (typeof WATCH_FORMATS)[number]) => g.exts.every((e) => exts.includes(e));
 
   const toggle = (g: (typeof WATCH_FORMATS)[number]) => {
-    if (!exts || saving) return;
+    if (saving) return;
     const next = groupOn(g)
       ? exts.filter((e) => !g.exts.includes(e))
       : [...new Set([...exts, ...g.exts])];
@@ -735,7 +736,7 @@ function WatchFormatChips() {
             <button
               key={g.id}
               type="button"
-              disabled={!exts || saving}
+              disabled={saving}
               aria-pressed={on}
               onClick={() => toggle(g)}
               className={cn(
