@@ -425,6 +425,19 @@ export function TopBar({
   onOpenDownloadCenter,
 }: TopBarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const avatarRef = useRef<HTMLDivElement>(null);
+
+  // 点击菜单外任意处关闭（ref+mousedown 模式，与 NotifyBell/DownloadBell 同款）。
+  // 不能用 fixed inset-0 遮罩：header 的 backdrop-blur-sm（backdrop-filter）会把 fixed
+  // 后代的包含块限制在 header 内，遮罩只铺顶栏一条、点内容区收不到（实测不关闭）。
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!avatarRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [menuOpen]);
 
   return (
     <header className="banner print-hide relative z-30 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card/80 px-4 backdrop-blur-sm max-md:px-3">
@@ -473,7 +486,7 @@ export function TopBar({
         />
 
         {/* 头像菜单（profile/login/settings 收进此处，不回流侧栏） */}
-        <div className="relative">
+        <div ref={avatarRef} className="relative">
           <button
             type="button"
             className="flex size-9 items-center justify-center rounded-full bg-brand-soft text-[13px] font-bold text-brand transition-transform hover:scale-105"
@@ -484,12 +497,10 @@ export function TopBar({
             王
           </button>
           {menuOpen && (
-            <>
-              <div className="fixed inset-0 z-10" aria-hidden onClick={() => setMenuOpen(false)} />
-              <div
-                role="menu"
-                className="user-menu-panel absolute right-0 top-11 z-20 w-56 overflow-hidden rounded-xl border border-border bg-popover p-1.5 shadow-lg"
-              >
+            <div
+              role="menu"
+              className="user-menu-panel absolute right-0 top-11 z-20 w-56 overflow-hidden rounded-xl border border-border bg-popover p-1.5 shadow-lg"
+            >
                 <div className="flex items-center gap-2.5 border-b border-border px-2.5 pb-2.5 pt-2">
                   <span className="flex size-9 items-center justify-center rounded-full bg-brand text-[13px] font-bold text-on-primary">
                     王
@@ -525,7 +536,6 @@ export function TopBar({
                   }}
                 />
               </div>
-            </>
           )}
         </div>
       </div>
