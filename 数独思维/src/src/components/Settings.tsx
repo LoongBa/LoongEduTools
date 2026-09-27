@@ -4,6 +4,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { SCHEMES, useTheme, type ModeId } from "@/lib/theme";
 import { useStore } from "@/lib/store";
+import { APP_VERSION } from "@/lib/version";
 import { Card, Btn } from "./ui/kit";
 import { Overlay } from "./Overlay";
 import { APP_ICON_URL } from "./Shell";
@@ -139,7 +140,11 @@ export function Settings({ onBack }: { onBack: () => void }) {
         <img src={APP_ICON_URL} alt="" className="mx-auto mb-2 h-10 w-10 opacity-90" />
         数独思维 · 逻辑推理教学与训练
         <br />
+        版本 V{APP_VERSION}
+        <br />
         无竞技 · 无排行 · 不比较，只和孩子自己的上一次对照。
+        <br />
+        无账号 · 无云同步 · 无排行 · 数据只存本机
       </p>
 
       <div className="mt-4">

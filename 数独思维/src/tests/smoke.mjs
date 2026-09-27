@@ -1,12 +1,14 @@
 // 数独思维冒烟：自起 preview 服务（3014）→ Playwright 走查核心流程 → 自动停服。
 // 用法：pnpm test（需 chromium：env CHROMIUM_PATH 或本机 ms-playwright / Chrome 安装）
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { get } from "node:http";
 import { chromium } from "playwright-core";
 import { createServer } from "vite";
 
 const PORT = 3014;
 const BASE = `http://localhost:${PORT}/`;
+// 版本号动态读取（V1.0.3 I3：断言不硬编码，随 package.json 自动更新）
+const VERSION = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version;
 const results = [];
 const ok = (name, cond, extra = "") => results.push(`${cond ? "PASS" : "FAIL"} | ${name} ${extra}`);
 const tapText = (page, text) => page.locator(`text=${text}`).first().evaluate((el) => el.click()).catch(() => false);
@@ -185,6 +187,11 @@ async function main() {
   await tapText(page, "外观设置");
   await page.waitForTimeout(500);
   ok("设置页渲染", await vis(page, "主题方案"));
+  // ⑦b 版本号显示（V1.0.3）：设置页关于区 + 首页 footer 规范串
+  ok(`设置页显示版本 V${VERSION}`, await vis(page, `版本 V${VERSION}`));
+  await tapText(page, "返回难度");
+  await page.waitForTimeout(500);
+  ok("首页 footer 规范串", await vis(page, "数据只存本机"));
 
   console.log(results.join("\n"));
   const fails = results.filter((r) => r.startsWith("FAIL")).length;
