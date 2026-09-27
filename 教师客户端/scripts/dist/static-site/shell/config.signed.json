@@ -1,11 +1,11 @@
 {
-  "api_base": "https://edu-teacher-test.pages.dev",
+  "api_base": "https://taoli.loongba.cn",
   "schema_version": "1.0",
   "signature": {
     "alg": "ed25519",
     "key_id": "shell-config-2026",
-    "nonce": "1de59e741784f1b2",
-    "signed_payload_hash": "sha256:ea21fe986f46f6ce12da8ba2962d12e72107f823955dec288f0e27703f2586bc",
-    "sig": "e24bbff3c007dd127af437eec0b8993027f65cf4f54d6155f855524ddf7d6ff264d62989db34bf22a9a429531a840b47f4e1242a82e5f11fee5fb3ddb88fff0f"
+    "nonce": "14aa9f2f05bee765",
+    "signed_payload_hash": "sha256:3e343105b750eb43a0d35b9469a37d7344731c0e7c823e1bab533cc6c6d731b5",
+    "sig": "162b95d65ff3a712fe80ad07080a2e2a05a1e8636c33f7e1120b90424e3b7ba7bb1e1d4590e8706e1adc78189ef1096a7fe29983a98fb6c54789c64ff21c0d01"
   }
 }
