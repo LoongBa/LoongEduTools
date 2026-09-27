@@ -39,7 +39,8 @@ export function HomeView({
 
   const stats = useMemo(() => {
     const total = stages.reduce((n, s) => n + (s.lessons?.length || 0), 0);
-    const done = Object.values(store.lessons).filter((r) => r.done).length;
+    // I4 修复：warmup 热身记录不计入讲次进度
+    const done = Object.entries(store.lessons).filter(([k, r]) => !k.startsWith("warmup:") && r.done).length;
     return { total, done };
   }, [stages, store.lessons]);
 

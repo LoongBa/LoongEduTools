@@ -257,6 +257,14 @@ html.dark .panel-border {
   body {
     background: #fff !important;
   }
+  /* I9：打印时 App 外壳容器不约束宽度/内边距，仅报告内容占据整页 */
+  .app-shell {
+    max-width: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+  }
   .report-root {
     max-width: 100% !important;
     margin: 0 !important;

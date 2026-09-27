@@ -24,7 +24,7 @@ export function App() {
 
   return (
     <ProgressProvider>
-      <div className="mx-auto flex min-h-dvh w-full max-w-[640px] flex-col px-4 pb-20 pt-3">
+      <div className="app-shell mx-auto flex min-h-dvh w-full max-w-[640px] flex-col px-4 pb-20 pt-3">
         {view.name === "home" && (
           <HomeView
             stages={STAGES}

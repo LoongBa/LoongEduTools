@@ -90,20 +90,32 @@ export function WarmupView({ onExit }: { onExit: () => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [level]);
 
-  /* 自律锁检查（mount 时） */
+  /* 自律锁检查（mount 时，唯一一处） */
   useEffect(() => {
     setLockedState(locked());
   }, [locked]);
 
-  /* 第一段：练习中到点引导条 */
+  /* 第一段：练习中到点引导条（B2：当前局秒数计入判定） */
+  const msRef = useRef(0);
+  useEffect(() => {
+    msRef.current = ms;
+  }, [ms]);
   useEffect(() => {
     if (finished || !level) return;
     const t = window.setInterval(() => {
-      const due = dueInfo();
+      const due = dueInfo(Math.floor(msRef.current / 1000));
       if (due) setGuideVisible(true);
     }, 15000);
     return () => window.clearInterval(t);
   }, [finished, level, dueInfo]);
+
+  /* B1 修复：结算记练习移入 effect（题量累计已在 checkAnswer 内） */
+  useEffect(() => {
+    if (finished && level) {
+      recordPractice(`warmup:${level}`, "basic", correct, TOTAL, Math.round(ms / 1000));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finished]);
 
   const checkAnswer = useCallback(
     (ans: string) => {
@@ -120,9 +132,10 @@ export function WarmupView({ onExit }: { onExit: () => void }) {
           seqRef.current = n;
           setDoneCount(n);
           if (n >= TOTAL) {
+            // B3 修复：先累计本组题量再判到点
+            addPlayed(TOTAL);
             setFinished(true);
             const due = dueInfo();
-            shownDueRef.current = false;
             if (due && !shownDueRef.current) {
               shownDueRef.current = true;
               setDueChoice(due);
@@ -195,8 +208,6 @@ export function WarmupView({ onExit }: { onExit: () => void }) {
     const rate = TOTAL ? correct / TOTAL : 0;
     const stars = rate >= 0.9 ? 3 : rate >= 0.6 ? 2 : 1;
     const sec = Math.round(ms / 1000);
-    recordPractice(`warmup:${level}`, "basic", correct, TOTAL, sec);
-    addPlayed(TOTAL);
     return (
       <div className="anim-pop-in pt-2">
         <div className="flex items-center pb-3">

@@ -84,21 +84,30 @@ def check_package(out_root: Path) -> list:
     for p in out_root.rglob('*'):
         if p.is_file() and p.stat().st_size > MAX_FILE:
             problems.append(f'单文件超限: {p.relative_to(out_root)} ({p.stat().st_size // (1024*1024)}MB)')
-    # 4. 相对路径 / 无 type=module / 无 crossorigin（绝对路径 = 开头 / 或 http(s)://）
+    # 4. 相对路径 / 无 type=module / 无 crossorigin / 无内联脚本 / 无端能力禁词（I8 补全）
     html = (out_root / 'index.html').read_text(encoding='utf-8', errors='ignore')
-    if re.search(r'\b(?:src|href)="/', html) or re.search(r'https?://', html):
-        problems.append('index.html 含绝对路径/外链引用')
+    html_lower = html.lower()
+    if re.search(r'\b(?:src|href)=["\']/', html):
+        problems.append('index.html 含绝对路径引用')
     if 'type="module"' in html or "type='module'" in html:
         problems.append('index.html 含 type="module"（须为经典脚本）')
     if 'crossorigin' in html:
         problems.append('index.html 含 crossorigin')
-    if 'download' in html.lower():
+    if re.search(r'<a[^>]*\bdownload\b', html_lower):
         problems.append('index.html 含 a[download]')
-    # 5. assets/*.js 无动态 download 设置
-    for p in (out_root / 'assets').glob('*.js') if (out_root / 'assets').is_dir() else []:
+    if re.search(r'on(?:click|load|error|change)\s*=', html_lower):
+        problems.append('index.html 含行内事件处理器（禁 onclick 等）')
+    if re.search(r'<(?:base|iframe)\b', html_lower):
+        problems.append('index.html 含 <base>/<iframe>（禁）')
+    # 5. 全包端能力禁词扫描（对齐 minitool 规范：无 eval/new Function/fetch/XHR/window.open）
+    for p in out_root.rglob('*.js'):
         js = p.read_text(encoding='utf-8', errors='ignore')
-        if re.search(r"setAttribute\(['\"]download|\.download\s*=", js):
+        if re.search(r"\bsetAttribute\(['\"]download|\.download\s*=", js):
             problems.append(f'assets JS 含动态 download: {p.name}')
+        if re.search(r'\beval\s*\(|\bnew\s+Function\s*\(', js):
+            problems.append(f'JS 含 eval/new Function: {p.name}')
+        if re.search(r'\bfetch\s*\(|\bXMLHttpRequest\b|\bwindow\.open\s*\(', js):
+            problems.append(f'JS 含网络请求/弹窗 API: {p.name}')
     return problems
 
 

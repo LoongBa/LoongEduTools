@@ -3,7 +3,7 @@
 // key: redtools.qiaosuanlein.v1（产品代号「巧算乐学」）
 // V0.3：version 1→2 迁移（补 guard/selfDaily/selfStreak/selfLocked 默认值，B3 修订 load 硬编码 version:1）
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   checkDue,
   enough,
@@ -86,6 +86,8 @@ function load(): StoreShape {
       : { ...GUARD_DEFAULT, today };
     // 跨日时 selfLocked 复位
     const selfLocked = guard.today === today && !!parsed.selfLocked;
+    // I2 修复：跨日加载时今日秒数清零（旧 guard.today ≠ 今日）
+    const crossedDay = !parsed.guard || parsed.guard.today !== today;
     return {
       ...emptyStore(),
       ...parsed,
@@ -93,7 +95,7 @@ function load(): StoreShape {
       lessons: parsed.lessons || {},
       checkin: parsed.checkin || [],
       mistakes: parsed.mistakes || [],
-      todaySec: parsed.todaySec || 0,
+      todaySec: crossedDay ? 0 : parsed.todaySec || 0,
       guard,
       selfDaily: parsed.selfDaily || [],
       selfStreak: parsed.selfStreak || 0,
@@ -138,8 +140,8 @@ export interface ProgressApi {
   setSetting: <K extends keyof StoreShape["settings"]>(k: K, v: StoreShape["settings"][K]) => void;
   /** 防沉迷：设置时长档/题量档（写入 guard） */
   setGuardPref: (kind: "minute" | "games", value: number) => void;
-  /** 防沉迷：跨日重置后查询到点（结算处调） */
-  dueInfo: () => DueInfo | null;
+  /** 防沉迷：跨日重置后查询到点（结算处/轮询处调；currentSec = 当前局进行中秒数，补足 todaySec） */
+  dueInfo: (currentSec?: number) => DueInfo | null;
   /** 防沉迷：延迟（时长 +5min / 题量 +10，上限 2 次） */
   extendDue: (kind: "time" | "questions") => void;
   /** 防沉迷：我很自律（记今日 + 重算连续 + 置锁） */
@@ -156,6 +158,9 @@ const ProgressContext = createContext<ProgressApi | null>(null);
 
 export function ProgressProvider({ children }: { children: ReactNode }) {
   const [store, setStore] = useState<StoreShape>(load);
+  // I1 修复：镜像最新 store 供同步读（避免 setStore updater 闭包读值脆弱模式）
+  const storeRef = useRef(store);
+  storeRef.current = store;
 
   useEffect(() => {
     save(store);
@@ -223,14 +228,10 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
 
   /* ---------- 防沉迷 API（纯逻辑在 guard.ts，store 只做持久化接线） ---------- */
 
-  const dueInfo = useCallback((): DueInfo | null => {
-    let due: DueInfo | null = null;
-    setStore((s) => {
-      const g = todayReset(s.guard);
-      due = checkDue(g, s.todaySec, g.playedToday);
-      return g === s.guard ? s : { ...s, guard: g, todaySec: g.today !== s.guard.today ? 0 : s.todaySec };
-    });
-    return due;
+  const dueInfo = useCallback((currentSec?: number): DueInfo | null => {
+    const s = storeRef.current;
+    const g = todayReset(s.guard);
+    return checkDue(g, s.todaySec + (currentSec || 0), g.playedToday);
   }, []);
 
   const extendDue = useCallback((kind: "time" | "questions") => {
@@ -249,22 +250,13 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const locked = useCallback((): boolean => {
-    let out = false;
-    setStore((s) => {
-      const g = todayReset(s.guard);
-      out = isLocked(g, s.selfLocked);
-      return g === s.guard ? s : { ...s, guard: g, todaySec: g.today !== s.guard.today ? 0 : s.todaySec };
-    });
-    return out;
+    const s = storeRef.current;
+    const g = todayReset(s.guard);
+    return isLocked(g, s.selfLocked);
   }, []);
 
   const selfStreakCount = useCallback((): number => {
-    let out = 0;
-    setStore((s) => {
-      out = guardStreak(s.selfDaily);
-      return s;
-    });
-    return out;
+    return guardStreak(storeRef.current.selfDaily);
   }, []);
 
   const addPlayed = useCallback((count: number) => {

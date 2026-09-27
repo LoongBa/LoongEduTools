@@ -91,7 +91,8 @@ export function enough(self: SelfState, now = new Date()): SelfState {
   const selfDaily = self.selfDaily.includes(today) ? self.selfDaily : [...self.selfDaily, today].slice(-365);
   const set = new Set(selfDaily);
   let streak = 0;
-  const cursor = new Date();
+  // I6 修复：cursor 起点用 now（与 todayStr(now) 一致），避免传历史 now 时起点错位
+  const cursor = new Date(now.getTime());
   if (!set.has(todayStr(cursor))) cursor.setDate(cursor.getDate() - 1);
   while (set.has(todayStr(cursor))) {
     streak++;
@@ -109,7 +110,7 @@ export function isLocked(guard: GuardShape, selfLocked: boolean, now = new Date(
 export function streak(selfDaily: string[], now = new Date()): number {
   const set = new Set(selfDaily);
   let s = 0;
-  const cursor = new Date();
+  const cursor = new Date(now.getTime());
   if (!set.has(todayStr(cursor))) cursor.setDate(cursor.getDate() - 1);
   while (set.has(todayStr(cursor))) {
     s++;

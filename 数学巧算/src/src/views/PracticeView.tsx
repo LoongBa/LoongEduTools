@@ -130,10 +130,11 @@ export function PracticeView({
           seqRef.current = n;
           setDoneCount(n);
           if (n >= total) {
+            // B3 修复：先累计本组题量再判到点（本组应计入今日题量）
+            addPlayed(total);
             setFinished(true);
             // 第二段：组后二选（到点才弹；未到点直接结算）
             const due = dueInfo();
-            shownDueRef.current = false;
             if (due && !shownDueRef.current) {
               shownDueRef.current = true;
               setDueChoice(due);
@@ -196,18 +197,29 @@ export function PracticeView({
   useEffect(() => {
     if (finished) return;
     const t = window.setInterval(() => {
-      const due = dueInfo();
+      // B2 修复：当前局进行中的秒数计入到点判定（todaySec 只累计已完成局的秒）
+      const due = dueInfo(Math.floor(msRef.current / 1000));
       if (due) setGuideVisible(true);
     }, 15000);
     return () => window.clearInterval(t);
   }, [finished, dueInfo]);
 
+  /* B1 修复：结算副作用（记练习）移入 effect，防渲染体 setStore 无限循环；题量累计在 checkAnswer 内完成（B3） */
+  const msRef = useRef(0);
+  useEffect(() => {
+    msRef.current = ms;
+  }, [ms]);
+  useEffect(() => {
+    if (finished) {
+      recordPractice(`${key}:${lesson?.lesson_id || lessonId}`, level, correct, total, Math.round(ms / 1000));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finished]);
+
   /* 结算（含组后二选浮层） */
   if (finished) {
     const rate = total ? correct / total : 0;
     const stars = rate >= 0.9 ? 3 : rate >= 0.6 ? 2 : 1;
-    recordPractice(`${key}:${lesson?.lesson_id || lessonId}`, level, correct, total, Math.round(ms / 1000));
-    addPlayed(total);
     return (
       <div className="anim-pop-in pt-2">
         <div className="flex items-center pb-3">

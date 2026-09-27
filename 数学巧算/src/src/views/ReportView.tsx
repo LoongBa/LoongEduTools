@@ -38,7 +38,9 @@ export function ReportView({ onBack }: { onBack: () => void }) {
   const lessonCount = useMemo(() => {
     let total = 0;
     let practiced = 0;
-    for (const r of Object.values(store.lessons)) {
+    // I4 修复：warmup 热身记录不计入讲次统计
+    for (const [k, r] of Object.entries(store.lessons)) {
+      if (k.startsWith("warmup:")) continue;
       if (r.done) total++;
       practiced += r.practiced || 0;
     }
