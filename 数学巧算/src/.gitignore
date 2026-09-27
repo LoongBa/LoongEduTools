@@ -1,0 +1,6 @@
+# 数学巧算 · git 忽略（对齐数独思维/点读陪练 WebH5 惯例）
+node_modules/
+dist/
+.tsbuildinfo
+*.log
+.DS_Store

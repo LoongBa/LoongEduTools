@@ -1,0 +1,258 @@
+@import "tailwindcss" source(none);
+@import "tw-animate-css";
+@source "../src";
+
+/* ============================================================
+   数学巧算 · 设计系统
+   参考英语陪练 WebH5（成熟儿童教育产品）：token 结构与状态语义复用，
+   主题色换为数学巧算专属「向日葵暖黄/草绿」——理性暖色，护眼高可读。
+   - 语义状态跨主题锁定：完成=草绿、提醒=暖黄、辅助=天蓝、待办=中性
+   - 全程不使用红色表达失败（答错用暖黄温和提示）
+   - 组件侧一律消费 var(--*) / theme utility，禁止写死色值
+   ============================================================ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* 语义状态色（跨主题一致） */
+  --color-lit: var(--lit);
+  --color-lit-soft: var(--lit-soft);
+  --color-on-lit: var(--on-lit);
+  --color-warm: var(--warm);
+  --color-warm-soft: var(--warm-soft);
+  --color-sky: var(--sky);
+  --color-sky-soft: var(--sky-soft);
+  --color-idle: var(--idle);
+  --color-idle-foreground: var(--idle-foreground);
+
+  /* 字号档位（孩子读 ≥18px，家长读 ≥16px） */
+  --text-child: 1.125rem;
+  --text-sentence: clamp(1.75rem, 6.4vw, 2.5rem);
+  --text-display: clamp(2rem, 8vw, 2.75rem);
+
+  --font-sans: "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", ui-rounded,
+    "Hiragino Maru Gothic ProN", system-ui, -apple-system, sans-serif;
+}
+
+/* ---------- 默认主题：向日葵暖黄（暖米底 + 暖橙主色，数学的「理性暖」） ---------- */
+:root {
+  --radius: 0.75rem;
+
+  --background: oklch(0.972 0.02 88);
+  --surface-deep: oklch(0.945 0.026 86);
+  --foreground: oklch(0.33 0.03 70);
+  --muted-text: oklch(0.53 0.028 72);
+
+  --card: oklch(0.985 0.012 85);
+  --card-foreground: oklch(0.33 0.03 70);
+  --popover: oklch(0.985 0.014 85);
+  --popover-foreground: oklch(0.33 0.03 70);
+
+  /* 主操作：暖橙（接近 #FF9F43），与暖米底拉开对比 */
+  --primary: oklch(0.7 0.16 60);
+  --primary-foreground: oklch(0.99 0.008 80);
+  --primary-deep: oklch(0.62 0.16 58);
+
+  --secondary: oklch(0.945 0.03 86);
+  --secondary-foreground: oklch(0.38 0.03 70);
+  --muted: oklch(0.945 0.022 86);
+  --muted-foreground: oklch(0.53 0.028 72);
+  --accent: oklch(0.932 0.045 84);
+  --accent-foreground: oklch(0.38 0.04 74);
+
+  --border: oklch(0.895 0.03 84);
+  --input: oklch(0.895 0.03 84);
+  --ring: oklch(0.7 0.16 60);
+
+  /* 状态语义跨主题锁定：完成=草绿、提醒=暖黄、辅助=天蓝、待办=中性 */
+  --lit: oklch(0.665 0.14 142);
+  --lit-soft: oklch(0.925 0.07 142);
+  --on-lit: oklch(0.99 0.008 120);
+  --warm: oklch(0.735 0.125 78);
+  --warm-soft: oklch(0.94 0.068 88);
+  --sky: oklch(0.63 0.105 232);
+  --sky-soft: oklch(0.928 0.042 232);
+  --idle: oklch(0.9 0.02 84);
+  --idle-foreground: oklch(0.56 0.026 72);
+
+  --overlay: oklch(0.29 0.03 70 / 38%);
+
+  --shadow-soft: 0 1px 2px oklch(0.31 0.03 70 / 5%),
+    0 6px 20px -8px oklch(0.31 0.03 70 / 12%);
+  --shadow-lift: 0 2px 4px oklch(0.31 0.03 70 / 6%),
+    0 14px 32px -12px oklch(0.31 0.03 70 / 18%);
+}
+
+/* ---------- 深色主题：墨夜暖调（跟随系统深色档，不用纯黑底+纯白字） ---------- */
+html.dark {
+  --background: oklch(0.24 0.025 72);
+  --surface-deep: oklch(0.28 0.03 72);
+  --foreground: oklch(0.93 0.015 80);
+  --muted-text: oklch(0.72 0.02 80);
+
+  --card: oklch(0.28 0.03 72);
+  --card-foreground: oklch(0.93 0.015 80);
+  --popover: oklch(0.31 0.03 72);
+  --popover-foreground: oklch(0.93 0.015 80);
+
+  --primary: oklch(0.72 0.15 62);
+  --primary-foreground: oklch(0.19 0.03 72);
+  --primary-deep: oklch(0.78 0.14 62);
+
+  --secondary: oklch(0.33 0.03 72);
+  --secondary-foreground: oklch(0.9 0.02 80);
+  --muted: oklch(0.32 0.028 72);
+  --muted-foreground: oklch(0.72 0.02 80);
+  --accent: oklch(0.36 0.04 74);
+  --accent-foreground: oklch(0.92 0.02 82);
+
+  --border: oklch(0.42 0.03 72);
+  --input: oklch(0.44 0.03 72);
+  --ring: oklch(0.72 0.15 62);
+
+  --lit: oklch(0.7 0.14 150);
+  --lit-soft: oklch(0.36 0.06 150);
+  --on-lit: oklch(0.16 0.02 130);
+  --warm: oklch(0.75 0.12 80);
+  --warm-soft: oklch(0.4 0.06 84);
+  --sky: oklch(0.66 0.1 235);
+  --sky-soft: oklch(0.35 0.05 235);
+  --idle: oklch(0.38 0.02 72);
+  --idle-foreground: oklch(0.66 0.02 72);
+
+  --overlay: oklch(0.12 0.02 72 / 55%);
+
+  --shadow-soft: 0 1px 2px oklch(0.1 0.02 72 / 30%),
+    0 6px 20px -8px oklch(0.1 0.02 72 / 40%);
+  --shadow-lift: 0 2px 4px oklch(0.1 0.02 72 / 35%),
+    0 14px 32px -12px oklch(0.1 0.02 72 / 50%);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  #root {
+    min-height: 100%;
+  }
+}
+
+/* 面板描边：浅色半透明 / 深色实色（深色下阴影不可见，靠实色描边分层） */
+.panel-border {
+  border: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
+}
+html.dark .panel-border {
+  border-color: var(--border);
+}
+
+/* 触摸目标最小 44px */
+.tap-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* 动效：受 prefers-reduced-motion 降级 */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  60% {
+    transform: scale(1.03);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes flash-ok {
+  0% {
+    background-color: color-mix(in oklab, var(--lit) 55%, transparent);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+.anim-fade-in-up {
+  animation: fade-in-up 0.35s ease-out both;
+}
+.anim-pop-in {
+  animation: pop-in 0.3s ease-out both;
+}
+.anim-flash-ok {
+  animation: flash-ok 0.45s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .anim-fade-in-up,
+  .anim-pop-in,
+  .anim-flash-ok {
+    animation: none;
+  }
+}
+
+/* 数学算式展示：等宽数字感，保证算式对齐 */
+.font-num {
+  font-family: "DIN Alternate", "Bahnschrift", ui-rounded, "PingFang SC", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 打印（家长报告预留）：A4 纵向、与屏幕主题解耦 */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .print-clean {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  body {
+    background: #fff !important;
+  }
+}

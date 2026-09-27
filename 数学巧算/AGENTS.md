@@ -7,18 +7,18 @@
 以**口算、计算为基础**，按阶段教程教小学生**巧算技巧**并**分层练习**——原理先行（讲不出原理不算学会），
 一题多解对比（常规算法 vs 巧算），对齐人教版教材编排。
 
-## 版本管理（对齐数独思维规范，2026-09-27 确立）
+## 版本管理（2026-09-27 确立）
 
-- 初始版本 **V1.0.0**；唯一权威字段 = `package.json` 的 `version`（发布/迭代时同步修改）。
+- 初始版本 **V0.1.0**（用户定夺：V0.1.0 起始迭代）；唯一权威字段 = `src/package.json` 的 `version`（发布/迭代时同步修改）。
 - 升级规则：**微调（bug fix / 样式 / 文案）→ 升子版本号**；**较大调整（新功能 / 交互改进）→ 升次版本号**；**主版本号升级必须经用户同意**。
-- tag 命名：`数学巧算-v1.0.x`；打 tag 前先征得用户同意。
+- tag 命名：`数学巧算-v0.1.x`；打 tag 前先征得用户同意。
 
 ## 三架构产品中的位置
 
 | 产品 | 面向 | 本产品关系 |
 |---|---|---|
 | 桃李助手（教师客户端） | 老师 | 无直接依赖（未来可选课堂巧算） |
-| 英语陪练（家长学生端） | 家长/学生 | 无直接依赖 |
+| 英语陪练（家长学生端） | 家长/学生 | **UI 设计与离线构建管线参考源**（WebH5：styles.css 设计系统 + vite.config 双形态 + ui-kit） |
 | 教育小程序集（RedTools） | 家长/学生/老师 | **数学口算 = 本产品口算基础层引擎来源**（generators.js 复用） |
 
 > 产品口径：数学口算 = 纯口算训练；数学巧算 = 口算基础 + 巧算方法教学 + 技巧练习（产品矩阵规划 §1.1 重点增强）。
@@ -29,10 +29,22 @@
 数学巧算/
 ├── AGENTS.md                        # ← 本文件（项目入口）
 ├── docs/
-│   └── 数学巧算_需求分析与功能设计文档.md   # ★ 需求分析 + 功能设计（v0.1 草案）
-├── content/                         # [待建] 教程库 SSOT（stages.json + stageN_*.json）
-├── src/                             # [待建] 应用代码（离线单 HTML + WebH5 在线形态）
-└── tests/                           # [待建] 引擎单测 + 冒烟
+│   ├── 数学巧算_需求分析与功能设计文档.md   # ★ 需求分析 + 功能设计（v0.1）
+│   └── 数学巧算_smart_gen实现方案.md      # smart_gen 引擎实现蓝图（Oracle 评审）
+├── content/                         # 教程库 SSOT（stages.json + stageN_*.json，32 讲）
+└── src/                             # ★ React 工程（V0.1.0 已迭代）
+    ├── scripts/gen_stages.mjs       #   教程库 → src/data/stages.generated.ts
+    ├── public/theme-boot.js         #   离线主题预置 + Chrome 61 兜底
+    ├── src/
+    │   ├── main.tsx                 #   入口（flex-gap 检测 + 引擎注入）
+    │   ├── App.tsx                  #   视图状态机（home/stage/lesson/practice/me）
+    │   ├── styles.css               #   设计系统（参考英语陪练，向日葵暖黄主题）
+    │   ├── data/stages.generated.ts #   教程库构建期内联
+    │   ├── lib/store.tsx            #   localStorage 进度中枢
+    │   ├── components/ui-kit.tsx    #   基础件（Btn/Panel/PageHead/Progress/Stars）
+    │   ├── views/                   #   五视图（Home/Stage/Lesson/Practice/Me）
+    │   └── assets/smart_gen/        #   巧算引擎（sg_tools + stage 文件 + 主入口）
+    └── tests/                       #   engine.mjs（引擎单测）+ smoke.mjs（浏览器冒烟）
 ```
 
 ## 文档地图
@@ -58,13 +70,22 @@
 
 ## 快速入口
 
-```
-# 教程内容现状（待迁入 content/）
-docs/草稿/小学数学巧算_教程/README.md
-docs/草稿/小学数学巧算_学习教程规划.md
+```powershell
+# 数学巧算 React 工程（V0.1.0 已迭代）
+cd 数学巧算\src
+pnpm dev                # 开发（3016）
+pnpm build              # 离线 minitool 包（Chrome 61 基线 + 经典脚本，dist/）
+pnpm build:online       # 在线形态（Web 部署，现代浏览器）
+pnpm typecheck          # tsc --noEmit
+pnpm test:engine        # smart_gen 引擎单测（16 方法 × 3 档 validate + 独立答案验证）
+pnpm test               # 浏览器冒烟（需 CHROMIUM_PATH，file:// 直开 = minitool 形态）
 
-# 口算引擎复用源
-RedTools/series/学科/数学口算/src/assets/generators.js
+# 教程库 SSOT（改内容后需重生成）
+node scripts/gen_stages.mjs   # content/*.json → src/data/stages.generated.ts
+
+# 参考源（UI/构建复用）
+点读陪练\WebH5\src\styles.css       # 设计系统
+点读陪练\WebH5\vite.config.ts       # 双形态构建
 ```
 
 ## 并行任务规则（继承仓库级）
@@ -73,7 +94,11 @@ RedTools/series/学科/数学口算/src/assets/generators.js
 
 ## 后续待办
 
-- [ ] 阶段 4 枢纽 9 讲 JSON 结构化（content/ 样板，评审后定稿）
-- [ ] smart_gen.js 核心生成器（凑十/补数凑整/拆数乘法/25 配对/基准数）+ validate
-- [ ] 口算引擎复用接线 + 课程地图壳
-- [ ] 决策点定稿（载体/教程位置/在线形态/入口/解锁/打印）→ 启动阶段 0 基建
+- [x] V0.1.0 工程骨架（React+Vite 双形态：offline minitool + online）
+- [x] 教程库 content SSOT（32 讲，gen_stages.mjs 内联）
+- [x] smart_gen.js 引擎族 1-6（16 方法 × 3 档，9600 题 validate 0 失败）
+- [x] 五视图（课程地图/七步课堂/三档练习/打卡/我的，参考英语陪练 UI）
+- [ ] 引擎补齐族 7-10（小数/分数/拓展 15 方法，含 Fraction/Decimal 精确类）
+- [ ] 口算热身模块（复用数学口算 generators.js 接入）
+- [ ] 家长报告打印 + 防沉迷限时
+- [ ] minitool zip 打包 + 发布 SOP（对齐点读陪练 publish 管线）
