@@ -150,12 +150,12 @@ function Index() {
       ordered = shuffled;
     }
     setGroupSession({ list: ordered, idx: 0 });
-    startGroupItem(ordered[0]);
+    startGroupItem(ordered[0], 0, ordered.length);
   }
 
-  /** 开始/推进连做：当前 idx 的题 → practice；idx 越界 → 完成（回错题本 + 提示） */
-  function startGroupItem(item: BookItem) {
-    start({ size: item.size, level: item.level, source: "replay", board: item.board, solution: item.solution, errIdx: item.errIdx, inGroup: true });
+  /** 开始/推进连做：当前 idx 的题 → practice。groupSession 为组游标 SSOT，params.group 为展示快照（单向派生） */
+  function startGroupItem(item: BookItem, idx: number, total: number) {
+    start({ size: item.size, level: item.level, source: "replay", board: item.board, solution: item.solution, errIdx: item.errIdx, inGroup: true, group: { total, idx } });
   }
 
   /** Practice 完成回调：连做中推进下一题，否则回首页 */
@@ -164,7 +164,7 @@ function Index() {
       const next = groupSession.idx + 1;
       if (next < groupSession.list.length) {
         setGroupSession({ list: groupSession.list, idx: next });
-        startGroupItem(groupSession.list[next]);
+        startGroupItem(groupSession.list[next], next, groupSession.list.length);
         return;
       }
       setGroupSession(null);

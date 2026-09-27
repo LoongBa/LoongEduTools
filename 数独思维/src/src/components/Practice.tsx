@@ -5,9 +5,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Board, NumberPad, ToolBar } from "./Board";
 import { Overlay, ResultSummary, OverlayBtns, formatMs } from "./Overlay";
-import { Btn, Card, Toast } from "./ui/kit";
+import { Btn, Card, Toast, Bar } from "./ui/kit";
 import { APP_ICON_URL, OrientationHint } from "./Shell";
 import { HINT_LIMIT, LEVEL_GIVEN, MAP_LEVELS, skillByKey } from "@/lib/content";
+import { GROUP_PROGRESS, GROUP_PROGRESS_DONE } from "@/lib/copy";
 import { levelName } from "./Walls";
 import type { PracticeSource } from "@/lib/store";
 import { calcStars, markCheckin, todayStr, useStore, type BookItem, type HistoryItem, type LevelId, type Snapshot } from "@/lib/store";
@@ -28,6 +29,8 @@ export interface StartParams {
   errIdx?: number[];
   /** 同类专项连做标记（V1.3.0）：结算层按钮文案切换为「下一道」 */
   inGroup?: boolean;
+  /** 同类专项连做进度（V1.4.1）：第 idx+1 题 / 共 total 题（仅展示快照，源 = groupSession） */
+  group?: { total: number; idx: number };
 }
 
 interface Props {
@@ -634,6 +637,24 @@ export function Practice({ params, onExit, onFinish }: Props) {
           </>
         }
       >
+        {/* V1.4.1：同类专项连做进度（已完成 x/n + 剩余提示；total≤1 不显示；末题「本组已完成」） */}
+        {params.group && params.group.total > 1 ? (
+          <div className="mb-3 space-y-1.5 rounded-xl bg-secondary/50 px-3 py-2.5">
+            {(() => {
+              const g = params.group!;
+              const done = g.idx + 1;
+              const last = done >= g.total;
+              return (
+                <>
+                  <p className="text-center text-[11.5px] font-semibold text-muted-foreground">
+                    {last ? GROUP_PROGRESS_DONE(g.total) : GROUP_PROGRESS(done, g.total)}
+                  </p>
+                  <Bar value={done} total={g.total} tone="primary" />
+                </>
+              );
+            })()}
+          </div>
+        ) : null}
         <ResultSummary
           stars={stars}
           ms={ms}

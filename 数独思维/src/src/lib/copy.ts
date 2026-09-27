@@ -37,6 +37,9 @@ export const GROUP_ADV_COLLAPSED = "进阶观察";
 export const GROUP_ADV_EXPAND_LABEL = "展开";
 export const GROUP_ADV_COLLAPSE_LABEL = "收起";
 export const GROUP_ADV_HINT = "数对、X-Wing 等更深的推理环节，按需复习。";
+/** V1.4.1：同类专项连做进度文案 */
+export const GROUP_PROGRESS = (done: number, total: number) => `已完成 ${done}/${total} 题 · 还剩 ${total - done} 道`;
+export const GROUP_PROGRESS_DONE = (total: number) => `已完成 ${total}/${total} 题 · 本组已完成`;
 
 /** 导入解析错误 → 文案（静态消息） */
 const IMPORT_MSG_STATIC: Record<ImportError, string> = {
