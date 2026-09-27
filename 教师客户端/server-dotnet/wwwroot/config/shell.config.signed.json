@@ -1,0 +1,4 @@
+{
+  "schema_version": 1,
+  "note": "壳配置签名包占位（D10：GET /config/shell.config.signed.json 静态托管，壳端验签后启用；正式内容由 scripts/gen_shell_config.py 生成后替换）"
+}
