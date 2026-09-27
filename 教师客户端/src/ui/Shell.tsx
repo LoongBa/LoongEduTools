@@ -153,8 +153,10 @@ function ShellInner() {
   // 未命中 / 归档失败 → 降级入待确认队列弹卡片。
   const { items: archivePending, add: archiveAdd, confirm: archiveConfirm, ignore: archiveIgnore } = useArchivePending();
   const { addRule: archiveAddRule, matchFor } = useArchiveRules();
-  /** 待确认的第一张卡片（每张处理完自动流转下一张；关闭=跳过保留） */
-  const [archiveCardOpen, setArchiveCardOpen] = useState(true);
+  /** 待确认的第一张卡片（每张处理完自动流转下一张；关闭=跳过保留）。
+   *  初始 false：启动时 localStorage 恢复的残留 pending 不自动弹卡（2026-09-27 反馈：
+   *  「启动不该提示已有文件」）——仅在本次会话收到新的 archive:new 事件时才置 true。 */
+  const [archiveCardOpen, setArchiveCardOpen] = useState(false);
   const nextPending = archivePending.find((p) => p.status === "pending");
 
   /** 归档变更广播：下载中心「素材归档」Tab 监听刷新（归档/撤销后无需手动点刷新） */

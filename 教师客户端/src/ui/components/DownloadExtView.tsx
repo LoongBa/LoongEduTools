@@ -31,6 +31,7 @@ import { api, ArchiveEntry } from "@/api";
 import { friendlyErr } from "@/errutil";
 import { EDU_TOOLS } from "@/lib/eduTools";
 import { formatBytes, relativeTime } from "@/lib/format";
+import { AUDIO_EXT, IMAGE_EXT, PDF_EXT, VIDEO_EXT } from "@/lib/archiveDetect";
 import { readBoolPref } from "@/lib/store";
 import type { ActiveDownloadView } from "@/components/TopBar";
 import type { InstalledMap } from "@/lib/store";
@@ -673,12 +674,13 @@ function TasksSection({
 
 /** D11 §6 素材归档：已归档清单 + 撤销（archives/<学科>/<版本>/<年级册次>/，拷贝留原件） */
 
-/** 监控格式分组（与 Rust ARCHIVE_EXT 对齐；默认仅 pdf——md 等杂项不触发确认卡片） */
+/** 监控格式分组（与 Rust ARCHIVE_EXT 对齐；默认仅 pdf——md 等杂项不触发确认卡片）。
+ *  扩展名取 archiveDetect 共享常量（单一真源，残留过滤同源） */
 const WATCH_FORMATS: { id: string; label: string; icon: typeof FileText; exts: string[] }[] = [
-  { id: "pdf", label: "PDF", icon: FileText, exts: ["pdf"] },
-  { id: "image", label: "图片", icon: FileImage, exts: ["jpg", "jpeg", "png", "gif", "webp", "bmp"] },
-  { id: "audio", label: "音频", icon: FileAudio, exts: ["mp3", "m4a", "wav", "ogg", "flac", "aac"] },
-  { id: "video", label: "视频", icon: FileVideo, exts: ["mp4", "mkv", "avi", "mov", "wmv", "webm", "flv"] },
+  { id: "pdf", label: "PDF", icon: FileText, exts: [...PDF_EXT] },
+  { id: "image", label: "图片", icon: FileImage, exts: [...IMAGE_EXT] },
+  { id: "audio", label: "音频", icon: FileAudio, exts: [...AUDIO_EXT] },
+  { id: "video", label: "视频", icon: FileVideo, exts: [...VIDEO_EXT] },
 ];
 
 /** 监控格式设置：初始 ["pdf"]（与 Rust 默认对齐，避免加载前全灰与运行时实际监控不一致）；

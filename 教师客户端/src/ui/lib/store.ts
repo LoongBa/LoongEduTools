@@ -16,7 +16,7 @@ import type {
   ToolShortcut,
 } from "./types";
 import { MOCK_BOOKMARK_BASELINE, MOCK_TEXTBOOK_BASELINE, QUICKSTART_PIN_SEED, LAUNCH_ICON_SEED_MIGRATION_KEY, LEGACY_SEED_ICON_IDS, MOCK_USER } from "./mockData";
-import { detectArchiveMeta } from "./archiveDetect";
+import { detectArchiveMeta, isArchivableExt } from "./archiveDetect";
 import { api } from "@/api";
 
 // localStorage keys —— 折叠态 / 主题 / 登录态 / 探针 / 已装包 / 快捷方式 / 下载任务 / 启动中心
@@ -598,6 +598,17 @@ const ARCHIVE_RULES_MAX = 30;
  */
 export function useArchivePending() {
   const [items, setItems] = usePersistentState<PendingArchive[]>(K.archivePending, []);
+
+  // 启动清理：历史残留的待确认项若扩展名不属于归档可触发类型（如 .md/.docx/.zip——
+  // 2026-09-27 反馈「没勾选 md 却提示 md」），直接清除。这类文件 Rust 监控永远不会再
+  // emit（archive.extensions 白名单），留着只会每次启动弹卡片打扰。
+  useEffect(() => {
+    setItems((list) => {
+      const kept = list.filter((p) => isArchivableExt(p.name));
+      return kept.length === list.length ? list : kept;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅启动执行一次
+  }, []);
 
   /** archive:new 事件 → 入队（同 path 去重 + 自动识别） */
   const add = useCallback(

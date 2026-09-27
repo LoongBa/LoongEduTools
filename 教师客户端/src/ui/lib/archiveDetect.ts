@@ -193,10 +193,25 @@ export function ruleMatches(rule: { pattern: string }, filename: string): boolea
 
 // ── 文件类型标签（卡片展示；对应 D11 §6.3 ARCHIVE_EXT）──
 
-const PDF_EXT = ["pdf"];
-const IMAGE_EXT = ["jpg", "jpeg", "png", "gif", "webp", "bmp"];
-const AUDIO_EXT = ["mp3", "m4a", "wav", "ogg", "flac", "aac"];
-const VIDEO_EXT = ["mp4", "mkv", "avi", "mov", "wmv", "webm", "flv"];
+export const PDF_EXT = ["pdf"];
+export const IMAGE_EXT = ["jpg", "jpeg", "png", "gif", "webp", "bmp"];
+export const AUDIO_EXT = ["mp3", "m4a", "wav", "ogg", "flac", "aac"];
+export const VIDEO_EXT = ["mp4", "mkv", "avi", "mov", "wmv", "webm", "flv"];
+
+/** 归档可触发类型的全部扩展名（Rust ARCHIVE_EXT 全集；残留 pending 过滤用——
+ *  不在其中的历史遗留项（如 .md/.docx/.zip）启动时直接清除，避免「没选却提示」） */
+export const ALL_ARCHIVE_EXTS: readonly string[] = [
+  ...PDF_EXT,
+  ...IMAGE_EXT,
+  ...AUDIO_EXT,
+  ...VIDEO_EXT,
+];
+
+/** 文件名扩展名是否属于归档可触发类型 */
+export function isArchivableExt(name: string): boolean {
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+  return ALL_ARCHIVE_EXTS.includes(ext);
+}
 
 export function fileKindLabel(name: string): string {
   const ext = name.split(".").pop()?.toLowerCase() ?? "";
