@@ -215,6 +215,8 @@
 |---|---|
 | `GET /api/edu/packages/manifest` | 可用内容包清单（简单配置起步，动态化演进） |
 
+> **鉴权（CF 部署阶段放宽 2026-09-27）**：manifest **匿名可读**（未登录可浏览内容区，前端未登录态也拉清单展示）；下载 `GET /packages/:id/:ver` 仍要求 Bearer JWT + 口令级别校验（防扩散骨架不变）。
+
 ```jsonc
 // 响应 200
 {
@@ -265,7 +267,7 @@
 
 | 项 | 内容 |
 |---|---|
-| `GET /api/edu/toolbox/manifest` | 工具箱工具清单（Bearer JWT；R03 §4.4 服务端清单，静态 JSON + R2 手工维护，增删改只改服务端清单） |
+| `GET /api/edu/toolbox/manifest` | 工具箱工具清单（R03 §4.4 服务端清单，静态 JSON + R2 手工维护，增删改只改服务端清单；**匿名可读**，姿态与 packages/manifest 一致——CF 部署阶段放宽 2026-09-27） |
 
 ```jsonc
 // 响应 200
@@ -524,3 +526,7 @@
   - **key_material 由签发机本地 Argon2id 包裹后上传**，PIN/口令/明文内容密钥永不到达服务端；服务端视其为不透明字节；
   - **规范化字节与 `package.rs::canonical_json_sign_view` 逐字节对齐**（§4.5.2）；`sig` 用 **hex 小写**（与内容包 manifest 验签侧一致）；
   - `quota_ref` 由服务端生成（引用绑定激活码 `licenses.license_key`），配额校验联动 A01 §2.5/§3.3。
+
+- **2026-09-27 部署阶段放宽（CF 免费档公网测试前置）**：
+  - **清单匿名可读**：`GET /packages/manifest` 与 `GET /toolbox/manifest` 放开 JWT（未登录可浏览内容/工具清单，前端未登录态本来就在拉清单展示）；**下载 `GET /packages/:id/:ver` 仍要求 Bearer JWT + 口令级别校验**——防扩散骨架不变，清单仅为公开元数据（download_url/checksum，无凭据敏感信息）。
+  - 落地：`server/src/index.ts` 两处去 requireAuth；smoke 断言 `manifest_anonymous_200`（原 401 负例改 200）；壳端无需改动（已登录请求带 JWT 亦兼容）。

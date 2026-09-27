@@ -39,7 +39,7 @@ node scripts\smoke.mjs --api-key local-dev-pkg-admin-key
 ```
 
 冒烟覆盖：health → sms send/verify 登录 → 错密 401 → license renew/pack →
-multipart 上传 201 → manifest 含条目 → download 200 → 错 key 403 → 无 JWT 401（manifest/download）。
+multipart 上传 201 → manifest 含条目 → download 200 → 错 key 403 → manifest 匿名可读 200 / download 无 JWT 401。
 SMS 验证码优先从 wrangler 日志（`%TEMP%\wrangler_dev.out` 的 `[SMS_MOCK] phone => code`）抓取，
 避免与手发验证码互顶。预期 **13 passed, 0 failed**。
 

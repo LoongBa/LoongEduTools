@@ -98,9 +98,8 @@ export default {
         return withCors(await credentialSign(req, env, p.sub, p.lvl));
       }
 
-      // ---- 内容包 A01 §4 ----
+      // ---- 内容包 A01 §4（清单匿名可读：未登录可浏览内容区；下载仍需 JWT——CF 部署阶段放宽）----
       if (method === "GET" && path === "/packages/manifest") {
-        await requireAuth(req, env);
         return withCors(await packagesManifest(req, env));
       }
       const dl = /^\/packages\/([^/]+)\/([^/]+)$/.exec(path);
@@ -112,9 +111,8 @@ export default {
         return withCors(await packagesUpload(req, env));
       }
 
-      // ---- 工具箱 A01 §4.4（R03 §4.4；鉴权姿态与 packages/manifest 一致）----
+      // ---- 工具箱 A01 §4.4（R03 §4.4；清单匿名可读，姿态与 packages/manifest 一致）----
       if (method === "GET" && path === "/toolbox/manifest") {
-        await requireAuth(req, env);
         return withCors(await toolboxManifest(req, env));
       }
 

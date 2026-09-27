@@ -19,7 +19,7 @@
  *   5  POST /packages（multipart fixture zip）→ 201
  *   6  GET  /packages/manifest（Bearer JWT）→ 含 package_id
  *   7  GET  /packages/:id/:ver → 200 + content-length / 或 404（R2 mock 空）
- *   8  负例：无 JWT manifest → 401；错 X-Api-Key upload → 403
+ *   8  负例（CF 部署阶段放宽）：manifest 无 JWT → 200（匿名可读）；download 无 JWT → 401；错 X-Api-Key upload → 403
  *
  * 用法：
  *   node scripts/smoke.mjs --zip ../scripts/dist/content-pack-fixture-app-1.0.0.zip
@@ -258,9 +258,9 @@ async function main() {
     ok("packages_upload_skipped", false, `need --api-key and zip exists=${existsSync(ZIP)}`);
   }
 
-  // 负例：manifest 无 JWT → 401
+  // manifest 匿名可读（CF 部署阶段放宽：未登录可浏览内容区，下载仍需 JWT）
   const noAuth = await req("/packages/manifest");
-  ok("manifest_no_auth_401", noAuth.status === 401, `HTTP ${noAuth.status}`);
+  ok("manifest_anonymous_200", noAuth.status === 200, `HTTP ${noAuth.status}`);
 
   // 负例：download 无 JWT → 401
   const dlNoAuth = await req(`/packages/${PKG_ID}/${PKG_VER}`);
