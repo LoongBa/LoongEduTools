@@ -2,6 +2,7 @@
 // 参考英语陪练 WebH5 store.ts 模式：只存本地进度/打卡/错题，不上传个人数据。
 // key: redtools.qiaosuanlein.v1（产品代号「巧算乐学」）
 // V0.3：version 1→2 迁移（补 guard/selfDaily/selfStreak/selfLocked 默认值，B3 修订 load 硬编码 version:1）
+// V0.4：version 2→3（LessonRecord 增 recite/reciteCount 可选字段，无需逐讲补值；saveRecite 走 lib/recite.ts 纯函数）
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
@@ -17,6 +18,7 @@ import {
   type GuardShape,
   type SelfState,
 } from "@/lib/guard";
+import { applyRecite, type ReciteInfo } from "@/lib/recite";
 
 const KEY = "redtools.qiaosuanlein.v1";
 
@@ -30,6 +32,10 @@ export interface LessonRecord {
   best: Partial<Record<Level, number>>;
   /** 本讲练习总题数 */
   practiced: number;
+  /** V0.4 原理复述卡：最新一次复述（文本 + 日期），未复述为 undefined */
+  recite?: ReciteInfo;
+  /** V0.4 复述修改次数（覆盖更新累计；删除不累加） */
+  reciteCount?: number;
 }
 
 export interface StoreShape {
@@ -54,7 +60,7 @@ export interface StoreShape {
   /** 设置 */
   settings: { sound: boolean };
   /** 版本迁移位 */
-  version: 1 | 2;
+  version: 1 | 2 | 3;
 }
 
 function emptyStore(): StoreShape {
@@ -69,11 +75,14 @@ function emptyStore(): StoreShape {
     selfStreak: 0,
     selfLocked: false,
     settings: { sound: true },
-    version: 2,
+    version: 3,
   };
 }
 
-/** V0.3 迁移：旧 store（version 1 / 无 guard）补默认值并写回（对齐数学口算 normalizeStore 模式） */
+/**
+ * V0.3 迁移：旧 store（version 1 / 无 guard）补默认值并写回（对齐数学口算 normalizeStore 模式）
+ * V0.4：version 2→3——recite/reciteCount 为可选字段，旧 lessons 原样保留（undefined=未复述），仅 version 升 3
+ */
 function load(): StoreShape {
   if (typeof window === "undefined") return emptyStore();
   try {
@@ -100,7 +109,7 @@ function load(): StoreShape {
       selfDaily: parsed.selfDaily || [],
       selfStreak: parsed.selfStreak || 0,
       selfLocked,
-      version: 2,
+      version: 3,
     };
   } catch {
     return emptyStore();
@@ -152,6 +161,8 @@ export interface ProgressApi {
   selfStreakCount: () => number;
   /** 防沉迷：本组完成时累加题量（count=本组题数） */
   addPlayed: (count: number) => void;
+  /** V0.4 原理复述卡：保存讲次复述文本（trim 归一；空串=删除；覆盖更新；不评分仅记录；不触打卡/防沉迷） */
+  saveRecite: (lessonKey: string, text: string) => void;
 }
 
 const ProgressContext = createContext<ProgressApi | null>(null);
@@ -266,6 +277,16 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  /* ---------- V0.4 原理复述卡（纯逻辑在 lib/recite.ts，store 只做接线） ---------- */
+
+  const saveRecite = useCallback((lessonKey: string, text: string) => {
+    setStore((s) => {
+      const base: LessonRecord = s.lessons[lessonKey] ?? { done: false, best: {}, practiced: 0 };
+      const next = applyRecite(base, text);
+      return { ...s, lessons: { ...s.lessons, [lessonKey]: { ...base, ...next } } };
+    });
+  }, []);
+
   const api = useMemo<ProgressApi>(
     () => ({
       store,
@@ -280,8 +301,9 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       locked,
       selfStreakCount,
       addPlayed,
+      saveRecite,
     }),
-    [store, recordPractice, pushMistake, clearAll, setSetting, setGuardPref, dueInfo, extendDue, enoughNow, locked, selfStreakCount, addPlayed],
+    [store, recordPractice, pushMistake, clearAll, setSetting, setGuardPref, dueInfo, extendDue, enoughNow, locked, selfStreakCount, addPlayed, saveRecite],
   );
 
   return <ProgressContext.Provider value={api}>{children}</ProgressContext.Provider>;

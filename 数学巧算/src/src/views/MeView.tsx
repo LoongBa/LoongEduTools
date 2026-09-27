@@ -181,7 +181,7 @@ export function MeView({ onBack }: { onBack: () => void }) {
           <span className="text-[12px] text-muted-foreground">{reportTap > 0 ? `再点 ${5 - reportTap} 次` : "→"}</span>
         </button>
         <p className="mt-2 text-[11.5px] leading-relaxed text-muted-foreground">
-          今日反馈 / 近 7 天 / 阶段掌握度 / 错题摘要 · 可打印导出（连点上方 5 次进入，防孩子误触）
+          今日反馈 / 近 7 天 / 阶段掌握度 / 错题摘要 / 原理复述回看 · 可打印导出（连点上方 5 次进入，防孩子误触）
         </p>
       </Panel>
 
@@ -242,7 +242,7 @@ export function MeView({ onBack }: { onBack: () => void }) {
         </p>
       </Panel>
 
-      <p className="pb-2 text-center text-[11px] text-muted-foreground">巧算乐学 · V0.3.0</p>
+      <p className="pb-2 text-center text-[11px] text-muted-foreground">巧算乐学 · V0.4.0</p>
     </div>
   );
 }

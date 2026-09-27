@@ -68,6 +68,30 @@ server.listen(0, "127.0.0.1", async () => {
     }
     ok("七步走查后出现开始练习", (await page.locator("button:has-text('开始练习')").count()) > 0);
 
+    // V0.4 原理复述卡：练习步底部入口 → ReciteView → 输入 → 保存（O3-I2：插在七步后、练习前最省）
+    const reciteEntry = page.locator("button:has-text('讲一讲原理')");
+    ok("练习步渲染复述入口", (await reciteEntry.count()) > 0);
+    await reciteEntry.first().click();
+    await page.waitForTimeout(400);
+    ok("复述卡渲染提问引导", (await page.locator("text=为什么能这样算").count()) > 0);
+    ok("复述卡提示先遮后展（默认无全文原理）", (await page.locator("button:has-text('看一眼提示')").count()) > 0);
+    await page.locator("textarea").first().fill("因为先找能凑整的一对，先算它们，再算剩下的，这样更简单。");
+    await page.waitForTimeout(200);
+    await page.locator("button:has-text('保存')").first().click();
+    await page.waitForTimeout(400);
+    const reBody = await page.evaluate(() => document.body.innerText);
+    ok("复述保存成功态", /已保存/.test(reBody));
+    ok("复述不评分（无对错）", !/答对|答错|得分/.test(reBody));
+    // 返回课堂页：banner 显示已复述（O3-I1 二次曝光位；返回后 step 重置"前置"需重走七步）
+    await page.locator("button[aria-label='返回']").first().click();
+    await page.waitForTimeout(400);
+    ok("课堂页 banner 显示已复述", (await page.locator("text=原理已讲过").count()) > 0);
+    for (let i = 0; i < 7; i++) {
+      const nxt = page.locator("button:has-text('下一步')");
+      if (await nxt.count()) { await nxt.first().click(); await page.waitForTimeout(250); }
+    }
+    ok("重走七步后复述入口显示已复述态", (await page.locator("text=原理已复述 · 再讲一讲").count()) > 0);
+
     // 进入基础练习
     await page.locator("button:has-text('开始练习')").first().click();
     await page.waitForTimeout(500);
@@ -139,6 +163,9 @@ server.listen(0, "127.0.0.1", async () => {
     await page.waitForTimeout(300);
     ok("家长报告视图渲染", (await page.locator("text=今日反馈").count()) > 0);
     ok("家长报告打印按钮存在", (await page.locator("button:has-text('打印')").count()) > 0);
+    ok("家长报告复述 Panel 渲染", (await page.locator("text=原理复述").count()) > 0);
+    const reportBody = await page.evaluate(() => document.body.innerText);
+    ok("家长报告含复述文本（跨页面持久化）", /凑整/.test(reportBody));
 
     // 防沉迷设置区
     await page.goto("file:///" + DIST.replace(/\\/g, "/") + "/index.html", { waitUntil: "load" });

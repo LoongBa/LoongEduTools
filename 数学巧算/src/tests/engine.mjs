@@ -6,6 +6,7 @@ import { resolve } from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 import { checkDue, extend, enough, isLocked, todayReset } from "../src/lib/guard.ts";
+import { applyRecite } from "../src/lib/recite.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SG_DIR = resolve(__dirname, "../src/assets/smart_gen");
@@ -282,6 +283,29 @@ const GUARD_DEFAULT_T = {
   if (isLocked({ ...GUARD_DEFAULT_T, today: "2026-09-26" }, true, new Date(2026, 8, 27))) { l6bad++; console.log("  L6 locked-crossday FAIL"); }
 }
 
+// ---------- L7：原理复述卡纯逻辑（applyRecite：trim/删除/覆盖计数/无记录新建/不动 done/保留其它字段） ----------
+let l7bad = 0;
+{
+  // 覆盖更新：recite 写入 + reciteCount 累计 + 其它字段保留
+  const base = { done: true, best: { basic: 0.8 }, practiced: 5 };
+  const r1 = applyRecite(base, "  25找4先结对  ", "2026-09-27");
+  if (!r1.recite || r1.recite.text !== "25找4先结对" || r1.recite.date !== "2026-09-27") { l7bad++; console.log("  L7 recite-write FAIL"); }
+  if (r1.reciteCount !== 1) { l7bad++; console.log("  L7 recite-count-1 FAIL"); }
+  if (r1.done !== true || r1.best.basic !== 0.8 || r1.practiced !== 5) { l7bad++; console.log("  L7 retain-fields FAIL"); }
+  // 覆盖更新累计 +1
+  const r2 = applyRecite(r1, "先找能凑整的一对", "2026-09-28");
+  if (r2.reciteCount !== 2 || r2.recite.text !== "先找能凑整的一对") { l7bad++; console.log("  L7 recite-count-2 FAIL"); }
+  // 空串删除：recite 置 undefined，reciteCount 保留不累加（语义=撤销，O2-I2）
+  const r3 = applyRecite(r2, "   ", "2026-09-28");
+  if (r3.recite !== undefined || r3.reciteCount !== 2) { l7bad++; console.log(`  L7 recite-delete FAIL recite=${JSON.stringify(r3.recite)} count=${r3.reciteCount}`); }
+  // 空输入且无旧复述：不产生 recite 字段
+  const r4 = applyRecite({ done: false }, "", "2026-09-27");
+  if (r4.recite !== undefined || r4.reciteCount !== undefined) { l7bad++; console.log("  L7 empty-noop FAIL"); }
+  // 移动旧字段保留（recite 追加在旧记录上，donw 不置位——补 done:false 场景）
+  const r5 = applyRecite({ done: false, best: {}, practiced: 0 }, "讲得出加法交换律", "2026-09-27");
+  if (r5.done !== false || !r5.recite || r5.recite.text !== "讲得出加法交换律") { l7bad++; console.log("  L7 new-record-no-done FAIL"); }
+}
+
 // ---------- 输出 ----------
 console.log("== smart_gen 引擎单测 ==");
 console.log(`生成器数: ${NAMES.length} 个（${new Set(NAMES.map((n) => n.split("_").slice(0, -1).join("_"))).size} 方法 × 3 档）`);
@@ -291,7 +315,8 @@ console.log(`L3 难度断言: ${l3ok}/${l3total}`);
 console.log(`L4 规范形断言: ${l4total - l4bad}/${l4total} 通过`);
 console.log(`L5 口算热身 validate: ${kouTotal - kouInvalid}/${kouTotal} 通过 + KOU_META ${KOU_META.length} 条完整（bad=${l5bad}）`);
 console.log(`L6 guard 纯逻辑: ${l6bad === 0 ? "全部通过" : `${l6bad} 项失败`}`);
+console.log(`L7 recite 纯逻辑: ${l7bad === 0 ? "全部通过" : `${l7bad} 项失败`}`);
 const l2fail = l2total - l2ok;
-const totalBad = failed + invalid + l2fail + l4bad + kouInvalid + l5bad + l6bad;
+const totalBad = failed + invalid + l2fail + l4bad + kouInvalid + l5bad + l6bad + l7bad;
 console.log(`FAIL 计数: ${totalBad}`);
 process.exit(totalBad ? 1 : 0);

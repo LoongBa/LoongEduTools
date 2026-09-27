@@ -250,6 +250,9 @@ html.dark .panel-border {
   .print-hidden {
     display: none !important;
   }
+  .print-only {
+    display: inline !important;
+  }
   .print-clean {
     background: #fff !important;
     color: #000 !important;
@@ -279,4 +282,25 @@ html.dark .panel-border {
   .report-root > * {
     break-after: auto;
   }
+  /* V0.4：复述 Panel 打印态截断——只显示最近 5 条，文本省略到 30 字（屏幕态完整，O2-I5） */
+  .print-truncate .recite-row {
+    display: none;
+  }
+  .print-truncate .recite-row:nth-child(-n + 5) {
+    display: block;
+  }
+  .print-truncate .recite-row .recite-text-full {
+    display: none;
+  }
+  .print-truncate .recite-row .recite-text-preview {
+    display: block;
+  }
+.recite-row .recite-text-preview {
+  display: none;
+}
+
+/* 屏幕态隐藏 print-only（报告页脚等仅打印元素对齐数独思维模式） */
+.print-only {
+  display: none;
+}
 }

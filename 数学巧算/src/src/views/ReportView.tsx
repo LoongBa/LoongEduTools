@@ -49,6 +49,18 @@ export function ReportView({ onBack }: { onBack: () => void }) {
 
   const recentMistakes = useMemo(() => store.mistakes.slice(0, 10), [store.mistakes]);
 
+  // V0.4 原理复述：STAGES 反查 title/grade（store.lessons 只存 key），recite.date 倒序（YYYY-MM-DD localeCompare 可靠）
+  const reciteRows = useMemo(() => {
+    const rows: { grade: string; title: string; text: string; date: string }[] = [];
+    for (const s of STAGES) {
+      for (const l of s.lessons || []) {
+        const rec = store.lessons[`${s.stage}:${l.lesson_id}`]?.recite;
+        if (rec && rec.text) rows.push({ grade: s.grade, title: l.title, text: rec.text, date: rec.date });
+      }
+    }
+    return rows.sort((a, b) => b.date.localeCompare(a.date));
+  }, [store.lessons]);
+
   const handlePrint = () => {
     window.setTimeout(() => window.print(), 30); // Chrome 61 保用户手势上下文（对齐数独思维）
   };
@@ -127,6 +139,29 @@ export function ReportView({ onBack }: { onBack: () => void }) {
                   {m.expr} <span className="text-[var(--lit)]">= {m.answer}</span>
                 </p>
                 <p className="mt-0.5 text-[11.5px] text-muted-foreground">错 {m.wrongCount} 次 · {m.lessonId}</p>
+              </div>
+            ))}
+          </div>
+        </Panel>
+
+        <Panel className="mb-4 px-5 py-4 print-truncate">
+          <p className="text-[14px] font-bold text-foreground">
+            📖 原理复述 <span className="text-[12px] text-muted-foreground">（{reciteRows.length}）</span>
+            <span className="print-only float-right text-[11px] text-muted-foreground">打印仅显示最近 5 条</span>
+          </p>
+          <div className="mt-3 flex flex-col gap-2">
+            {reciteRows.length === 0 && (
+              <p className="text-[13px] text-muted-foreground">
+                还没有原理复述记录——鼓励孩子讲一讲，讲得出原理才算学会。
+              </p>
+            )}
+            {reciteRows.map((r) => (
+              <div key={`${r.grade}:${r.title}`} className="recite-row rounded-2xl bg-secondary/50 px-3 py-2">
+                <p className="text-[12px] font-bold text-muted-foreground">
+                  {r.grade} · {r.title} <span className="ml-1 font-normal text-[11px]">{r.date}</span>
+                </p>
+                <p className="recite-text-preview mt-1 text-[13px] text-muted-foreground">{r.text.slice(0, 30)}…</p>
+                <p className="recite-text-full mt-1 text-[14px] leading-relaxed text-foreground">{r.text}</p>
               </div>
             ))}
           </div>

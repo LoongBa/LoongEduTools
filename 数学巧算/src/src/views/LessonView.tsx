@@ -1,8 +1,10 @@
 // 数学巧算 · 课堂页（七步教学视图，产品核心）
 // 七步：①前置检查 → ②情境引入 → ③原理探究 → ④方法要领 → ⑤例题精讲 → ⑥变式易错 → ⑦分层练习
+// V0.4：复述入口三层曝光——③原理步骤 inline（O3-N1）+ ⑦练习步骤入口卡 + 顶部 banner（O3-I1 二次曝光）
 import { useMemo, useState } from "react";
 import { BackBtn, Btn, Panel, Pill, StepDots } from "@/components/ui-kit";
 import { STAGES, type SmartLesson, type SmartStage } from "@/data/stages.generated";
+import { useProgress } from "@/lib/store";
 
 const STEPS = ["前置", "情境", "原理", "方法", "例题", "易错", "练习"] as const;
 type Step = (typeof STEPS)[number];
@@ -11,15 +13,19 @@ export function LessonView({
   stageKey,
   lessonId,
   onBack,
+  onOpenRecite,
   onPractice,
 }: {
   stageKey: number | string;
   lessonId: string;
   onBack: () => void;
+  onOpenRecite: () => void;
   onPractice: (level: "basic" | "advance" | "challenge") => void;
 }) {
   const key = String(stageKey);
   const [step, setStep] = useState<Step>("前置");
+  const { store } = useProgress();
+  const recite = store.lessons[`${key}:${lessonId}`]?.recite;
 
   const stage: SmartStage | undefined = useMemo(
     () => STAGES.find((s) => String(s.stage) === key),
@@ -57,15 +63,32 @@ export function LessonView({
         <StepDots total={STEPS.length} current={stepIndex} labels={[...STEPS]} />
       </div>
 
+      {/* V0.4 复述提示 banner（所有 step 可见，非模态；练习返回后 step 重置为"前置"仍能曝光） */}
+      <button
+        type="button"
+        onClick={onOpenRecite}
+        className={
+          "tap-target mb-4 flex w-full items-center justify-between rounded-2xl border px-4 py-2.5 text-left " +
+          (recite
+            ? "border-[var(--lit)]/30 bg-lit-soft"
+            : "border-[var(--warm)]/40 bg-warm-soft/60")
+        }
+      >
+        <span className="text-[13px] font-semibold">
+          {recite ? "✓ 原理已讲过 · 可再改" : "🧠 讲一讲原理（讲得出才算学会）"}
+        </span>
+        <span className="text-[16px] text-[var(--warm)]">→</span>
+      </button>
+
       {/* 内容区 */}
       <div className="min-h-[380px]">
         {step === "前置" && <PrereqStep lesson={lesson} />}
         {step === "情境" && <SituationStep lesson={lesson} />}
-        {step === "原理" && <ExploreStep lesson={lesson} />}
+        {step === "原理" && <ExploreStep lesson={lesson} onOpenRecite={onOpenRecite} />}
         {step === "方法" && <MethodStep lesson={lesson} />}
         {step === "例题" && <ExamplesStep lesson={lesson} />}
         {step === "易错" && <MistakesStep lesson={lesson} />}
-        {step === "练习" && <PracticeStep lesson={lesson} onPractice={onPractice} />}
+        {step === "练习" && <PracticeStep lesson={lesson} onPractice={onPractice} onOpenRecite={onOpenRecite} recite={recite} />}
       </div>
 
       {/* 底部导航 */}
@@ -144,7 +167,7 @@ function SituationStep({ lesson }: { lesson: SmartLesson }) {
   );
 }
 
-function ExploreStep({ lesson }: { lesson: SmartLesson }) {
+function ExploreStep({ lesson, onOpenRecite }: { lesson: SmartLesson; onOpenRecite: () => void }) {
   const e = lesson.explore || { model: "text", steps: [] };
   const modelLabel =
     e.model === "area" ? "📐 面积图" : e.model === "sticks" ? "🍢 小棒图" : e.model === "numberline" ? "📏 数轴" : "🧠 推导";
@@ -167,7 +190,14 @@ function ExploreStep({ lesson }: { lesson: SmartLesson }) {
         </ol>
       </Panel>
       <p className="mt-3 px-1 text-[13px] text-muted-foreground">
-        这一讲的核心：讲得出「为什么」，才算学会巧算。
+        这一讲的核心：讲得出「为什么」，才算学会巧算。{" "}
+        <button
+          type="button"
+          onClick={onOpenRecite}
+          className="font-semibold text-[var(--warm)] underline underline-offset-2"
+        >
+          → 现在讲一讲
+        </button>
       </p>
     </StepShell>
   );
@@ -266,9 +296,13 @@ function MistakesStep({ lesson }: { lesson: SmartLesson }) {
 function PracticeStep({
   lesson,
   onPractice,
+  onOpenRecite,
+  recite,
 }: {
   lesson: SmartLesson;
   onPractice: (level: "basic" | "advance" | "challenge") => void;
+  onOpenRecite: () => void;
+  recite?: { text: string; date: string };
 }) {
   const p = lesson.practice || {};
   return (
@@ -302,6 +336,27 @@ function PracticeStep({
           );
         })}
       </div>
+
+      {/* V0.4 复述入口卡（⑦ 收尾时机） */}
+      <button
+        type="button"
+        onClick={onOpenRecite}
+        className={
+          "panel-border tap-target mt-3 flex w-full items-center justify-between rounded-3xl border p-4 text-left shadow-soft transition-transform active:scale-[0.985] " +
+          (recite ? "bg-lit-soft" : "bg-warm-soft/60")
+        }
+      >
+        <span>
+          <span className="block text-[15px] font-extrabold text-foreground">
+            {recite ? "🧠 原理已复述 · 再讲一讲" : "🧠 讲一讲原理"}
+          </span>
+          <span className="mt-0.5 block text-[12.5px] text-muted-foreground">
+            {recite ? `上次：${recite.date}，可修改` : "用自己的话说说为什么能这样算（不评分，仅记录）"}
+          </span>
+        </span>
+        <span className="text-[22px] text-[var(--warm)]">→</span>
+      </button>
+
       <p className="mt-3 px-1 text-[13px] text-muted-foreground">做错也不怕——错题会进错题本，之后帮你重点补。</p>
     </StepShell>
   );

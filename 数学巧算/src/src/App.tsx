@@ -7,6 +7,7 @@ import { ProgressProvider } from "@/lib/store";
 import { HomeView } from "@/views/HomeView";
 import { StageView } from "@/views/StageView";
 import { LessonView } from "@/views/LessonView";
+import { ReciteView } from "@/views/ReciteView";
 import { PracticeView } from "@/views/PracticeView";
 import { WarmupView } from "@/views/WarmupView";
 import { MeView } from "@/views/MeView";
@@ -15,6 +16,7 @@ export type View =
   | { name: "home" }
   | { name: "stage"; stage: number | string }
   | { name: "lesson"; stage: number | string; lesson: string }
+  | { name: "recite"; stage: number | string; lesson: string }
   | { name: "practice"; stage: number | string; lesson: string; level: "basic" | "advance" | "challenge" }
   | { name: "warmup" }
   | { name: "me" };
@@ -45,7 +47,15 @@ export function App() {
             stageKey={view.stage}
             lessonId={view.lesson}
             onBack={() => setView({ name: "stage", stage: view.stage })}
+            onOpenRecite={() => setView({ name: "recite", stage: view.stage, lesson: view.lesson })}
             onPractice={(level) => setView({ name: "practice", stage: view.stage, lesson: view.lesson, level })}
+          />
+        )}
+        {view.name === "recite" && (
+          <ReciteView
+            stageKey={view.stage}
+            lessonId={view.lesson}
+            onBack={() => setView({ name: "lesson", stage: view.stage, lesson: view.lesson })}
           />
         )}
         {view.name === "practice" && (
