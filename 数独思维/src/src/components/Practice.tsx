@@ -7,7 +7,7 @@ import { Board, NumberPad, ToolBar } from "./Board";
 import { Overlay, ResultSummary, OverlayBtns, formatMs } from "./Overlay";
 import { Btn, Card, Toast, Bar } from "./ui/kit";
 import { APP_ICON_URL, OrientationHint } from "./Shell";
-import { HINT_LIMIT, LEVEL_GIVEN, MAP_LEVELS, skillByKey } from "@/lib/content";
+import { HINT_LIMIT, LEVEL_GIVEN, MAP_LEVELS, skillByKey, TECHNIQUE_LESSON_MAP } from "@/lib/content";
 import { GROUP_IN_PROGRESS, GROUP_PROGRESS, GROUP_PROGRESS_DONE } from "@/lib/copy";
 import { levelName } from "./Walls";
 import type { PracticeSource } from "@/lib/store";
@@ -37,6 +37,8 @@ interface Props {
   params: StartParams;
   onExit: () => void;
   onFinish: () => void;
+  /** V1.6.0：结算层「去复习技巧」→ 打开教学关（index.tsx openSkill 复用；收 lessonKey 字符串，与 HomeView onLesson(s) 区分） */
+  onLessonKey?: (lessonKey: string) => void;
 }
 
 interface Move {
@@ -53,7 +55,7 @@ const SOURCE_LABEL: Record<PracticeSource, string> = {
   replay: "巩固重练",
 };
 
-export function Practice({ params, onExit, onFinish }: Props) {
+export function Practice({ params, onExit, onFinish, onLessonKey }: Props) {
   const { store, update, playSound } = useStore();
   const { size, level, source } = params;
   const n = size * size;
@@ -498,6 +500,8 @@ export function Practice({ params, onExit, onFinish }: Props) {
   const levelMeta = { name: levelName(level) };
   const hintLeft = HINT_LIMIT[size];
   const canHint = !Number.isFinite(hintLeft) || hints < hintLeft;
+  /** V1.6.0：结算层技巧画像（复用 V1.3.0/V1.5.0 analyzeTechniques；techniqueCache 兜底；finished 后才算） */
+  const settlementTech = useMemo(() => (finished ? analyzeTechniques(start.puzzle, size) : []), [finished, start.puzzle, size]);
 
   return (
     <div className="pb-2">
@@ -685,6 +689,8 @@ export function Practice({ params, onExit, onFinish }: Props) {
           checkinNew
           unlocked={unlockedRef.current.map((k) => k)}
         />
+        {/* V1.6.0：这道题会用到这些推理技巧（画像 chips + 教学关复习入口） */}
+        <SkillSuggestions techniques={settlementTech} lit={store.skills} advLit={store.advSkills} onLessonKey={onLessonKey} />
         {suggestion ? (
           <p className="rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-center text-[12px] font-semibold text-warning">
             🌱 最近两局都有点吃力，下次可以从「{levelName(suggestion)}」这档开始（不扣分，只是建议）。
@@ -737,6 +743,67 @@ export function Practice({ params, onExit, onFinish }: Props) {
 }
 
 /* ==================== 辅助 ==================== */
+
+/** V1.6.0：结算层技巧建议。色带（TECH_TONE_BASE）与点亮判定（store 双查）正交，见 v0.2 I3。 */
+const TECH_TONE_BASE: Record<string, "base" | "adv" | "ach"> = {
+  唯一候选: "base",
+  宫内排除: "adv",
+  行排除: "ach",
+  列排除: "ach",
+  // V1.6.0 I1：StepReview 的 TECH_TONE 缺「隐性数对」（V1.5.0 遗留）；此处加上，+显性数对/X-Wing 防御兜底
+  隐性数对: "adv",
+  显性数对: "adv",
+  "X-Wing": "adv",
+};
+
+function toneClass(tone?: "base" | "adv" | "ach") {
+  if (tone === "adv") return "bg-badge-adv/12 text-badge-adv";
+  if (tone === "ach") return "bg-badge-ach/15 text-badge-ach";
+  return "bg-badge-base/12 text-badge-base";
+}
+
+/** 结算层「这道题会用到这些推理技巧」：画像 chips + 教学关复习入口（复用 V1.3.0/V1.5.0 画像链路）。 */
+function SkillSuggestions({
+  techniques,
+  lit,
+  advLit,
+  onLessonKey,
+}: {
+  techniques: string[];
+  lit: Record<string, boolean>;
+  advLit: Record<string, boolean>;
+  onLessonKey?: (key: string) => void;
+}) {
+  if (!techniques.length) return null; // 纯观察盘不给建议（与 StepReview「没有可拆解」口径一致）
+  const litEq = (k: string) => !!lit[k] || !!advLit[k];
+
+  return (
+    <div className="mb-3 rounded-xl bg-secondary/50 px-3 py-2.5">
+      <p className="mb-2 text-[11.5px] font-semibold">🧠 这道题会用到这些推理技巧</p>
+      <div className="space-y-1.5">
+        {techniques.map((t) => {
+          const lessonKey = TECHNIQUE_LESSON_MAP[t];
+          const hasLesson = !!lessonKey && !!onLessonKey;
+          return (
+            <div key={t} className="flex items-center gap-2">
+              <span className={cn("rounded-full px-2.5 py-1 text-[11px] font-semibold", toneClass(TECH_TONE_BASE[t]))}>{t}</span>
+              {/* I2 冗余防户：画像当前全映射；未映射技巧只 chip 无入口，不崩溃 */}
+              {hasLesson ? (
+                <Btn variant="quiet" size="sm" className="ml-auto shrink-0" onClick={() => onLessonKey!(lessonKey!)}>
+                  {litEq(lessonKey) ? "✅ 已会 · 复习" : "🎓 去学一下"}
+                </Btn>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+      {/* I4 诚实口径：画像 = 标准推理链前段，未必等于孩子实际思路 */}
+      <p className="mt-2 text-[10.5px] leading-relaxed text-muted-foreground">
+        按标准推理链整理，未必和你当时的思路完全一致。
+      </p>
+    </div>
+  );
+}
 
 function touchDist(t: { length: number; [index: number]: unknown }): number {
   const a = t[0] as { clientX: number; clientY: number } | undefined;

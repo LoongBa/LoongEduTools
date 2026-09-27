@@ -177,7 +177,7 @@ function Index() {
 
   /* ---------- 子视图 ---------- */
   if (view === "practice" && params) {
-    return <Practice params={params} onExit={() => setView("home")} onFinish={handlePracticeFinish} />;
+    return <Practice params={params} onExit={() => setView("home")} onFinish={handlePracticeFinish} onLessonKey={openSkill} />;
   }
   if (view === "lesson" && lesson) {
     return <SkillLesson skill={lesson} onExit={() => setView("home")} onComplete={(key) => handleLessonDone(key)} />;
