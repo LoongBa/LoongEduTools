@@ -94,8 +94,15 @@ async function main() {
   ok("棋盘 16 格", (await cells.count()) === 16, `count=${await cells.count()}`);
   const emptyIdx = await cells.evaluateAll((els) => { for (let i = 0; i < els.length; i++) if (!els[i].textContent.trim()) return i; return -1; });
   if (emptyIdx >= 0) {
+    // ①a 选中格瞬时闪光（V1.0.2）：点空格后立即断言出现 → 350ms 后消失
     await cells.nth(emptyIdx).evaluate((el) => el.click()).catch(() => {});
-    await page.waitForTimeout(250);
+    await page.waitForTimeout(60);
+    const flashSel = await page.locator(".animate-flash-sel").count().catch(() => 0);
+    ok("选中格瞬时闪光出现", flashSel >= 1, `count=${flashSel}`);
+    await page.waitForTimeout(400);
+    const after = await page.locator(".animate-flash-sel").count().catch(() => 999);
+    ok("选中闪光 350ms 后消失", after === 0, `after=${after}`);
+    // ①b 填数
     const enabled = page.locator('button[aria-label^="填入数字"]:not([disabled])');
     if (await enabled.count()) {
       await enabled.first().evaluate((el) => el.click()).catch(() => {});

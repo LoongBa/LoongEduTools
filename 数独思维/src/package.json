@@ -9,7 +9,8 @@
     "preview": "vite preview --port 3014 --host 0.0.0.0",
     "typecheck": "tsc --noEmit",
     "test": "node tests/smoke.mjs",
-    "test:engine": "node tests/engine.mjs"
+    "test:engine": "node tests/engine.mjs",
+    "test:share": "node tests/share.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

@@ -91,6 +91,8 @@ export function Practice({ params, onExit, onFinish }: Props) {
   const [ms, setMs] = useState(resumed?.ms ?? 0);
   const [wrong, setWrong] = useState<number[]>([]);
   const [okCell, setOkCell] = useState<number | null>(null);
+  /** 刚被选中的格（瞬时闪光，300ms 后清除） */
+  const [selCell, setSelCell] = useState<number | null>(null);
   const [msg, setMsg] = useState<string>(introText(source, size));
   const [warn, setWarn] = useState(false);
   const [finished, setFinished] = useState(false);
@@ -509,6 +511,7 @@ export function Practice({ params, onExit, onFinish }: Props) {
             peerGuide={hintCells}
             replay={source === "replay"}
             errMarks={source === "replay" ? params.errIdx : undefined}
+            selCell={selCell}
             onPick={(i) => {
               if (finished) return;
               setHintCells([]);
@@ -519,6 +522,9 @@ export function Practice({ params, onExit, onFinish }: Props) {
               } else {
                 setSelected(i);
                 playSound("tap");
+                // 选中瞬时闪光（300ms 后清除；参照 okCell 范式）
+                setSelCell(i);
+                window.setTimeout(() => setSelCell(null), 320);
               }
               if (eraserMode && !givenMask[i]) erase();
             }}

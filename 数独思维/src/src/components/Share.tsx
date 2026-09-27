@@ -99,14 +99,17 @@ export function SharePuzzleOverlay({
   const ref = useRef<HTMLCanvasElement | null>(null);
   const sd = useMemo(() => toSDString(board, size), [board, size]);
   const text = `数独思维 · ${size}×${size} 练习题\n题目编码：${sd}${skillName ? `\n[技巧标签：${skillName}]` : ""}\n提示：先找「只剩一个位置」的数字，从行和列一起排除。`;
+  /** 二维码内容（与成绩卡一致短版：标题 + 题目编码；不含提示/技巧标签行，防文本过长且便于识别） */
+  const qrText = `数独思维 · ${size}×${size} 练习题\n题目编码：${sd}`;
 
   useEffect(() => {
     const cv = ref.current;
     if (!cv) return;
     const side = 720;
     const tagH = skillName ? 46 : 0;
+    const qrArea = 240; // 二维码区 200×200 + 上下静区边距
     cv.width = side;
-    cv.height = side + 120 + tagH;
+    cv.height = side + 120 + tagH + qrArea;
     const ctx = cv.getContext("2d");
     if (!ctx) return;
     const dark = cssVar("--cell-given") || "#2a3a4a";
@@ -128,6 +131,14 @@ export function SharePuzzleOverlay({
       ctx.fillText(`技巧标签：${skillName}`, 40, 70);
     }
     drawBoard(ctx, showAnswer ? solution : board, size, 40, 90 + tagH, side - 80, { fg: dark, line, boxLine, bg });
+    // 二维码区（题面下方居中；复用成绩卡 drawRealQr；内容为短版 qrText，不含答案）
+    // 静区强制纯白（非主题色）：二维码识别率优先，深色主题下可扫性不受影响
+    drawRealQr(ctx, qrText, (side - 200) / 2, 90 + tagH + 640 + 20, 200, dark, "#ffffff");
+    // 底部提示
+    ctx.fillStyle = muted;
+    ctx.font = `400 21px "PingFang SC","Microsoft YaHei",sans-serif`;
+    ctx.textAlign = "center";
+    ctx.fillText("📱 扫码复制题目编码，在「导入题目」粘贴即可练习", side / 2, 90 + tagH + 640 + 250);
   }, [board, solution, size, showAnswer, skillName]);
 
   function copy() {
@@ -165,8 +176,8 @@ export function SharePuzzleOverlay({
           onFocus={(e) => e.currentTarget.select()}
           className="h-24 w-full resize-none rounded-xl border border-border bg-secondary/50 p-3 text-[12px] leading-relaxed text-foreground outline-none focus:border-primary"
         />
-        <canvas ref={ref} className="w-full rounded-xl border border-border bg-card" style={{ aspectRatio: skillName ? "1 / 1.23" : "1 / 1.17" }} />
-        <p className="text-center text-[11px] text-muted-foreground">📸 长按图片可保存或发给朋友</p>
+        <canvas ref={ref} className="w-full rounded-xl border border-border bg-card" style={{ aspectRatio: skillName ? "1 / 1.56" : "1 / 1.5" }} />
+        <p className="text-center text-[11px] text-muted-foreground">📸 长按图片可保存或发给朋友 · 📱 二维码扫码复制题目编码</p>
       </div>
     </Overlay>
   );

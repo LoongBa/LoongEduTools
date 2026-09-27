@@ -22,6 +22,8 @@ export interface BoardProps {
   replay?: boolean;
   /** 错题重练：上次填错的位置（replay-mark 浅红标记） */
   errMarks?: number[];
+  /** 刚被选中的格（瞬时闪光，300ms 内清除；参照 okCell 范式） */
+  selCell?: number | null;
   onPick?: (i: number) => void;
   className?: string;
 }
@@ -38,6 +40,7 @@ export function Board({
   target = null,
   replay = false,
   errMarks = [],
+  selCell = null,
   onPick,
   className,
 }: BoardProps) {
@@ -125,6 +128,7 @@ export function Board({
                 </span>
               ) : null}
               {okCell === i ? <span className="pointer-events-none absolute inset-0 animate-flash-ok rounded-md" /> : null}
+              {selCell === i ? <span className="pointer-events-none absolute inset-0 animate-flash-sel rounded-md" /> : null}
               {isTarget ? (
                 <span className="pointer-events-none absolute inset-[6%] animate-pulse-ring rounded-lg ring-2 ring-target-ring" />
               ) : null}
