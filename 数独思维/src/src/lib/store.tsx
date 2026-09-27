@@ -38,6 +38,8 @@ export interface BookItem {
   errIdx?: number[];
   /** 题面技巧画像（V1.3.0）：analyzeTechniques 结果，近似题目标签，非错误标签；旧存档可缺省 */
   techniques?: string[];
+  /** V1.4.0 迁移标记：true = 已用新引擎（含显性数对/X-Wing）补算过，避免无 adv 技巧的旧题每次打开重算 */
+  migrated14?: boolean;
 }
 
 export interface Snapshot {

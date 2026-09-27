@@ -2,7 +2,8 @@
 // 断言：generatePuzzle 挖洞命中目标已知格、解合法（行/列/宫 1..N 各一次）、solve 唯一解、SD 往返一致。
 // V1.0.4 增：parseImportedText 全分支、长度不变式、协议串 round-trip。
 // V1.3.0 增：analyzeTechniques 题面技巧画像。
-import { generatePuzzle, solve, boxOf, toSDString, fromSDString, validateImported, parseImportedText, analyzeTechniques } from "../src/lib/sudoku.ts";
+import { generatePuzzle, solve, boxOf, toSDString, fromSDString, validateImported, parseImportedText, analyzeTechniques, findLogicStep } from "../src/lib/sudoku.ts";
+import { TECHNIQUE_LESSON_MAP, ADV_SKILLS } from "../src/lib/content.ts";
 
 let failed = 0;
 const ok = (name, cond, extra = "") => {
@@ -136,6 +137,64 @@ for (const size of [4, 6, 9]) {
   const { puzzle } = generatePuzzle(4, 10, "engine-test:tech:dedup");
   const techs = analyzeTechniques(puzzle, 4);
   ok("画像去重（≤3 种）", techs.length <= 3 && new Set(techs).size === techs.length, `techs=${techs.join(",")}`);
+}
+
+// ===== V1.4.0：进阶技巧识别器（显性数对 / X-Wing） =====
+// 夹具盘 1：X-Wing（6×6，唯一解），迭代中 findLogicStep 应返回 X-Wing 且落子与解一致
+{
+  const board = [0,0,0,0,0,6, 1,0,0,2,0,0, 0,0,0,1,2,0, 0,0,0,0,0,0, 3,0,0,5,4,0, 0,4,2,0,0,0];
+  const sol = solve(board.slice(), 6, 1)[0];
+  ok("X-Wing 夹具唯一解", !!sol);
+  const g = board.slice();
+  let sawXwing = false, allLegal = true;
+  for (let k = 0; k < 40; k++) {
+    const s = findLogicStep(g, 6);
+    if (!s) break;
+    if (s.technique === "X-Wing") sawXwing = true;
+    if (sol[s.index] !== s.value) allLegal = false;
+    g[s.index] = s.value;
+  }
+  ok("X-Wing 识别命中", sawXwing);
+  ok("X-Wing 盘全部落子合法且解完", allLegal && !g.some((x) => !x));
+}
+// 夹具盘 2：显性数对（6×6，唯一解），迭代中 findLogicStep 应返回显性数对且落子正确
+{
+  const board = [0,0,4,0,2,0, 0,0,0,6,0,4, 0,0,0,5,0,0, 0,6,0,4,0,3, 0,0,0,0,1,0, 3,0,0,0,0,0];
+  const sol = solve(board.slice(), 6, 1)[0];
+  ok("显性数对夹具唯一解", !!sol);
+  const g = board.slice();
+  let sawPair = false, allLegal = true;
+  for (let k = 0; k < 40; k++) {
+    const s = findLogicStep(g, 6);
+    if (!s) break;
+    if (s.technique === "显性数对") sawPair = true;
+    if (sol[s.index] !== s.value) allLegal = false;
+    g[s.index] = s.value;
+  }
+  ok("显性数对识别命中", sawPair);
+  ok("显性数对盘全部落子合法且解完", allLegal && !g.some((x) => !x));
+}
+// null 语义（oracle I2/I5）：卡住盘（基础+进阶都用尽）findLogicStep 返回 null 不抛错、无错误落子
+{
+  const board = [1,2,3,4,5,0, 0,5,6,0,2,3, 0,0,0,5,6,4, 5,6,0,0,3,0, 0,1,2,0,4,5, 0,0,5,3,1,0]; // LESSON_DATA.nakedPair 快照
+  const r = findLogicStep(board.slice(), 6);
+  ok("卡住盘返回 null 或有效步（不抛错）", r === null || !!r.index, `r=${JSON.stringify(r)}`);
+}
+// 不抢占（oracle I5）：基础可解题首次返回基础技巧（显性数对等不抢先）
+{
+  const { puzzle } = generatePuzzle(4, 12, "engine-test:adv:basic");
+  const first = findLogicStep(puzzle.slice(), 4);
+  ok("基础可解题首次返回基础技巧", first !== null, first ? `first=${first.technique}` : "null");
+  // 4×4 简单题不可能在首次就触发进阶技巧（空间不足以支撑数对/X-Wing）
+  const basics = new Set(["唯一候选", "宫内排除", "行排除", "列排除"]);
+  ok("简单盘首次不触发进阶识别器", basics.has(first.technique), `first=${first.technique}`);
+}
+// 命名一致性（oracle I5）：显性数对 / X-Wing 名字与 LESSON map / ADV_SKILLS.name 对齐（防 B2 漂移）
+{
+  ok("显性数对映射裸数对", TECHNIQUE_LESSON_MAP["显性数对"] === "nakedPair");
+  ok("X-Wing 映射 xwing", TECHNIQUE_LESSON_MAP["X-Wing"] === "xwing");
+  ok("显性数对名对齐 ADV_SKILLS", ADV_SKILLS.find((s) => s.key === "nakedPair")?.name === "显性数对");
+  ok("X-Wing 名对齐 ADV_SKILLS", ADV_SKILLS.find((s) => s.key === "xwing")?.name === "X-Wing");
 }
 
 console.log(`\n引擎单测 ${failed ? "FAIL " + failed : "全部通过"}`);

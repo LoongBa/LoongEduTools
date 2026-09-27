@@ -1,12 +1,24 @@
 // 三墙视觉分化：基础技巧=圆形亮章、进阶技巧=菱形、成就=奖章缎带。
 // 另含题目本（错题/收藏）卡片与迷你盘缩略、打卡日历、训练地图节点。
 
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Card, Btn, EmptyState, Bar } from "./ui/kit";
 import { ART_MISTAKES, ART_FAVORITES } from "@/lib/art";
 import type { Achievement, Technique } from "@/lib/content";
-import { TECHNIQUE_GROUPS, groupOfTechniques, type TechniqueGroupId } from "@/lib/content";
-import { GROUP_VIEW_TITLE, GROUP_VIEW_HINT, GROUP_LESSON_BTN, GROUP_PRACTICE_BTN, GROUP_MIXED_BTN, GROUP_MIXED_HINT } from "@/lib/copy";
+import { TECHNIQUE_GROUPS, TECHNIQUE_LESSON_MAP, groupOfTechniques, type TechniqueGroupId } from "@/lib/content";
+import {
+  GROUP_VIEW_TITLE,
+  GROUP_VIEW_HINT,
+  GROUP_LESSON_BTN,
+  GROUP_PRACTICE_BTN,
+  GROUP_MIXED_BTN,
+  GROUP_MIXED_HINT,
+  GROUP_ADV_COLLAPSED,
+  GROUP_ADV_EXPAND_LABEL,
+  GROUP_ADV_COLLAPSE_LABEL,
+  GROUP_ADV_HINT,
+} from "@/lib/copy";
 import type { BookItem } from "@/lib/store";
 import { todayStr } from "@/lib/store";
 import type { Size } from "@/lib/sudoku";
@@ -230,7 +242,7 @@ export function levelName(id: string): string {
   return id === "easy" ? "简单" : id === "hard" ? "困难" : "普通";
 }
 
-/* ================= 错题技巧分组（V1.3.0） ================= */
+/* ================= 错题技巧分组（V1.3.0 + V1.4.0 进阶折叠） ================= */
 export function SkillGroups({
   mistakes,
   onLesson,
@@ -242,6 +254,7 @@ export function SkillGroups({
   onPractice: (group: TechniqueGroupId) => void;
   onMixedPractice: () => void;
 }) {
+  const [advOpen, setAdvOpen] = useState(false);
   // 按组统计题数（一题可属多组）
   const counts = new Map<TechniqueGroupId, number>();
   for (const m of mistakes) {
@@ -250,12 +263,17 @@ export function SkillGroups({
   const any = [...counts.values()].some((c) => c > 0);
   if (!any) return null;
 
+  const baseGroups = TECHNIQUE_GROUPS.filter((g) => g.tier !== "adv");
+  const advGroups = TECHNIQUE_GROUPS.filter((g) => g.tier === "adv");
+  const advCount = advGroups.reduce((s, g) => s + (counts.get(g.id) || 0), 0);
+
   return (
     <Card tone="flat" pad="normal" className="mb-3">
       <h2 className="mb-1 text-[13.5px] font-bold">🧩 {GROUP_VIEW_TITLE}</h2>
       <p className="mb-2.5 text-[11px] leading-snug text-muted-foreground">{GROUP_VIEW_HINT}</p>
       <div className="space-y-2">
-        {TECHNIQUE_GROUPS.map((g) => {
+        {/* base 组平铺（唯一候选 / 宫内排除 / 行列排除 / 需综合） */}
+        {baseGroups.map((g) => {
           const c = counts.get(g.id) || 0;
           if (!c) return null;
           return (
@@ -286,6 +304,51 @@ export function SkillGroups({
             </div>
           );
         })}
+        {/* adv 组折叠（V1.4.0 I3）：默认收起，展开显示成员技巧 */}
+        {advCount > 0
+          ? advGroups.map((g) => (
+              <div key={g.id} className="rounded-xl border border-dashed border-border bg-card/60 px-3 py-2">
+                <button
+                  type="button"
+                  onClick={() => setAdvOpen((v) => !v)}
+                  aria-expanded={advOpen}
+                  className="flex w-full items-center gap-2.5 text-left"
+                >
+                  <span className="tnum grid h-8 w-8 shrink-0 place-items-center rounded-full bg-secondary text-[12.5px] font-bold">{advCount}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[12.5px] font-bold leading-tight">{GROUP_ADV_COLLAPSED}</span>
+                    <span className="mt-0.5 block truncate text-[10.5px] text-muted-foreground">
+                      {advOpen ? GROUP_ADV_HINT : g.techniques.join(" · ")}
+                    </span>
+                  </span>
+                  <span aria-hidden className="text-[12px] text-muted-foreground/70">{advOpen ? GROUP_ADV_COLLAPSE_LABEL : GROUP_ADV_EXPAND_LABEL}</span>
+                </button>
+                {advOpen ? (
+                  <div className="mt-2 space-y-1.5">
+                    {g.techniques.map((t) => {
+                      const lesson = TECHNIQUE_LESSON_MAP[t];
+                      return (
+                        <div key={t} className="flex items-center gap-2.5 rounded-lg bg-card px-3 py-1.5">
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-[12px] font-semibold leading-tight">{t}</span>
+                            <span className="mt-0.5 block text-[10px] text-muted-foreground">进阶推理 · 复习对应技巧更稳妥</span>
+                          </span>
+                          {lesson ? (
+                            <Btn variant="ghost" size="sm" onClick={() => onLesson(lesson)} aria-label={`复习${t}`}>
+                              {GROUP_LESSON_BTN}
+                            </Btn>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                    <Btn variant="secondary" size="sm" className="w-full" onClick={() => onPractice(g.id)} aria-label="练进阶观察组">
+                      {GROUP_PRACTICE_BTN}
+                    </Btn>
+                  </div>
+                ) : null}
+              </div>
+            ))
+          : null}
       </div>
     </Card>
   );

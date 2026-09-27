@@ -103,16 +103,19 @@ export const HOME_SKILL_KEYS = BASE_SKILLS.map((s) => s.key);
 
 /**
  * findLogicStep technique 中文名 → 教学关 key（B1 修正：唯一候选对应已存在的 uniqueElim「唯一余数」关）。
- * findLogicStep 只能诚实识别 3 类基础技巧；识别不了的归「需综合」。
+ * V1.4.0 增：显性数对 → nakedPair、X-Wing → xwing（B2：值存英文 lesson key）。
+ * findLogicStep 诚实识别不了的高级技巧（隐性数对/triple 等）仍归「需综合」。
  */
 export const TECHNIQUE_LESSON_MAP: Record<string, string> = {
   唯一候选: "uniqueElim",
   宫内排除: "boxElim",
   行排除: "rowColElim",
   列排除: "rowColElim",
+  显性数对: "nakedPair",
+  "X-Wing": "xwing",
 };
 
-export type TechniqueGroupId = "unique" | "box" | "rowcol" | "mixed";
+export type TechniqueGroupId = "unique" | "box" | "rowcol" | "adv" | "mixed";
 
 export interface TechniqueGroupMeta {
   id: TechniqueGroupId;
@@ -122,13 +125,16 @@ export interface TechniqueGroupMeta {
   lessonKey: string | null;
   /** 该组涉及的 findLogicStep technique 中文名集合 */
   techniques: string[];
+  /** 折叠层级：adv 组在错题本按「进阶观察」折叠展示（V1.4.0 I3） */
+  tier?: "base" | "adv";
 }
 
-/** 固定分组顺序（唯一候选 → 宫内排除 → 行列排除 → 需综合）；lessonKey 从 TECHNIQUE_LESSON_MAP 派生（单源） */
+/** 固定分组顺序（base 平铺 → 进阶折叠 → 需综合）；lessonKey 从 TECHNIQUE_LESSON_MAP 派生（单源） */
 export const TECHNIQUE_GROUPS: TechniqueGroupMeta[] = [
   { id: "unique", name: "唯一候选", lessonKey: TECHNIQUE_LESSON_MAP["唯一候选"] ?? null, techniques: ["唯一候选"] },
   { id: "box", name: "宫内排除", lessonKey: TECHNIQUE_LESSON_MAP["宫内排除"] ?? null, techniques: ["宫内排除"] },
   { id: "rowcol", name: "行列排除", lessonKey: TECHNIQUE_LESSON_MAP["行排除"] ?? null, techniques: ["行排除", "列排除"] },
+  { id: "adv", name: "进阶观察", lessonKey: null, techniques: ["显性数对", "X-Wing"], tier: "adv" },
   { id: "mixed", name: "需综合", lessonKey: null, techniques: [] },
 ];
 

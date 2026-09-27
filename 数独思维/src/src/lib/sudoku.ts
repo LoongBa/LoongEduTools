@@ -163,27 +163,57 @@ export interface LogicStep {
   reason: string;
 }
 
+/** 单元种类：行 / 列 / 宫 */
+type UnitKind = "row" | "col" | "box";
+
+/** 按单元种类返回该单元的全部格子索引（row/col 按编号；box 按宫编号） */
+function unitCells(size: Size, kind: UnitKind, unit: number): number[] {
+  const total = size * size;
+  const out: number[] = [];
+  for (let i = 0; i < total; i++) {
+    if (kind === "row" && rowOf(size, i) === unit) out.push(i);
+    else if (kind === "col" && colOf(size, i) === unit) out.push(i);
+    else if (kind === "box" && boxOf(size, i) === unit) out.push(i);
+  }
+  return out;
+}
+
+/** 单元数量（row/col = size；box = 宫数） */
+function unitCount(size: Size, kind: UnitKind): number {
+  if (kind === "box") return (size / SIZES[size].boxW) * (size / SIZES[size].boxH);
+  return size;
+}
+
 export function findLogicStep(grid: Grid, size: Size): LogicStep | null {
   const total = size * size;
   const max = size;
 
+  // 候选矩阵：懒计算共享（I6）——进阶识别器与基础识别共用，避免 9×9 candidatesFor 重复扫描
+  const candCache = new Map<number, number[]>();
+  const cand = (i: number): number[] => {
+    let c = candCache.get(i);
+    if (!c) {
+      c = candidatesFor(grid, size, i);
+      candCache.set(i, c);
+    }
+    return c;
+  };
+
   // ① 唯一候选数
   for (let i = 0; i < total; i++) {
     if (grid[i]) continue;
-    const cs = candidatesFor(grid, size, i);
+    const cs = cand(i);
     if (cs.length === 1) {
       return { index: i, value: cs[0], technique: "唯一候选", reason: `这一格的行、列、宫里已经出现过其余 ${max - 1} 个数字，只剩 ${cs[0]} 能填。` };
     }
   }
 
   // ② 宫排除
-  const boxCount = (size / SIZES[size].boxW) * (size / SIZES[size].boxH);
-  for (let b = 0; b < boxCount; b++) {
-    const cells: number[] = [];
-    for (let i = 0; i < total; i++) if (boxOf(size, i) === b) cells.push(i);
+  for (let b = 0; b < unitCount(size, "box"); b++) {
+    const cells = unitCells(size, "box", b);
     for (let v = 1; v <= max; v++) {
       if (cells.some((i) => grid[i] === v)) continue;
-      const spots = cells.filter((i) => !grid[i] && candidatesFor(grid, size, i).indexOf(v) >= 0);
+      const spots = cells.filter((i) => !grid[i] && cand(i).indexOf(v) >= 0);
       if (spots.length === 1) {
         return { index: spots[0], value: v, technique: "宫内排除", reason: `第 ${b + 1} 宫里，数字 ${v} 被同行同列的其他宫挤到只剩一个位置。` };
       }
@@ -191,16 +221,12 @@ export function findLogicStep(grid: Grid, size: Size): LogicStep | null {
   }
 
   // ③ 行列排除
-  const n = size;
-  for (let unit = 0; unit < n; unit++) {
+  for (let unit = 0; unit < size; unit++) {
     for (const kind of ["row", "col"] as const) {
-      const cells: number[] = [];
-      for (let i = 0; i < total; i++) {
-        if (kind === "row" ? rowOf(size, i) === unit : colOf(size, i) === unit) cells.push(i);
-      }
+      const cells = unitCells(size, kind, unit);
       for (let v = 1; v <= max; v++) {
         if (cells.some((i) => grid[i] === v)) continue;
-        const spots = cells.filter((i) => !grid[i] && candidatesFor(grid, size, i).indexOf(v) >= 0);
+        const spots = cells.filter((i) => !grid[i] && cand(i).indexOf(v) >= 0);
         if (spots.length === 1) {
           const label = kind === "row" ? `第 ${unit + 1} 行` : `第 ${unit + 1} 列`;
           return { index: spots[0], value: v, technique: kind === "row" ? "行排除" : "列排除", reason: `${label}里，数字 ${v} 只能落在这一个空格。` };
@@ -209,10 +235,139 @@ export function findLogicStep(grid: Grid, size: Size): LogicStep | null {
     }
   }
 
+  // ④ 显性数对（裸对）：单元内 2 个空格候选集各恰 = {a,b}（并集恰 2 数）→ 锁定
+  for (const kind of ["row", "col", "box"] as const) {
+    for (let u = 0; u < unitCount(size, kind); u++) {
+      const cells = unitCells(size, kind, u).filter((i) => !grid[i]);
+      if (cells.length < 3) continue;
+      for (let p = 0; p < cells.length - 1; p++) {
+        const cpa = cand(cells[p]);
+        if (cpa.length !== 2) continue;
+        for (let q = p + 1; q < cells.length; q++) {
+          const cpb = cand(cells[q]);
+          if (cpb.length !== 2 || cpa[0] !== cpb[0] || cpa[1] !== cpb[1]) continue;
+          // 锁定 a,b → 单元其他格排除 → 找变单候选的落子格
+          const a = cpa[0], b = cpa[1];
+          const unitLabel = kind === "row" ? `第 ${u + 1} 行` : kind === "col" ? `第 ${u + 1} 列` : `第 ${u + 1} 宫`;
+          const victim = findSingleAfterExclude(cells, cand, a, b, grid);
+          if (victim) {
+            return { index: victim.index, value: victim.value, technique: "显性数对", reason: `${unitLabel}里，有两格都只能填 ${a} 或 ${b}——它们把 ${a}、${b} 占住了，其它格不能再填这两个数，这一格就只能填 ${victim.value}。` };
+          }
+          // （数对两格自身恒不额外产生落子——候选各 {a,b} 即互为占位，主路径见上）
+        }
+      }
+    }
+  }
+
+  // ⑤ 隐性数对 —— 已裁剪（V1.4.0 实施决策，oracle I1 收敛）：
+  //   真实触发条件「数字 {a,b} 候选位重叠于同 2 格」在小学规格盘面极为稀有
+  //   （24000 盘零命中实证）；标准定义数字候选格 ⊆ sel 亦难构造与稳定测试。
+  //   留 V1.5+ 与 analyzeTechniques「模式识别标注」方案一并实现（避免单步落子语义硬塞）。
+
+  // ⑥ X-Wing（行向 + 列向对称）：数字 v 在两行候选位各恰 2 个且列对齐 → 这两列其他格排除 v
+  for (const v of rangeOf(size)) {
+    // 行向：找两行，v 候选位各 2 个且列集相同
+    const rowCandCols: { row: number; cols: number[] }[] = [];
+    for (let r = 0; r < size; r++) {
+      const cells = unitCells(size, "row", r).filter((i) => !grid[i]);
+      const cols = cells.filter((i) => cand(i).includes(v)).map((i) => colOf(size, i));
+      if (cols.length === 2) rowCandCols.push({ row: r, cols: [...cols].sort((x, y) => x - y) });
+    }
+    for (let p = 0; p < rowCandCols.length - 1; p++) {
+      for (let q = p + 1; q < rowCandCols.length; q++) {
+        const A = rowCandCols[p], B = rowCandCols[q];
+        if (A.cols[0] !== B.cols[0] || A.cols[1] !== B.cols[1]) continue;
+        const victim = findXWingVictim(size, grid, cand, [A.row, B.row], A.cols, v, true);
+        if (victim) {
+          return { index: victim.index, value: victim.value, technique: "X-Wing", reason: `数字 ${v} 在第 ${A.row + 1}、${B.row + 1} 行里都只能放在第 ${A.cols[0] + 1}、${A.cols[1] + 1} 列，形成矩形 → 这两列其他格不能再有 ${v} → 这一格就只能填 ${victim.value}。` };
+        }
+      }
+    }
+    // 列向：找两列，v 候选位各 2 个且行集相同
+    const colCandRows: { col: number; rows: number[] }[] = [];
+    for (let c = 0; c < size; c++) {
+      const cells = unitCells(size, "col", c).filter((i) => !grid[i]);
+      const rows = cells.filter((i) => cand(i).includes(v)).map((i) => rowOf(size, i));
+      if (rows.length === 2) colCandRows.push({ col: c, rows: [...rows].sort((x, y) => x - y) });
+    }
+    for (let p = 0; p < colCandRows.length - 1; p++) {
+      for (let q = p + 1; q < colCandRows.length; q++) {
+        const A = colCandRows[p], B = colCandRows[q];
+        if (A.rows[0] !== B.rows[0] || A.rows[1] !== B.rows[1]) continue;
+        const victim = findXWingVictim(size, grid, cand, A.rows, [A.col, B.col], v, false);
+        if (victim) {
+          return { index: victim.index, value: victim.value, technique: "X-Wing", reason: `数字 ${v} 在第 ${A.col + 1}、${B.col + 1} 列里都只能放在第 ${A.rows[0] + 1}、${A.rows[1] + 1} 行，形成矩形 → 这两行其他格不能再有 ${v} → 这一格就只能填 ${victim.value}。` };
+        }
+      }
+    }
+  }
+
   return null;
 }
 
-/** 按目标已知格数挖洞，保证唯一解 */
+/**
+ * 辅助：在单元内排除某两个数字（数对锁定）后，找「变单候选」的落子格。
+ * 不改 grid——用「原始候选过滤」模拟排除后状态（保持 findLogicStep 内 cand 缓存有效）。
+ * 返回 { index, value }（value = 排除后的唯一候选）；无落子返回 null。
+ */
+function findSingleAfterExclude(
+  cells: number[],
+  cand: (i: number) => number[],
+  a: number,
+  b: number,
+  grid: Grid,
+): { index: number; value: number } | null {
+  for (const i of cells) {
+    if (grid[i]) continue;
+    const c = cand(i);
+    if (c.includes(a) || c.includes(b)) {
+      const reduced = c.filter((v) => v !== a && v !== b);
+      if (reduced.length === 1) return { index: i, value: reduced[0] };
+    }
+  }
+  return null;
+}
+
+/**
+ * 辅助：X-Wing 矩形排除后，在排除区寻找变单候选的落子格。
+ * 行向 X-Wing（rowForm=true）：矩形 = 两行 rectRows × 两列 rectCols；
+ *   排除区 = rectCols 两列中，行 ∉ rectRows 的格子（v 被矩形锁定在两行，这两列其它行不能再有 v）。
+ * 列向 X-Wing（rowForm=false）：排除区 = rectRows 两行中，列 ∉ rectCols 的格子。
+ * 返回 { index, value }（value = 排除 v 后的唯一候选）；无落子返回 null。
+ * 不改 grid——用「原始候选过滤」模拟排除（保持 cand 缓存有效）。
+ */
+function findXWingVictim(
+  size: Size,
+  grid: Grid,
+  cand: (i: number) => number[],
+  rectRows: number[],
+  rectCols: number[],
+  v: number,
+  rowForm: boolean,
+): { index: number; value: number } | null {
+  if (rowForm) {
+    for (const c of rectCols) {
+      for (let r = 0; r < size; r++) {
+        if (rectRows.includes(r)) continue; // 矩形顶点除外
+        const i = r * size + c;
+        if (grid[i] || !cand(i).includes(v)) continue;
+        const reduced = cand(i).filter((x) => x !== v);
+        if (reduced.length === 1) return { index: i, value: reduced[0] };
+      }
+    }
+  } else {
+    for (const r of rectRows) {
+      for (let c = 0; c < size; c++) {
+        if (rectCols.includes(c)) continue; // 矩形顶点除外
+        const i = r * size + c;
+        if (grid[i] || !cand(i).includes(v)) continue;
+        const reduced = cand(i).filter((x) => x !== v);
+        if (reduced.length === 1) return { index: i, value: reduced[0] };
+      }
+    }
+  }
+  return null;
+}
 export function generatePuzzle(
   size: Size,
   targetGiven: number,

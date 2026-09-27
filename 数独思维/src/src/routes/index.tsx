@@ -86,16 +86,19 @@ function Index() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅在挂载时读取一次
   }, []);
 
-  /** 旧错题技巧画像迁移（V1.3.0 I3）：打开错题本时对缺 techniques 的条目一次性补算写回 */
+  /** 旧错题技巧画像迁移（V1.3.0 I3 + V1.4.0 I4）：打开错题本时对缺 techniques 或未用
+   *  新引擎（含显性数对/X-Wing）补算过的条目一次性重算写回；migrated14 标记防无 adv
+   *  技巧的旧题每次打开都重算（analyzeTechniques 结果确定性：同盘同引擎恒同结果） */
   useEffect(() => {
     if (view !== "mistakes") return;
-    const missing = store.mistakes.filter((m) => !m.techniques);
-    if (!missing.length) return;
+    const pending = store.mistakes.filter((m) => !m.techniques || !m.migrated14);
+    if (!pending.length) return;
     update((d) => {
       for (const m of d.mistakes) {
-        if (m.techniques) continue;
+        if (m.techniques && m.migrated14) continue;
         try {
           m.techniques = analyzeTechniques(m.board, m.size);
+          m.migrated14 = true;
         } catch { /* 单条失败跳过，下次打开再补 */ }
       }
     });

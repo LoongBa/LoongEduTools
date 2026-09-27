@@ -720,12 +720,12 @@ function introText(source: PracticeSource, size: Size): string {
 function pushMistake(d: { mistakes: BookItem[] }, board: Grid, solution: Grid, size: Size, level: LevelId, errors: number, hints: number, errIdx: number[] = []) {
   const sig = toSDString(board, size);
   if (d.mistakes.some((m) => toSDString(m.board, m.size) === sig)) return;
-  // V1.3.0：题面技巧画像（近似题目标签；走引擎缓存，不卡主线程）
+  // V1.3.0：题面技巧画像（近似题目标签；走引擎缓存，不卡主线程）；V1.4.0：新题直接标记已迁移
   let techniques: string[] | undefined;
   try {
     techniques = analyzeTechniques(board, size);
   } catch { /* 画像失败不阻塞入库，techniques 留空由迁移补算 */ }
-  d.mistakes.unshift({ id: `${Date.now()}`, ts: Date.now(), level, size, board: board.slice(), solution: solution.slice(), errors, hints, errIdx, techniques });
+  d.mistakes.unshift({ id: `${Date.now()}`, ts: Date.now(), level, size, board: board.slice(), solution: solution.slice(), errors, hints, errIdx, techniques, migrated14: true });
   if (d.mistakes.length > 50) d.mistakes = d.mistakes.slice(0, 50);
 }
 

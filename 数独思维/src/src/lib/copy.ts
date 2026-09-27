@@ -32,6 +32,11 @@ export const GROUP_PRACTICE_BTN = "📝 练这一组";
 export const GROUP_MIXED_BTN = "📚 去练一道";
 export const GROUP_MIXED_HINT = "综合运用多种推理，适合按自己的节奏多练几道。";
 export const GROUP_PRACTICE_DONE = "这组练完了，错题本里再挑一组继续。";
+/** V1.4.0：进阶观察折叠组 */
+export const GROUP_ADV_COLLAPSED = "进阶观察";
+export const GROUP_ADV_EXPAND_LABEL = "展开";
+export const GROUP_ADV_COLLAPSE_LABEL = "收起";
+export const GROUP_ADV_HINT = "数对、X-Wing 等更深的推理环节，按需复习。";
 
 /** 导入解析错误 → 文案（静态消息） */
 const IMPORT_MSG_STATIC: Record<ImportError, string> = {
