@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { BackBtn, Btn, Panel, Pill, ProgressBar } from "@/components/ui-kit";
 import { STAGES } from "@/data/stages.generated";
 import { useProgress } from "@/lib/store";
+import { buildLessonIndex, suggestWeek, topWeakMethods } from "@/lib/weak";
 
 export function ReportView({ onBack }: { onBack: () => void }) {
   const { store } = useProgress();
@@ -34,6 +35,29 @@ export function ReportView({ onBack }: { onBack: () => void }) {
       return { key, grade: s.grade, theme: s.theme, total, done, pct: total ? done / total : 0 };
     });
   }, [store.lessons]);
+
+  // V0.5 薄弱方法与建议（纯逻辑在 lib/weak.ts，注入 STAGES 一次构建索引；孤儿错题保留可观测）
+  const lessonIndex = useMemo(() => buildLessonIndex(STAGES), []);
+  const weakMethods = useMemo(() => topWeakMethods(store.mistakes, lessonIndex, 3), [store.mistakes, lessonIndex]);
+  const weekSuggestions = useMemo(
+    () => suggestWeek(store.mistakes, store.lessons, STAGES, 4),
+    [store.mistakes, store.lessons],
+  );
+  // I5：错题摘要计数排除 warmup（与 weak share 分母口径一致）
+  const nonWarmupMistakeCount = useMemo(
+    () => store.mistakes.filter((m) => !m.lessonId.startsWith("warmup:")).length,
+    [store.mistakes],
+  );
+  // I4：阶段薄弱标记独立判定（不依赖 top-3 截断）——该阶段任一讲 wrongCount ≥ 2 即亮
+  const weakStages = useMemo(() => {
+    const set = new Set<string>();
+    for (const m of store.mistakes) {
+      if (m.lessonId.startsWith("warmup:") || m.wrongCount < 2) continue;
+      const ref = lessonIndex.get(m.lessonId);
+      if (ref) set.add(String(ref.stage));
+    }
+    return set;
+  }, [store.mistakes, lessonIndex]);
 
   const lessonCount = useMemo(() => {
     let total = 0;
@@ -116,7 +140,10 @@ export function ReportView({ onBack }: { onBack: () => void }) {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between">
                     <span className="truncate text-[12.5px]">{sp.theme}</span>
-                    <span className="text-[11px] text-muted-foreground">{sp.done}/{sp.total}</span>
+                    <span className="flex shrink-0 items-center gap-1.5">
+                      {weakStages.has(sp.key) && <Pill tone="warm">· 有薄弱</Pill>}
+                      <span className="text-[11px] text-muted-foreground">{sp.done}/{sp.total}</span>
+                    </span>
                   </div>
                   <ProgressBar value={sp.pct} tone={sp.pct === 1 ? "lit" : "primary"} className="mt-1" />
                 </div>
@@ -127,7 +154,7 @@ export function ReportView({ onBack }: { onBack: () => void }) {
 
         <Panel className="mb-4 px-5 py-4">
           <p className="text-[14px] font-bold text-foreground">
-            ✏️ 错题摘要 <span className="text-[12px] text-muted-foreground">（{store.mistakes.length}）</span>
+            ✏️ 错题摘要 <span className="text-[12px] text-muted-foreground">（{nonWarmupMistakeCount}）</span>
           </p>
           <div className="mt-3 flex flex-col gap-2">
             {recentMistakes.length === 0 && (
@@ -139,6 +166,56 @@ export function ReportView({ onBack }: { onBack: () => void }) {
                   {m.expr} <span className="text-[var(--lit)]">= {m.answer}</span>
                 </p>
                 <p className="mt-0.5 text-[11.5px] text-muted-foreground">错 {m.wrongCount} 次 · {m.lessonId}</p>
+              </div>
+            ))}
+          </div>
+        </Panel>
+
+        {/* V0.5 薄弱方法 TOP3（不动 store，纯聚合展示；or​phan 行隐藏） */}
+        <Panel className="mb-4 px-5 py-4">
+          <p className="text-[14px] font-bold text-foreground">
+            🎯 本周薄弱方法 <span className="text-[12px] text-muted-foreground">（{weakMethods.filter((w) => !w.orphan).length}）</span>
+          </p>
+          <div className="mt-3 flex flex-col gap-2.5">
+            {nonWarmupMistakeCount === 0 && (
+              <p className="text-[13px] text-muted-foreground">还没有错题，方法掌握得很好 💪</p>
+            )}
+            {nonWarmupMistakeCount > 0 && weakMethods.filter((w) => !w.orphan).length === 0 && (
+              <p className="text-[13px] text-muted-foreground">
+                暂未识别到对应讲次的错题（{nonWarmupMistakeCount} 条），建议清空后重新练习。
+              </p>
+            )}
+            {weakMethods.filter((w) => !w.orphan).map((w) => (
+              <div key={w.lessonId} className="flex items-center gap-2.5 rounded-2xl bg-secondary/50 px-3 py-2">
+                <span className="shrink-0 text-[12px] font-semibold text-muted-foreground">{w.stageGrade}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate text-[13.5px] font-semibold text-foreground">{w.title}</span>
+                    <Pill tone={w.wrongCount >= 3 ? "warm" : "secondary"}>错 {w.wrongCount} 题</Pill>
+                  </div>
+                  <ProgressBar value={w.share} tone={w.wrongCount >= 3 ? "lit" : "primary"} className="mt-1" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Panel>
+
+        {/* V0.5 下周建议（weak + incomplete 双来源，纯规则生成） */}
+        <Panel className="mb-4 px-5 py-4">
+          <p className="text-[14px] font-bold text-foreground">📌 下周建议</p>
+          <div className="mt-3 flex flex-col gap-2">
+            {weekSuggestions.length === 0 && (
+              <p className="text-[13px] text-muted-foreground">本周没有明显薄弱方法，继续按阶段推进即可 🎉</p>
+            )}
+            {weekSuggestions.map((sg) => (
+              <div key={sg.lessonId} className="flex items-start gap-2.5 rounded-2xl bg-secondary/50 px-3 py-2">
+                <span className="mt-0.5 text-[14px]">{sg.kind === "weak" ? "⚠️" : "📇"}</span>
+                <div className="min-w-0">
+                  <p className="truncate text-[13.5px] font-semibold text-foreground">
+                    {sg.stageGrade} · {sg.title}
+                  </p>
+                  <p className="mt-0.5 text-[12px] text-muted-foreground">{sg.action}</p>
+                </div>
               </div>
             ))}
           </div>

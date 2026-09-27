@@ -7,6 +7,7 @@ import { fileURLToPath } from "url";
 import { dirname } from "path";
 import { checkDue, extend, enough, isLocked, todayReset } from "../src/lib/guard.ts";
 import { applyRecite } from "../src/lib/recite.ts";
+import { buildLessonIndex, suggestWeek, topWeakMethods } from "../src/lib/weak.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SG_DIR = resolve(__dirname, "../src/assets/smart_gen");
@@ -306,6 +307,62 @@ let l7bad = 0;
   if (r5.done !== false || !r5.recite || r5.recite.text !== "讲得出加法交换律") { l7bad++; console.log("  L7 new-record-no-done FAIL"); }
 }
 
+// ---------- L8：薄弱方法与建议纯逻辑（buildLessonIndex / topWeakMethods / suggestWeek，注入 mock 数据） ----------
+let l8bad = 0;
+{
+  // mock stages：两个主线阶段（stage 4/5）+ 拓展 X（断言 X 不进建议），lesson_id 全局唯一风格
+  const mockStages = [
+    { stage: 4, grade: "四年级", lessons: [
+      { lesson_id: "s4l1", title: "结合律配对" },
+      { lesson_id: "s4l2", title: "基准数法" },
+    ]},
+    { stage: 5, grade: "五年级", lessons: [
+      { lesson_id: "s5l1", title: "化整还原" },
+    ]},
+    { stage: "X", grade: "拓展", lessons: [
+      { lesson_id: "sxl1", title: "等差数列" },
+    ]},
+  ];
+  const mockIndex = buildLessonIndex(mockStages);
+  if (mockIndex.size !== 4) { l8bad++; console.log(`  L8 index-size: ${mockIndex.size}（应 4）`); }
+  const ref = mockIndex.get("s4l1");
+  if (!ref || ref.grade !== "四年级" || ref.title !== "结合律配对" || ref.stage !== 4) { l8bad++; console.log("  L8 index-resolve FAIL"); }
+
+  // topWeakMethods：聚合 + warmup 排除 + 降序 + orphan 标记
+  const mistakes = [
+    { lessonId: "s4l2", wrongCount: 3 },
+    { lessonId: "warmup:g1", wrongCount: 9 },   // 应排除（口算热身）
+    { lessonId: "s4l1", wrongCount: 5 },
+    { lessonId: "s9l9", wrongCount: 2 },        // 孤儿（index 无此讲）
+  ];
+  const weak = topWeakMethods(mistakes, mockIndex, 3);
+  if (weak.length !== 3) { l8bad++; console.log(`  L8 weak-len: ${weak.length}（应 3：warmup 排除）`); }
+  if (weak[0].lessonId !== "s4l1" || weak[0].wrongCount !== 5) { l8bad++; console.log(`  L8 weak-top: ${weak[0].lessonId}/${weak[0].wrongCount}`); }
+  if (weak[1].lessonId !== "s4l2") { l8bad++; console.log("  L8 weak-second FAIL"); }
+  if (weak[2].lessonId !== "s9l9" || weak[2].orphan !== true) { l8bad++; console.log("  L8 weak-orphan FAIL"); }
+  // share：非 warmup 总错题 = 5+3+2 = 10；s4l1 share = 0.5
+  if (weak[0].share !== 0.5) { l8bad++; console.log(`  L8 weak-share: ${weak[0].share}（应 0.5）`); }
+
+  // suggestWeek：weak（wrongCount≥2）+ incomplete（未开始，跨阶段按序，排除 X）+ 去重 + limit
+  const lessons = {
+    "4:s4l2": { done: true, practiced: 8 },   // 已练：不作为 incomplete 来源
+    "5:s5l1": { done: false, practiced: 0, recite: "xxx" }, // recite-only 未练：照常推荐（O2-I1）
+    // 4:s4l1 无记录 → incomplete 候选；X:sxl1 无记录但应被排除
+  };
+  const sug = suggestWeek(mistakes, lessons, mockStages, 4);
+  if (sug.length !== 3) { l8bad++; console.log(`  L8 sug-len: ${sug.length}（应 3：weak s4l1/s4l2 + incomplete s5l1；s4l1 去重合并为 weak 不重复计）`); }
+  const kinds = sug.map((s) => `${s.kind}:${s.lessonId}`);
+  if (kinds[0] !== "weak:s4l1") { l8bad++; console.log(`  L8 sug-w1: ${kinds[0]}`); }
+  if (kinds[1] !== "weak:s4l2") { l8bad++; console.log(`  L8 sug-w2: ${kinds[1]}`); }
+  // incomplete：s5l1（recite-only 照常推荐，O2-I1）；s4l1 因 weak 去重不重复出现
+  if (!kinds.includes("incomplete:s5l1")) { l8bad++; console.log(`  L8 sug-rec:`); }
+  if (kinds.some((k) => k.includes("sxl1"))) { l8bad++; console.log("  L8 sug-x FAIL（拓展不应进建议）"); }
+  // done=true 的不应作为 incomplete；去重无重复
+  if (kinds.some((k) => k === "incomplete:s4l2")) { l8bad++; console.log("  L8 sug-done FAIL"); }
+  const single = new Set(sug.map((s) => s.lessonId));
+  if (single.size !== sug.length) { l8bad++; console.log("  L8 sug-dupe FAIL"); }
+}
+
 // ---------- 输出 ----------
 console.log("== smart_gen 引擎单测 ==");
 console.log(`生成器数: ${NAMES.length} 个（${new Set(NAMES.map((n) => n.split("_").slice(0, -1).join("_"))).size} 方法 × 3 档）`);
@@ -316,7 +373,8 @@ console.log(`L4 规范形断言: ${l4total - l4bad}/${l4total} 通过`);
 console.log(`L5 口算热身 validate: ${kouTotal - kouInvalid}/${kouTotal} 通过 + KOU_META ${KOU_META.length} 条完整（bad=${l5bad}）`);
 console.log(`L6 guard 纯逻辑: ${l6bad === 0 ? "全部通过" : `${l6bad} 项失败`}`);
 console.log(`L7 recite 纯逻辑: ${l7bad === 0 ? "全部通过" : `${l7bad} 项失败`}`);
+console.log(`L8 weak 纯逻辑: ${l8bad === 0 ? "全部通过" : `${l8bad} 项失败`}`);
 const l2fail = l2total - l2ok;
-const totalBad = failed + invalid + l2fail + l4bad + kouInvalid + l5bad + l6bad + l7bad;
+const totalBad = failed + invalid + l2fail + l4bad + kouInvalid + l5bad + l6bad + l7bad + l8bad;
 console.log(`FAIL 计数: ${totalBad}`);
 process.exit(totalBad ? 1 : 0);

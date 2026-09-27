@@ -166,6 +166,8 @@ server.listen(0, "127.0.0.1", async () => {
     ok("家长报告复述 Panel 渲染", (await page.locator("text=原理复述").count()) > 0);
     const reportBody = await page.evaluate(() => document.body.innerText);
     ok("家长报告含复述文本（跨页面持久化）", /凑整/.test(reportBody));
+    ok("家长报告薄弱方法 Panel 渲染", (await page.locator("text=薄弱方法").count()) > 0);
+    ok("家长报告下周建议 Panel 渲染", (await page.locator("text=下周建议").count()) > 0);
 
     // 防沉迷设置区
     await page.goto("file:///" + DIST.replace(/\\/g, "/") + "/index.html", { waitUntil: "load" });

@@ -12,7 +12,7 @@
 - 初始版本 **V0.1.0**（用户定夺：V0.1.0 起始迭代）；唯一权威字段 = `src/package.json` 的 `version`（发布/迭代时同步修改）。
 - 升级规则：**微调（bug fix / 样式 / 文案）→ 升子版本号**；**较大调整（新功能 / 交互改进）→ 升次版本号**；**主版本号升级必须经用户同意**。
 - tag 命名：`数学巧算-v0.3.x`；打 tag 前先征得用户同意。
-- 当前版本 **V0.4.0**（2026-09-27：原理复述卡——每讲复述"为什么能这样算" + 家长回看 + store v3）。
+- 当前版本 **V0.5.0**（2026-09-27：薄弱方法统计 + 下周建议——家长报告增强，错题聚合诊断）。
 
 ## 三架构产品中的位置
 
@@ -45,6 +45,7 @@
     │   ├── lib/store.tsx            #   localStorage 进度中枢（guard 防沉迷 schema v3 + recite）
     │   ├── lib/guard.ts             #   防沉迷/自控力纯逻辑（对齐 RedTools 通用需求 §4）
     │   ├── lib/recite.ts            #   原理复述卡纯逻辑（applyRecite，engine L7 单测）
+    │   ├── lib/weak.ts              #   薄弱方法/下周建议纯逻辑（engine L8 单测，注入 STAGES）
     │   ├── components/ui-kit.tsx    #   基础件（Btn/Panel/PageHead/Progress/Stars）
     │   ├── views/                   #   七视图（Home/Stage/Lesson/Recite/Practice/Warmup/Me/Report）
     │   ├── assets/smart_gen/        #   巧算引擎（sg_tools + stage 文件 + 主入口）
@@ -110,4 +111,4 @@ node scripts/gen_stages.mjs   # content/*.json → src/data/stages.generated.ts
 - [x] 家长报告打印（ReportView + 连点 5 次家长门槛 + @media print）
 - [x] minitool zip 打包 + 发布 SOP（publish_offline.py 6 步管线 + SOP 文档）→ **V0.3.0**
 - [x] 原理复述卡（每讲复述"为什么能这样算" + 三层入口 + store v3 + 家长报告回看）→ **V0.4.0**
-- [ ] （待定）薄弱方法统计 + 下周建议（家长报告增强，阶段 2 剩余）
+- [x] 薄弱方法统计 + 下周建议（错题聚合 TOP3 + 未完成推荐 + 阶段薄弱标记 + 家长报告增强）→ **V0.5.0**
