@@ -1,20 +1,95 @@
-// 设置页：外观（深浅模式 + 主题方案）、音效开关、清除进度（两级确认）、关于。
+// 设置页：外观（深浅模式 + 主题方案）、音效开关、数据备份/恢复、清除进度（两级确认）、关于。
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { SCHEMES, useTheme, type ModeId } from "@/lib/theme";
 import { useStore } from "@/lib/store";
 import { APP_VERSION } from "@/lib/version";
-import { PRIVACY_BADGE } from "@/lib/copy";
-import { Card, Btn } from "./ui/kit";
+import { PRIVACY_BADGE, BACKUP_DONE, BACKUP_IOS_HINT, RESTORE_TITLE, RESTORE_SUB, RESTORE_WARN, RESTORE_CONFIRM, RESTORE_CANCEL } from "@/lib/copy";
+import { buildBackup, validateBackup, downloadBackup, importBackup, type BackupFile } from "@/lib/backup";
+import { Card, Btn, Toast } from "./ui/kit";
 import { Overlay } from "./Overlay";
 import { APP_ICON_URL } from "./Shell";
+
+/** 恢复完成反馈的 sessionStorage 旗标（reload 后 Settings 挂载读取） */
+const RESTORED_FLAG = "redtools.shudu.restored";
 
 export function Settings({ onBack }: { onBack: () => void }) {
   const { scheme, setScheme, mode, setMode, resolved } = useTheme();
   const { store, update, resetAll } = useStore();
-  const [confirm, setConfirm] = useState(false);
+  const [confirm, setConfirm] = useState(false); // 清除进度确认
+  const [restorePending, setRestorePending] = useState<BackupFile | null>(null); // 恢复确认
+  const [toast, setToast] = useState("");
+  const [busy, setBusy] = useState(false); // 备份/恢复操作防双击
+  const fileRef = useRef<HTMLInputElement | null>(null);
   const soundOn = store.settings.sound;
+
+  // 恢复完成反馈（V1.2.0）：reload 后读取 sessionStorage 旗标显示摘要
+  useEffect(() => {
+    try {
+      const raw = window.sessionStorage.getItem(RESTORED_FLAG);
+      if (!raw) return;
+      window.sessionStorage.removeItem(RESTORED_FLAG);
+      const stats = JSON.parse(raw) as { history: number; mistakes: number; favorites: number; achievements: number; checkinDays: number };
+      setToast(`已恢复：${stats.history} 次练习 · ${stats.mistakes} 题待巩固 · ${stats.checkinDays} 天打卡`);
+    } catch { /* 旗标损坏忽略 */ }
+  }, []);
+
+  function showToast(t: string) {
+    setToast(t);
+    window.setTimeout(() => setToast(""), 2200);
+  }
+
+  function onBackup() {
+    if (busy) return;
+    setBusy(true);
+    // 每次成功都附 iOS 兜底提示：downloadBackup 内 a.click 在 iOS Safari 静默忽略 download 属性【不抛异常】，
+    // 若只在 catch 提示则 iOS 用户永远看不到兜底（审核发现 A2）
+    downloadBackup(buildBackup(store, APP_VERSION));
+    showToast(`${BACKUP_DONE}${BACKUP_IOS_HINT}`);
+    window.setTimeout(() => setBusy(false), 800);
+  }
+
+  function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // 允许重复选同一文件
+    if (!file) return;
+    if (busy) return;
+    setBusy(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setBusy(false);
+      try {
+        const raw: unknown = JSON.parse(String(reader.result));
+        const v = validateBackup(raw);
+        if (v.ok) setRestorePending(v.file);
+        else showToast(v.reason);
+      } catch {
+        showToast("无法读取这个文件，请选择「数独思维」导出的备份文件。");
+      }
+    };
+    reader.onerror = () => {
+      setBusy(false);
+      showToast("文件读取失败，请重试。");
+    };
+    reader.readAsText(file);
+  }
+
+  function onRestore() {
+    if (!restorePending) return;
+    const r = importBackup(restorePending);
+    if (!r.ok) {
+      showToast(r.reason || "恢复失败，请重试。");
+      setRestorePending(null);
+      return;
+    }
+    // 成功：写旗标供 reload 后展示 → 重载全量重建
+    try {
+      window.sessionStorage.setItem(RESTORED_FLAG, JSON.stringify(restorePending.stats));
+    } catch { /* 旗标写失败仅丢失反馈，不影响恢复 */ }
+    setRestorePending(null);
+    window.location.reload();
+  }
 
   return (
     <div className="pb-4">
@@ -128,9 +203,26 @@ export function Settings({ onBack }: { onBack: () => void }) {
         <h2 className="mb-2 text-[13.5px] font-bold">💾 本机数据</h2>
         <ul className="space-y-1.5 px-0.5 text-[11.5px] leading-relaxed text-muted-foreground">
           <li>· 全部记录保存在这台设备的浏览器里，没有账号、不上传。</li>
-          <li>· 换设备或清除浏览器数据会丢失进度，请先用「分享成绩」留存。</li>
+          <li>· 换设备或清除浏览器数据会丢失进度，可先「备份到文件」留存。</li>
           <li>· 已记录练习 {store.history.length} 次 · 收藏 {store.favorites.length} 题 · 待巩固 {store.mistakes.length} 题。</li>
         </ul>
+        {/* 备份/恢复（V1.2.0） */}
+        <div className="mt-2.5 grid grid-cols-2 gap-2">
+          <Btn variant="secondary" size="sm" className="w-full" disabled={busy} onClick={onBackup}>
+            📤 备份到文件
+          </Btn>
+          <Btn variant="secondary" size="sm" className="w-full" disabled={busy} onClick={() => fileRef.current?.click()}>
+            📥 从文件恢复
+          </Btn>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".json,application/json"
+            aria-label="选择备份文件"
+            className="hidden"
+            onChange={onPickFile}
+          />
+        </div>
       </Card>
 
       <Btn variant="danger" size="lg" className="settings-danger mb-4 w-full" onClick={() => setConfirm(true)}>
@@ -182,6 +274,27 @@ export function Settings({ onBack }: { onBack: () => void }) {
           这一步不可撤销。如果只是想重新开始某一道题，可以在练习页点「重新开始」。
         </div>
       </Overlay>
+
+      {/* 恢复确认（V1.2.0）：显示备份摘要 + 覆盖警示 → 确认后写入并重载 */}
+      <Overlay
+        open={!!restorePending}
+        title={RESTORE_TITLE}
+        sub={restorePending ? RESTORE_SUB(restorePending.stats) : ""}
+        footer={
+          <>
+            <Btn variant="danger" size="lg" className="w-full" disabled={busy} onClick={onRestore}>
+              {RESTORE_CONFIRM}
+            </Btn>
+            <Btn variant="ghost" className="w-full" onClick={() => setRestorePending(null)}>
+              {RESTORE_CANCEL}
+            </Btn>
+          </>
+        }
+      >
+        <div className="rounded-xl bg-destructive/10 px-3 py-3 text-[12px] leading-relaxed text-destructive">{RESTORE_WARN}</div>
+      </Overlay>
+
+      {toast ? <Toast text={toast} /> : null}
     </div>
   );
 }

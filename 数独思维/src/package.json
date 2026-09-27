@@ -1,6 +1,6 @@
 {
   "name": "sudoku-tutor-app",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "node tests/smoke.mjs",
     "test:engine": "node tests/engine.mjs",
-    "test:share": "node tests/share.mjs"
+    "test:share": "node tests/share.mjs",
+    "test:backup": "node tests/backup.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

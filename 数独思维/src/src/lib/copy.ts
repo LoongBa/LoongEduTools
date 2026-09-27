@@ -13,6 +13,17 @@ export const IMPORT_PROMPT_LABEL = "导入编码";
 export const CLIPBOARD_TIP_NO_SD = "剪贴板里没有识别到题目编码，手动粘贴试试。";
 export const CLIPBOARD_TIP_DENIED = "无法读取剪贴板，长按输入框手动粘贴即可。";
 
+/** 备份/恢复文案（V1.2.0） */
+export const BACKUP_DONE = "已生成备份文件。";
+export const BACKUP_IOS_HINT = "如果浏览器没有自动保存，长按页面内容选择「存储到文件」即可。";
+export const RESTORE_TITLE = "从文件恢复？";
+export const RESTORE_SUB = (stats: { history: number; mistakes: number; favorites: number; achievements: number; checkinDays: number }) =>
+  `文件里有 ${stats.history} 次练习、${stats.mistakes} 题待巩固、${stats.favorites} 题收藏、${stats.achievements} 枚成就徽章、${stats.checkinDays} 天打卡。`;
+export const RESTORE_WARN = "恢复将覆盖当前全部进度，包括当前正在做的这道题。这一步不可撤销，确定继续吗？";
+export const RESTORE_CONFIRM = "我已确认，恢复";
+export const RESTORE_CANCEL = "再想想";
+export const RESTORE_DONE = "已恢复，页面即将重新加载。";
+
 /** 导入解析错误 → 文案（静态消息） */
 const IMPORT_MSG_STATIC: Record<ImportError, string> = {
   EMPTY: "没有识别到数字，请检查复制内容。",

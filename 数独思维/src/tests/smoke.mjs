@@ -213,6 +213,11 @@ ok("SD4: 少线索被拒", await vis(page, "线索太少"));
   ok("设置页渲染", await vis(page, "主题方案"));
   // ⑦b 版本号显示（V1.0.3）：设置页关于区 + 首页 footer 规范串
   ok(`设置页显示版本 V${VERSION}`, await vis(page, `版本 V${VERSION}`));
+  // ⑦c 备份/恢复（V1.2.0）：按钮与 file input 存在
+  ok("备份到文件按钮存在", await vis(page, "备份到文件"));
+  ok("从文件恢复按钮存在", await vis(page, "从文件恢复"));
+  const fileInput = page.locator('input[type="file"][aria-label="选择备份文件"]');
+  ok("备份 file input 存在", (await fileInput.count()) === 1, `count=${await fileInput.count()}`);
   await tapText(page, "返回难度");
   await page.waitForTimeout(500);
   ok("首页 footer 规范串", await vis(page, "数据只存本机"));
