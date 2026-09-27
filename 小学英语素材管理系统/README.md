@@ -43,9 +43,9 @@
 
 ## 状态
 
-- [ ] 需求文档评审（草案待确认：Q2 素材清单.md 是否由 report.md 替代）
-- [ ] 设计文档评审（Q3 CLI 先行 / Q4 六下占位）
-- [ ] M1：scan + check + schema
-- [ ] M2：四状态追踪
-- [ ] M3：就绪矩阵 + missing + CLI
-- [ ] M4：report.md 收口
+- [x] 需求文档评审（草案待确认：Q2 素材清单.md 是否由 report.md 替代）
+- [x] 设计文档评审（Q3 CLI 先行 / Q4 六下占位）
+- [x] M1：scan + check + schema
+- [x] M2：四状态追踪（2026-09-27：redraw 重绘完成度 + QA 页级 has_redr / tts 重读完成率 / video 发布包存在性 / content 内容包 + QA PASS）
+- [x] M3：就绪矩阵 + missing + CLI
+- [x] M4：report.md 收口

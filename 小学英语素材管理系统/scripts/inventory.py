@@ -5,7 +5,7 @@
 用法:
     python 脚本文件路径.py scan              # 盘点 → manifest.json（JOIN bookaudio_v3 + bookpage[]）
     python 脚本文件路径.py check [--grade G] # 对账 → integrity.json + 摘要
-    python 脚本文件路径.py status [--unit U] # M2 预留
+    python 脚本文件路径.py status [--unit U] # 状态 → production.json（M2：重绘/TTS/视频/内容包）
     python 脚本文件路径.py missing [--mode]  # M3 预留
     python 脚本文件路径.py matrix            # M3 预留
     python 脚本文件路径.py report            # M4 预留
@@ -20,13 +20,14 @@ import argparse
 import json
 import re
 import sys
+from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from lib.paths import (  # noqa: E402
     MANIFEST_PATH, INTEGRITY_PATH, PRODUCTION_PATH, READINESS_PATH, REPORT_PATH,
     SCHEMA_DIR, MAT_ROOT, DIANDU_DIR, VOCAB_JSON, REDRAW_TASKS_DIR, QA_REPORTS_DIR,
-    GRADE_TERMS,
+    PUBLISH_DIR, PEIDIAN_BUILD_DIR, GRADE_TERMS,
 )
 
 SCHEMA_VERSION = "1.0"
@@ -341,12 +342,213 @@ def cmd_check(args) -> int:
 
 
 # ------------------------------------------------------------------
-# M2/M3/M4 预留
+# M2：status —— 四类生产状态推导（FR3，设计文档 §4.3 STATUS_RULES）
 # ------------------------------------------------------------------
+# 只读数据源（全部不动素材，仅读取）：
+#   - 重绘：RedTools/重绘工具/tasks/pep{N}{s|x}_u{MM}/ + qa_reports/<年级>_<册次>.html 内嵌 DATA
+#   - TTS：素材根 <年级>/<册次>/_重读音频素材/单句音频/*.mp3（实测仅四上有此目录）
+#   - 视频：RedTools/publish/学科/点读陪练_<年级><上|下>Unit01-02_离线版.zip 存在性（简化）
+#   - 内容：点读陪练/build/uXX/uXX_content_package.json + 07_qa_report.md 结论行含 PASS
+# 视频离线包发布目录（沿用 PUBLISH_DIR 常量，不散落绝对路径）
+PUBLISH_XUEKE_DIR = PUBLISH_DIR / "学科"
+
+# 状态值域（设计文档 §3.3，严格中文）
+REDRAW_STATES = ("未开始", "进行中", "QA待检", "通过", "返工")
+TTS_STATES = ("未生成", "部分", "完整")
+VIDEO_STATES = ("未制作", "已生成", "手调保留")
+CONTENT_STATES = ("未生产", "草稿", "已审校", "已发布")
+
+
+def load_qa_report(grade: str, term: str) -> tuple:
+    """读 qa_reports/<年级>_<册次>.html 内嵌 const DATA={...}，返回 (book, html文件名)。
+
+    book = {grade, vol, units:[{idx,label,start,end}], pages:[{page,has_orig,has_redr,...}]}；
+    正则提取 JSON（HTML 中可能跨行、键值含中文）；解析失败 → (None, 文件名) 并打 WARN 不中断。
+    """
+    qa_file = QA_REPORTS_DIR / f"{grade}_{term}.html"
+    if not qa_file.exists():
+        print(f"WARN: 无 QA 报告 {qa_file.name}，{grade}{term} 重绘降级为未开始", file=sys.stderr)
+        return None, None
+    text = qa_file.read_text(encoding="utf-8", errors="replace")
+    m = re.search(r"const DATA\s*=\s*(\{.*?\})\s*;", text, re.S)
+    if not m:
+        print(f"WARN: QA 报告 {qa_file.name} 未找到 const DATA，{grade}{term} 重绘降级为未开始", file=sys.stderr)
+        return None, qa_file.name
+    try:
+        data = json.loads(m.group(1))
+    except Exception as e:
+        print(f"WARN: QA 报告 {qa_file.name} DATA 解析失败（{e}），{grade}{term} 重绘降级为未开始", file=sys.stderr)
+        return None, qa_file.name
+    book = data.get(f"{grade}_{term}") if isinstance(data, dict) else None
+    if not isinstance(book, dict):
+        book = next((v for v in data.values() if isinstance(v, dict)), None) if isinstance(data, dict) else None
+    if book is None:
+        print(f"WARN: QA 报告 {qa_file.name} DATA 无 {grade}_{term}，重绘降级为未开始", file=sys.stderr)
+        return None, qa_file.name
+    return book, qa_file.name
+
+
+def qa_unit_range(book: dict, unit_no: str):
+    """按 QA units[].label 里的 Unit N 匹配当前单元页区间 [start, end)；找不到返回 None。"""
+    num = str(unit_no)[1:].lstrip("0")
+    for u in (book.get("units") or []):
+        if not isinstance(u, dict):
+            continue
+        m = re.search(r"Unit\s*(\d+)", str(u.get("label", "")), re.I)
+        if m and m.group(1).lstrip("0") == num:
+            return int(u.get("start") or 0), int(u.get("end") or 0)
+    return None
+
+
+def derive_redraw(grade: str, term: str, unit_no: str, book, qa_file_name, manifest_unit: dict) -> dict:
+    """重绘状态：任务目录 + QA 页级 has_redr 事实推导。
+
+    - 任务目录不存在 / QA 解析失败 → 未开始（pages 用 manifest 兜底）
+    - 单元页区间内全部 has_redr → 通过；部分 → 进行中
+    """
+    mm = str(unit_no)[1:] if re.fullmatch(r"U\d{2}", str(unit_no)) else ""
+    task_dir = REDRAW_TASKS_DIR / f"pep{GRADE_NO.get(grade, '')}{TERM_SUFFIX.get(term, '')}_u{mm}"
+    m_pages = [p for p in (manifest_unit.get("pages") or []) if isinstance(p, dict)]
+    fallback = {"state": "未开始", "pages_total": len(m_pages), "pages_done": 0,
+                "qa_file": qa_file_name}
+    if book is None or not task_dir.exists():
+        return fallback
+    rng = qa_unit_range(book, unit_no)
+    if rng is None:
+        print(f"WARN: {grade}{term} {unit_no} 在 QA units 中未找到页区间，重绘降级为未开始", file=sys.stderr)
+        return fallback
+    start, end = rng
+    total = max(end - start, 0)
+    done = 0
+    for p in (book.get("pages") or []):
+        if not isinstance(p, dict):
+            continue
+        try:
+            pn = int(p.get("page") or -1)
+        except (TypeError, ValueError):
+            continue
+        if start <= pn < end and p.get("has_redr"):
+            done += 1
+    return {"state": "通过" if done >= total else "进行中",
+            "pages_total": total, "pages_done": done, "qa_file": qa_file_name}
+
+
+def derive_tts(grade: str, term: str, unit_no: str, manifest_unit: dict) -> dict:
+    """TTS 状态：_重读音频素材/单句音频/*.mp3 数 vs manifest 该单元 tracks 总数。
+
+    无目录 / 该单元 0 条 → 未生成 + done=0；有目录按完成率 → 完整/部分。
+    """
+    tts_dir = MAT_ROOT / grade / term / "_重读音频素材" / "单句音频"
+    page_nos = set()
+    tracks_total = 0
+    for p in (manifest_unit.get("pages") or []):
+        if isinstance(p, dict):
+            try:
+                page_nos.add(int(p.get("page_no") or -1))
+            except (TypeError, ValueError):
+                pass
+            tracks_total += len(p.get("tracks") or [])
+    if not tts_dir.exists():
+        return {"state": "未生成", "tracks_total": 0, "tracks_done": 0}
+    tracks_done = 0
+    for f in tts_dir.glob("*.mp3"):
+        m = re.match(r"P(\d+)_", f.name)
+        if m and int(m.group(1)) in page_nos:
+            tracks_done += 1
+    if tracks_done == 0:
+        return {"state": "未生成", "tracks_total": tracks_total, "tracks_done": 0}
+    return {"state": "完整" if tracks_done >= tracks_total else "部分",
+            "tracks_total": tracks_total, "tracks_done": tracks_done}
+
+
+def video_zip_exists(grade: str, term: str) -> bool:
+    """视频状态（简化）：RedTools/publish/学科/点读陪练_<年级><上|下>Unit01-02_离线版.zip 存在性。"""
+    sh = "上" if term == "上册" else "下"
+    return (PUBLISH_XUEKE_DIR / f"点读陪练_{grade}{sh}Unit01-02_离线版.zip").exists()
+
+
+_GRADE_BY_NO = {v: k for k, v in GRADE_NO.items()}   # "4" → "四年级"
+_TERM_BY_LETTER = {"A": "上册", "B": "下册"}
+
+
+def _pkg_grade_term(s) -> tuple | None:
+    """内容包 grade 字段（如 "4A"）→ (年级, 册次)；解析失败返回 None。"""
+    m = re.fullmatch(r"(\d+)([ABab])", str(s).strip())
+    if not m:
+        return None
+    grade = _GRADE_BY_NO.get(m.group(1))
+    term = _TERM_BY_LETTER.get(m.group(2).upper())
+    return (grade, term) if grade and term else None
+
+
+def _norm_unit(s):
+    """内容包 unit 字段（"U01"/"U2"）→ 规范化单元序号 int；失败返回 None。"""
+    m = re.fullmatch(r"U(\d+)", str(s).strip(), re.I)
+    return int(m.group(1)) if m else None
+
+
+def derive_content(grade: str, term: str, unit_no: str) -> dict:
+    """内容包状态：点读陪练/build/uXX/uXX_content_package.json + 07_qa_report.md PASS 结论。
+
+    - 无内容包 → 未生产；有包无 PASS 结论 → 草稿；有包且 PASS → 已审校
+    - 归属校验：包内 grade/unit 与当前单元一致才算（build/u01 属四年级上，防跨册误配）
+    """
+    ukey = str(unit_no).lower()
+    pkg_dir = PEIDIAN_BUILD_DIR / ukey
+    pkg_file = pkg_dir / f"{ukey}_content_package.json"
+    if not pkg_file.exists():
+        return {"state": "未生产"}
+    pkg = load_json(pkg_file, None)
+    if pkg is None:
+        return {"state": "未生产"}
+    if _pkg_grade_term(pkg.get("grade")) != (grade, term) or \
+       _norm_unit(pkg.get("unit")) != _norm_unit(unit_no):
+        return {"state": "未生产"}
+    qa_report = pkg_dir / "07_qa_report.md"
+    if qa_report.exists() and "PASS" in qa_report.read_text(encoding="utf-8", errors="replace"):
+        return {"state": "已审校"}
+    return {"state": "草稿"}
+
+
 def cmd_status(args) -> int:
-    data = {"schema_version": SCHEMA_VERSION, "units": []}
+    manifest = load_json(MANIFEST_PATH, {})
+    if not manifest.get("grades"):
+        print("ERROR: 请先运行 scan（manifest.json 不存在或为空）", file=sys.stderr)
+        return 2
+    units: list[dict] = []
+    for g in manifest.get("grades", []):
+        if not g.get("published"):
+            continue                      # 六下未出版：跳过（输出空 units，不报错）
+        grade, term = g["grade"], g["term"]
+        book, qa_file_name = load_qa_report(grade, term)
+        for mu in g.get("units", []):
+            if not isinstance(mu, dict):
+                continue
+            unit_no = mu.get("unit_no")
+            if not isinstance(unit_no, str) or not re.fullmatch(r"U\d{2}", unit_no):
+                continue                  # 只处理主单元，跳过 Revision/Appendix/cover
+            title = mu.get("title") or unit_no
+            units.append({
+                "grade": grade, "term": term, "unit_no": unit_no, "title": title,
+                "redraw": derive_redraw(grade, term, unit_no, book, qa_file_name, mu),
+                "tts": derive_tts(grade, term, unit_no, mu),
+                "video": {"state": "已生成" if video_zip_exists(grade, term) else "未制作"},
+                "content": derive_content(grade, term, unit_no),
+            })
+    if getattr(args, "unit", None):
+        want = str(args.unit).upper()
+        units = [u for u in units if u["unit_no"] == want]
+    # 值域校验（设计文档 §3.3，防御性）
+    for u in units:
+        assert u["redraw"]["state"] in REDRAW_STATES
+        assert u["tts"]["state"] in TTS_STATES
+        assert u["video"]["state"] in VIDEO_STATES
+        assert u["content"]["state"] in CONTENT_STATES
+    data = {"schema_version": SCHEMA_VERSION,
+            "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
+            "units": units}
     save_json(PRODUCTION_PATH, data)
-    print(f"status 完成 → {PRODUCTION_PATH.name}（M2 待实施）")
+    print(f"status 完成 → {PRODUCTION_PATH.name}（units {len(units)}，M2 四状态追踪）")
     return 0
 
 
