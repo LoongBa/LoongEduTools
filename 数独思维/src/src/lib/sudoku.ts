@@ -356,3 +356,32 @@ export function remainingMap(grid: Grid, size: Size): Record<number, number> {
   for (let i = 0; i < grid.length; i++) if (grid[i]) out[grid[i]] -= 1;
   return out;
 }
+
+/** analyzeTechniques 循环上限：同 replay.ts 经验（9×9 全盘扫描必须双上限兜底，防卡主线程） */
+const TECHNIQUE_MAX_ROUNDS = 100;
+/** 题面技巧画像缓存：按 `size:SD` 签名，FIFO 上限防无界增长 */
+const techniqueCache = new Map<string, string[]>();
+
+/**
+ * 题面技巧画像（V1.3.0）：模拟完整推理链，收集去重的 findLogicStep technique 集合。
+ * 语义边界（oracle B2）：结果是「题面推理链前段（基础技巧可推进部分）涉及的技巧近似标签」，
+ * 不等于孩子填错那格对应的技巧；findLogicStep 只能诚实识别唯一候选/宫内排除/行列排除，
+ * 卡住（需进阶技巧）时返回已收集子集，不抛错。
+ */
+export function analyzeTechniques(board: Grid, size: Size): string[] {
+  const sig = `${size}:${toSDString(board, size)}`;
+  const hit = techniqueCache.get(sig);
+  if (hit) return hit;
+  const set = new Set<string>();
+  const grid = board.slice();
+  for (let i = 0; i < TECHNIQUE_MAX_ROUNDS; i++) {
+    const step = findLogicStep(grid, size);
+    if (!step) break; // 卡住（需进阶技巧）或已解完
+    set.add(step.technique);
+    grid[step.index] = step.value; // 每轮必填一格 → ≤size² 轮必然终止（N1）
+  }
+  const out = [...set];
+  if (techniqueCache.size > 200) techniqueCache.clear(); // FIFO 上限
+  techniqueCache.set(sig, out);
+  return out;
+}

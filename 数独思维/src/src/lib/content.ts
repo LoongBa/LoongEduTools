@@ -99,6 +99,50 @@ export function skillByKey(key: string): Technique | undefined {
 /** 首页展示的适龄基础技巧（4 个） */
 export const HOME_SKILL_KEYS = BASE_SKILLS.map((s) => s.key);
 
+/* ================= 错题技巧分组（V1.3.0） ================= */
+
+/**
+ * findLogicStep technique 中文名 → 教学关 key（B1 修正：唯一候选对应已存在的 uniqueElim「唯一余数」关）。
+ * findLogicStep 只能诚实识别 3 类基础技巧；识别不了的归「需综合」。
+ */
+export const TECHNIQUE_LESSON_MAP: Record<string, string> = {
+  唯一候选: "uniqueElim",
+  宫内排除: "boxElim",
+  行排除: "rowColElim",
+  列排除: "rowColElim",
+};
+
+export type TechniqueGroupId = "unique" | "box" | "rowcol" | "mixed";
+
+export interface TechniqueGroupMeta {
+  id: TechniqueGroupId;
+  /** 组名（UI 展示） */
+  name: string;
+  /** 该组对应的教学关 key（mixed 组为 null，按钮改「去练一道」） */
+  lessonKey: string | null;
+  /** 该组涉及的 findLogicStep technique 中文名集合 */
+  techniques: string[];
+}
+
+/** 固定分组顺序（唯一候选 → 宫内排除 → 行列排除 → 需综合）；lessonKey 从 TECHNIQUE_LESSON_MAP 派生（单源） */
+export const TECHNIQUE_GROUPS: TechniqueGroupMeta[] = [
+  { id: "unique", name: "唯一候选", lessonKey: TECHNIQUE_LESSON_MAP["唯一候选"] ?? null, techniques: ["唯一候选"] },
+  { id: "box", name: "宫内排除", lessonKey: TECHNIQUE_LESSON_MAP["宫内排除"] ?? null, techniques: ["宫内排除"] },
+  { id: "rowcol", name: "行列排除", lessonKey: TECHNIQUE_LESSON_MAP["行排除"] ?? null, techniques: ["行排除", "列排除"] },
+  { id: "mixed", name: "需综合", lessonKey: null, techniques: [] },
+];
+
+/** 单题 techniques（中文名集合）→ 所属组 id（一题可属多组；无命中归需综合） */
+export function groupOfTechniques(techniques: string[] | undefined): TechniqueGroupId[] {
+  if (!techniques || !techniques.length) return ["mixed"];
+  const out: TechniqueGroupId[] = [];
+  for (const g of TECHNIQUE_GROUPS) {
+    if (g.id === "mixed") continue;
+    if (techniques.some((t) => g.techniques.includes(t))) out.push(g.id);
+  }
+  return out.length ? out : ["mixed"];
+}
+
 export interface LessonStep {
   /** 引导文案 */
   text: string;

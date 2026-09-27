@@ -13,12 +13,12 @@ import { Settings } from "@/components/Settings";
 import { MapView } from "@/components/MapView";
 import { ImportOverlay, RulesTeach } from "@/components/ImportRules";
 import { ShareResultOverlay } from "@/components/Share";
-import { SkillWall, AchievementWall, BookList, Calendar, WeekCard, levelName } from "@/components/Walls";
+import { SkillWall, AchievementWall, BookList, Calendar, WeekCard, levelName, SkillGroups } from "@/components/Walls";
 import { useStore, todayStr, type BookItem, type LevelId } from "@/lib/store";
 import { APP_VERSION } from "@/lib/version";
-import { importMsg, PRIVACY_BADGE } from "@/lib/copy";
-import { BASE_SKILLS, ADV_SKILLS, ACHIEVEMENTS, FREE_TIERS, HOME_SKILL_KEYS, MAP_LEVELS, dailyFor, skillByKey, type MapLevel, type Technique } from "@/lib/content";
-import { countGiven, parseImportedText, type Size } from "@/lib/sudoku";
+import { importMsg, PRIVACY_BADGE, GROUP_PRACTICE_DONE } from "@/lib/copy";
+import { BASE_SKILLS, ADV_SKILLS, ACHIEVEMENTS, FREE_TIERS, HOME_SKILL_KEYS, MAP_LEVELS, dailyFor, skillByKey, groupOfTechniques, type MapLevel, type Technique, type TechniqueGroupId } from "@/lib/content";
+import { countGiven, parseImportedText, analyzeTechniques, type Size } from "@/lib/sudoku";
 import { formatMs } from "@/components/Overlay";
 import { ART_HERO } from "@/lib/art";
 
@@ -58,6 +58,8 @@ function Index() {
   const [teaching, setTeaching] = useState(false);
   const [shareResult, setShareResult] = useState(false);
   const [toast, setToast] = useState("");
+  /** 同类专项连做会话（V1.3.0）：组内错题逐一重练，完成一题自动进下一题 */
+  const [groupSession, setGroupSession] = useState<{ list: BookItem[]; idx: number } | null>(null);
   /** URL 直启守卫：仅首帧处理一次 ?sd= 参数（React 19 StrictMode dev 双调用用 ref 防重） */
   const bootRef = useRef(false);
 
@@ -83,6 +85,22 @@ function Index() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅在挂载时读取一次
   }, []);
+
+  /** 旧错题技巧画像迁移（V1.3.0 I3）：打开错题本时对缺 techniques 的条目一次性补算写回 */
+  useEffect(() => {
+    if (view !== "mistakes") return;
+    const missing = store.mistakes.filter((m) => !m.techniques);
+    if (!missing.length) return;
+    update((d) => {
+      for (const m of d.mistakes) {
+        if (m.techniques) continue;
+        try {
+          m.techniques = analyzeTechniques(m.board, m.size);
+        } catch { /* 单条失败跳过，下次打开再补 */ }
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅在进入错题本时触发一次
+  }, [view]);
 
   /** 最近一次完成的练习记录，供「分享成绩」使用 */
   const lastRecord = useMemo(() => {
@@ -115,9 +133,48 @@ function Index() {
     start({ size: it.size, level: it.level, source: "replay", board: it.board, solution: it.solution, errIdx: it.errIdx });
   }
 
+  /** 同类专项连做（V1.3.0）：组内题（按 groupOfTechniques 命中）逐一重练；<3 题直接全练，≥3 随机起手 */
+  function startGroupPractice(gid: TechniqueGroupId) {
+    const list = store.mistakes.filter((m) => groupOfTechniques(m.techniques).includes(gid));
+    if (!list.length) return;
+    let ordered = list;
+    if (list.length >= 3) {
+      const shuffled = list.slice();
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      ordered = shuffled;
+    }
+    setGroupSession({ list: ordered, idx: 0 });
+    startGroupItem(ordered[0]);
+  }
+
+  /** 开始/推进连做：当前 idx 的题 → practice；idx 越界 → 完成（回错题本 + 提示） */
+  function startGroupItem(item: BookItem) {
+    start({ size: item.size, level: item.level, source: "replay", board: item.board, solution: item.solution, errIdx: item.errIdx, inGroup: true });
+  }
+
+  /** Practice 完成回调：连做中推进下一题，否则回首页 */
+  function handlePracticeFinish() {
+    if (groupSession) {
+      const next = groupSession.idx + 1;
+      if (next < groupSession.list.length) {
+        setGroupSession({ list: groupSession.list, idx: next });
+        startGroupItem(groupSession.list[next]);
+        return;
+      }
+      setGroupSession(null);
+      setView("mistakes");
+      showToast(GROUP_PRACTICE_DONE);
+      return;
+    }
+    setView("home");
+  }
+
   /* ---------- 子视图 ---------- */
   if (view === "practice" && params) {
-    return <Practice params={params} onExit={() => setView("home")} onFinish={() => setView("home")} />;
+    return <Practice params={params} onExit={() => setView("home")} onFinish={handlePracticeFinish} />;
   }
   if (view === "lesson" && lesson) {
     return <SkillLesson skill={lesson} onExit={() => setView("home")} onComplete={(key) => handleLessonDone(key)} />;
@@ -190,6 +247,16 @@ function Index() {
       {view === "mistakes" ? (
         <>
           <TopBar onBack={() => setView("home")} title="📕 错题本" meta={`${store.mistakes.length} 题待巩固 · 重练零失误自动移出`} />
+          {/* V1.3.0：技巧分组区（同类专项连做 + 教学关关联） */}
+          <SkillGroups
+            mistakes={store.mistakes}
+            onLesson={(lessonKey) => {
+              const s = skillByKey(lessonKey);
+              if (s) openSkill(s.key);
+            }}
+            onPractice={(gid) => startGroupPractice(gid)}
+            onMixedPractice={() => startGroupPractice("mixed")}
+          />
           <BookList
             items={store.mistakes}
             kind="mistake"

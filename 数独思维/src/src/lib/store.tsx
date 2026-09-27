@@ -36,6 +36,8 @@ export interface BookItem {
   hints?: number;
   /** 错题本用：上次填错的位置索引（重练时 replay-mark 浅红标记） */
   errIdx?: number[];
+  /** 题面技巧画像（V1.3.0）：analyzeTechniques 结果，近似题目标签，非错误标签；旧存档可缺省 */
+  techniques?: string[];
 }
 
 export interface Snapshot {

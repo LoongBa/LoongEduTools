@@ -1,7 +1,8 @@
 // 数独引擎单测：直接跑真实源码（Node 26 原生 TS 类型剥离）。
 // 断言：generatePuzzle 挖洞命中目标已知格、解合法（行/列/宫 1..N 各一次）、solve 唯一解、SD 往返一致。
 // V1.0.4 增：parseImportedText 全分支、长度不变式、协议串 round-trip。
-import { generatePuzzle, solve, boxOf, toSDString, fromSDString, validateImported, parseImportedText } from "../src/lib/sudoku.ts";
+// V1.3.0 增：analyzeTechniques 题面技巧画像。
+import { generatePuzzle, solve, boxOf, toSDString, fromSDString, validateImported, parseImportedText, analyzeTechniques } from "../src/lib/sudoku.ts";
 
 let failed = 0;
 const ok = (name, cond, extra = "") => {
@@ -104,6 +105,37 @@ for (const size of [4, 6, 9]) {
   const back = parseImportedText(proto);
   ok(`size=${size} 协议串 round-trip 与原始 givens 一致`,
     back.board && back.board.every((v, i) => v === puzzle[i]), `error=${back.error}`);
+}
+
+// ===== V1.3.0：analyzeTechniques 题面技巧画像 =====
+// 4×4 简单题（少空格）：应能完整推理链判定，返回非空集合且仅含已知技巧名
+{
+  const { puzzle, solution } = generatePuzzle(4, 12, "engine-test:tech:simple");
+  const techs = analyzeTechniques(puzzle, 4);
+  ok("4×4 简单题画像非空", techs.length > 0, `techs=${techs.join(",")}`);
+  const known = new Set(["唯一候选", "宫内排除", "行排除", "列排除"]);
+  ok("画像仅含诚实已知技巧", techs.every((t) => known.has(t)), `techs=${techs.join(",")}`);
+  // 缓存命中：同题二次调用返回同一引用内容
+  const techs2 = analyzeTechniques(puzzle, 4);
+  ok("画像缓存命中（内容一致）", techs.join("|") === techs2.join("|"));
+}
+// 卡住不抛错：用解（已填满）调用 → 返回空数组（无空格无可推）
+{
+  const { solution } = generatePuzzle(4, 12, "engine-test:tech:full");
+  const techs = analyzeTechniques(solution, 4);
+  ok("已解盘面画像为空", techs.length === 0, `techs=${techs.join(",")}`);
+}
+// 空盘面（全空格）不抛错且能推进
+{
+  const empty = new Array(16).fill(0);
+  const techs = analyzeTechniques(empty, 4);
+  ok("空盘面画像可推进不抛错", Array.isArray(techs), `len=${techs.length}`);
+}
+// 去重：同一题多次命中同一技巧只记一次（画像长度 ≤ 3）
+{
+  const { puzzle } = generatePuzzle(4, 10, "engine-test:tech:dedup");
+  const techs = analyzeTechniques(puzzle, 4);
+  ok("画像去重（≤3 种）", techs.length <= 3 && new Set(techs).size === techs.length, `techs=${techs.join(",")}`);
 }
 
 console.log(`\n引擎单测 ${failed ? "FAIL " + failed : "全部通过"}`);

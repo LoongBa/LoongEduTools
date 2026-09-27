@@ -24,6 +24,15 @@ export const RESTORE_CONFIRM = "我已确认，恢复";
 export const RESTORE_CANCEL = "再想想";
 export const RESTORE_DONE = "已恢复，页面即将重新加载。";
 
+/** 错题技巧分组视图文案（V1.3.0） */
+export const GROUP_VIEW_TITLE = "按技巧分组";
+export const GROUP_VIEW_HINT = "这类题常涉及的推理环节，点开看看哪里可以再补一补。";
+export const GROUP_LESSON_BTN = "🎓 复习技巧";
+export const GROUP_PRACTICE_BTN = "📝 练这一组";
+export const GROUP_MIXED_BTN = "📚 去练一道";
+export const GROUP_MIXED_HINT = "综合运用多种推理，适合按自己的节奏多练几道。";
+export const GROUP_PRACTICE_DONE = "这组练完了，错题本里再挑一组继续。";
+
 /** 导入解析错误 → 文案（静态消息） */
 const IMPORT_MSG_STATIC: Record<ImportError, string> = {
   EMPTY: "没有识别到数字，请检查复制内容。",

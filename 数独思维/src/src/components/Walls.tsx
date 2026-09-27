@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 import { Card, Btn, EmptyState, Bar } from "./ui/kit";
 import { ART_MISTAKES, ART_FAVORITES } from "@/lib/art";
 import type { Achievement, Technique } from "@/lib/content";
+import { TECHNIQUE_GROUPS, groupOfTechniques, type TechniqueGroupId } from "@/lib/content";
+import { GROUP_VIEW_TITLE, GROUP_VIEW_HINT, GROUP_LESSON_BTN, GROUP_PRACTICE_BTN, GROUP_MIXED_BTN, GROUP_MIXED_HINT } from "@/lib/copy";
 import type { BookItem } from "@/lib/store";
 import { todayStr } from "@/lib/store";
 import type { Size } from "@/lib/sudoku";
@@ -226,6 +228,67 @@ export function BookList({
 
 export function levelName(id: string): string {
   return id === "easy" ? "简单" : id === "hard" ? "困难" : "普通";
+}
+
+/* ================= 错题技巧分组（V1.3.0） ================= */
+export function SkillGroups({
+  mistakes,
+  onLesson,
+  onPractice,
+  onMixedPractice,
+}: {
+  mistakes: BookItem[];
+  onLesson: (lessonKey: string) => void;
+  onPractice: (group: TechniqueGroupId) => void;
+  onMixedPractice: () => void;
+}) {
+  // 按组统计题数（一题可属多组）
+  const counts = new Map<TechniqueGroupId, number>();
+  for (const m of mistakes) {
+    for (const g of groupOfTechniques(m.techniques)) counts.set(g, (counts.get(g) || 0) + 1);
+  }
+  const any = [...counts.values()].some((c) => c > 0);
+  if (!any) return null;
+
+  return (
+    <Card tone="flat" pad="normal" className="mb-3">
+      <h2 className="mb-1 text-[13.5px] font-bold">🧩 {GROUP_VIEW_TITLE}</h2>
+      <p className="mb-2.5 text-[11px] leading-snug text-muted-foreground">{GROUP_VIEW_HINT}</p>
+      <div className="space-y-2">
+        {TECHNIQUE_GROUPS.map((g) => {
+          const c = counts.get(g.id) || 0;
+          if (!c) return null;
+          return (
+            <div key={g.id} className="flex items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-2">
+              <span className="tnum grid h-8 w-8 shrink-0 place-items-center rounded-full bg-secondary text-[12.5px] font-bold">{c}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[12.5px] font-bold leading-tight">{g.name}</span>
+                <span className="mt-0.5 block truncate text-[10.5px] text-muted-foreground">
+                  {g.id === "mixed" ? GROUP_MIXED_HINT : `题面推理常涉及「${g.name}」，复习后练一组会更有把握。`}
+                </span>
+              </span>
+              {g.id === "mixed" ? (
+                <Btn variant="secondary" size="sm" className="shrink-0" onClick={onMixedPractice}>
+                  {GROUP_MIXED_BTN}
+                </Btn>
+              ) : (
+                <div className="flex shrink-0 gap-1.5">
+                  {g.lessonKey ? (
+                    <Btn variant="ghost" size="sm" onClick={() => onLesson(g.lessonKey!)} aria-label={`复习${g.name}`}>
+                      {GROUP_LESSON_BTN}
+                    </Btn>
+                  ) : null}
+                  <Btn variant="secondary" size="sm" onClick={() => onPractice(g.id)} aria-label={`练习${g.name}组`}>
+                    {GROUP_PRACTICE_BTN}
+                  </Btn>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
 }
 
 /* ================= 打卡日历 ================= */

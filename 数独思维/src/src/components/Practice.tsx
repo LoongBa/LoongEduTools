@@ -11,7 +11,7 @@ import { HINT_LIMIT, LEVEL_GIVEN, MAP_LEVELS, skillByKey } from "@/lib/content";
 import { levelName } from "./Walls";
 import type { PracticeSource } from "@/lib/store";
 import { calcStars, markCheckin, todayStr, useStore, type BookItem, type HistoryItem, type LevelId, type Snapshot } from "@/lib/store";
-import { colOf, countGiven, findLogicStep, generatePuzzle, peersOf, remainingMap, rowOf, toSDString, type Grid, type Size } from "@/lib/sudoku";
+import { colOf, countGiven, findLogicStep, generatePuzzle, peersOf, remainingMap, rowOf, toSDString, analyzeTechniques, type Grid, type Size } from "@/lib/sudoku";
 import { SharePuzzleOverlay, ShareResultOverlay } from "./Share";
 import { StepReview } from "./StepReview";
 
@@ -26,6 +26,8 @@ export interface StartParams {
   solution?: Grid;
   /** 错题重练：上次填错的位置索引（replay-mark 标记） */
   errIdx?: number[];
+  /** 同类专项连做标记（V1.3.0）：结算层按钮文案切换为「下一道」 */
+  inGroup?: boolean;
 }
 
 interface Props {
@@ -623,7 +625,7 @@ export function Practice({ params, onExit, onFinish }: Props) {
                 📤 分享成绩
               </Btn>
               <Btn variant="ghost" onClick={onFinish}>
-                选难度
+                {params.inGroup ? "下一道" : "选难度"}
               </Btn>
             </OverlayBtns>
             <Btn variant="quiet" size="sm" onClick={onFinish} className="w-full">
@@ -718,7 +720,12 @@ function introText(source: PracticeSource, size: Size): string {
 function pushMistake(d: { mistakes: BookItem[] }, board: Grid, solution: Grid, size: Size, level: LevelId, errors: number, hints: number, errIdx: number[] = []) {
   const sig = toSDString(board, size);
   if (d.mistakes.some((m) => toSDString(m.board, m.size) === sig)) return;
-  d.mistakes.unshift({ id: `${Date.now()}`, ts: Date.now(), level, size, board: board.slice(), solution: solution.slice(), errors, hints, errIdx });
+  // V1.3.0：题面技巧画像（近似题目标签；走引擎缓存，不卡主线程）
+  let techniques: string[] | undefined;
+  try {
+    techniques = analyzeTechniques(board, size);
+  } catch { /* 画像失败不阻塞入库，techniques 留空由迁移补算 */ }
+  d.mistakes.unshift({ id: `${Date.now()}`, ts: Date.now(), level, size, board: board.slice(), solution: solution.slice(), errors, hints, errIdx, techniques });
   if (d.mistakes.length > 50) d.mistakes = d.mistakes.slice(0, 50);
 }
 

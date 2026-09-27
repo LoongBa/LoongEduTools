@@ -222,6 +222,13 @@ ok("SD4: 少线索被拒", await vis(page, "线索太少"));
   await page.waitForTimeout(500);
   ok("首页 footer 规范串", await vis(page, "数据只存本机"));
 
+  // ⑦d 错题本（V1.3.0）：分组区标题存在（空错题本时 SkillGroups 返回 null，标题不显示——断言页头/空态正常）
+  await tapText(page, "错题本");
+  await page.waitForTimeout(500);
+  ok("错题本页渲染", await vis(page, "错题本") || await vis(page, "还没有需要巩固的题"));
+  await tapText(page, "返回难度");
+  await page.waitForTimeout(400);
+
   console.log(results.join("\n"));
   const fails = results.filter((r) => r.startsWith("FAIL")).length;
   console.log(`\n冒烟 ${results.length} 项 · PASS ${results.length - fails} · FAIL ${fails} · JS错误 ${jsErrors.length}`);
