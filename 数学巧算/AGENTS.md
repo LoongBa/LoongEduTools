@@ -53,6 +53,11 @@
     └── tests/                       #   engine.mjs（引擎单测 L1-L7）+ smoke.mjs（浏览器冒烟）
 ```
 
+## 迭代审核约定（2026-09-27 用户定夺）
+
+- **方案评审**：Sisyphus 先自审 v0.1 → 交 **1 个 Oracle 外审**（后台 `subagent_type="oracle"`）→ 按 B/I/N 意见修订 v0.2 后实施。**不再双 Oracle 并行**（用户判定：双审浪费，自审 + 单外审即可，贴近 RedTools §6A 本意）。
+- **实施后审核**：Sisyphus 亲自代码审核并编写审核报告（同 V0.3-V0.5 惯例，不浪费 Oracle）。
+
 ## 文档地图
 
 | 文档 | 位置 | 用途 |
@@ -77,7 +82,7 @@
 ## 快速入口
 
 ```powershell
-# 数学巧算 React 工程（V0.3.0 已迭代）
+# 数学巧算 React 工程（V0.5.0 已迭代）
 cd 数学巧算\src
 pnpm dev                # 开发（3016）
 pnpm build              # 离线 minitool 包（Chrome 61 基线 + 经典脚本，dist/）
