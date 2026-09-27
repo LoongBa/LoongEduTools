@@ -9,6 +9,10 @@ export const PRIVACY_BADGE = "无账号 · 无云同步 · 无排行 · 数据�
 /** 分享题编码协议前缀行标签（复制文本中引导用户区分「人读标题」与「可导入编码」） */
 export const IMPORT_PROMPT_LABEL = "导入编码";
 
+/** 剪贴板粘贴按钮提示 */
+export const CLIPBOARD_TIP_NO_SD = "剪贴板里没有识别到题目编码，手动粘贴试试。";
+export const CLIPBOARD_TIP_DENIED = "无法读取剪贴板，长按输入框手动粘贴即可。";
+
 /** 导入解析错误 → 文案（静态消息） */
 const IMPORT_MSG_STATIC: Record<ImportError, string> = {
   EMPTY: "没有识别到数字，请检查复制内容。",

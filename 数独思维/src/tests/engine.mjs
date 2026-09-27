@@ -49,9 +49,11 @@ for (const size of [4, 6, 9]) {
   ok(`size=${size} SD 往返一致`, !!back && toSDString(back, size) === sd);
 }
 
-// 导入校验：合法题通过 / 少线索拒绝 / 冲突拒绝
+// 导入校验：合法题通过 / 少线索拒绝 / 冲突拒绝（V1.1.0：validateImported 返回 solution）
 const { puzzle: p9 } = generatePuzzle(9, 27, "engine-test:import");
-ok("validateImported 合法题通过", validateImported(p9, 9).ok);
+const v9 = validateImported(p9, 9);
+ok("validateImported 合法题通过", v9.ok);
+ok("validateImported 返回 solution", !!v9.solution && v9.solution.length === 81, `solLen=${v9.solution?.length}`);
 const sparse = p9.slice();
 for (let i = 0; i < 30; i++) sparse[i] = 0;
 ok("validateImported 少线索拒绝", !validateImported(sparse, 9).ok);

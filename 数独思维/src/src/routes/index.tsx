@@ -1,7 +1,7 @@
 // 首页：hero + 四组分区（开始练习 / 每日·进阶 / 学习 / 更多）。
 // 全站为单路由视图状态机：练习、教学关、徽章墙、报告、设置等都在此切换渲染。
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import { Shell, CheckinBar, APP_ICON_URL } from "@/components/Shell";
@@ -16,9 +16,9 @@ import { ShareResultOverlay } from "@/components/Share";
 import { SkillWall, AchievementWall, BookList, Calendar, WeekCard, levelName } from "@/components/Walls";
 import { useStore, todayStr, type BookItem, type LevelId } from "@/lib/store";
 import { APP_VERSION } from "@/lib/version";
-import { PRIVACY_BADGE } from "@/lib/copy";
+import { importMsg, PRIVACY_BADGE } from "@/lib/copy";
 import { BASE_SKILLS, ADV_SKILLS, ACHIEVEMENTS, FREE_TIERS, HOME_SKILL_KEYS, MAP_LEVELS, dailyFor, skillByKey, type MapLevel, type Technique } from "@/lib/content";
-import { countGiven, solve, type Size } from "@/lib/sudoku";
+import { countGiven, parseImportedText, type Size } from "@/lib/sudoku";
 import { formatMs } from "@/components/Overlay";
 import { ART_HERO } from "@/lib/art";
 
@@ -58,6 +58,31 @@ function Index() {
   const [teaching, setTeaching] = useState(false);
   const [shareResult, setShareResult] = useState(false);
   const [toast, setToast] = useState("");
+  /** URL 直启守卫：仅首帧处理一次 ?sd= 参数（React 19 StrictMode dev 双调用用 ref 防重） */
+  const bootRef = useRef(false);
+
+  /** URL 直启（V1.1.0）：?sd=SD{N}:<编码> → 校验通过自动进练习，失败 Toast 提示 */
+  useEffect(() => {
+    if (bootRef.current) return;
+    bootRef.current = true;
+    const raw = new URLSearchParams(window.location.search).get("sd") ?? "";
+    let sd = raw;
+    try {
+      sd = decodeURIComponent(raw); // 防分享渠道百分号编码 . / , 截断正则（oracle I1）
+    } catch { /* 非合法编码就按原样走解析 */ }
+    if (!sd) return;
+    const parsed = parseImportedText(sd);
+    if (parsed.error == null && parsed.board && parsed.size && parsed.solution) {
+      start({ size: parsed.size, level: "normal", source: "import", board: parsed.board, solution: parsed.solution });
+      // 清除 URL 参数：防刷新重复直启 / 链接残留（用 URL API 删参，兼容 sd 非首个参数的多参链接）
+      const u = new URL(window.location.href);
+      u.searchParams.delete("sd");
+      window.history.replaceState({}, "", u.pathname + u.search + u.hash);
+    } else {
+      showToast(importMsg(parsed));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅在挂载时读取一次
+  }, []);
 
   /** 最近一次完成的练习记录，供「分享成绩」使用 */
   const lastRecord = useMemo(() => {
@@ -223,9 +248,9 @@ function Index() {
       {importing ? (
         <ImportOverlay
           onClose={() => setImporting(false)}
-          onStart={(board, size) => {
+          onStart={(board, size, solution) => {
             setImporting(false);
-            start({ size, level: "normal", source: "import", board, solution: solveSolution(board, size) });
+            start({ size, level: "normal", source: "import", board, solution });
           }}
         />
       ) : null}
@@ -548,12 +573,6 @@ function nextMapLevel(completed: { i: number }[]): number {
   const set = new Set(completed.map((c) => c.i));
   for (let i = 0; i < MAP_LEVELS.length; i++) if (!set.has(i)) return i + 1;
   return MAP_LEVELS.length;
-}
-
-/** 导入题的参考解（用于对错校验），复用引擎求解 */
-function solveSolution(board: number[], size: Size): number[] {
-  const sols = solve(board.slice(), size, 1);
-  return sols[0] || board.slice();
 }
 
 function handleContinue(cur: ReturnType<typeof useStore>["store"]["cur"], onStart: (p: StartParams) => void) {

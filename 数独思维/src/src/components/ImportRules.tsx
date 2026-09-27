@@ -5,14 +5,30 @@ import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Overlay, Btn } from "./Overlay";
 import { parseImportedText, type Size } from "@/lib/sudoku";
-import { importMsg } from "@/lib/copy";
+import { importMsg, CLIPBOARD_TIP_NO_SD, CLIPBOARD_TIP_DENIED } from "@/lib/copy";
 import { RULE_STEPS } from "@/lib/content";
 
-export function ImportOverlay({ onClose, onStart }: { onClose: () => void; onStart: (board: number[], size: Size) => void }) {
+export function ImportOverlay({ onClose, onStart }: { onClose: () => void; onStart: (board: number[], size: Size, solution: number[]) => void }) {
   const [text, setText] = useState("");
+  const [tip, setTip] = useState("");
   const parsed = useMemo(() => parseImportedText(text), [text]);
 
   const canStart = !!parsed.board;
+
+  /** 显式「从剪贴板粘贴」：用户手势触发，权限弹窗在预期内；读失败静默降级提示手动粘贴 */
+  async function pasteClipboard() {
+    setTip("");
+    try {
+      const clip = await navigator.clipboard.readText();
+      if (clip && /SD(4|6|9)\s*:/.test(clip)) {
+        setText(clip);
+        return;
+      }
+      setTip(CLIPBOARD_TIP_NO_SD);
+    } catch {
+      setTip(CLIPBOARD_TIP_DENIED);
+    }
+  }
 
   return (
     <Overlay
@@ -23,7 +39,7 @@ export function ImportOverlay({ onClose, onStart }: { onClose: () => void; onSta
       sub="把题目编码粘进来即可开始练习。一行 9 个数字，空格用 . 或 0 表示，可以不分段连写。"
       footer={
         <>
-          <Btn variant="primary" size="lg" className="w-full" disabled={!canStart} onClick={() => canStart && onStart(parsed.board!, parsed.size!)}>
+          <Btn variant="primary" size="lg" className="w-full" disabled={!canStart} onClick={() => canStart && onStart(parsed.board!, parsed.size!, parsed.solution!)}>
             开始练习这道题
           </Btn>
           <Btn variant="ghost" className="w-full" onClick={onClose}>
@@ -47,7 +63,13 @@ export function ImportOverlay({ onClose, onStart }: { onClose: () => void; onSta
             {importMsg(parsed)}
           </p>
         ) : (
-          <p className="text-[11.5px] text-muted-foreground">支持从结果页「分享这道题」复制回来的“导入编码”行，也支持直接粘贴{"SD{N}: 编码"}。</p>
+          <div className="space-y-1.5">
+            <Btn variant="secondary" size="sm" className="w-full" onClick={pasteClipboard}>
+              📋 从剪贴板粘贴
+            </Btn>
+            {tip ? <p className="rounded-xl bg-secondary/60 px-3 py-2 text-[11.5px] leading-relaxed text-muted-foreground">{tip}</p> : null}
+            <p className="text-[11.5px] text-muted-foreground">支持从结果页「分享这道题」复制回来的“导入编码”行，也支持直接粘贴{"SD{N}: 编码"}。</p>
+          </div>
         )}
       </div>
     </Overlay>

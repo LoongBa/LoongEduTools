@@ -152,22 +152,45 @@ async function main() {
   await page.waitForTimeout(700);
   ok("地图关卡开局", await vis(page, "关卡 1-1"));
   await page.locator("text=←").first().evaluate((el) => el.click()).catch(() => {});
-  await page.waitForTimeout(400);
+await page.waitForTimeout(400);
   await tapText(page, "返回难度");
-await page.waitForTimeout(500);
-
-  // ⑤ 导入 SD4: 前缀 + 少线索拒绝（V1.0.4 协议串）
-  await tapText(page, "导入题目");
   await page.waitForTimeout(500);
+
+// ⑤ 导入 SD4: 前缀 + 少线索拒绝（V1.0.4 协议串）
+  await tapText(page, "导入题目");
+  await page.waitForTimeout(400);
+  // V1.1.0：导入浮层空态有「从剪贴板粘贴」按钮（headless 不实测剪贴板权限，但按钮/文案必须存在）
+  ok("剪贴板粘贴按钮存在", await vis(page, "从剪贴板粘贴"));
+  await page.waitForTimeout(100);
   await page.locator('textarea[aria-label="题目编码输入"]').fill("SD4:1,0,3,4,3,4,0,2,2,1,4,3,4,3,2,1");
   await page.waitForTimeout(400);
   ok("SD4: 导入可开始", !(await page.locator("text=开始练习这道题").isDisabled().catch(() => true)));
   ok("协议串导入提示已通过", await vis(page, "校验通过，可以直接开始"));
   await page.locator('textarea[aria-label="题目编码输入"]').fill("SD4:1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0");
   await page.waitForTimeout(400);
-  ok("SD4: 少线索被拒", await vis(page, "线索太少"));
+ok("SD4: 少线索被拒", await vis(page, "线索太少"));
   await tapText(page, "取消");
   await page.waitForTimeout(300);
+
+  // ⑤b URL 直启（V1.1.0）：?sd= 参数打开 → 直达练习页
+  const sdUrl = encodeURIComponent("SD4:1,0,3,4,3,4,0,2,2,1,4,3,4,3,2,1");
+  await page.goto(`${BASE}?sd=${sdUrl}`, { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(900);
+  ok("URL 直启：直达练习页", await vis(page, "4×4"));
+  const directCells = page.locator('button[role="gridcell"]');
+  ok("URL 直启：棋盘 16 格", (await directCells.count()) === 16, `count=${await directCells.count()}`);
+  // ⑤b2 URL 直启后 query 已清理（避免刷新重复直启）——在成功路径立即断言
+  ok("URL 直启后 query 已清除", !page.url().includes("sd="), `url=${page.url()}`);
+  // 回落首页（返回难度两次：练习 → 首页）
+  await tapText(page, "返回难度");
+  await page.waitForTimeout(500);
+
+  // ⑤c URL 直启失败（非法编码）→ Toast 提示且停留首页
+  await page.goto(`${BASE}?sd=${encodeURIComponent("SD4:1,0,3,4,0,0,0,0,0,0,0,0,0,0,0,0")}`, { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(900);
+  ok("URL 直启失败：Toast 提示线索太少", await vis(page, "线索太少"));
+  ok("URL 直启失败：停留首页", await vis(page, "点选填数，零门槛上手"));
+  ok("URL 直启失败：保留参数供检查", page.url().includes("sd="), `url=${page.url()}`);
 
   // ⑥ 断局三态
   await tapText(page, "开始自由练习");

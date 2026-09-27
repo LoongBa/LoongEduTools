@@ -294,6 +294,8 @@ export interface ParseResult {
   error: ImportError | null;
   /** 纯净数字点串长度（供 BAD_LEN 消息动态拼接） */
   cleanLen: number;
+  /** 校验通过时的参考解（validateImported 顺带求出，避免直启二次求解） */
+  solution?: Grid;
 }
 
 export function parseImportedText(text: string): ParseResult {
@@ -319,11 +321,11 @@ function finishParse(seg: { text: string; size: Size }): ParseResult {
   const board = fromSDString(clean, seg.size);
   if (!board) return { size: seg.size, board: null, error: "BAD_CHAR", cleanLen: clean.length };
   const v = validateImported(board, seg.size);
-  return { size: seg.size, board: v.ok ? board : null, error: v.error, cleanLen: clean.length };
+  return { size: seg.size, board: v.ok ? board : null, error: v.error, cleanLen: clean.length, solution: v.solution };
 }
 
-/** 题面是否合法：无冲突、线索充足且唯一解（返回错误码，文案见 copy.ts） */
-export function validateImported(grid: Grid, size: Size): { ok: boolean; error: ImportError | null } {
+/** 题面是否合法：无冲突、线索充足且唯一解（返回错误码与参考解，文案见 copy.ts） */
+export function validateImported(grid: Grid, size: Size): { ok: boolean; error: ImportError | null; solution?: Grid } {
   const total = size * size;
   for (let i = 0; i < total; i++) {
     if (!grid[i]) continue;
@@ -337,7 +339,7 @@ export function validateImported(grid: Grid, size: Size): { ok: boolean; error: 
   const sols = solve(grid, size, 2);
   if (sols.length === 0) return { ok: false, error: "NO_SOLUTION" };
   if (sols.length > 1) return { ok: false, error: "MULTI_SOLUTION" };
-  return { ok: true, error: null };
+  return { ok: true, error: null, solution: sols[0] };
 }
 
 export function countGiven(grid: Grid): number {
