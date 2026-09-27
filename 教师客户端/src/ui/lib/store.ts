@@ -113,14 +113,23 @@ export function useLoggedIn() {
 }
 export function useProbeOnline() {
   const [online, setOnline] = usePersistentState<boolean>(K.probeOnline, false);
-  useEffect(() => {
+
+  // 真实探测（server_ping 请求 {api_base}/api/edu/packages/manifest，5s 超时）：
+  // 挂载即测 + 每 30s 自动刷新；点击探针可手动立即重测（TopBar onToggleProbe → refresh）。
+  const refresh = useCallback(() => {
     void api
       .serverPing()
       .then(() => setOnline(true))
       .catch(() => setOnline(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  return [online, setOnline] as const;
+  }, [setOnline]);
+
+  useEffect(() => {
+    refresh();
+    const t = window.setInterval(refresh, 30_000);
+    return () => window.clearInterval(t);
+  }, [refresh]);
+
+  return [online, refresh] as const;
 }
 
 // ── 账号信息（真实来源：auth_status + license_status；未登录/离线时回退 MOCK_USER）──

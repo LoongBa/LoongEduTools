@@ -1,4 +1,4 @@
-// 顶栏：当前视图标题 · 服务器探针（可达/不可达，可手动切换模拟断网）· 下载速览 · 通知 · 头像菜单
+// 顶栏：当前视图标题 · 服务器探针（真实探测可达/不可达，30s 自动刷新，点击立即重测）· 下载速览 · 通知 · 头像菜单
 // D11 §7.4：NotifyBell 支持 channel 分组图标 / groupKey 合并 count 展开 / action 动作按钮（撤销归档等）
 import { useEffect, useRef, useState } from "react";
 import {
@@ -455,11 +455,11 @@ export function TopBar({
       </h1>
 
       <div className="ml-auto flex items-center gap-2">
-        {/* 服务器探针 */}
+        {/* 服务器探针：真实探测（server_ping 请求 manifest，30s 自动刷新；点击立即重测） */}
         <button
           type="button"
           onClick={onToggleProbe}
-          title="点击模拟服务器可达 / 不可达（演示断网降级）"
+          title="服务器连接状态（真实探测）：点击立即重新检测"
           className={cn(
             "flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-[12px] transition-colors",
             probeOnline

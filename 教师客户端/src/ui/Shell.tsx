@@ -135,7 +135,7 @@ function ShellInner() {
   const [railCollapsed, setRailCollapsed] = useNavRail();
   const [toolCollapse, setToolCollapse] = useToolCollapse();
   const [loggedIn, setLoggedIn] = useLoggedIn();
-  const [probeOnline, setProbeOnline] = useProbeOnline();
+  const [probeOnline, refreshProbe] = useProbeOnline();
   const { installed, markInstalled } = useInstalledPackages();
   const { shortcuts, setShortcuts, addDownloaded, togglePin, markUsed } = useShortcuts();
   const { tasks, start, history: downloadHistory, clearHistory, activeList } = useDownloadTasks();
@@ -419,7 +419,7 @@ function ShellInner() {
         <TopBar
           view={view}
           probeOnline={probeOnline}
-          onToggleProbe={() => setProbeOnline((o) => !o)}
+          onToggleProbe={refreshProbe}
           loggedIn={loggedIn}
           onToggleLoggedIn={() => setLoggedIn((l) => !l)}
           onMenu={() => setMobileNavOpen(true)}
