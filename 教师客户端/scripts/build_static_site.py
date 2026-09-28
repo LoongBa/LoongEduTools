@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import sys
 from datetime import date, datetime, timezone
@@ -36,6 +37,7 @@ from gen_shell_config import (
 SCRIPT_DIR = Path(__file__).parent
 DIST = SCRIPT_DIR / "dist"
 DEFAULT_OUT = DIST / "static-site"
+WEB_TEMPLATES = Path(__file__).parent / "web"   # 首页模板目录
 
 # Worker DEFAULT_TOOLBOX（server/src/handlers/toolbox.ts，2026-09-25）同构首发种子
 DEFAULT_TOOLBOX = {
@@ -170,6 +172,61 @@ def build_package_manifest(base: str) -> dict:
     }
 
 
+PLACEHOLDER_RE = re.compile(r'<template\s+data-inject="(?P<key>[A-Z_]+)"\s*>(?P<body>.*?)</template>', re.DOTALL)
+
+
+def load_template(name: str) -> str:
+    """读 taoli 首页模板（静态 HTML，UI Agent 可美化；含 <template data-inject="KEY"> 占位元素）。"""
+    tpl = WEB_TEMPLATES / name
+    if not tpl.is_file():
+        raise SystemExit(f"[strict] 模板缺失: {tpl}（首页必须由模板生成）")
+    return tpl.read_text(encoding="utf-8")
+
+
+def inject_placeholders(html: str, values: dict[str, str]) -> str:
+    """占位符替换 + 唯一性校验：每个 KEY 必须恰好出现 1 次（防 UI Agent 增删后静默错页）。"""
+    missing = []
+    for key, val in values.items():
+        marker = f'data-inject="{key}"'
+        n = html.count(marker)
+        if n != 1:
+            missing.append(f"{key}×{n}")
+        html = PLACEHOLDER_RE.sub(lambda m: val if m.group("key") == key else m.group(0), html)
+    if missing:
+        raise SystemExit(f"[strict] 占位符唯一性校验失败（须恰好 1 次）: {', '.join(missing)}  ← 模板被改动，勿增删/复制 data-inject 元素")
+    if "<template data-inject=" in html:
+        raise SystemExit("[strict] 产物残留未替换的 template 占位元素 → 模板与注入值不匹配，中止")
+    return html
+
+
+def fmt_size(b: int | None) -> str:
+    if not b:
+        return "—"
+    for unit in ("B", "KB", "MB", "GB"):
+        if b < 1024:
+            return f"{b:.0f} {unit}"
+        b /= 1024
+    return f"{b:.1f} TB"
+
+
+def gen_home_page(out: Path, manifest: dict, now: str) -> Path:
+    """乐教系列产品页（模板驱动）：读 taoli-home.html → 注入内容包清单 + 更新时间。"""
+    html = load_template("taoli-home.html")
+    packs = manifest.get("packages", [])
+    cards = []
+    for p in packs:
+        cards.append(
+            f'<div class="pack"><div><strong>{p.get("name", p["package_id"])}</strong>'
+            f'<div class="meta">{p["package_version"]} · {p.get("package_type", "app")} · {fmt_size(p.get("size_bytes"))}</div></div>'
+            f'<a class="dl" href="{p["download_url"]}">下载 →</a></div>'
+        )
+    out_html = inject_placeholders(html, {"PACKS_LIST": "\n".join(cards) if cards else "<p>暂无内容包</p>", "UPDATED_AT": now})
+    idx = out / "index.html"
+    idx.write_text(out_html, encoding="utf-8")
+    print(f"taoli/index.html: 已生成（模板 taoli-home.html，{len(packs)} 包）")
+    return idx
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--base", required=True, help="CF Pages 根 URL，如 https://edu-teacher.pages.dev")
@@ -236,6 +293,7 @@ def main() -> int:
     # 5) CF Pages 缓存策略（_headers，随站点根部署；2026-09-28 三层分发设计·层2）
     #    - packs 文件名带版本 → immutable 永久缓存，命中即不回源
     #    - manifest/壳配置 → no-cache，客户端 If-None-Match 轮询（304=无更新），保证更新信号即时
+    #    - index.html（首页模板生成）→ no-cache（入口页随内容包更新）
     (out / "_headers").write_text(
         "/packs/*\n"
         "  Cache-Control: public, max-age=31536000, immutable\n"
@@ -244,13 +302,19 @@ def main() -> int:
         "  Cache-Control: no-cache\n"
         "\n"
         "/shell/*\n"
+        "  Cache-Control: no-cache\n"
+        "\n"
+        "/index.html\n"
         "  Cache-Control: no-cache\n",
         encoding="utf-8",
     )
-    print("_headers: packs=immutable，manifest/shell=no-cache")
+    print("_headers: packs=immutable，manifest/shell/index=no-cache")
+
+    # 6) 乐教系列首页（模板驱动，读 taoli-home.html → 注入内容包清单 + 更新时间）
+    gen_home_page(out, manifest, datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
 
     print(f"\n完成 → {out}")
-    print("部署：把该目录内容拖入 CF Pages 项目根目录（api/ shell/ packs/ 与页面根平级）")
+    print("部署：把该目录内容拖入 CF Pages 项目根目录（index.html api/ shell/ packs/ 与页面根平级）")
     return 0
 
 

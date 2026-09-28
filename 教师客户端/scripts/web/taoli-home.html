@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="乐教 · 桃李助手（教师课堂专用工具）" />
+<title>乐教 · 桃李助手</title>
+<!--
+  ⚠ 模板维护约定（UI Agent 美化必读，勿违反）：
+  1. 每个注入占位元素（标签 template，data-inject="" 属性，下称「KEY 占位」）恰好出现 1 次，
+     脚本按正则整块替换，不可增删/加空格/复制两份。
+     - 内容包清单占位（脚本注入：packages/manifest 数据）
+     - 更新时间占位（脚本注入）
+  2. 链接保持相对路径（packs/、api/ 等），禁止绝对路径/盘符。
+  3. 纯静态：不引入外部资源，样式内联，随 push 部署。
+  4. 美化只改颜色/字体/间距/卡片样式/响应式/品牌感；结构、占位符、链接语义不改。
+  5. 合规红线：教师课堂专用，人教教材仅限已认证教师课堂使用（合理使用范围）。不对外分发。
+-->
+<style>
+  :root {
+    --brand: #0f766e; --brand-dark: #115e59; --bg: #f4f8f7; --card: #ffffff;
+    --text: #1f2a27; --muted: #5f6e6a; --border: #dfe9e6; --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 32px 20px 48px; }
+  header.hero { text-align: center; padding: 40px 0 28px; }
+  header.hero .brand { font-size: 34px; font-weight: 800; color: var(--brand); letter-spacing: 2px; }
+  header.hero .slogan { margin-top: 10px; font-size: 15px; color: var(--muted); }
+  section { margin-top: 34px; }
+  section h2 { font-size: 18px; font-weight: 700; margin-bottom: 14px; padding-left: 10px; border-left: 4px solid var(--brand); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; }
+  .card h3 { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+  .card p { font-size: 13px; color: var(--muted); }
+  .pack { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .pack .meta { font-size: 13px; color: var(--muted); }
+  .pack .dl { font-size: 13px; font-weight: 600; color: var(--brand); text-decoration: none; }
+  .pack .dl:hover { text-decoration: underline; }
+  .compliance { margin-top: 30px; padding: 14px 18px; background: #e8f3f1; border-radius: 10px; font-size: 13px; color: var(--muted); }
+  footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; font-size: 12px; color: var(--muted); }
+  footer a { color: var(--brand); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <div class="brand">乐教 · 桃李助手</div>
+    <p class="slogan">教师课堂专用工具 · 教材点读 + 内容包扩展</p>
+  </header>
+
+  <section>
+    <h2>产品简介</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>绿色免安装</h3>
+        <p>Tauri 绿色 exe，U 盘拷贝部署到教室电脑 / 智慧屏，双击即用。</p>
+      </div>
+      <div class="card">
+        <h3>教材点读主应用</h3>
+        <p>人教教材原版点读，课堂即取即用，支持内容包扩展。</p>
+      </div>
+      <div class="card">
+        <h3>课堂工具</h3>
+        <p>抽卡分组 / 课堂看板 / 打卡单等教辅工具随版本持续接入。</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>内容包</h2>
+    <template data-inject="PACKS_LIST"></template>
+    <p class="meta" style="font-size:12px;color:var(--muted);margin-top:6px;">列表由 loongba-edu-dist 发布仓库自动生成 · <a href="api/edu/packages/manifest" style="color:var(--brand);">查看清单 JSON</a></p>
+  </section>
+
+  <p class="compliance">合规声明：本工具仅供已认证教师课堂使用；教材素材来自人教社，依据「课堂教学 = 合理使用范围」，不对外分发、不采集儿童数据。使用建议与反馈请通过公众号留言。</p>
+
+  <footer>
+    <span>更新于 <template data-inject="UPDATED_AT"></template></span>
+    <span><a href="https://lexue.loongba.cn">乐学系列 · 教育工具集</a></span>
+  </footer>
+</div>
+</body>
+</html>

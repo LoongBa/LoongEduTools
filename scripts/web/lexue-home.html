@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="乐学系列 · 小学英语、数学、思维在线练习工具集" />
+<title>乐学系列 · LoongBa Edu</title>
+<!--
+  ⚠ 模板维护约定（UI Agent 美化必读，勿违反）：
+  1. 每个注入占位元素（标签 template，data-inject="" 属性，下称「KEY 占位」）恰好出现 1 次，
+     脚本按正则整块替换，不可增删/加空格/复制两份。
+     - 主力应用卡片占位（脚本注入：peilian/shudu/qiaosuan[/timemanager]）
+     - 更新时间占位（脚本注入）
+  2. 链接保持相对路径（peilian/、shudu/、MiniApp/ 等），禁止绝对路径/盘符。
+  3. 纯静态：不引入外部资源（无 CDN/font/脚本），样式内联，随 push 部署。
+  4. 美化只改颜色/字体/间距/卡片样式/响应式/品牌感；结构、占位符、链接语义不改。
+-->
+<style>
+  :root {
+    --brand: #2b5ce6; --brand-dark: #1e3fa8; --bg: #f5f7fb; --card: #ffffff;
+    --text: #1f2a44; --muted: #62708c; --border: #e3e8f2; --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 32px 20px 48px; }
+  header.hero { text-align: center; padding: 40px 0 28px; }
+  header.hero .brand { font-size: 34px; font-weight: 800; color: var(--brand); letter-spacing: 2px; }
+  header.hero .slogan { margin-top: 10px; font-size: 15px; color: var(--muted); }
+  section { margin-top: 34px; }
+  section h2 { font-size: 18px; font-weight: 700; margin-bottom: 14px; padding-left: 10px; border-left: 4px solid var(--brand); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+  .card { display: block; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; text-decoration: none; color: inherit; transition: transform .15s, box-shadow .15s; }
+  .card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(43,92,230,.10); }
+  .card h3 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .card p { font-size: 13px; color: var(--muted); }
+  .card .go { display: inline-block; margin-top: 10px; font-size: 13px; font-weight: 600; color: var(--brand); }
+  .note { margin-top: 26px; padding: 12px 16px; background: #eef3ff; border-radius: 10px; font-size: 13px; color: var(--muted); }
+  footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; font-size: 12px; color: var(--muted); }
+  footer a { color: var(--brand); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <div class="brand">乐学系列</div>
+    <p class="slogan">小学英语 · 数学 · 思维在线练习 · 免费使用</p>
+  </header>
+
+  <section>
+    <h2>主力应用</h2>
+    <div class="grid">
+      <template data-inject="MAIN_CARDS"></template>
+    </div>
+  </section>
+
+  <section>
+    <h2>小工具集</h2>
+    <div class="grid">
+      <a class="card" href="MiniApp/">
+        <h3>专项练习小工具</h3>
+        <p>口算 / 记忆 / 专注 / 益智小工具合集</p>
+        <span class="go">进入工具集 →</span>
+      </a>
+    </div>
+  </section>
+
+  <p class="note">练习过程不采集账号信息、无社交功能，数据仅保存在本机。</p>
+
+  <footer>
+    <span>更新于 <template data-inject="UPDATED_AT"></template></span>
+    <span><a href="https://taoli.loongba.cn">乐教 · 教师课堂工具</a></span>
+  </footer>
+</div>
+</body>
+</html>

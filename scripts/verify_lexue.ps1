@@ -50,6 +50,29 @@ Assert-Get "/index.html" {
   (Get-Text $resp.Content) -match "乐学系列"
 } "系列页 index.html 200 · 含「乐学系列」"
 
+# 1b) 系列页无绝对路径/盘符链接泄漏（防 L336 同类 Bug：Path 对象被 f-string 成 href）
+#    判定：排除 http(s):// 外链后，任何仍含 [A-Za-z]: 的链接即 Windows 盘符泄漏
+Assert-Get "/index.html" {
+  param($resp)
+  $html = Get-Text $resp.Content
+  $badLinks = @([regex]::Matches($html, 'href="([^"]*)"') | ForEach-Object { $_.Groups[1].Value } |
+    Where-Object {
+      ($_ -notmatch '^https?://') -and ($_ -match '[A-Za-z]:')
+    })
+  @($badLinks).Count -eq 0
+} "系列页 index.html 链接无 Windows 盘符泄漏（防 L336 同类 Bug）"
+
+# 1c) MiniApp 目录页 200 + 无盘符泄漏 + 无占位元素残留
+Assert-Get "/MiniApp/" {
+  param($resp)
+  $html = Get-Text $resp.Content
+  $badLinks = @([regex]::Matches($html, 'href="([^"]*)"') | ForEach-Object { $_.Groups[1].Value } |
+    Where-Object {
+      ($_ -notmatch '^https?://') -and ($_ -match '[A-Za-z]:')
+    })
+  ($html -match "工具") -and (@($badLinks).Count -eq 0) -and ($html -notmatch '<template data-inject=')
+} "MiniApp/ 目录页 200 · 无盘符泄漏 · 无未替换占位元素"
+
 # 2) peilian 在线内容（无后缀 + 双写）
 Assert-Get "/peilian/api/manifest" {
   param($resp)

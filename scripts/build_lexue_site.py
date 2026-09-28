@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import sys
 from datetime import datetime, timezone
@@ -43,6 +44,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent          # LoongEduTools 根
 DEFAULT_OUT = Path(__file__).resolve().parent / "dist" / "lexue-site"
 DEFAULT_BASE = "https://lexue.loongba.cn"
+WEB_TEMPLATES = Path(__file__).resolve().parent / "web"   # 首页/系列页模板目录
 
 # 各产品源路径（相对 REPO）
 PEILIAN_FRONT = REPO / "点读陪练" / "WebH5" / "dist"          # build:online 前端产物
@@ -221,43 +223,62 @@ def build_miniapps(out: Path, strict: bool, include: set[str] | None, no_miniapp
     return copied
 
 
-def gen_series_page(out: Path, sections: dict[str, list[tuple[str, str]]]) -> Path:
-    """生成乐学系列产品页（index.html）：产品卡片列表，链接到各产品/工具。"""
-    cards = []
-    for section, items in sections.items():
-        cards.append(f'<h2>{section}</h2><div class="grid">')
-        for label, href in items:
-            cards.append(f'<a class="card" href="{href}"><h3>{label}</h3><span>打开 →</span></a>')
-        cards.append("</div>")
-    html = f"""<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>乐学系列 · LoongBa Edu</title>
-<style>
-  body {{ font-family: system-ui, sans-serif; max-width: 960px; margin: 0 auto; padding: 24px; background: #f6f7f9; }}
-  h1 {{ color: #1a1a2e; }} h2 {{ color: #444; margin-top: 28px; border-bottom: 1px solid #ddd; padding-bottom: 6px; }}
-  .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }}
-  .card {{ display: block; background: #fff; border-radius: 12px; padding: 16px; text-decoration: none;
-           color: #1a1a2e; box-shadow: 0 1px 3px rgba(0,0,0,.08); transition: transform .12s; }}
-  .card:hover {{ transform: translateY(-2px); box-shadow: 0 3px 8px rgba(0,0,0,.12); }}
-  .card span {{ color: #666; font-size: 13px; }}
-</style>
-</head>
-<body>
-<h1>乐学系列</h1>
-<p>主力应用 + 专项练习小工具，全部可离线/在线双模式。</p>
-{"\n".join(cards)}
-<footer style="margin-top: 32px; color: #888; font-size: 12px;">
-  <p>本节由 build_lexue_site.py 自动生成 · updated at {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}</p>
-</footer>
-</body>
-</html>
-"""
+PLACEHOLDER_RE = re.compile(r'<template\s+data-inject="(?P<key>[A-Z_]+)"\s*>(?P<body>.*?)</template>', re.DOTALL)
+
+
+def load_template(name: str) -> str:
+    """读模板文件。模板 = 静态 HTML（UI Agent 可美化），含 <template data-inject="KEY"> 占位元素。"""
+    tpl = WEB_TEMPLATES / name
+    if not tpl.is_file():
+        raise SystemExit(f"[strict] 模板缺失: {tpl}（首页必须由模板生成）")
+    return tpl.read_text(encoding="utf-8")
+
+
+def inject_placeholders(html: str, values: dict[str, str]) -> str:
+    """占位符替换 + Oracle B1 唯一性校验：每个 KEY 必须恰好出现 1 次（str.replace 会替换全部匹配）。"""
+    missing = []
+    for key, val in values.items():
+        marker = f'data-inject="{key}"'
+        n = html.count(marker)
+        if n != 1:
+            missing.append(f"{key}×{n}")
+        html = PLACEHOLDER_RE.sub(lambda m: val if m.group("key") == key else m.group(0), html)
+    if missing:
+        raise SystemExit(f"[strict] 占位符唯一性校验失败（须恰好 1 次）: {', '.join(missing)}  ← 模板被 UI Agent 改动，勿增删/复制 data-inject 元素")
+    if "<template data-inject=" in html:
+        raise SystemExit("[strict] 产物残留未替换的 template 占位元素 → 模板与注入值不匹配，中止")
+    return html
+
+
+def gen_series_page(out: Path, main_cards: list[tuple[str, str]], updated_at: str) -> Path:
+    """乐学系列产品页（模板驱动）：读 lexue-home.html → 注入主力卡 + 更新时间。"""
+    html = load_template("lexue-home.html")
+    cards = "".join(
+        f'<a class="card" href="{href}"><h3>{label}</h3><span class="go">打开 →</span></a>'
+        for label, href in main_cards
+    )
+    out_html = inject_placeholders(html, {"MAIN_CARDS": cards, "UPDATED_AT": updated_at})
     idx = out / "index.html"
-    idx.write_text(html, encoding="utf-8")
-    log(f"  乐学系列产品页：index.html（含 {sum(len(v) for v in sections.values())} 个入口）")
+    idx.write_text(out_html, encoding="utf-8")
+    log(f"  乐学系列产品页：index.html（模板 lexue-home.html，{len(main_cards)} 主力卡）")
+    return idx
+
+
+def gen_miniapp_page(out: Path, tool_names: list[str], updated_at: str) -> Path:
+    """MiniApp 目录页（模板驱动）：读 lexue-miniapp-home.html → 注入工具卡 + 更新时间。
+
+    Oracle B1/I2：链接用 t.name（Path 名）而非 Path 对象整体（修复 L336 死链根因）。
+    """
+    html = load_template("lexue-miniapp-home.html")
+    cards = "".join(
+        f'<a class="card" href="{t}/"><span class="name">{t}</span><div class="go">打开 →</div></a>'
+        for t in sorted(tool_names)
+    )
+    out_html = inject_placeholders(html, {"MINIAPP_CARDS": cards, "UPDATED_AT": updated_at})
+    idx = out / "MiniApp" / "index.html"
+    idx.parent.mkdir(parents=True, exist_ok=True)
+    idx.write_text(out_html, encoding="utf-8")
+    log(f"  MiniApp 目录页：MiniApp/index.html（模板 lexue-miniapp-home.html，{len(tool_names)} 款）")
     return idx
 
 
@@ -282,6 +303,7 @@ def gen_headers(out: Path) -> Path:
         ("/shudu/index.html", "Cache-Control: no-cache"),
         ("/qiaosuan/index.html", "Cache-Control: no-cache"),
         ("/timemanager/index.html", "Cache-Control: no-cache"),
+        ("/MiniApp/index.html", "Cache-Control: no-cache"),
         ("/units/*", "Cache-Control: public, max-age=31536000, immutable"),
     ]
     lines = []
@@ -325,19 +347,16 @@ def main() -> int:
     # 2) MiniApp
     n_mini = build_miniapps(out, args.strict, set(args.include) if args.include else None, args.no_miniapp)
 
-    # 3) 系列页 + _headers
-    sections = {
-        "主力应用": [
-            ("点读陪练（英语陪练·天天见）", "peilian/"),
-            ("数独思维", "shudu/"),
-            ("数学巧算（数学巧算·天天练）", "qiaosuan/"),
-            ("家庭时间管理", "timemanager/"),
-        ],
-        "练习小工具": [(t, f"MiniApp/{t}/") for t in sorted((out / "MiniApp").iterdir()) if (out / "MiniApp" / t).is_dir()],
-    }
-    if not (out / "timemanager" / "index.html").is_file():
-        sections["主力应用"] = [s for s in sections["主力应用"] if s[0] != "家庭时间管理"]
-    gen_series_page(out, sections)
+    # 3) 系列页 + MiniApp 目录页 + _headers
+    main_cards = [("点读陪练（英语陪练·天天见）", "peilian/"),
+                  ("数独思维", "shudu/"),
+                  ("数学巧算（数学巧算·天天练）", "qiaosuan/")]
+    if (out / "timemanager" / "index.html").is_file():
+        main_cards.append(("家庭时间管理", "timemanager/"))
+    updated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    gen_series_page(out, main_cards, updated_at)
+    miniapp_names = [t.name for t in (out / "MiniApp").iterdir() if (out / "MiniApp" / t.name).is_dir()] if (out / "MiniApp").is_dir() else []
+    gen_miniapp_page(out, miniapp_names, updated_at)
     gen_headers(out)
 
     # 汇总
