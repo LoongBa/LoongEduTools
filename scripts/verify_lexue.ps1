@@ -140,6 +140,43 @@ if (-not $SkipTimemanager) {
   } "timemanager/ 200 + html（如 404 属预期：未开工，加 -SkipTimemanager 跳过）"
 }
 
+# 6b) 主力单独产品页（旁挂架构 products/<slug>/，lexue主力产品页方案 v0.2 断言 12a-12d）
+$products = @(
+  @{ Slug = "peilian"; Name = "点读陪练"; App = "/peilian/" },
+  @{ Slug = "shudu";   Name = "数独";     App = "/shudu/" },
+  @{ Slug = "qiaosuan"; Name = "数学巧算"; App = "/qiaosuan/" }
+)
+foreach ($p in $products) {
+  Assert-Get "/products/$($p.Slug)/" {
+    param($resp)
+    $html = Get-Text $resp.Content
+    $bad = @([regex]::Matches($html, 'href="([^"]*)"') | ForEach-Object { $_.Groups[1].Value } |
+      Where-Object { ($_ -notmatch '^https?://') -and ($_ -match '[A-Za-z]:') })
+    ($html -match $p.Name) -and ($html -notmatch '<template data-inject=') -and (@($bad).Count -eq 0)
+  } "products/$($p.Slug)/ 200 · 含「$($p.Name)」· 无占位残留 · 无盘符泄漏"
+  Assert-Get "/products/$($p.Slug)/" {
+    param($resp)
+    $html = Get-Text $resp.Content
+    $btnRe = 'href="' + [regex]::Escape($p.App) + '"'
+    ($html -match $btnRe) -and ($html -match "打开应用")
+  } "products/$($p.Slug)/ 含「打开应用」按钮 → href=$($p.App)（根绝对路径）"
+}
+# 6c) 无 trailing slash 观察（Oracle B 条：验证 CF 对 /products/<slug> 的行为；200或301均视为通过）
+try {
+  $ns = Invoke-WebRequest -Uri "$BaseUrl/products/peilian" -TimeoutSec 20 -UseBasicParsing -MaximumRedirection 3 -ErrorAction Stop
+  if ($ns.StatusCode -eq 200 -or $ns.StatusCode -eq 301) { $script:pass++; Write-Host "PASS  /products/peilian（无 trailing slash）$($ns.StatusCode)" -ForegroundColor Green }
+  else { $script:fail++; Write-Host "FAIL  /products/peilian（无 trailing slash）HTTP $($ns.StatusCode)" -ForegroundColor Red }
+} catch {
+  $script:fail++; Write-Host "FAIL  /products/peilian（无 trailing slash）: $($_.Exception.Message)" -ForegroundColor Red
+}
+# 6d) 首页主力卡前缀校验（Oracle D 条：精确匹配 products/ 前缀，防回退直接链应用）
+Assert-Get "/index.html" {
+  param($resp)
+  $html = Get-Text $resp.Content
+  $hits = @([regex]::Matches($html, 'href="products/(peilian|shudu|qiaosuan)/"'))
+  @($hits).Count -ge 3
+} "系列页 index.html 主力卡 href 含 products/ 前缀（≥3 卡）"
+
 # 9) MiniApp 抽样
 if ($MiniAppList) { $samples = $MiniAppList } else {
   # 本地产物清单：scripts/dist/lexue-site/MiniApp（build_lexue_site.py 默认输出）
@@ -167,6 +204,12 @@ Assert-Get "/peilian/api/manifest" {
   $cc = $resp.Headers["Cache-Control"]
   $cc -match "no-cache"
 } "peilian/api/manifest 响应头 no-cache"
+# 12e) 产品页 entry no-cache 头（Oracle D 条：入口页高频改文案；与断言 10 同入 SkipHeaderCheck 块）
+Assert-Get "/products/peilian/" {
+  param($resp)
+  $cc = $resp.Headers["Cache-Control"]
+  $cc -match "no-cache"
+} "products/peilian/ 响应头 no-cache"
 $miniFirst = if ($samples.Count -gt 0) { "/MiniApp/$([uri]::EscapeDataString($samples[0]))/assets/" } else { $null }
 if ($miniFirst) {
   $miniIdx = Invoke-WebRequest -Uri "$BaseUrl$miniFirst" -TimeoutSec 20 -UseBasicParsing -ErrorAction SilentlyContinue

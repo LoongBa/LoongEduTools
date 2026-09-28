@@ -1,8 +1,8 @@
-# 系列首页模板 · 维护约定（UI Agent 必读）
+# 系列首页/产品页模板 · 维护约定（UI Agent 必读）
 
-> 范围：`scripts/web/`（lexue 两页）+ `教师客户端/scripts/web/`（taoli 一页）三套静态首页模板。
+> 范围：`scripts/web/`（lexue 两页 + 三款主力产品页）+ `教师客户端/scripts/web/`（taoli 一页）静态模板。
 > 用途：构建脚本读模板 → 注入数据 → 生成线上 index.html（CF Pages 纯静态，随 push 部署）。
-> 权威约束来源：`docs/教育工具/系列首页规划与实现方案.md` v0.2 §10（S3 UI 美化 brief）。
+> 权威约束来源：`docs/教育工具/系列首页规划与实现方案.md` v0.2 §10（S3 UI 美化 brief）+ `docs/教育工具/lexue主力产品页规划与实现方案.md` v0.2（产品页架构）。
 
 ---
 
@@ -16,6 +16,9 @@
 | `scripts/web/lexue-home.html` | `UPDATED_AT` | footer 更新时间（ISO8601）|
 | `scripts/web/lexue-miniapp-home.html` | `MINIAPP_CARDS` | 43 款小工具卡片（网格）|
 | `scripts/web/lexue-miniapp-home.html` | `UPDATED_AT` | 同上 |
+| `scripts/web/product-peilian.html` | `UPDATED_AT` | 产品页 footer 更新时间（产品介绍文案为静态内联，不注入）|
+| `scripts/web/product-shudu.html` | `UPDATED_AT` | 同上 |
+| `scripts/web/product-qiaosuan.html` | `UPDATED_AT` | 同上 |
 | `教师客户端/scripts/web/taoli-home.html` | `PACKS_LIST` | 内容包清单卡片（4 包）|
 | `教师客户端/scripts/web/taoli-home.html` | `UPDATED_AT` | 同上 |
 
@@ -23,12 +26,14 @@
 1. 每 KEY 在对应模板中**恰好 1 次**——增删/复制/移动到 fragment 文件都会使 `build_lexue_site.py` / `build_static_site.py` 构建中止（唯一性校验 + 残留检测双保险）；
 2. 占位元素**不得加空格、不得嵌套其它元素、不得改写 `data-inject` 属性名**；
 3. 美化 `<template>` 元素**外**的结构（颜色/字体/间距/卡片样式/响应式/品牌感）完全自由；
-4. `<template>` 内脚本注入的卡片是**既有 class 结构**（`.card` / `.card h3` / `.card p` / `.card .go` / `.name` / `.pack` / `.pack .meta` / `.pack .dl`），CSS 应**以这些 class 为选择器**美化注入内容——不要依赖注入卡片的 id/内联 style（无）。
+4. `<template>` 内脚本注入的卡片是**既有 class 结构**（`.card` / `.card h3` / `.card p` / `.card .go` / `.name` / `.pack` / `.pack .meta` / `.pack .dl`），CSS 应**以这些 class 为选择器**美化注入内容——不要依赖注入卡片的 id/内联 style（无）；
+5. **产品页模板**（`product-<slug>.html`）仅含 `UPDATED_AT` 一个注入占位：产品名/标语/特性文案/「打开应用」按钮/返回链接均为**模板内静态内容**（不走注入），UI Agent 可自由改文案与排版，但保持结构语义。
 
 ## 二、链接约束
 
-- 全部链接保持**相对路径**：`peilian/`、`shudu/`、`MiniApp/`、`../`、`api/edu/packages/manifest` 等；
-- **禁止** Windows 盘符/绝对 URL（`F:\`、`/F:/`）；唯一允许的 `http(s)://` 外链 = footer 双系列互链（`https://lexue.loongba.cn` ↔ `https://taoli.loongba.cn`）；
+- 页面间导航保持**相对路径**：`peilian/`、`shudu/`、`MiniApp/`、`../`、`api/edu/packages/manifest` 等；
+- **根绝对路径允许**（非禁止）：`"/peilian/"`、`"/"`——产品页「打开应用」按钮**必须用根绝对路径 `"/<slug>/"`**（Oracle B1 裁决：`../` 相对链接在无 trailing slash 访问 `/products/peilian` 时分叉；根路径对 trailing slash 不敏感）；
+- **禁止** Windows 盘符（`F:\`、`/F:/`）；唯一允许的 `http(s)://` 外链 = 双系列互链（`https://lexue.loongba.cn` ↔ `https://taoli.loongba.cn`）；
 - link 标签的 href 语义不变。
 
 ## 三、纯静态约束

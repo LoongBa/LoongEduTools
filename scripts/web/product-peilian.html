@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="点读陪练 · 英语陪练天天见 —— 小学英语原创作文句/图/音，PEP 教材同步拓展，在线/离线双模式" />
+<title>点读陪练 · 英语陪练天天见 | 乐学系列</title>
+<!--
+  ⚠ 产品页模板（构建脚本读取 → 注入 UPDATED_AT → 生成 lexue/products/peilian/index.html）
+  维护约定（UI Agent 必读，勿违反）：
+  1. data-inject 占位 KEY「UPDATED_AT」在本模板恰好 1 次（footer「更新于」处）。
+     脚本按正则整块替换，增删 / 加空格 / 嵌套 / 复制都会触发唯一性校验 + 残留检测，构建中止。
+  2. 不再添加其它注入占位：本页文案 / 按钮 / 卡片均为静态 HTML，不走注入。
+  3. 打开应用按钮 = 根绝对路径 "/peilian/"（Oracle B1 架构裁决：防无 trailing slash 访问
+     时相对路径解析错）；返回乐学首页用根路径 "/"。唯一 http(s) 外链 = taoli 互链。
+  4. 离线渠道与下载严格分离：仅做文字提示「离线版请通过小红书官方账号获取」，不链 zip、不放下载按钮。
+  5. 纯静态：样式全内联、系统字体栈、无外部 CDN / 字体 / JS / 图标库；图标用 Emoji。
+  6. 视觉与 lexue-home.html 成套：乐学蓝 #2b5ce6 + 暖阳橙 #ffa62b，渐变 hero + 卡片 + footer 同一语言。
+-->
+<style>
+  :root {
+    --brand: #2b5ce6;
+    --brand-deep: #1e3fa8;
+    --brand-soft: #6f8fff;
+    --accent: #ffa62b;
+    --ink: #16213e;
+    --muted: #5a6b8c;
+    --line: #e3e8f2;
+    --card: #ffffff;
+    --bg: #f6f8fd;
+    --radius: 18px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background:
+      radial-gradient(1000px 360px at 8% -5%, rgba(43,92,230,.09), transparent 60%),
+      radial-gradient(900px 320px at 96% -5%, rgba(255,166,43,.07), transparent 55%),
+      var(--bg);
+    color: var(--ink);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: rgba(43,92,230,.18); }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 26px 20px 56px; }
+
+  /* ---- 顶部面包屑 ---- */
+  .crumb { margin-bottom: 14px; font-size: 13px; }
+  .crumb a {
+    color: var(--brand); font-weight: 600; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .crumb a:hover { text-decoration: underline; }
+
+  /* ---- Hero ---- */
+  .hero {
+    position: relative;
+    overflow: hidden;
+    text-align: center;
+    padding: 54px 22px 52px;
+    border-radius: 26px;
+    border: 1px solid rgba(43,92,230,.10);
+    background:
+      radial-gradient(680px 260px at 18% 0%, rgba(43,92,230,.16), transparent 62%),
+      radial-gradient(520px 240px at 92% 12%, rgba(111,143,255,.20), transparent 60%),
+      linear-gradient(180deg, #eaf1ff 0%, #f9fbff 100%);
+  }
+  .hero::before {          /* 蓝点织网 */
+    content: "";
+    position: absolute; inset: 0;
+    background-image: radial-gradient(rgba(43,92,230,.14) 1px, transparent 1.4px);
+    background-size: 22px 22px;
+    opacity: .45;
+    pointer-events: none;
+  }
+  .hero::after {           /* 暖阳光斑 */
+    content: "";
+    position: absolute; right: -70px; top: -70px;
+    width: 210px; height: 210px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,166,43,.26), transparent 68%);
+    pointer-events: none;
+  }
+  .hero > * { position: relative; z-index: 1; }
+
+  .hero .product-icon {
+    width: 82px; height: 82px;
+    margin: 0 auto 18px;
+    display: grid; place-items: center;
+    font-size: 42px;
+    border-radius: 24px;
+    background: linear-gradient(160deg, #fff 0%, #eef3ff 100%);
+    border: 1px solid rgba(43,92,230,.16);
+    box-shadow: 0 12px 26px rgba(43,92,230,.22);
+    animation: rise .6s cubic-bezier(.2,.8,.3,1.15) both;
+  }
+  .hero .eyebrow {
+    display: inline-block;
+    padding: 4px 14px;
+    border-radius: 999px;
+    background: rgba(255,166,43,.14);
+    border: 1px solid rgba(255,166,43,.30);
+    color: #b56a00;
+    font-size: 13px; font-weight: 700; letter-spacing: .05em;
+    margin-bottom: 12px;
+  }
+  .hero h1 {
+    font-size: 44px;
+    font-weight: 800;
+    letter-spacing: .05em;
+    background-image: linear-gradient(120deg, var(--brand-deep) 0%, var(--brand) 60%, var(--brand-soft) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: rise .7s .08s ease both;
+  }
+  .hero .slogan {
+    margin-top: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: .045em;
+    color: var(--ink);
+    animation: rise .7s .16s ease both;
+  }
+  .hero .intro {
+    max-width: 560px;
+    margin: 10px auto 0;
+    font-size: 14px;
+    color: var(--muted);
+    animation: rise .7s .24s ease both;
+  }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ---- 打开应用主按钮（唯一主按钮 · 视觉第一动作）---- */
+  .cta-row {
+    position: relative;
+    margin-top: 26px;
+    text-align: center;
+  }
+  .cta-row::before {       /* 按钮背光晕 */
+    content: "";
+    position: absolute; left: 50%; top: 50%;
+    width: 320px; height: 100px;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(ellipse, rgba(43,92,230,.13), transparent 70%);
+    pointer-events: none;
+  }
+  .cta {
+    position: relative;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 15px 36px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #4a7dff 0%, var(--brand) 60%, var(--brand-deep) 100%);
+    color: #fff;
+    font-size: 17px; font-weight: 800; letter-spacing: .06em;
+    text-decoration: none;
+    box-shadow: 0 12px 28px rgba(43,92,230,.36), inset 0 1px 0 rgba(255,255,255,.25);
+    transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+  }
+  .cta:hover, .cta:focus-visible {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 34px rgba(43,92,230,.44), inset 0 1px 0 rgba(255,255,255,.25);
+    filter: brightness(1.05);
+  }
+  .cta:focus-visible { outline: 2px solid var(--brand-deep); outline-offset: 3px; }
+  .cta:active { transform: translateY(0); }
+
+  /* ---- 特性区 ---- */
+  section { margin-top: 46px; }
+  section h2 {
+    display: flex; align-items: center; gap: 11px;
+    font-size: 19px; font-weight: 800; letter-spacing: .03em;
+    margin-bottom: 18px;
+  }
+  section h2::before {
+    content: "";
+    width: 8px; height: 22px; border-radius: 6px;
+    background: linear-gradient(180deg, var(--brand), var(--brand-deep));
+    box-shadow: 0 4px 10px rgba(43,92,230,.30);
+  }
+  .feats { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 18px; }
+  .feat {
+    position: relative;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 24px 22px 22px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(22,33,62,.04), 0 8px 24px rgba(43,92,230,.06);
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  .feat::before {
+    content: "";
+    position: absolute; left: 0; right: 0; top: 0; height: 3px;
+    background: linear-gradient(90deg, var(--brand), var(--brand-soft));
+    opacity: 0;
+    transition: opacity .18s ease;
+  }
+  .feat:hover {
+    transform: translateY(-4px);
+    border-color: rgba(43,92,230,.28);
+    box-shadow: 0 4px 10px rgba(22,33,62,.05), 0 20px 44px rgba(43,92,230,.16);
+  }
+  .feat:hover::before { opacity: 1; }
+  .feat .ico {
+    width: 46px; height: 46px;
+    display: grid; place-items: center;
+    font-size: 24px;
+    border-radius: 14px;
+    background: #eef3ff;
+    border: 1px solid rgba(43,92,230,.14);
+    margin-bottom: 14px;
+  }
+  .feat h3 { font-size: 16.5px; font-weight: 800; color: var(--ink); }
+  .feat p { margin-top: 6px; font-size: 13px; color: var(--muted); }
+
+  /* ---- 离线提示（纯文字 · 渠道分离）---- */
+  .offline-row { margin-top: 30px; text-align: center; }
+  .offline {
+    display: inline-block;
+    padding: 8px 20px;
+    border-radius: 999px;
+    border: 1px dashed rgba(43,92,230,.28);
+    background: rgba(43,92,230,.05);
+    color: var(--muted);
+    font-size: 13px;
+    letter-spacing: .02em;
+  }
+
+  /* ---- 合规脚注 ---- */
+  .note {
+    margin-top: 34px;
+    padding: 14px 18px;
+    display: flex; align-items: center; gap: 12px;
+    background: #eef3ff;
+    border: 1px solid rgba(43,92,230,.12);
+    border-radius: 14px;
+    font-size: 13px; color: var(--muted);
+  }
+  .note::before {
+    content: "✓";
+    flex: none;
+    width: 20px; height: 20px; line-height: 20px; text-align: center;
+    border-radius: 50%;
+    background: var(--brand); color: #fff;
+    font-size: 12px; font-weight: 700;
+  }
+
+  /* ---- Footer ---- */
+  footer {
+    margin-top: 46px; padding-top: 20px;
+    border-top: 1px solid var(--line);
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
+    font-size: 12.5px; color: var(--muted);
+  }
+  footer .owner { font-weight: 700; color: var(--ink); }
+  footer .ts { display: inline-flex; align-items: center; gap: 7px; }
+  footer .ts::before {
+    content: "";
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--brand);
+    box-shadow: 0 0 0 0 rgba(43,92,230,.35);
+    animation: pulse 2.4s infinite;
+  }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(43,92,230,.35); }
+    70%  { box-shadow: 0 0 0 7px rgba(43,92,230,0); }
+    100% { box-shadow: 0 0 0 0 rgba(43,92,230,0); }
+  }
+  footer .links { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  footer a { color: var(--brand); font-weight: 600; text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  /* ---- 响应式 ---- */
+  @media (max-width: 640px) {
+    .wrap { padding: 18px 14px 44px; }
+    .hero { padding: 40px 18px 38px; border-radius: 22px; }
+    .hero .product-icon { width: 68px; height: 68px; font-size: 34px; border-radius: 20px; }
+    .hero h1 { font-size: 31px; }
+    .hero .slogan { font-size: 14px; }
+    .hero .intro { font-size: 13px; }
+    .cta { font-size: 15px; padding: 13px 26px; }
+    .feats { gap: 14px; }
+    footer { justify-content: center; text-align: center; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="crumb"><a href="/">← 乐学首页</a></nav>
+
+  <header class="hero">
+    <div class="product-icon" aria-hidden="true">🎧</div>
+    <p class="eyebrow">英语陪练 · 天天见</p>
+    <h1>点读陪练</h1>
+    <p class="slogan">小学英语原创作文句 / 图 / 音 · 天天陪练</p>
+    <p class="intro">全原创的句子·图片·音频素材，围绕 PEP 教材做同步拓展的英语点读陪练应用；在线/离线双模式，数据仅存本机。</p>
+  </header>
+
+  <div class="cta-row">
+    <a class="cta" href="/peilian/">打开应用 →</a>
+  </div>
+
+  <section>
+    <h2>核心特性</h2>
+    <div class="feats">
+      <article class="feat">
+        <div class="ico" aria-hidden="true">🎨</div>
+        <h3>原创内容</h3>
+        <p>句子 / 图片 / 音频全原创，内容合规，可放心分发使用。</p>
+      </article>
+      <article class="feat">
+        <div class="ico" aria-hidden="true">📚</div>
+        <h3>教材同步拓展</h3>
+        <p>PEP 词库支撑，围绕教材词汇与句型同步拓展训练。</p>
+      </article>
+      <article class="feat">
+        <div class="ico" aria-hidden="true">🔄</div>
+        <h3>在线/离线双模式</h3>
+        <p>联网随时练，离线也能学，天天陪练不缺席。</p>
+      </article>
+      <article class="feat">
+        <div class="ico" aria-hidden="true">🔒</div>
+        <h3>数据最小化</h3>
+        <p>仅记录完成状态，不采集账号信息，数据只保存在本机。</p>
+      </article>
+    </div>
+  </section>
+
+  <div class="offline-row">
+    <p class="offline">离线版请通过小红书官方账号获取</p>
+  </div>
+
+  <p class="note">练习过程不采集账号信息、无社交功能，数据仅保存在本机。</p>
+
+  <footer>
+    <span class="owner">点读陪练 · 乐学系列</span>
+    <span class="ts">更新于 <template data-inject="UPDATED_AT"></template></span>
+    <span class="links">
+      <a href="/">返回乐学首页</a>
+      <span aria-hidden="true">·</span>
+      <a href="https://taoli.loongba.cn">乐教 · 教师课堂工具</a>
+    </span>
+  </footer>
+</div>
+</body>
+</html>

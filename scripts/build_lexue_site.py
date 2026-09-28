@@ -8,6 +8,7 @@ CF Pages 项目 B（lexue.loongba.cn）从 Git 源拉取自动构建（push 即�
 产出目录（--out，缺省 scripts/dist/lexue-site/）：
     index.html                    ← 乐学系列产品页（产品卡片列表）
     _headers                      ← CF Pages 缓存策略（assets immutable / api no-cache）
+    products/<path>/index.html    ← 主力单独产品页（旁挂架构：介绍 + 打开应用入口）
     peilian/                      ← 主力① 点读陪练（英语陪练·天天见）
         index.html + assets/...   ←   build:online 前端产物
         api/manifest(.json)       ←   在线内容目录（双写无后缀副本）
@@ -282,6 +283,35 @@ def gen_miniapp_page(out: Path, tool_names: list[str], updated_at: str) -> Path:
     return idx
 
 
+def gen_product_pages(out: Path, updated_at: str) -> int:
+    """主力单独产品页（旁挂架构，Oracle B1）：products/<path>/index.html ← 模板 product-<path>.html。
+
+    - 产物存在才生成（timemanager 未开工顺延）；
+    - 模板缺失：optional 产品（timemanager）WARN 跳过；主力（非 optional）strict 中止（防主力产品页漏写）；
+    - 只注入 UPDATED_AT（每模板恰好 1 次），文案/按钮/链接为模板内静态内容。
+    """
+    n = 0
+    for prod in MAIN_PRODUCTS:
+        p = prod["path"]
+        if not (out / p / "index.html").is_file():
+            warn(f"产品页跳过：{p} 产物不存在")
+            continue
+        tpl = WEB_TEMPLATES / f"product-{p}.html"
+        if not tpl.is_file():
+            if prod.get("optional"):
+                warn(f"产品页模板缺失（optional，跳过）: {tpl.name} —— 待开工后补模板")
+                continue
+            raise SystemExit(f"[strict] 主力产品页模板缺失: {tpl.name}（产物已发布但模板未写）")
+        html = tpl.read_text(encoding="utf-8")
+        out_html = inject_placeholders(html, {"UPDATED_AT": updated_at})
+        idx = out / "products" / p / "index.html"
+        idx.parent.mkdir(parents=True, exist_ok=True)
+        idx.write_text(out_html, encoding="utf-8")
+        n += 1
+        log(f"  产品页：products/{p}/（模板 {tpl.name}）")
+    return n
+
+
 def gen_headers(out: Path) -> Path:
     """CF Pages 缓存策略：assets immutable / api no-cache / 入口 no-cache / units immutable。
 
@@ -304,6 +334,7 @@ def gen_headers(out: Path) -> Path:
         ("/qiaosuan/index.html", "Cache-Control: no-cache"),
         ("/timemanager/index.html", "Cache-Control: no-cache"),
         ("/MiniApp/index.html", "Cache-Control: no-cache"),
+        ("/products/*/index.html", "Cache-Control: no-cache"),
         ("/units/*", "Cache-Control: public, max-age=31536000, immutable"),
     ]
     lines = []
@@ -315,7 +346,7 @@ def gen_headers(out: Path) -> Path:
             lines.append(f"  {header}")
             lines.append("")
     head.write_text("\n".join(lines), encoding="utf-8")
-    log("  _headers：独立块格式（assets(主力+MiniApp)/units=immutable，api/入口=no-cache）")
+    log("  _headers：独立块格式（assets(主力+MiniApp)/units=immutable，api/入口/products=no-cache）")
     return head
 
 
@@ -347,13 +378,13 @@ def main() -> int:
     # 2) MiniApp
     n_mini = build_miniapps(out, args.strict, set(args.include) if args.include else None, args.no_miniapp)
 
-    # 3) 系列页 + MiniApp 目录页 + _headers
-    main_cards = [("点读陪练（英语陪练·天天见）", "peilian/"),
-                  ("数独思维", "shudu/"),
-                  ("数学巧算（数学巧算·天天练）", "qiaosuan/")]
-    if (out / "timemanager" / "index.html").is_file():
-        main_cards.append(("家庭时间管理", "timemanager/"))
+    # 3) 主力产品页（旁挂：products/<path>/，先于系列页生成）
     updated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    n_prod = gen_product_pages(out, updated_at)
+
+    # 4) 系列页（主流卡从 MAIN_PRODUCTS 派生，Oracle E3：消除手写三元组；链接指向产品页）
+    main_cards = [(p["name"], f"products/{p['path']}/") for p in MAIN_PRODUCTS
+                  if (out / p["path"] / "index.html").is_file()]
     gen_series_page(out, main_cards, updated_at)
     miniapp_names = [t.name for t in (out / "MiniApp").iterdir() if (out / "MiniApp" / t.name).is_dir()] if (out / "MiniApp").is_dir() else []
     gen_miniapp_page(out, miniapp_names, updated_at)
