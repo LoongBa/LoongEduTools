@@ -204,12 +204,16 @@ Assert-Get "/peilian/api/manifest" {
   $cc = $resp.Headers["Cache-Control"]
   $cc -match "no-cache"
 } "peilian/api/manifest 响应头 no-cache"
-# 12e) 产品页 entry no-cache 头（Oracle D 条：入口页高频改文案；与断言 10 同入 SkipHeaderCheck 块）
+# 12e) 产品页 entry 缓存头（Oracle D 条：入口页高频改文案；与断言 10 同入 SkipHeaderCheck 块）
+#     ⚠ CF Pages 平台对入口 HTML 默认注入 public, must-revalidate, max-age=0（覆盖 _headers 的
+#     /xxx/index.html 级规则——请求路径不含 index.html，规则不命中目录入口；实测 /、/MiniApp/、
+#     /peilian/、/products/peilian/ 均同）。max-age=0 + must-revalidate 语义 = 每次回源验证，
+#     满足入口高频更新意图 → 断言接受 no-cache 或 max-age=0 任一。
 Assert-Get "/products/peilian/" {
   param($resp)
-  $cc = $resp.Headers["Cache-Control"]
-  $cc -match "no-cache"
-} "products/peilian/ 响应头 no-cache"
+  $cc = [string]$resp.Headers["Cache-Control"]
+  ($cc -match "no-cache") -or ($cc -match "max-age=0")
+} "products/peilian/ 响应头 no-cache 或 max-age=0（CF 入口默认每次回源验证）"
 $miniFirst = if ($samples.Count -gt 0) { "/MiniApp/$([uri]::EscapeDataString($samples[0]))/assets/" } else { $null }
 if ($miniFirst) {
   $miniIdx = Invoke-WebRequest -Uri "$BaseUrl$miniFirst" -TimeoutSec 20 -UseBasicParsing -ErrorAction SilentlyContinue
