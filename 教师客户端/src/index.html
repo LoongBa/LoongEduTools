@@ -5,6 +5,35 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>桃李助手 · 龙爸易教·教师端</title>
+    <!-- 主题引导：CSS/JS 加载前同步设置，消除深色主题首帧白闪（FOUC）。
+         同时设 .dark class（styles.css Tailwind dark variant）与 data-theme（App.css [data-theme]）。
+         键名须与 ui/lib/theme.tsx 的 usePersistentState("taoli.theme.mode") 一致。 -->
+    <script>
+      (function () {
+        try {
+          var raw = localStorage.getItem("taoli.theme.mode");
+          if (raw === '"light"' || raw === '"dark"') {
+            var t = raw === '"dark"' ? "dark" : "light";
+            document.documentElement.classList.add(t);
+            document.documentElement.dataset.theme = t;
+            return;
+          }
+          // 兼容旧键 taoli.theme（仅存 light/dark）
+          var legacy = localStorage.getItem("taoli.theme");
+          if (legacy === '"light"' || legacy === '"dark"') {
+            var t2 = legacy === '"dark"' ? "dark" : "light";
+            document.documentElement.classList.add(t2);
+            document.documentElement.dataset.theme = t2;
+            return;
+          }
+        } catch (e) {
+          /* localStorage 不可用时降级跟随系统 */
+        }
+        var sys = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.classList.add(sys);
+        document.documentElement.dataset.theme = sys;
+      })();
+    </script>
   </head>
 
   <body>

@@ -100,6 +100,11 @@ pub fn run() {
         .on_page_load(|webview, payload| {
             if payload.event() == tauri::webview::PageLoadEvent::Finished {
                 let _ = webview.eval(HARDEN_JS);
+                // 主窗口页面加载完成 → 显示（2026-09-29 实测：visible:false 创建 + setup 定位
+                // 待命，页面 ready 才 show——启动即完整深色/正确位置，无白窗/浅色闪）
+                if webview.label() == "main" {
+                    let _ = webview.window().show();
+                }
             }
         })
         // ---- 窗口位置持久化（实测反馈 2：移动后记住，启动恢复）----
@@ -124,11 +129,18 @@ pub fn run() {
                 let _ = w.set_title(&format!("桃李助手 · 龙爸易教·教师端 v{v}"));
             }
             // ⑥0b 窗口位置：启动恢复上次位置（无存档/损坏/越界 → 显式居中兜底）。
-            //    main 窗口 visible:false 创建（tauri.conf.json），定位完成后再统一 show——
-            //    避免"先按系统默认位（左偏上）显示、再跳动到存档位"（2026-09-29 实测反馈）。
+            //    main 窗口 visible:false 创建（tauri.conf.json），定位后不立即 show——
+            //    页面加载完成（on_page_load Finished）再显示：避免"先默认位/白窗/浅色闪再跳正"
+            //    （2026-09-29 实测反馈）。下方兜底线程保证页面异常时窗口最终可见。
             window_state::restore_position(app.handle());
-            if let Some(w) = app.get_webview_window("main") {
-                let _ = w.show();
+            {
+                let h = app.handle().clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_secs(5));
+                    if let Some(w) = h.get_webview_window("main") {
+                        let _ = w.show();
+                    }
+                });
             }
             // ① WebView2 兜底复检（preflight 已在窗口创建前保证 Ready；此处仅留日志，
             //    缺失引导统一走 preflight 原生弹窗，前端 banner 已移除——见 v0.2 修订）
