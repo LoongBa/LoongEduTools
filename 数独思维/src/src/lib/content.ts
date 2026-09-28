@@ -99,6 +99,23 @@ export function skillByKey(key: string): Technique | undefined {
 /** 首页展示的适龄基础技巧（4 个） */
 export const HOME_SKILL_KEYS = BASE_SKILLS.map((s) => s.key);
 
+/** 首页进阶技巧盘轮换基准日（V1.10.0 B7）：使 di 恒非负；本地日差口径与 dailyFor 同源 */
+const ROTATE_BASE = new Date("2020-01-01T00:00:00");
+
+/**
+ * 首页进阶技巧盘每日轮换（V1.10.0 B7）：12 个进阶技巧按天展示 2 个。
+ * 步长 5 与 12 互质 → 同日不重复、相邻天组合恒不同、12 天周期内任意两天组合唯一、i1/i2 各自遍历全部 12 个。
+ * 纯日期驱动（确定性、零存储）；本地日差口径（与 dailyFor 本地周几同口径）——
+ * 两本地午夜差恒为 86400000 整数倍，Math.round 取最近整数日序号。
+ */
+export function advSkillsFor(dateStr: string): Technique[] {
+  const d = new Date(dateStr + "T00:00:00");
+  const di = Math.round((d.getTime() - ROTATE_BASE.getTime()) / 86400000);
+  const i1 = ((di % 12) + 12) % 12;
+  const i2 = (i1 + 5) % 12;
+  return [ADV_SKILLS[i1], ADV_SKILLS[i2]];
+}
+
 /* ================= 错题技巧分组（V1.3.0） ================= */
 
 /**

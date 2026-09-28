@@ -4,6 +4,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { get } from "node:http";
 import { chromium } from "playwright-core";
 import { createServer } from "vite";
+import { advSkillsFor } from "../src/lib/content.ts"; // V1.10.0 B7：Node 侧同源码计算今日进阶技巧名
 
 const PORT = 3014;
 const BASE = `http://localhost:${PORT}/`;
@@ -320,6 +321,16 @@ ok("SD4: 少线索被拒", await vis(page, "线索太少"));
   ok("备份提醒：未备份建议行（有数据）", await vis(page, "还没备份过"));
   await tapText(page, "返回难度");
   await page.waitForTimeout(400);
+
+  // ⑩ V1.10.0 B7 进阶技巧盘：Node 侧 import 计算今日 2 技巧名（同源码确定性）→ 首页断言区块 + 卡片 + 跳转链（I3：等待 reveal 动画）
+  const d0 = new Date();
+  const todayKey = `${d0.getFullYear()}-${String(d0.getMonth() + 1).padStart(2, "0")}-${String(d0.getDate()).padStart(2, "0")}`;
+  const todayKeys = advSkillsFor(todayKey).map((s) => s.name);
+  await page.waitForTimeout(700); // 上段已回首页；等待 reveal 动画完成（opacity 门控）
+  ok("进阶技巧盘：区块标题", await vis(page, "进阶技巧 · 今日 2 个"));
+  ok(`进阶技巧盘：卡片1「${todayKeys[0]}」`, await vis(page, todayKeys[0]));
+  ok(`进阶技巧盘：卡片2「${todayKeys[1]}」`, await vis(page, todayKeys[1]));
+  ok("进阶技巧盘：「全部 12 个」跳转链", await vis(page, "全部 12 个"));
 
   console.log(results.join("\n"));
   const fails = results.filter((r) => r.startsWith("FAIL")).length;

@@ -3,7 +3,7 @@
 // V1.0.4 增：parseImportedText 全分支、长度不变式、协议串 round-trip。
 // V1.3.0 增：analyzeTechniques 题面技巧画像。
 import { generatePuzzle, solve, boxOf, toSDString, fromSDString, validateImported, parseImportedText, analyzeTechniques, findLogicStep, findHiddenPairPattern } from "../src/lib/sudoku.ts";
-import { TECHNIQUE_LESSON_MAP, ADV_SKILLS, LESSON_DATA, TECHNIQUE_GROUPS } from "../src/lib/content.ts";
+import { TECHNIQUE_LESSON_MAP, ADV_SKILLS, LESSON_DATA, TECHNIQUE_GROUPS, advSkillsFor } from "../src/lib/content.ts";
 
 let failed = 0;
 const ok = (name, cond, extra = "") => {
@@ -225,6 +225,28 @@ for (const size of [4, 6, 9]) {
   ok("空盘无模式", findHiddenPairPattern(new Array(36).fill(0), 6) === null);
   const solved = [1,2,3,4,5,6,4,5,6,1,2,3,2,3,1,6,4,5,5,6,4,3,1,2,3,1,2,5,6,4,6,4,5,2,3,1];
   ok("已解盘无模式", findHiddenPairPattern(solved.slice(), 6) === null);
+}
+
+// V1.10.0 B7 进阶技巧盘轮换 advSkillsFor（日期驱动零存储）
+{
+  const keys = ADV_SKILLS.map((s) => s.key);
+  const day = (ds) => advSkillsFor(ds).map((s) => s.key);
+  const a = day("2026-09-28");
+  const b = day("2026-09-29");
+  ok("同日返回 2 个", a.length === 2, `len=${a.length}`);
+  ok("同日不重复", a[0] !== a[1], `${a}`);
+  ok("相邻天组合不同", !a.some((k) => b.includes(k)), `A=${a} B=${b}`);
+  // N1：连续 12 天 i1 集合 = 全部 12 个技巧（对应「12 天遍历全部 12 个」承诺）
+  const i1s = new Set();
+  for (let i = 0; i < 12; i++) i1s.add(advSkillsFor(`2026-09-${String(i + 1).padStart(2, "0")}`)[0].key);
+  ok("12 天 i1 覆盖全部 12 个技巧", i1s.size === 12 && [...i1s].every((k) => keys.includes(k)), `size=${i1s.size}`);
+  // 12 天窗口内任意两天组合唯一
+  const combos = new Set();
+  for (let i = 0; i < 12; i++) combos.add(day(`2026-09-${String(i + 1).padStart(2, "0")}`).sort().join(","));
+  ok("12 天窗口组合两两唯一", combos.size === 12, `size=${combos.size}`);
+  // 边界：基准日稳定 + 负 epoch 前不抛错长度恒 2（防御性）
+  ok("基准日稳定", advSkillsFor("2020-01-01").length === 2 && advSkillsFor("2020-01-02")[0].key !== advSkillsFor("2020-01-01")[0].key);
+  ok("负 epoch 前安全", advSkillsFor("1969-12-31").length === 2, `${day("1969-12-31")}`);
 }
 
 console.log(`\n引擎单测 ${failed ? "FAIL " + failed : "全部通过"}`);

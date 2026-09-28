@@ -18,7 +18,7 @@ import { SkillWall, AchievementWall, BookList, Calendar, WeekCard, levelName, Sk
 import { useStore, todayStr, type BookItem, type LevelId } from "@/lib/store";
 import { APP_VERSION } from "@/lib/version";
 import { importMsg, PRIVACY_BADGE } from "@/lib/copy";
-import { BASE_SKILLS, ADV_SKILLS, ACHIEVEMENTS, FREE_TIERS, HOME_SKILL_KEYS, MAP_LEVELS, dailyFor, skillByKey, groupOfTechniques, type MapLevel, type Technique, type TechniqueGroupId } from "@/lib/content";
+import { BASE_SKILLS, ADV_SKILLS, ACHIEVEMENTS, FREE_TIERS, HOME_SKILL_KEYS, MAP_LEVELS, dailyFor, skillByKey, groupOfTechniques, advSkillsFor, type MapLevel, type Technique, type TechniqueGroupId } from "@/lib/content";
 import { countGiven, parseImportedText, analyzeTechniques, type Size } from "@/lib/sudoku";
 import { formatMs } from "@/components/Overlay";
 import { ART_HERO } from "@/lib/art";
@@ -425,6 +425,8 @@ function HomeView(props: {
   const dailyDone = store.daily?.date === today;
   const d = dailyFor(today);
   const homeSkills = HOME_SKILL_KEYS.map((k) => skillByKey(k)!).filter(Boolean);
+  // V1.10.0 B7：首页进阶技巧盘 · 每日轮换（日期驱动零存储；grade 显式标注做龄段预期管理）
+  const advSkills = advSkillsFor(today);
   // E5 连败降档：进入任一局后清除，仅本次进入首页展示
   const [suggested, setSuggested] = useState<LevelId | null>(() => suggestLevel(store.history));
   const go = (p: StartParams) => {
@@ -587,6 +589,36 @@ function HomeView(props: {
               >
                 <span className="flex items-center gap-2">
                   <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-badge-base/15 text-[16px]">{s.emoji}</span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-[12.5px] font-bold leading-tight">{s.name}</span>
+                    <span className="mt-0.5 block text-[10px] leading-none text-muted-foreground">{lit ? "✅ 已点亮 · 可复习" : `🎯 ${s.grade} 适龄`}</span>
+                  </span>
+                </span>
+                <p className="mt-1.5 line-clamp-2 text-[10.5px] leading-snug text-muted-foreground">{s.brief}</p>
+              </button>
+            );
+          })}
+        </div>
+        {/* V1.10.0 B7：进阶技巧盘 · 每日轮换（回应 V1.5.0 触达率遗留；标题行右对齐跳转 skillwall） */}
+        <div className="mb-2 mt-4 flex items-baseline justify-between px-1">
+          <h3 className="text-[13px] font-bold text-badge-adv">✨ 进阶技巧 · 今日 2 个</h3>
+          <button type="button" onClick={props.onLessons} className="text-[10.5px] font-semibold text-muted-foreground">
+            全部 12 个 ›
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-2.5">
+          {advSkills.map((s, i) => {
+            const lit = !!store.advSkills[s.key];
+            return (
+              <button
+                key={s.key}
+                type="button"
+                onClick={() => props.onLesson(s)}
+                className="press reveal-up rounded-2xl border border-border bg-card p-3 text-left"
+                data-reveal-delay={i * 40}
+              >
+                <span className="flex items-center gap-2">
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-badge-adv/15 text-[16px]">{s.emoji}</span>
                   <span className="min-w-0">
                     <span className="block truncate text-[12.5px] font-bold leading-tight">{s.name}</span>
                     <span className="mt-0.5 block text-[10px] leading-none text-muted-foreground">{lit ? "✅ 已点亮 · 可复习" : `🎯 ${s.grade} 适龄`}</span>
