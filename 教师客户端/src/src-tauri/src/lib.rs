@@ -123,8 +123,13 @@ pub fn run() {
                 let v = app.package_info().version.to_string();
                 let _ = w.set_title(&format!("桃李助手 · 龙爸易教·教师端 v{v}"));
             }
-            // ⑥0b 窗口位置：启动恢复上次位置（无存档/越界 → 保持默认居中，静默跳过）
+            // ⑥0b 窗口位置：启动恢复上次位置（无存档/损坏/越界 → 显式居中兜底）。
+            //    main 窗口 visible:false 创建（tauri.conf.json），定位完成后再统一 show——
+            //    避免"先按系统默认位（左偏上）显示、再跳动到存档位"（2026-09-29 实测反馈）。
             window_state::restore_position(app.handle());
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.show();
+            }
             // ① WebView2 兜底复检（preflight 已在窗口创建前保证 Ready；此处仅留日志，
             //    缺失引导统一走 preflight 原生弹窗，前端 banner 已移除——见 v0.2 修订）
             let wv2 = webview2::ensure_webview2();
