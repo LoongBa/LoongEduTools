@@ -31,6 +31,7 @@ export const GROUP_LESSON_BTN = "🎓 复习技巧";
 export const GROUP_PRACTICE_BTN = "📝 练这一组";
 export const GROUP_MIXED_BTN = "📚 去练一道";
 export const GROUP_MIXED_HINT = "综合运用多种推理，适合按自己的节奏多练几道。";
+/** V1.7.0 后弃用（N1）：组结束分支不再 toast（被小结浮层取代），暂留不删 */
 export const GROUP_PRACTICE_DONE = "这组练完了，错题本里再挑一组继续。";
 /** V1.4.0：进阶观察折叠组 */
 export const GROUP_ADV_COLLAPSED = "进阶观察";
@@ -42,6 +43,13 @@ export const GROUP_PROGRESS = (done: number, total: number) => `已完成 ${done
 export const GROUP_PROGRESS_DONE = (total: number) => `已完成 ${total}/${total} 题 · 本组已完成`;
 /** V1.4.2：同类专项连做练习中进度文案（正在做语境；与结算层「已完成 x/n · 还剩 m 道」区分）。idx 为 0-based 组内序号，函数内自管 +1 */
 export const GROUP_IN_PROGRESS = (idx: number, total: number) => `第 ${idx + 1}/${total} 题`;
+/** V1.7.0：组内成果小结（B5）。timeStr 由组件侧 formatMs 预格式化（lib 层不反向依赖组件） */
+export const GROUP_SUMMARY_TITLE = "🧮 这组练完了";
+export const GROUP_SUMMARY_STAT = (done: number, perfect: number, timeStr: string) => `共完成 ${done} 题 · 全对 ${perfect} 道 · 总用时 ${timeStr}`;
+export const GROUP_SUMMARY_ROW = (i: number) => `第 ${i + 1} 题`;
+export const GROUP_SUMMARY_BACK = "📚 回到错题本";
+export const GROUP_SUMMARY_AGAIN = "🔁 再练一组";
+export const GROUP_SUMMARY_HOME = "🏠 回首页";
 
 /** 导入解析错误 → 文案（静态消息） */
 const IMPORT_MSG_STATIC: Record<ImportError, string> = {

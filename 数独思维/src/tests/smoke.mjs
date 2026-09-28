@@ -264,6 +264,16 @@ ok("SD4: 少线索被拒", await vis(page, "线索太少"));
   await tapText(page, "下一道");
   await page.waitForTimeout(700);
   ok("组内推进：推进到第 2/2 题", await vis(page, "第 2/2 题"));
+  // V1.7.0 B5：完成第 2 题（唯一空格 idx=6 → 填 1）→「下一道」→ 组内成果小结浮层（3 断言）
+  await page.locator('button[role="gridcell"]').nth(6).evaluate((el) => el.click()).catch(() => {});
+  await page.waitForTimeout(250);
+  await page.locator('button[aria-label^="填入数字 1"]').evaluate((el) => el.click()).catch(() => {});
+  await page.waitForTimeout(950);
+  await tapText(page, "下一道");
+  await page.waitForTimeout(700);
+  ok("组内小结：浮层出现", await vis(page, "这组练完了"));
+  ok("组内小结：共完成 2 题", await vis(page, "共完成 2 题"));
+  ok("组内小结：回到错题本按钮", await vis(page, "回到错题本"));
 
   console.log(results.join("\n"));
   const fails = results.filter((r) => r.startsWith("FAIL")).length;

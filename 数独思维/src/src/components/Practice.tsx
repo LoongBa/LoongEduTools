@@ -36,9 +36,18 @@ export interface StartParams {
 interface Props {
   params: StartParams;
   onExit: () => void;
-  onFinish: () => void;
+  /** V1.7.0：回传本局成绩（组内连做累积用；非组模式父级忽略）。签名非 optional——结算两调用点均传值 */
+  onFinish: (result: GroupItemResult) => void;
   /** V1.6.0：结算层「去复习技巧」→ 打开教学关（index.tsx openSkill 复用；收 lessonKey 字符串，与 HomeView onLesson(s) 区分） */
   onLessonKey?: (lessonKey: string) => void;
+}
+
+/** V1.7.0：组内一题的成绩（B5），结算 Overlay「下一道/选难度」时回传 */
+export interface GroupItemResult {
+  stars: number;   // calcStars(hints, errors)：3=0错0提示 / 2=hints≤1&errors≤3 / 1=完成
+  ms: number;
+  errors: number;
+  hints: number;
 }
 
 interface Move {
@@ -652,11 +661,11 @@ export function Practice({ params, onExit, onFinish, onLessonKey }: Props) {
               <Btn variant="ghost" onClick={() => setShareResult(true)}>
                 📤 分享成绩
               </Btn>
-              <Btn variant="ghost" onClick={onFinish}>
+              <Btn variant="ghost" onClick={() => onFinish({ stars, ms, errors, hints })}>
                 {params.inGroup ? "下一道" : "选难度"}
               </Btn>
             </OverlayBtns>
-            <Btn variant="quiet" size="sm" onClick={onFinish} className="w-full">
+            <Btn variant="quiet" size="sm" onClick={() => onFinish({ stars, ms, errors, hints })} className="w-full">
               查看打卡日历
             </Btn>
           </>

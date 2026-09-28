@@ -6,17 +6,18 @@ import { createFileRoute } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import { Shell, CheckinBar, APP_ICON_URL } from "@/components/Shell";
 import { Btn, Card, SectionGroup, TopBar, Toast, Stat } from "@/components/ui/kit";
-import { Practice, suggestLevel, type StartParams } from "@/components/Practice";
+import { Practice, suggestLevel, type StartParams, type GroupItemResult } from "@/components/Practice";
 import { SkillLesson } from "@/components/SkillLesson";
 import { ParentReport } from "@/components/Report";
 import { Settings } from "@/components/Settings";
 import { MapView } from "@/components/MapView";
 import { ImportOverlay, RulesTeach } from "@/components/ImportRules";
 import { ShareResultOverlay } from "@/components/Share";
+import { GroupSummaryOverlay } from "@/components/GroupSummary";
 import { SkillWall, AchievementWall, BookList, Calendar, WeekCard, levelName, SkillGroups } from "@/components/Walls";
 import { useStore, todayStr, type BookItem, type LevelId } from "@/lib/store";
 import { APP_VERSION } from "@/lib/version";
-import { importMsg, PRIVACY_BADGE, GROUP_PRACTICE_DONE } from "@/lib/copy";
+import { importMsg, PRIVACY_BADGE } from "@/lib/copy";
 import { BASE_SKILLS, ADV_SKILLS, ACHIEVEMENTS, FREE_TIERS, HOME_SKILL_KEYS, MAP_LEVELS, dailyFor, skillByKey, groupOfTechniques, type MapLevel, type Technique, type TechniqueGroupId } from "@/lib/content";
 import { countGiven, parseImportedText, analyzeTechniques, type Size } from "@/lib/sudoku";
 import { formatMs } from "@/components/Overlay";
@@ -42,6 +43,14 @@ interface FreeSel {
   level: LevelId;
 }
 
+/** V1.7.0：同类专项连做会话（B5 扩展：gid + results 累积） */
+interface GroupSession {
+  gid: TechniqueGroupId;
+  list: BookItem[];
+  idx: number;
+  results: GroupItemResult[];
+}
+
 const TIER_BY_LEVEL: Record<LevelId, (typeof FREE_TIERS)[number]> = {
   easy: FREE_TIERS[0],
   normal: FREE_TIERS[1],
@@ -58,8 +67,10 @@ function Index() {
   const [teaching, setTeaching] = useState(false);
   const [shareResult, setShareResult] = useState(false);
   const [toast, setToast] = useState("");
-  /** 同类专项连做会话（V1.3.0）：组内错题逐一重练，完成一题自动进下一题 */
-  const [groupSession, setGroupSession] = useState<{ list: BookItem[]; idx: number } | null>(null);
+  /** 同类专项连做会话（V1.3.0/V1.7.0）：组内错题逐一重练，完成一题自动进下一题；results 累积每题成绩用于组内小结（B5） */
+  const [groupSession, setGroupSession] = useState<GroupSession | null>(null);
+  /** V1.7.0：组内成果小结浮层开关（B5） */
+  const [groupSummaryOpen, setGroupSummaryOpen] = useState(false);
   /** URL 直启守卫：仅首帧处理一次 ?sd= 参数（React 19 StrictMode dev 双调用用 ref 防重） */
   const bootRef = useRef(false);
 
@@ -149,7 +160,7 @@ function Index() {
       }
       ordered = shuffled;
     }
-    setGroupSession({ list: ordered, idx: 0 });
+    setGroupSession({ gid, list: ordered, idx: 0, results: [] });
     startGroupItem(ordered[0], 0, ordered.length);
   }
 
@@ -158,18 +169,20 @@ function Index() {
     start({ size: item.size, level: item.level, source: "replay", board: item.board, solution: item.solution, errIdx: item.errIdx, inGroup: true, group: { total, idx } });
   }
 
-  /** Practice 完成回调：连做中推进下一题，否则回首页 */
-  function handlePracticeFinish() {
+  /** Practice 完成回调（V1.7.0 带成绩）：连做中累积结果并推进下一题，末题开小结浮层；非组模式回首页 */
+  function handlePracticeFinish(result: GroupItemResult) {
     if (groupSession) {
+      const results = [...groupSession.results, result];
       const next = groupSession.idx + 1;
       if (next < groupSession.list.length) {
-        setGroupSession({ list: groupSession.list, idx: next });
+        setGroupSession({ ...groupSession, idx: next, results });
         startGroupItem(groupSession.list[next], next, groupSession.list.length);
         return;
       }
-      setGroupSession(null);
+      // 组结束（B1 修复）：保留 results 供小结浮层；先改 view 卸载 Practice（结算浮层随之消失），再开顶层浮层
+      setGroupSession({ ...groupSession, results });
+      setGroupSummaryOpen(true);
       setView("mistakes");
-      showToast(GROUP_PRACTICE_DONE);
       return;
     }
     setView("home");
@@ -177,7 +190,7 @@ function Index() {
 
   /* ---------- 子视图 ---------- */
   if (view === "practice" && params) {
-    return <Practice params={params} onExit={() => setView("home")} onFinish={handlePracticeFinish} onLessonKey={openSkill} />;
+    return <Practice params={params} onExit={() => { setGroupSession(null); setView("home"); }} onFinish={handlePracticeFinish} onLessonKey={openSkill} />;
   }
   if (view === "lesson" && lesson) {
     return <SkillLesson skill={lesson} onExit={() => setView("home")} onComplete={(key) => handleLessonDone(key)} />;
@@ -338,6 +351,26 @@ function Index() {
           board={lastRecord.board}
           onClose={() => setShareResult(false)}
           onToast={showToast}
+        />
+      ) : null}
+
+      {/* V1.7.0：组内成果小结（B5）——顶层浮层，组结束（setView("mistakes") 卸载 Practice）后唯一显示 */}
+      {groupSummaryOpen && groupSession ? (
+        <GroupSummaryOverlay
+          session={groupSession}
+          onBack={() => {
+            setGroupSession(null);
+            setGroupSummaryOpen(false);
+          }}
+          onAgain={() => {
+            setGroupSummaryOpen(false);
+            startGroupPractice(groupSession.gid);
+          }}
+          onHome={() => {
+            setGroupSession(null);
+            setGroupSummaryOpen(false);
+            setView("home");
+          }}
         />
       ) : null}
     </Shell>
