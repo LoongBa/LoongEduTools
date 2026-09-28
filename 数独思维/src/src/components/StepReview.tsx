@@ -25,6 +25,10 @@ const TECH_TONE: Record<string, "base" | "adv" | "ach"> = {
   宫内排除: "adv",
   行排除: "ach",
   列排除: "ach",
+  // V1.6.1：同步 V1.6.0 结算层 TECH_TONE_BASE 的 I1 兜底（隐性数对/显性数对/X-Wing → adv），闭 V1.6.0 §六遗留-1
+  显性数对: "adv",
+  隐性数对: "adv",
+  "X-Wing": "adv",
 };
 
 export function StepReview({ open, puzzle, solution, size, ms, errors, hints, onClose }: Props) {
