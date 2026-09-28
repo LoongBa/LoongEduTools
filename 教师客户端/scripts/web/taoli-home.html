@@ -9,8 +9,8 @@
   ⚠ 模板维护约定（UI Agent 美化必读，勿违反）：
   1. 每个注入占位元素（标签 template，data-inject="" 属性，下称「KEY 占位」）恰好出现 1 次，
      脚本按正则整块替换，不可增删/加空格/复制两份。
-     - 内容包清单占位（脚本注入：packages/manifest 数据）
-     - 更新时间占位（脚本注入）
+      - 内容包清单占位（脚本注入：packages/manifest 数据）
+      - 更新时间占位（脚本注入）
   2. 链接保持相对路径（packs/、api/ 等），禁止绝对路径/盘符。
   3. 纯静态：不引入外部资源，样式内联，随 push 部署。
   4. 美化只改颜色/字体/间距/卡片样式/响应式/品牌感；结构、占位符、链接语义不改。
@@ -18,49 +18,413 @@
 -->
 <style>
   :root {
-    --brand: #0f766e; --brand-dark: #115e59; --bg: #f4f8f7; --card: #ffffff;
-    --text: #1f2a27; --muted: #5f6e6a; --border: #dfe9e6; --radius: 14px;
+    /* 品牌（乐教 · 青绿） */
+    --brand: #0f766e;
+    --brand-deep: #0a5d57;
+    --brand-ink: #063f3a;
+    --brand-soft: #e6f2ef;
+    --brand-mist: #f2f8f6;
+    /* 中性色 */
+    --ink: #12302b;
+    --ink-soft: #405c56;
+    --muted: #5c726b;
+    --line: #dbe7e3;
+    --line-strong: #c4d8d1;
+    --paper: #ffffff;
+    --bg: #f4f8f6;
+    /* 形状与层级 */
+    --radius-l: 18px;
+    --radius-m: 12px;
+    --radius-s: 8px;
+    --shadow-sm: 0 1px 2px rgba(10, 61, 55, .05), 0 6px 18px -10px rgba(10, 61, 55, .10);
+    --shadow-md: 0 1px 2px rgba(10, 61, 55, .06), 0 16px 32px -14px rgba(15, 118, 110, .20);
+    --ring-focus: 0 0 0 3px rgba(15, 118, 110, .22);
+    /* 字体 */
+    --font: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
-  .wrap { max-width: 980px; margin: 0 auto; padding: 32px 20px 48px; }
-  header.hero { text-align: center; padding: 40px 0 28px; }
-  header.hero .brand { font-size: 34px; font-weight: 800; color: var(--brand); letter-spacing: 2px; }
-  header.hero .slogan { margin-top: 10px; font-size: 15px; color: var(--muted); }
-  section { margin-top: 34px; }
-  section h2 { font-size: 18px; font-weight: 700; margin-bottom: 14px; padding-left: 10px; border-left: 4px solid var(--brand); }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; }
-  .card h3 { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
-  .card p { font-size: 13px; color: var(--muted); }
-  .pack { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
-  .pack .meta { font-size: 13px; color: var(--muted); }
-  .pack .dl { font-size: 13px; font-weight: 600; color: var(--brand); text-decoration: none; }
-  .pack .dl:hover { text-decoration: underline; }
-  .compliance { margin-top: 30px; padding: 14px 18px; background: #e8f3f1; border-radius: 10px; font-size: 13px; color: var(--muted); }
-  footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; font-size: 12px; color: var(--muted); }
-  footer a { color: var(--brand); text-decoration: none; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    font-family: var(--font);
+    color: var(--ink);
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+    background:
+      radial-gradient(1100px 480px at 50% -140px, rgba(15, 118, 110, .12), transparent 65%),
+      linear-gradient(180deg, #f8fbfa 0%, var(--bg) 42%, #edf4f1 100%);
+  }
+
+  /* 工程格线背景（纯 CSS，低透明度） */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(15, 118, 110, .035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(15, 118, 110, .035) 1px, transparent 1px);
+    background-size: 28px 28px;
+    -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, .75), transparent 78%);
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, .75), transparent 78%);
+  }
+
+  ::selection { background: rgba(15, 118, 110, .18); color: var(--brand-ink); }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 56px 24px 64px;
+  }
+
+  /* ============ Hero ============ */
+  .hero { text-align: center; padding: 8px 0 16px; }
+
+  .hero-svg { display: inline-block; filter: drop-shadow(0 10px 22px rgba(15, 118, 110, .28)); }
+
+  .eyebrow {
+    margin-top: 22px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .22em;
+    color: var(--muted);
+  }
+  .eyebrow::before, .eyebrow::after {
+    content: "";
+    display: inline-block;
+    vertical-align: middle;
+    width: 26px; height: 1px;
+    margin: 0 12px;
+    background: var(--line-strong);
+  }
+
+  .brand {
+    margin-top: 14px;
+    font-size: clamp(30px, 5vw, 44px);
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: 4px;
+    color: var(--brand-ink);
+  }
+  .brand .accent { color: var(--brand); }
+
+  .slogan {
+    margin-top: 12px;
+    font-size: 15.5px;
+    color: var(--muted);
+    letter-spacing: .6px;
+  }
+
+  .hero-badges {
+    margin-top: 22px;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .hero-badges span {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--brand-deep);
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 6px 14px;
+    box-shadow: var(--shadow-sm);
+  }
+  .hero-badges span::before {
+    content: "";
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #17a095, var(--brand));
+  }
+
+  /* ============ 通用 Section 头 ============ */
+  section { margin-top: 54px; }
+
+  .sec-head { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 22px; }
+  .sec-no {
+    flex: none;
+    margin-top: 4px;
+    padding: 1px 9px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    color: var(--brand);
+    background: var(--paper);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-s);
+  }
+  .sec-head h2 {
+    font-size: 21px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    color: var(--brand-ink);
+  }
+  .sec-head h2::after {
+    content: "";
+    display: block;
+    width: 46px;
+    height: 3px;
+    margin-top: 9px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--brand), rgba(15, 118, 110, .2));
+  }
+  .sec-sub { margin-top: 8px; font-size: 13px; color: var(--muted); }
+
+  /* ============ 产品简介卡片（注入类：.card / .card h3 / .card p） ============ */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 18px;
+  }
+
+  .card {
+    position: relative;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-m);
+    padding: 26px 24px 24px;
+    box-shadow: var(--shadow-sm);
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  .card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: var(--radius-m) var(--radius-m) 0 0;
+    background: linear-gradient(90deg, var(--brand), rgba(15, 118, 110, .15));
+    opacity: 0;
+    transition: opacity .18s ease;
+  }
+  .card:hover {
+    transform: translateY(-3px);
+    border-color: var(--line-strong);
+    box-shadow: var(--shadow-md);
+  }
+  .card:hover::before { opacity: 1; }
+
+  .card .card-ico {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 46px;
+    margin-bottom: 16px;
+    color: var(--brand);
+    background: var(--brand-soft);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+
+  .card h3 {
+    font-size: 16.5px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    color: var(--brand-ink);
+    margin-bottom: 8px;
+  }
+  .card p { font-size: 13.5px; color: var(--muted); margin: 0; }
+
+  /* ============ 内容包行（注入类：.pack / .pack .meta / .pack .dl） ============ */
+  .pack {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--brand);
+    border-radius: var(--radius-m);
+    padding: 16px 20px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow-sm);
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  .pack:hover {
+    transform: translateY(-2px);
+    border-color: var(--line-strong);
+    box-shadow: var(--shadow-md);
+  }
+
+  .pack > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .pack strong { font-size: 15.5px; font-weight: 700; letter-spacing: .3px; color: var(--brand-ink); }
+  .pack .meta { font-size: 12.5px; color: var(--muted); }
+
+  .pack .dl {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    color: #ffffff;
+    text-decoration: none;
+    white-space: nowrap;
+    background: linear-gradient(180deg, #17837a, var(--brand));
+    border: 1px solid #0b5d57;
+    border-radius: 9px;
+    padding: 9px 18px;
+    box-shadow: 0 1px 2px rgba(15, 118, 110, .3), inset 0 1px 0 rgba(255, 255, 255, .18);
+    transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
+  }
+  .pack .dl:hover {
+    transform: translateY(-1px);
+    text-decoration: none;
+    filter: brightness(1.05);
+    box-shadow: 0 4px 14px -2px rgba(15, 118, 110, .45);
+  }
+  .pack .dl:active { transform: translateY(0); }
+
+  .pack .dl:focus-visible,
+  footer a:focus-visible,
+  .pack-foot a:focus-visible {
+    outline: none;
+    box-shadow: var(--ring-focus);
+  }
+
+  .pack-foot {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 16px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .pack-foot a {
+    color: var(--brand);
+    font-weight: 600;
+    text-decoration: none;
+    border-bottom: 1px dotted var(--line-strong);
+  }
+  .pack-foot a:hover { color: var(--brand-deep); border-bottom-style: solid; }
+
+  /* ============ 合规声明 ============ */
+  .compliance {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-top: 38px;
+    padding: 16px 20px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    background: linear-gradient(180deg, var(--brand-soft), var(--brand-mist));
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--brand);
+    border-radius: var(--radius-m);
+  }
+  .compliance .comp-ico { flex: none; margin-top: 1px; color: var(--brand); }
+
+  /* ============ Footer ============ */
+  footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 52px;
+    padding-top: 22px;
+    border-top: 1px solid var(--line-strong);
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+  .foot-updated { display: inline-flex; align-items: center; gap: 5px; }
+  footer a { color: var(--brand); font-weight: 600; text-decoration: none; }
+  footer a:hover { color: var(--brand-deep); text-decoration: underline; }
+
+  /* ============ 响应式 ============ */
+  @media (max-width: 640px) {
+    .wrap { padding: 40px 16px 56px; }
+    .eyebrow::before, .eyebrow::after { width: 16px; margin: 0 8px; }
+    .brand { letter-spacing: 2px; }
+    .grid { grid-template-columns: 1fr; }
+    .pack { padding: 15px 16px; }
+    .pack .dl { width: 100%; justify-content: center; }
+    footer { flex-direction: column; align-items: flex-start; gap: 6px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header class="hero">
-    <div class="brand">乐教 · 桃李助手</div>
+    <svg class="hero-svg" viewBox="0 0 72 72" width="72" height="72" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id="sealGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#17988c"/>
+          <stop offset="1" stop-color="#0a5d57"/>
+        </linearGradient>
+      </defs>
+      <rect x="3" y="3" width="66" height="66" rx="19" fill="url(#sealGrad)"/>
+      <rect x="3" y="3" width="66" height="66" rx="19" fill="none" stroke="#ffffff" stroke-opacity=".25" stroke-width="1.5"/>
+      <rect x="19" y="16" width="34" height="27" rx="4.5" fill="#fbfdfc" fill-opacity=".97"/>
+      <rect x="19" y="16" width="34" height="27" rx="4.5" fill="none" stroke="#ffffff" stroke-opacity=".4" stroke-width="1"/>
+      <rect x="15" y="43.5" width="42" height="5.5" rx="2.75" fill="#ffffff" fill-opacity=".9"/>
+      <text x="36" y="37.5" text-anchor="middle" font-family="system-ui, 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="19" font-weight="700" fill="#0b7169">桃</text>
+      <circle cx="24.5" cy="36.5" r="1.5" fill="#0f766e" fill-opacity=".45"/>
+      <circle cx="47.5" cy="25.5" r="1.5" fill="#0f766e" fill-opacity=".32"/>
+    </svg>
+    <p class="eyebrow">乐教系列 · 教室课堂专用</p>
+    <h1 class="brand"><span class="accent">乐教</span> · 桃李助手</h1>
     <p class="slogan">教师课堂专用工具 · 教材点读 + 内容包扩展</p>
+    <div class="hero-badges">
+      <span>绿色免安装</span>
+      <span>课堂实名认证</span>
+      <span>零数据采集</span>
+    </div>
   </header>
 
   <section>
-    <h2>产品简介</h2>
+    <header class="sec-head">
+      <span class="sec-no">01</span>
+      <div>
+        <h2>产品简介</h2>
+        <p class="sec-sub">为教室场景设计的轻量教师工具，U 盘即拷即用</p>
+      </div>
+    </header>
     <div class="grid">
       <div class="card">
+        <span class="card-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="6" y="3" width="12" height="7" rx="2"/>
+            <path d="M9 10v3a3 3 0 0 0 3 3v0a3 3 0 0 0 3-3v-3"/>
+            <rect x="10.2" y="18.2" width="3.6" height="2.2" rx="1"/>
+          </svg>
+        </span>
         <h3>绿色免安装</h3>
         <p>Tauri 绿色 exe，U 盘拷贝部署到教室电脑 / 智慧屏，双击即用。</p>
       </div>
       <div class="card">
+        <span class="card-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 6.5C10.5 5 8.3 4.5 6 4.5c-1 0-2 .1-3 .3v13.4c1-.2 2-.3 3-.3 2.3 0 4.5.5 6 2 1.5-1.5 3.7-2 6-2 1 0 2 .1 3 .3V4.8c-1-.2-2-.3-3-.3-2.3 0-4.5.5-6 2z"/>
+            <path d="M12 6.5v13.4"/>
+          </svg>
+        </span>
         <h3>教材点读主应用</h3>
         <p>人教教材原版点读，课堂即取即用，支持内容包扩展。</p>
       </div>
       <div class="card">
+        <span class="card-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="4" width="16" height="3" rx="1"/>
+            <rect x="4" y="10.5" width="16" height="3" rx="1"/>
+            <rect x="4" y="17" width="16" height="3" rx="1"/>
+          </svg>
+        </span>
         <h3>课堂工具</h3>
         <p>抽卡分组 / 课堂看板 / 打卡单等教辅工具随版本持续接入。</p>
       </div>
@@ -68,15 +432,27 @@
   </section>
 
   <section>
-    <h2>内容包</h2>
+    <header class="sec-head">
+      <span class="sec-no">02</span>
+      <div>
+        <h2>内容包</h2>
+        <p class="sec-sub">按需下载，随 U 盘拷贝即取即用</p>
+      </div>
+    </header>
     <template data-inject="PACKS_LIST"></template>
-    <p class="meta" style="font-size:12px;color:var(--muted);margin-top:6px;">列表由 loongba-edu-dist 发布仓库自动生成 · <a href="api/edu/packages/manifest" style="color:var(--brand);">查看清单 JSON</a></p>
+    <p class="pack-foot">列表由 loongba-edu-dist 发布仓库自动生成 · <a href="api/edu/packages/manifest">查看清单 JSON</a></p>
   </section>
 
-  <p class="compliance">合规声明：本工具仅供已认证教师课堂使用；教材素材来自人教社，依据「课堂教学 = 合理使用范围」，不对外分发、不采集儿童数据。使用建议与反馈请通过公众号留言。</p>
+  <p class="compliance">
+    <svg class="comp-ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 3l7 2.8v5.2c0 4.4-3 7.4-7 8.9-4-1.5-7-4.5-7-8.9V5.8L12 3z"/>
+      <path d="M9 12l2 2 4-4.5"/>
+    </svg>
+    <span>合规声明：本工具仅供已认证教师课堂使用；教材素材来自人教社，依据「课堂教学 = 合理使用范围」，不对外分发、不采集儿童数据。使用建议与反馈请通过公众号留言。</span>
+  </p>
 
   <footer>
-    <span>更新于 <template data-inject="UPDATED_AT"></template></span>
+    <span class="foot-updated">更新于 <template data-inject="UPDATED_AT"></template></span>
     <span><a href="https://lexue.loongba.cn">乐学系列 · 教育工具集</a></span>
   </footer>
 </div>

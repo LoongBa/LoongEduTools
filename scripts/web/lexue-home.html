@@ -9,39 +9,240 @@
   ⚠ 模板维护约定（UI Agent 美化必读，勿违反）：
   1. 每个注入占位元素（标签 template，data-inject="" 属性，下称「KEY 占位」）恰好出现 1 次，
      脚本按正则整块替换，不可增删/加空格/复制两份。
-     - 主力应用卡片占位（脚本注入：peilian/shudu/qiaosuan[/timemanager]）
-     - 更新时间占位（脚本注入）
+      - 主力应用卡片占位（脚本注入：peilian/shudu/qiaosuan[/timemanager]）
+      - 更新时间占位（脚本注入）
   2. 链接保持相对路径（peilian/、shudu/、MiniApp/ 等），禁止绝对路径/盘符。
   3. 纯静态：不引入外部资源（无 CDN/font/脚本），样式内联，随 push 部署。
   4. 美化只改颜色/字体/间距/卡片样式/响应式/品牌感；结构、占位符、链接语义不改。
+  设计说明：乐学蓝 #2b5ce6 · 暖阳橙 #ffa62b 点缀；品牌 mark = 知识火花（内联 SVG）；
+  注入卡片契约 .card / .card h3 / .card p / .card .go 已全覆盖，构建注入即得成品。
 -->
 <style>
   :root {
-    --brand: #2b5ce6; --brand-dark: #1e3fa8; --bg: #f5f7fb; --card: #ffffff;
-    --text: #1f2a44; --muted: #62708c; --border: #e3e8f2; --radius: 14px;
+    --brand: #2b5ce6;
+    --brand-deep: #1e3fa8;
+    --brand-soft: #6f8fff;
+    --accent: #ffa62b;
+    --ink: #16213e;
+    --muted: #5a6b8c;
+    --line: #e3e8f2;
+    --card: #ffffff;
+    --bg: #f6f8fd;
+    --radius: 18px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
-  .wrap { max-width: 980px; margin: 0 auto; padding: 32px 20px 48px; }
-  header.hero { text-align: center; padding: 40px 0 28px; }
-  header.hero .brand { font-size: 34px; font-weight: 800; color: var(--brand); letter-spacing: 2px; }
-  header.hero .slogan { margin-top: 10px; font-size: 15px; color: var(--muted); }
-  section { margin-top: 34px; }
-  section h2 { font-size: 18px; font-weight: 700; margin-bottom: 14px; padding-left: 10px; border-left: 4px solid var(--brand); }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
-  .card { display: block; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; text-decoration: none; color: inherit; transition: transform .15s, box-shadow .15s; }
-  .card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(43,92,230,.10); }
-  .card h3 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
-  .card p { font-size: 13px; color: var(--muted); }
-  .card .go { display: inline-block; margin-top: 10px; font-size: 13px; font-weight: 600; color: var(--brand); }
-  .note { margin-top: 26px; padding: 12px 16px; background: #eef3ff; border-radius: 10px; font-size: 13px; color: var(--muted); }
-  footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; font-size: 12px; color: var(--muted); }
-  footer a { color: var(--brand); text-decoration: none; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background:
+      radial-gradient(1000px 360px at 8% -5%, rgba(43,92,230,.09), transparent 60%),
+      radial-gradient(900px 320px at 96% -5%, rgba(255,166,43,.07), transparent 55%),
+      var(--bg);
+    color: var(--ink);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: rgba(43,92,230,.18); }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 26px 20px 56px; }
+
+  /* ---- Hero ---- */
+  .hero {
+    position: relative;
+    overflow: hidden;
+    text-align: center;
+    padding: 52px 20px 44px;
+    border-radius: 26px;
+    border: 1px solid rgba(43,92,230,.10);
+    background:
+      radial-gradient(680px 260px at 18% 0%, rgba(43,92,230,.16), transparent 62%),
+      radial-gradient(520px 240px at 92% 12%, rgba(111,143,255,.20), transparent 60%),
+      linear-gradient(180deg, #eaf1ff 0%, #f9fbff 100%);
+  }
+  .hero::before {          /* 蓝点织网 */
+    content: "";
+    position: absolute; inset: 0;
+    background-image: radial-gradient(rgba(43,92,230,.14) 1px, transparent 1.4px);
+    background-size: 22px 22px;
+    opacity: .45;
+    pointer-events: none;
+  }
+  .hero::after {           /* 暖阳光斑 */
+    content: "";
+    position: absolute; right: -70px; top: -70px;
+    width: 210px; height: 210px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,166,43,.28), transparent 68%);
+    pointer-events: none;
+  }
+  .hero > * { position: relative; z-index: 1; }
+
+  .hero .logo-mark {
+    width: 68px; height: 68px; margin: 0 auto 16px;
+    filter: drop-shadow(0 10px 18px rgba(43,92,230,.35));
+    animation: mark-in .6s cubic-bezier(.2,.8,.3,1.2) both;
+  }
+  .hero .logo-mark svg { display: block; width: 100%; height: 100%; }
+
+  .hero .brand {
+    color: var(--brand);
+    font-size: 40px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    background-image: linear-gradient(120deg, var(--brand-deep) 0%, var(--brand) 60%, var(--brand-soft) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: mark-in .7s .08s ease both;
+  }
+  .hero .slogan {
+    margin-top: 12px;
+    font-size: 15.5px;
+    letter-spacing: .04em;
+    color: var(--muted);
+    animation: mark-in .7s .16s ease both;
+  }
+
+  @keyframes mark-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ---- Sections ---- */
+  section { margin-top: 42px; }
+  section h2 {
+    display: flex; align-items: center; gap: 11px;
+    font-size: 19px; font-weight: 800; letter-spacing: .03em;
+    margin-bottom: 18px;
+  }
+  section h2::before {
+    content: "";
+    width: 8px; height: 22px; border-radius: 6px;
+    background: linear-gradient(180deg, var(--brand), var(--brand-deep));
+    box-shadow: 0 4px 10px rgba(43,92,230,.30);
+  }
+
+  /* ---- Card grid（构建注入契约：.card / .card h3 / .card p / .card .go）---- */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px; }
+  .card {
+    position: relative;
+    display: flex; flex-direction: column;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 24px 22px 20px;
+    overflow: hidden;
+    text-decoration: none; color: inherit;
+    box-shadow: 0 1px 2px rgba(22,33,62,.04), 0 8px 24px rgba(43,92,230,.06);
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  .card::before {
+    content: "";
+    position: absolute; left: 0; right: 0; top: 0; height: 3px;
+    background: linear-gradient(90deg, var(--brand), var(--brand-soft));
+    opacity: 0;
+    transition: opacity .18s ease;
+  }
+  .card:hover, .card:focus-visible {
+    transform: translateY(-4px);
+    border-color: rgba(43,92,230,.28);
+    box-shadow: 0 4px 10px rgba(22,33,62,.05), 0 20px 44px rgba(43,92,230,.16);
+  }
+  .card:focus-visible { outline: 2px solid var(--brand-soft); outline-offset: 2px; }
+  .card:hover::before { opacity: 1; }
+  .card h3 { font-size: 17px; font-weight: 800; color: var(--ink); }
+  .card p { margin-top: 5px; font-size: 13.5px; color: var(--muted); flex-grow: 1; }
+  .card .go {
+    margin-top: 16px; align-self: flex-start;
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 7px 15px;
+    border-radius: 999px;
+    font-size: 13px; font-weight: 700;
+    color: var(--brand);
+    background: #eef3ff;
+    border: 1px solid rgba(43,92,230,.16);
+    transition: background .18s ease, color .18s ease, transform .18s ease, box-shadow .18s ease;
+  }
+  .card:hover .go {
+    background: var(--brand); color: #fff;
+    transform: translateX(2px);
+    box-shadow: 0 6px 16px rgba(43,92,230,.32);
+  }
+  /* 单卡宽横幅（小工具集入口） */
+  .grid .card:only-child { align-items: center; text-align: center; padding: 30px 26px; }
+  .grid .card:only-child h3 { font-size: 21px; }
+  .grid .card:only-child p { margin-top: 6px; }
+  .grid .card:only-child .go { align-self: center; padding: 9px 20px; font-size: 14px; }
+
+  /* ---- 合规脚注 ---- */
+  .note {
+    margin-top: 32px;
+    padding: 14px 18px;
+    display: flex; align-items: center; gap: 12px;
+    background: #eef3ff;
+    border: 1px solid rgba(43,92,230,.12);
+    border-radius: 14px;
+    font-size: 13px; color: var(--muted);
+  }
+  .note::before {
+    content: "✓";
+    flex: none;
+    width: 20px; height: 20px; line-height: 20px; text-align: center;
+    border-radius: 50%;
+    background: var(--brand); color: #fff;
+    font-size: 12px; font-weight: 700;
+  }
+
+  /* ---- Footer ---- */
+  footer {
+    margin-top: 46px; padding-top: 20px;
+    border-top: 1px solid var(--line);
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
+    font-size: 12.5px; color: var(--muted);
+  }
+  footer .ts { display: inline-flex; align-items: center; gap: 7px; }
+  footer .ts::before {
+    content: "";
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--brand);
+    box-shadow: 0 0 0 0 rgba(43,92,230,.35);
+    animation: pulse 2.4s infinite;
+  }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(43,92,230,.35); }
+    70%  { box-shadow: 0 0 0 7px rgba(43,92,230,0); }
+    100% { box-shadow: 0 0 0 0 rgba(43,92,230,0); }
+  }
+  footer a { color: var(--brand); font-weight: 600; text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  /* ---- 响应式 ---- */
+  @media (max-width: 640px) {
+    .wrap { padding: 18px 14px 44px; }
+    .hero { padding: 40px 18px 34px; border-radius: 22px; }
+    .hero .brand { font-size: 30px; }
+    .hero .slogan { font-size: 14px; }
+    .grid { gap: 14px; }
+    footer { justify-content: center; text-align: center; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header class="hero">
+    <div class="logo-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false">
+        <defs>
+          <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#4a7dff"/>
+            <stop offset="1" stop-color="#1e3fa8"/>
+          </linearGradient>
+        </defs>
+        <rect x="1" y="1" width="22" height="22" rx="6.5" fill="url(#lg)"/>
+        <path d="M12 5.4c.55 0 1.05.34 1.24.85l1.06 2.89 2.89 1.06c.51.19.85.69.85 1.24 0 .55-.34 1.05-.85 1.24l-2.89 1.06-1.06 2.89a1.34 1.34 0 0 1-1.24.85c-.55 0-1.05-.34-1.24-.85l-1.06-2.89-2.89-1.06a1.34 1.34 0 0 1-.85-1.24c0-.55.34-1.05.85-1.24l2.89-1.06 1.06-2.89c.19-.51.69-.85 1.24-.85Z" fill="#fff"/>
+      </svg>
+    </div>
     <div class="brand">乐学系列</div>
     <p class="slogan">小学英语 · 数学 · 思维在线练习 · 免费使用</p>
   </header>
@@ -67,7 +268,7 @@
   <p class="note">练习过程不采集账号信息、无社交功能，数据仅保存在本机。</p>
 
   <footer>
-    <span>更新于 <template data-inject="UPDATED_AT"></template></span>
+    <span class="ts">更新于 <template data-inject="UPDATED_AT"></template></span>
     <span><a href="https://taoli.loongba.cn">乐教 · 教师课堂工具</a></span>
   </footer>
 </div>
