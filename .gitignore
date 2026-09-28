@@ -1,0 +1,2 @@
+# 构建产物（lexue 发布汇聚输出，46MB+，由 build_lexue_site.py 重新生成）
+scripts/dist/
