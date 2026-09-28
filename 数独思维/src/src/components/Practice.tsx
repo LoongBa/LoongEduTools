@@ -404,6 +404,12 @@ export function Practice({ params, onExit, onFinish, onLessonKey }: Props) {
         d.recent[size] = ms;
         d.history.unshift({ date, level, size, ms, errors, hints, stars });
         if (d.history.length > 30) d.history = d.history.slice(0, 30);
+        // V1.8.0：累计练习统计（B6）——与 history/best 同口径（导入局不计），无上限聚合
+        d.totals.count += 1;
+        d.totals.ms += ms;
+        d.totals.errors += errors;
+        d.totals.hints += hints;
+        d.totals.stars += stars;
         markCheckin(d);
         // 成就
         unlock("firstWin");

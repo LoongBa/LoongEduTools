@@ -74,6 +74,8 @@ export interface StoreShape {
   mapProgress: { completed: { i: number; doneAt: number }[] };
   settings: { sound: boolean };
   cur: Snapshot | null;
+  /** V1.8.0：累计练习统计（B6）——无上限聚合计数器（history 仅存最近 30 条明细，累计口径靠本字段） */
+  totals: { count: number; ms: number; errors: number; hints: number; stars: number };
 }
 
 export function todayStr(d = new Date()): string {
@@ -98,6 +100,7 @@ function emptyStore(): StoreShape {
     mapProgress: { completed: [] },
     settings: { sound: true },
     cur: null,
+    totals: { count: 0, ms: 0, errors: 0, hints: 0, stars: 0 },
   };
 }
 
@@ -107,8 +110,8 @@ function load(): StoreShape {
     const raw = window.localStorage.getItem(KEY);
     if (!raw) return emptyStore();
     const parsed = JSON.parse(raw) as Partial<StoreShape>;
-    // 逐字段合并，旧存档缺字段时回落默认值，避免结构回退
-    return { ...emptyStore(), ...parsed, settings: { ...emptyStore().settings, ...(parsed.settings || {}) }, checkin: { ...emptyStore().checkin, ...(parsed.checkin || {}) }, mapProgress: { completed: parsed.mapProgress?.completed || [] }, version: 1 };
+    // 逐字段合并，旧存档缺字段时回落默认值，避免结构回退；嵌套对象显式合并（含 V1.8.0 totals，防未来子字段被浅合并吞默认）
+    return { ...emptyStore(), ...parsed, settings: { ...emptyStore().settings, ...(parsed.settings || {}) }, checkin: { ...emptyStore().checkin, ...(parsed.checkin || {}) }, mapProgress: { completed: parsed.mapProgress?.completed || [] }, totals: { ...emptyStore().totals, ...(parsed.totals || {}) }, version: 1 };
   } catch {
     return emptyStore();
   }

@@ -245,6 +245,8 @@ ok("SD4: 少线索被拒", await vis(page, "线索太少"));
     ],
     favorites: [], daily: null, achievements: {}, mapProgress: { completed: [] },
     settings: { sound: true }, cur: null,
+    // V1.8.0（B6）：注入非零 totals 供「累计练习」卡断言（真实 finishAll 累加已由既有冒烟覆盖——早段自由练习/教学关不触发 finishAll，故此处注入）
+    totals: { count: 12, ms: 720000, errors: 8, hints: 3, stars: 30 },
   };
   await page.evaluate((s) => localStorage.setItem("redtools.shudu.v1", JSON.stringify(s)), a2Store);
   await page.reload({ waitUntil: "domcontentloaded" });
@@ -274,6 +276,18 @@ ok("SD4: 少线索被拒", await vis(page, "线索太少"));
   ok("组内小结：浮层出现", await vis(page, "这组练完了"));
   ok("组内小结：共完成 2 题", await vis(page, "共完成 2 题"));
   ok("组内小结：回到错题本按钮", await vis(page, "回到错题本"));
+  // ⑧b V1.8.0 B6：关小结浮层 → 错题本（TopBar 箭头返回首页）→ 家长报告（此时 store 已注入 a2Store：mistakes 2 条 + totals 非零）→ 累计卡 + 技巧分布图
+  await page.locator('button:has-text("回到错题本")').first().evaluate((el) => el.click()).catch(() => false);
+  await page.waitForTimeout(400);
+  // mistakes 页返回 = TopBar 箭头（button[aria-label="返回"]，非文本「返回难度」）
+  await page.locator('button[aria-label="返回"]').first().evaluate((el) => el.click()).catch(() => {});
+  await page.waitForTimeout(500);
+  await tapText(page, "家长报告");
+  await page.waitForTimeout(700);
+  ok("累计统计卡渲染", await vis(page, "累计练习"));
+  ok("累计完成 12 题", await vis(page, "累计完成"));
+  ok("技巧分布卡渲染", await vis(page, "待巩固技巧分布"));
+  ok("技巧分布图渲染（recharts Pie）", (await page.locator(".recharts-wrapper").count()) >= 1, `count=${await page.locator(".recharts-wrapper").count()}`);
 
   console.log(results.join("\n"));
   const fails = results.filter((r) => r.startsWith("FAIL")).length;

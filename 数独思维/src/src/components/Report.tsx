@@ -4,9 +4,20 @@
 import { useMemo } from "react";
 import { Card, Bar, Stat, Btn } from "./ui/kit";
 import { useStore, todayStr, type LevelId } from "@/lib/store";
-import { ALL_SKILLS, ACHIEVEMENTS } from "@/lib/content";
+import { ALL_SKILLS, ACHIEVEMENTS, TECHNIQUE_GROUPS, groupOfTechniques } from "@/lib/content";
 import { ART_MISTAKES } from "@/lib/art";
 import { formatMs } from "./Overlay";
+// V1.8.0：recharts 首接（B6）——Pie 经 ChartContainer wrapper
+import { PieChart, Pie, Cell } from "recharts";
+import { ChartContainer, ChartTooltipContent, ChartLegendContent } from "./ui/chart";
+
+/** V1.8.0：待巩固技巧分布 Pie 的 4 组配色（4 色互不歧义；CSS var 主题感知，随 8 主题自动切换） */
+const CHART_GROUP_COLORS: Record<string, string> = {
+  unique: "var(--color-badge-base)",
+  box: "var(--color-badge-adv)",
+  rowcol: "var(--color-badge-ach)",
+  adv: "var(--color-star)",
+};
 
 export function ParentReport({ onBack, onExport }: { onBack: () => void; onExport: () => void }) {
   const { store } = useStore();
@@ -51,6 +62,19 @@ export function ParentReport({ onBack, onExport }: { onBack: () => void; onExpor
       const ds = String(latestNum);
       latestAch = { name: def ? def.name : latestKey, date: ds.length === 8 ? `${ds.slice(0, 4)}-${ds.slice(4, 6)}-${ds.slice(6, 8)}` : ds };
     }
+    // V1.8.0：待巩固技巧分布（B6）——从错题本 techniques 聚合到 4 组（mixed 不入图，双级空态处理）
+    const groupCount: Record<string, number> = {};
+    store.mistakes.forEach((m) => {
+      for (const g of groupOfTechniques(m.techniques)) {
+        if (g === "mixed") continue;
+        groupCount[g] = (groupCount[g] || 0) + 1;
+      }
+    });
+    const pieData = TECHNIQUE_GROUPS.filter((g) => g.id !== "mixed").map((g) => ({
+      name: g.name,
+      value: groupCount[g.id] || 0,
+    }));
+    const pieTotal = pieData.reduce((s, d) => s + d.value, 0);
     return {
       todayCount: todayItems.length,
       todayStars: todayItems.reduce((s, h) => s + h.stars, 0),
@@ -69,6 +93,13 @@ export function ParentReport({ onBack, onExport }: { onBack: () => void; onExpor
       streak,
       latestAch,
       mapDone: store.mapProgress.completed.length,
+      // V1.8.0（B6）
+      totalsCount: store.totals.count,
+      totalsMs: store.totals.ms,
+      totalsStarsAvg: store.totals.count ? store.totals.stars / store.totals.count : 0,
+      pieData,
+      pieTotal,
+      mistakesCount: store.mistakes.length,
     };
   }, [store]);
 
@@ -160,6 +191,56 @@ export function ParentReport({ onBack, onExport }: { onBack: () => void; onExpor
             ? "从 4×4 开始，每天 5 分钟比一次做很多题更有效。"
             : `独立解出（未用提示）的比例约 ${Math.round(data.hintFree * 100)}%。${data.hintFree > 0.6 ? "推理习惯已经建立得很好。" : "可以多鼓励孩子先自己排除几轮，再考虑提示。"}`}
         </p>
+      </Card>
+
+      {/* V1.8.0：累计练习（B6）——totals 无上限聚合（诚实口径：不展示无法派生的独立解出率） */}
+      <Card pad="normal" className="report-card print-clean mb-3">
+        <h2 className="report-card-title mb-3 text-[14px] font-bold">📈 累计练习</h2>
+        {data.totalsCount === 0 ? (
+          <p className="report-empty py-2 text-center text-[12.5px] text-muted-foreground">还没有累计练习记录，完成一道题就开始累计。</p>
+        ) : (
+          <>
+            <div className="grid grid-cols-3 gap-2">
+              <Stat k="累计完成" v={data.totalsCount} unit="题" />
+              <Stat k="总用时" v={formatMs(data.totalsMs)} />
+              <Stat k="平均评价" v={data.totalsStarsAvg.toFixed(1)} unit="★" />
+            </div>
+            <div className="mt-3 space-y-2">
+              <Dist label="简单" value={data.byLevel.easy} total={data.total} />
+              <Dist label="普通" value={data.byLevel.normal} total={data.total} />
+              <Dist label="困难" value={data.byLevel.hard} total={data.total} />
+            </div>
+            <p className="report-badge-line mt-3 rounded-xl bg-secondary/60 px-3 py-2 text-[11.5px] leading-relaxed text-secondary-foreground">
+              累计数据只记聚合数，不存明细——难度分布与独立解出率按最近 30 次练习统计。
+            </p>
+          </>
+        )}
+      </Card>
+
+      {/* V1.8.0：待巩固技巧分布（B6）——recharts Pie 首接；双级空态 */}
+      <Card pad="normal" className="report-card print-clean mb-3">
+        <h2 className="report-card-title mb-3 text-[14px] font-bold">🧩 待巩固技巧分布</h2>
+        {data.mistakesCount === 0 ? (
+          <p className="report-empty py-2 text-center text-[12.5px] text-muted-foreground">错题本是空的，先练习再回来看薄弱点分布。</p>
+        ) : data.pieTotal === 0 ? (
+          <p className="report-empty py-2 text-center text-[12.5px] text-muted-foreground">当前错题暂未识别到具体技巧分类，多练几道再回来看分布。</p>
+        ) : (
+          <>
+            <ChartContainer config={{}} className="h-48 aspect-auto">
+              <PieChart>
+                <Pie data={data.pieData} dataKey="value" nameKey="name" innerRadius={48} outerRadius={72} paddingAngle={3}>
+                  {data.pieData.map((d) => (
+                    <Cell key={d.name} fill={CHART_GROUP_COLORS[d.name] ?? "var(--color-muted-foreground)"} />
+                  ))}
+                </Pie>
+                <ChartLegendContent payload={data.pieData.map((d) => ({ value: d.name, dataKey: d.name, color: CHART_GROUP_COLORS[d.name] ?? "var(--color-muted-foreground)" }))} />
+              </PieChart>
+            </ChartContainer>
+            <p className="report-badge-line mt-3 rounded-xl bg-secondary/60 px-3 py-2 text-[11.5px] leading-relaxed text-secondary-foreground">
+              错题本里待巩固的推理环节分布——点开错题本可按技巧分组复习。
+            </p>
+          </>
+        )}
       </Card>
 
       <div className="no-print space-y-2">
