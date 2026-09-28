@@ -262,30 +262,38 @@ def gen_series_page(out: Path, sections: dict[str, list[tuple[str, str]]]) -> Pa
 
 
 def gen_headers(out: Path) -> Path:
-    """CF Pages 缓存策略：assets immutable / api no-cache / 入口 no-cache / units immutable。"""
+    """CF Pages 缓存策略：assets immutable / api no-cache / 入口 no-cache / units immutable。
+
+    每 path 独立块（taoli 已验证格式）——避免多 path 共享块在 CF Pages 的部分生效问题。
+    """
     head = out / "_headers"
-    head.write_text(
-        "# Cache-Control: assets immutable / api + 入口 no-cache / units immutable\n"
-        "/assets/*\n"
-        "/MiniApp/*/assets/*\n"
-        "  Cache-Control: public, max-age=31536000, immutable\n"
-        "\n"
-        "/api/*\n"
-        "/peilian/api/*\n"
-        "  Cache-Control: no-cache\n"
-        "\n"
-        "/index.html\n"
-        "/peilian/index.html\n"
-        "/shudu/index.html\n"
-        "/qiaosuan/index.html\n"
-        "/timemanager/index.html\n"
-        "  Cache-Control: no-cache\n"
-        "\n"
-        "/units/*\n"
-        "  Cache-Control: public, max-age=31536000, immutable\n",
-        encoding="utf-8",
-    )
-    log("  _headers：assets/MiniApp/units=immutable，api/入口=no-cache")
+    rules = [
+        ("# Cache-Control: assets immutable / api + 入口 no-cache / units immutable", None),
+        ("/assets/*", "Cache-Control: public, max-age=31536000, immutable"),
+        ("/peilian/assets/*", "Cache-Control: public, max-age=31536000, immutable"),
+        ("/shudu/assets/*", "Cache-Control: public, max-age=31536000, immutable"),
+        ("/qiaosuan/assets/*", "Cache-Control: public, max-age=31536000, immutable"),
+        ("/timemanager/assets/*", "Cache-Control: public, max-age=31536000, immutable"),
+        ("/MiniApp/*/assets/*", "Cache-Control: public, max-age=31536000, immutable"),
+        ("/api/*", "Cache-Control: no-cache"),
+        ("/peilian/api/*", "Cache-Control: no-cache"),
+        ("/index.html", "Cache-Control: no-cache"),
+        ("/peilian/index.html", "Cache-Control: no-cache"),
+        ("/shudu/index.html", "Cache-Control: no-cache"),
+        ("/qiaosuan/index.html", "Cache-Control: no-cache"),
+        ("/timemanager/index.html", "Cache-Control: no-cache"),
+        ("/units/*", "Cache-Control: public, max-age=31536000, immutable"),
+    ]
+    lines = []
+    for path, header in rules:
+        if path is None:
+            lines.append(header)
+        else:
+            lines.append(path)
+            lines.append(f"  {header}")
+            lines.append("")
+    head.write_text("\n".join(lines), encoding="utf-8")
+    log("  _headers：独立块格式（assets(主力+MiniApp)/units=immutable，api/入口=no-cache）")
     return head
 
 

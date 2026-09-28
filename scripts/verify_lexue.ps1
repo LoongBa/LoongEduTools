@@ -159,6 +159,25 @@ if ($miniFirst) {
     } else { Write-Host "SKIP  资源 immutable 断言（未在首页找到 js/css 引用）" -ForegroundColor Yellow }
   } else { Write-Host "SKIP  资源 immutable 断言（MiniApp 首页不可达）" -ForegroundColor Yellow }
 } else { Write-Host "SKIP  资源 immutable 断言（无抽样样本）" -ForegroundColor Yellow }
+
+# 主力应用 assets immutable 断言（M4 部署后补充：_headers 曾漏主力路径 → CF 默认 14400s）
+foreach ($mainPath in @("/peilian/", "/shudu/", "/qiaosuan/")) {
+  $mi = Invoke-WebRequest -Uri "$BaseUrl$mainPath" -TimeoutSec 20 -UseBasicParsing -ErrorAction SilentlyContinue
+  if ($mi -and $mi.StatusCode -eq 200) {
+    # 仅匹配 assets/ 目录内的 js/css（排除 theme-boot.js 等入口脚本——它们在根目录、本就该走默认缓存）
+    $mf = @(($mi.Content -split '"') | Where-Object { $_ -match "assets/[^""]*\.(js|css)$" } | Select-Object -First 1)
+    if ($mf.Count -gt 0) {
+      # index.html 中引用为绝对路径（/peilian/assets/x.js）；未以 / 开头时补前缀
+      $ref = $mf[0]
+      $mfn = if ($ref.StartsWith("/")) { $ref } else { "$mainPath" + "assets/$($ref -replace '^\./', '')" }
+      Assert-Get $mfn {
+        param($resp)
+        $cc = $resp.Headers["Cache-Control"]
+        $cc -match "immutable"
+      } "$mfn 响应头 immutable"
+    } else { Write-Host "SKIP  $mainPath assets immutable（未在首页找到 assets/ 内 js/css 引用）" -ForegroundColor Yellow }
+  }
+}
 }
 
 Write-Host ""
