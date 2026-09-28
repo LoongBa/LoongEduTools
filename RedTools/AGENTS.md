@@ -154,7 +154,7 @@ python .skill/minitool-zip-builder/scripts/audit_artifact.py publish/学科/新�
 4. **实施后审核**：请 oracle 复核实施结果（代码级），通过后编写 `docs/<工具>/V<版本>-审核报告.md`（审核范围/验证证据/变更摘要/版本建议/遗留）
 5. **提交与发布**：
    - 提交前**精确限定文件**（`git add` 仅本轮文件，勿混入其他会话/无关改动；暂存后 `git diff --cached --name-only` 复核）
-   - **提交 → 征求用户同意后 push + 打 tag**（tag 名 = V 版本）；不 push/不打 tag 视为未发布
+   - **提交 → push**（push 无需征求同意，2026-09-28 用户确认放开；tag 名 = V 版本，**打 tag 必须另行征求用户同意**）；不 push/不打 tag 视为未发布
    - 并行会话活跃时：只提交不 push，等稳定后统一推送
 6. **规则沉淀**：流程性变更同步更新本文件（AGENTS.md）
 

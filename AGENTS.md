@@ -113,7 +113,7 @@ python ..\..\src\pipeline.py . 4 <单元号> ..\..\..\PEP词库\data\vocab\pep_v
 2. **git 跟踪（每个会话只维护自己的）**：
    - 只 `git add` 本会话负责目录/文件的改动，暂存后 `git diff --cached --name-only` 复核；
    - 不 stage 其它会话/任务的改动；共享文件（AGENTS.md/看板/README/矩阵）按并行任务规则先征得同意再改。
-3. **提交 → push → tag 两级同意门槛**：
+3. **提交 → push → tag（2026-09-28 修订：push 免同意）**：
    - 工作完成（验证通过）即可 commit（信息沿用 `feat()/fix()/docs()/build()` 风格）；
-   - **push 前征求用户同意**（并行会话活跃时只 commit 不 push，等稳定后统一推送）；
+   - **push 无需征求同意**（2026-09-28 用户确认放开；并行会话活跃时仍只 commit 不 push，等稳定后统一推送）；
    - **tag 必须另行征得用户同意后才打**（tag 名 = V 版本，版本升级规则见 `RedTools/AGENTS.md` §6）；不打 tag 视为未发布。
