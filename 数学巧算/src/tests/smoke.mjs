@@ -99,6 +99,26 @@ server.listen(0, "127.0.0.1", async () => {
     const handoutBody = await page.evaluate(() => document.body.innerText);
     ok("讲义练习单含题面", /[=＝]/.test(handoutBody));
     ok("讲义渲染答案区（家长批改）", /答案（家长/.test(handoutBody));
+
+    // V1.1 讲义增强：配置面板 / 三档全打 / 换一组题 / 关档 / 题单组别
+    ok("讲义渲染配置面板（换一组题）", (await page.locator("button[aria-label='换一组题']").count()) > 0);
+    ok("讲义渲染配置面板（恢复默认）", (await page.locator("button[aria-label='恢复默认']").count()) > 0);
+    ok("讲义默认三档全打（提高/挑战）", (await page.locator("text=二、提高题").count()) > 0 && (await page.locator("text=三、挑战题").count()) > 0);
+    const rowsBefore = await page.locator(".handout-practice-row").allInnerTexts();
+    await page.locator("button[aria-label='换一组题']").first().click();
+    await page.waitForTimeout(400);
+    const rowsAfter = await page.locator(".handout-practice-row").allInnerTexts();
+    ok("换一组题后题单变化", JSON.stringify(rowsBefore) !== JSON.stringify(rowsAfter));
+    ok("讲义页脚含题单组别", (await page.evaluate(() => document.body.innerText)).includes("题单组别"));
+    await page.locator("button[aria-label='一、基础题 开关']").first().click();
+    await page.waitForTimeout(300);
+    const bodyAfterToggle = await page.evaluate(() => document.body.innerText);
+    ok("关档后基础题消失", !/一、基础题/.test(bodyAfterToggle));
+    ok("关档后提高题仍在", (await page.locator("text=二、提高题").count()) > 0);
+    await page.locator("button[aria-label='恢复默认']").first().click();
+    await page.waitForTimeout(300);
+    ok("恢复默认后基础题复原", (await page.locator("text=一、基础题").count()) > 0);
+
     await page.locator("button[aria-label='返回']").first().click();
     await page.waitForTimeout(400);
     ok("讲义返回后回课堂页", (await page.locator("text=原理已讲过").count()) > 0);

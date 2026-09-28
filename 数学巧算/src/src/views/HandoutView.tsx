@@ -6,7 +6,7 @@
 import { useMemo, useState } from "react";
 import { BackBtn, Btn, Panel } from "@/components/ui-kit";
 import { STAGES, type SmartLesson, type SmartStage } from "@/data/stages.generated";
-import { buildHandout, generatePractice, type HandoutPractice } from "@/lib/handout";
+import { buildHandout, generatePractice, hashSeed, type HandoutPractice } from "@/lib/handout";
 
 type Level = "basic" | "advance" | "challenge";
 
@@ -24,6 +24,18 @@ const LEVEL_LABEL: Record<Level, [string, string]> = {
   challenge: ["三、挑战题", "综合运用 + 限时"],
 };
 
+/** V1.1 每档配置：是否打印 + 题数（默认 lesson count，钳制 1..10） */
+type LevelConfig = { on: boolean; count: number };
+
+/** V1.1 默认配置：三档全打 + lesson.practice[level].count（缺失兜底 5/5/3，题数钳制 1..10） */
+function defaultConfigOf(lesson: SmartLesson | undefined): Record<Level, LevelConfig> {
+  const out = {} as Record<Level, LevelConfig>;
+  for (const lv of ["basic", "advance", "challenge"] as Level[]) {
+    out[lv] = { on: true, count: Math.min(10, Math.max(1, lesson?.practice?.[lv]?.count || 5)) };
+  }
+  return out;
+}
+
 export function HandoutView({
   stageKey,
   lessonId,
@@ -34,7 +46,8 @@ export function HandoutView({
   onBack: () => void;
 }) {
   const key = String(stageKey);
-  const [engineOk] = useState<boolean>(() => !!getEngine());
+  // V1.1 I1：engineOk 每次 render 重算（替代 useState 冻结——与响应式 practiceByLevel 一致）
+  const engineOk = !!getEngine();
 
   const stage: SmartStage | undefined = useMemo(
     () => STAGES.find((s) => String(s.stage) === key),
@@ -45,24 +58,29 @@ export function HandoutView({
     [stage, lessonId],
   );
 
+  // V1.1 配置状态：默认三档全打 + lesson.practice[level].count（缺失兜底 5/5/3，题数钳制 1..10）
+  const [config, setConfig] = useState<Record<Level, LevelConfig>>(() => defaultConfigOf(lesson));
+  // V1.1 seed：默认 hashSeed(lessonId) → 同讲恒同默认题单（D1 固定优先）；换一组题 seed+1
+  const [seed, setSeed] = useState<number>(() => hashSeed(String(lessonId)));
+
   // buildHandout 纯变换（I4：count 从 lesson.practice[level].count 动态取，缺失兜底 5/5/3）
   const handout = useMemo(
     () => (lesson ? buildHandout(lesson, stage?.grade || "") : null),
     [lesson, stage],
   );
 
-  // 练习单：useState 初始化器生成一次（N4：StrictMode dev 双调无害，纯函数）
-  const [practiceByLevel] = useState<Record<Level, HandoutPractice[]>>(() => {
+  // 练习单：useMemo 响应式（config/seed 变化 → 确定性重生成；StrictMode dev 双调无害）
+  const practiceByLevel = useMemo<Record<Level, HandoutPractice[]>>(() => {
     const out = {} as Record<Level, HandoutPractice[]>;
     if (!lesson) return out;
     const engine = getEngine();
     for (const lv of ["basic", "advance", "challenge"] as Level[]) {
-      const count = lesson.practice?.[lv]?.count || 5;
-      const gen = lesson.practice?.[lv]?.gen || "";
-      out[lv] = generatePractice(gen, count, engine);
+      out[lv] = config[lv].on
+        ? generatePractice(lesson.practice?.[lv]?.gen || "", config[lv].count, engine, seed)
+        : [];
     }
     return out;
-  });
+  }, [lesson, config, seed]);
 
   if (!lesson || !stage) {
     return (
@@ -73,8 +91,23 @@ export function HandoutView({
     );
   }
 
-  // 引擎不可用 → 练习单全空（B2：不降级，警告 + 打印置灰）
-  const engineBroken = practiceByLevel.basic.length === 0 && practiceByLevel.advance.length === 0 && practiceByLevel.challenge.length === 0 && !engineOk;
+  // 引擎不可用 → 打印置灰（B2：不降级，警告 + 置灰）；全档未勾选是合法配置（打印原理/例题版）
+  const engineBroken = !engineOk;
+  const anyLevelOn = (["basic", "advance", "challenge"] as Level[]).some((lv) => config[lv].on);
+  const practiceEmptyMsg = engineBroken
+    ? "（引擎未就绪，练习单未生成）"
+    : !anyLevelOn
+      ? "（未勾选练习档，仅打印原理/例题）"
+      : "（练习单生成失败，请点「换一组题」重试）";
+
+  const toggleLevel = (lv: Level) => setConfig((p) => ({ ...p, [lv]: { ...p[lv], on: !p[lv].on } }));
+  const decCount = (lv: Level) => setConfig((p) => ({ ...p, [lv]: { ...p[lv], count: Math.max(1, p[lv].count - 1) } }));
+  const incCount = (lv: Level) => setConfig((p) => ({ ...p, [lv]: { ...p[lv], count: Math.min(10, p[lv].count + 1) } }));
+  const rollSeed = () => setSeed((s) => (s + 1) >>> 0);
+  const resetConfig = () => {
+    setSeed(hashSeed(String(lessonId)));
+    setConfig(defaultConfigOf(lesson));
+  };
 
   const handlePrint = () => {
     if (engineBroken) return;
@@ -92,6 +125,55 @@ export function HandoutView({
         <Btn variant="soft" size="sm" onClick={handlePrint} disabled={engineBroken} aria-label="打印讲义">
           🖨️ 打印
         </Btn>
+      </div>
+
+      {/* V1.1 屏上配置面板（print-hidden，不进纸张）：三档勾选 + 题数 + 换组/恢复默认 */}
+      <div className="print-hidden mb-3 rounded-2xl border border-border bg-secondary/30 px-3.5 py-3">
+        <p className="text-[12px] font-bold text-muted-foreground">📐 讲义配置（不进纸张）</p>
+        <div className="mt-2 flex flex-col gap-2">
+          {(["basic", "advance", "challenge"] as Level[]).map((lv) => {
+            const [label] = LEVEL_LABEL[lv];
+            const c = config[lv];
+            return (
+              <div key={lv} className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => toggleLevel(lv)}
+                  aria-label={`${label} 开关`}
+                  className={
+                    "tap-target flex h-8 items-center gap-1 rounded-xl px-2.5 text-[13px] font-bold " +
+                    (c.on ? "bg-lit text-on-lit" : "bg-secondary text-muted-foreground")
+                  }
+                >
+                  {c.on ? "✓" : "○"} {label.replace(/^[一二三]、/, "")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => decCount(lv)}
+                  disabled={c.count <= 1}
+                  aria-label={`${label} 减题数`}
+                  className="tap-target flex h-8 w-8 items-center justify-center rounded-xl bg-secondary text-[16px] font-bold text-secondary-foreground disabled:opacity-40"
+                >
+                  −
+                </button>
+                <span className="w-8 text-center text-[13px] font-bold text-foreground">{c.count} 题</span>
+                <button
+                  type="button"
+                  onClick={() => incCount(lv)}
+                  disabled={c.count >= 10}
+                  aria-label={`${label} 加题数`}
+                  className="tap-target flex h-8 w-8 items-center justify-center rounded-xl bg-secondary text-[16px] font-bold text-secondary-foreground disabled:opacity-40"
+                >
+                  ＋
+                </button>
+              </div>
+            );
+          })}
+          <div className="mt-1 flex items-center gap-2">
+            <Btn variant="soft" size="sm" onClick={rollSeed} aria-label="换一组题">🔄 换一组题</Btn>
+            <Btn variant="ghost" size="sm" onClick={resetConfig} aria-label="恢复默认">恢复默认</Btn>
+          </div>
+        </div>
       </div>
 
       {/* 引擎不可用警告（print-hidden，不打印进纸张） */}
@@ -160,17 +242,28 @@ export function HandoutView({
           </section>
         )}
 
-        {/* 四、练习单（三档全打，I5） */}
+        {/* 四、练习单（V1.1：三档按配置勾选渲染，三态区分——未勾选/生成失败/正常） */}
         <section className="print-block mb-4">
           <h2 className="text-[14px] font-bold text-foreground">四、练习单</h2>
           {allPractice.length === 0 ? (
-            <p className="mt-2 text-[13px] text-muted-foreground">（引擎未就绪，练习单未生成）</p>
+            <p className="mt-2 text-[13px] text-muted-foreground">{practiceEmptyMsg}</p>
           ) : (
             <div className="mt-2 space-y-4">
               {(["basic", "advance", "challenge"] as Level[]).map((lv) => {
                 const [label, desc] = LEVEL_LABEL[lv];
                 const items = practiceByLevel[lv];
-                if (items.length === 0) return null;
+                if (!config[lv].on) return null; // 未勾选：不渲染
+                if (items.length === 0) {
+                  // 勾选但生成失败：引导换组脱困（I2）
+                  return (
+                    <div key={lv}>
+                      <p className="text-[13px] font-bold text-foreground">{label}</p>
+                      <p className="mt-1 text-[12px] font-semibold text-[var(--warm)]">
+                        ⚠ 该组题生成失败，请点「换一组题」
+                      </p>
+                    </div>
+                  );
+                }
                 return (
                   <div key={lv}>
                     <p className="text-[13px] font-bold text-foreground">{label}（{items.length} 题）</p>
@@ -202,13 +295,13 @@ export function HandoutView({
             ))}
           </div>
           {allPractice.length === 0 && (
-            <p className="mt-2 text-[12.5px] text-muted-foreground">（练习单未生成）</p>
+            <p className="mt-2 text-[12.5px] text-muted-foreground">{practiceEmptyMsg}</p>
           )}
         </section>
 
-        {/* 页脚（N1：生成日期） */}
+        {/* 页脚（N1：生成日期；N2：题单组别——家长可对上"第 N 组"复练） */}
         <p className="mt-5 border-t border-border pt-2 text-center text-[11px] text-muted-foreground">
-          生成日期：{todayStr()} · 巧算乐学 V1.0.0
+          生成日期：{todayStr()} · 题单组别：{seed - hashSeed(String(lessonId)) + 1} · 巧算乐学 V1.1.0
         </p>
       </div>
     </div>

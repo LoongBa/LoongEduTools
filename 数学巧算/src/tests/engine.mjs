@@ -8,7 +8,7 @@ import { dirname } from "path";
 import { checkDue, extend, enough, isLocked, todayReset } from "../src/lib/guard.ts";
 import { applyRecite } from "../src/lib/recite.ts";
 import { buildLessonIndex, suggestWeek, topWeakMethods } from "../src/lib/weak.ts";
-import { buildHandout, generatePractice } from "../src/lib/handout.ts";
+import { buildHandout, generatePractice, hashSeed } from "../src/lib/handout.ts";
 import { STAGES } from "../src/data/stages.generated.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -428,6 +428,60 @@ let l10bad = 0;
     }
   }
   if (checked !== 96) { l10bad++; console.log(`  L10 lesson-ref-count: ${checked}（应 96 = 32 讲 × 3 档）`); }
+}
+
+// ---------- L9b：V1.1 seed 固定（确定性/题序稳定/还原/重入/边界，mock 随机引擎） ----------
+{
+  // mock 引擎消费 Math.random（真随机路径验证 seed 注入生效）
+  const randEngine = {
+    gen: () => ({ text: String(Math.random()).slice(2, 8) + " + 1 =", answer: 1 }),
+  };
+  // 同 seed 两次全等（确定性）
+  const p1 = generatePractice("any_gen", 4, randEngine, 12345);
+  const p2 = generatePractice("any_gen", 4, randEngine, 12345);
+  if (JSON.stringify(p1) !== JSON.stringify(p2)) { l9bad++; console.log("  L9b seed-determinism FAIL"); }
+  // 不同 seed 至少一项不同（防假等）
+  const p3 = generatePractice("any_gen", 4, randEngine, 54321);
+  if (JSON.stringify(p1) === JSON.stringify(p3)) { l9bad++; console.log("  L9b seed-diff FAIL"); }
+  // 题序稳定：count=5 与 count=3（同 seed）前 3 题全等
+  const p5 = generatePractice("any_gen", 5, randEngine, 12345);
+  const p3b = generatePractice("any_gen", 3, randEngine, 12345);
+  if (p5.slice(0, 3).map((x) => x.text).join("|") !== p3b.map((x) => x.text).join("|")) { l9bad++; console.log("  L9b seed-count-stability FAIL"); }
+  // Math.random 还原（引用同一）
+  const before = Math.random;
+  generatePractice("any_gen", 2, randEngine, 999);
+  if (Math.random !== before) { l9bad++; console.log("  L9b math-restore FAIL"); }
+  // 重入检测不误报（正常路径 console.warn 不应触发）
+  const warns = [];
+  const origWarn = console.warn;
+  console.warn = (m) => warns.push(String(m));
+  generatePractice("any_gen", 2, randEngine, 1);
+  console.warn = origWarn;
+  if (warns.length !== 0) { l9bad++; console.log(`  L9b reentry-fp FAIL: ${warns[0]}`); }
+  // 边界：seed=0 / 小数 / 超大（>>> 截断）不抛错、仍返回 count 题
+  if (generatePractice("any_gen", 2, randEngine, 0).length !== 2) { l9bad++; console.log("  L9b seed-zero FAIL"); }
+  if (generatePractice("any_gen", 2, randEngine, 3.7).length !== 2) { l9bad++; console.log("  L9b seed-float FAIL"); }
+  if (generatePractice("any_gen", 2, randEngine, 4294967295).length !== 2) { l9bad++; console.log("  L9b seed-huge FAIL"); }
+}
+
+// ---------- L9c：V1.1 真实引擎确定性（I3：≥3 genName × ≥2 seed，覆盖不同随机消费形态） ----------
+{
+  const realGens = ["combo_basic", "subtraction_property_challenge", "fraction_distributive_advance"];
+  const baseSeed = hashSeed("s4l1");
+  const seeds = [baseSeed, baseSeed + 1];
+  for (const g of realGens) {
+    for (const s of seeds) {
+      const a1 = generatePractice(g, 5, SG, s);
+      const a2 = generatePractice(g, 5, SG, s);
+      if (a1.length === 0 || JSON.stringify(a1) !== JSON.stringify(a2)) {
+        l9bad++; console.log(`  L9c real-determinism FAIL: ${g} seed=${s} len=${a1.length}`);
+      }
+    }
+    // 不同 seed 至少一项不同（防假等；同 genName 两 seed 对比）
+    const b1 = generatePractice(g, 5, SG, seeds[0]);
+    const b2 = generatePractice(g, 5, SG, seeds[1]);
+    if (JSON.stringify(b1) === JSON.stringify(b2)) { l9bad++; console.log(`  L9c real-seed-diff FAIL: ${g}`); }
+  }
 }
 
 // ---------- 输出 ----------
