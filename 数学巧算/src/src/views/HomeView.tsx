@@ -28,11 +28,13 @@ export function HomeView({
   stages,
   onOpenStage,
   onOpenWarmup,
+  onOpenReview,
   onOpenMe,
 }: {
   stages: SmartStage[];
   onOpenStage: (stage: number | string) => void;
   onOpenWarmup: () => void;
+  onOpenReview: () => void;
   onOpenMe: () => void;
 }) {
   const { store } = useProgress();
@@ -76,11 +78,26 @@ export function HomeView({
       <button
         type="button"
         onClick={onOpenWarmup}
-        className="panel-border tap-target mb-4 flex w-full items-center justify-between rounded-3xl border bg-gradient-to-r from-[#E3F4E3] to-[#C9EAC9] px-4 py-3.5 text-left shadow-soft transition-transform active:scale-[0.985]"
+        className="panel-border tap-target mb-3 flex w-full items-center justify-between rounded-3xl border bg-gradient-to-r from-[#E3F4E3] to-[#C9EAC9] px-4 py-3.5 text-left shadow-soft transition-transform active:scale-[0.985]"
       >
         <div>
           <p className="text-[15px] font-extrabold text-foreground">🏃 口算热身</p>
-          <p className="mt-0.5 text-[12px] text-muted-foreground">10 题口算打底 · 一年级到三年级</p>
+          <p className="mt-0.5 text-[12px] text-muted-foreground">六档年级 · 定数/计时双模式</p>
+        </div>
+        <span className="text-[22px]">→</span>
+      </button>
+
+      {/* 错题重练入口（V1.3） */}
+      <button
+        type="button"
+        onClick={onOpenReview}
+        className="panel-border tap-target mb-4 flex w-full items-center justify-between rounded-3xl border bg-gradient-to-r from-[#FFEFE3] to-[#FFDCC2] px-4 py-3.5 text-left shadow-soft transition-transform active:scale-[0.985]"
+      >
+        <div>
+          <p className="text-[15px] font-extrabold text-foreground">📚 错题重练</p>
+          <p className="mt-0.5 text-[12px] text-muted-foreground">
+            {store.mistakes.length > 0 ? `${store.mistakes.length} 道待掌握 · 答对即清` : "错题都清光啦 · 继续保持"}
+          </p>
         </div>
         <span className="text-[22px]">→</span>
       </button>

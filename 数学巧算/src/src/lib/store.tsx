@@ -20,6 +20,7 @@ import {
   type SelfState,
 } from "@/lib/guard";
 import { applyRecite, type ReciteInfo } from "@/lib/recite";
+import { applyRetry } from "@/lib/review";
 import { mistKey, type WarmLevel } from "@/lib/warmup";
 
 const KEY = "redtools.qiaosuanlein.v1";
@@ -151,6 +152,8 @@ export interface ProgressApi {
   pushMistake: (lessonId: string, expr: string, answer: number | string) => void;
   /** V1.2 口算热身错题知识点计数 +1（供热身薄弱优先出题加权；与 pushMistake 配套调用） */
   addWarmupMist: (level: WarmLevel, type: string) => void;
+  /** V1.3 错题重练结果：答对 → 移出错题本（掌握）；答错 → wrongCount+1（保留）。applyRetry 唯一逻辑源 */
+  retryMistake: (key: string, correct: boolean) => void;
   /** 清空全部数据 */
   clearAll: () => void;
   /** 更新设置 */
@@ -235,6 +238,18 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const retryMistake = useCallback((key: string, correct: boolean) => {
+    setStore((s) => {
+      // flatMap + applyRetry：null → 剔除（已掌握），非 null → 替换（wrongCount+1）
+      const mistakes = s.mistakes.flatMap((m) => {
+        if (m.key !== key) return [m];
+        const next = applyRetry(m, correct);
+        return next ? [next] : [];
+      });
+      return { ...s, mistakes };
+    });
+  }, []);
+
   const clearAll = useCallback(() => {
     setStore(emptyStore());
   }, []);
@@ -309,6 +324,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       recordPractice,
       pushMistake,
       addWarmupMist,
+      retryMistake,
       clearAll,
       setSetting,
       setGuardPref,
@@ -320,7 +336,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       addPlayed,
       saveRecite,
     }),
-    [store, recordPractice, pushMistake, addWarmupMist, clearAll, setSetting, setGuardPref, dueInfo, extendDue, enoughNow, locked, selfStreakCount, addPlayed, saveRecite],
+    [store, recordPractice, pushMistake, addWarmupMist, retryMistake, clearAll, setSetting, setGuardPref, dueInfo, extendDue, enoughNow, locked, selfStreakCount, addPlayed, saveRecite],
   );
 
   return <ProgressContext.Provider value={api}>{children}</ProgressContext.Provider>;

@@ -290,6 +290,74 @@ server.listen(0, "127.0.0.1", async () => {
     });
     ok("warmupMist 错题计数持久化（V1.2）", mistStored);
 
+    // 错题重练闭环（V1.3）——清空现存错题（前段练习/热身已积累多条）→ 空态 → 重新生成 1 道闭环
+    await page.goto("file:///" + DIST.replace(/\\/g, "/") + "/index.html", { waitUntil: "load" });
+    await page.waitForTimeout(400);
+    const base = await page.evaluate(() => {
+      const s = JSON.parse(localStorage.getItem("redtools.qiaosuanlein.v1") || "{}");
+      return {
+        played: s.guard?.playedToday || 0,
+        checkin: (s.checkin || []).length,
+        lessonKeys: Object.keys(s.lessons || {}).length,
+        mist: (s.mistakes || []).length,
+      };
+    });
+    ok("Home 错题重练入口卡显示待掌握数", /道待掌握/.test(await page.evaluate(() => document.body.innerText)));
+    await page.locator("button:has-text('错题重练')").first().click();
+    await page.waitForTimeout(500);
+    ok("重练题面渲染（= ?）", /=\s*\?/.test(await page.evaluate(() => document.body.innerText)));
+    // 循环清空：逐道读 answer 答对，直到结算卡
+    let answered = 0;
+    for (let g2 = 0; g2 < 30; g2++) {
+      const body = await page.evaluate(() => document.body.innerText);
+      if (body.includes("错题重练完成")) break;
+      const a = await page.evaluate(() => {
+        const s = JSON.parse(localStorage.getItem("redtools.qiaosuanlein.v1") || "{}");
+        return s.mistakes && s.mistakes[0] ? s.mistakes[0].answer : null;
+      });
+      if (a === null) break;
+      await typeAnswer(page, String(a));
+      answered++;
+      await page.waitForTimeout(550);
+    }
+    ok("重练全部掌握结算（多题闭环）", /错题重练完成/.test(await page.evaluate(() => document.body.innerText)), `（共答对 ${answered} 题）`);
+    const afterRetry = await page.evaluate(() => {
+      const s = JSON.parse(localStorage.getItem("redtools.qiaosuanlein.v1") || "{}");
+      return {
+        played: s.guard?.playedToday || 0,
+        checkin: (s.checkin || []).length,
+        lessonKeys: Object.keys(s.lessons || {}).length,
+        mist: (s.mistakes || []).length,
+      };
+    });
+    ok("防沉迷：重练题量累计恰为答对数（不打卡不新增 lessons 记录）", afterRetry.played === base.played + answered && afterRetry.checkin === base.checkin && afterRetry.lessonKeys === base.lessonKeys);
+    ok("错题本清空（mistakes 0）", afterRetry.mist === 0);
+    await page.goto("file:///" + DIST.replace(/\\/g, "/") + "/index.html", { waitUntil: "load" });
+    await page.waitForTimeout(400);
+    ok("Home 错题卡空态文案", (await page.evaluate(() => document.body.innerText)).includes("错题都清光啦"));
+    await page.locator("button:has-text('错题重练')").first().click();
+    await page.waitForTimeout(400);
+    ok("重练空态表扬卡", (await page.evaluate(() => document.body.innerText)).includes("继续保持，错一道练一道"));
+
+    // 答错保留：重新生成 1 道（热身答错）→ 重练答错 → 错题数不减
+    await page.goto("file:///" + DIST.replace(/\\/g, "/") + "/index.html", { waitUntil: "load" });
+    await page.waitForTimeout(400);
+    await page.locator("button:has-text('口算热身')").first().click();
+    await page.waitForTimeout(400);
+    await page.locator("button:has-text('一年级')").first().click();
+    await page.waitForTimeout(500);
+    await typeAnswer(page, "999999"); // 生成新错题
+    await page.waitForSelector("text=/答案是/", { timeout: 2000 });
+    await page.goto("file:///" + DIST.replace(/\\/g, "/") + "/index.html", { waitUntil: "load" });
+    await page.waitForTimeout(400);
+    await page.locator("button:has-text('错题重练')").first().click();
+    await page.waitForTimeout(500);
+    await typeAnswer(page, "999999"); // 重练答错 → 保留
+    await page.waitForSelector("text=/答案是/", { timeout: 2000 });
+    await page.goto("file:///" + DIST.replace(/\\/g, "/") + "/index.html", { waitUntil: "load" });
+    await page.waitForTimeout(400);
+    ok("重练答错保留（错题数不减）", (await page.evaluate(() => document.body.innerText)).includes("1 道待掌握"));
+
     // 家长报告（连点 5 次进入）
     await page.goto("file:///" + DIST.replace(/\\/g, "/") + "/index.html", { waitUntil: "load" });
     await page.waitForTimeout(400);

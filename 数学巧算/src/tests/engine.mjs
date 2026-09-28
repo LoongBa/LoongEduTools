@@ -10,6 +10,7 @@ import { applyRecite } from "../src/lib/recite.ts";
 import { buildLessonIndex, suggestWeek, topWeakMethods } from "../src/lib/weak.ts";
 import { buildHandout, generatePractice, hashSeed } from "../src/lib/handout.ts";
 import { currentStage, defaultLevel, mistKey, pickType, POOL, QUANTITIES, stageToLevel, TIMES, WARM_LEVELS } from "../src/lib/warmup.ts";
+import { applyRetry, reviewQueue } from "../src/lib/review.ts";
 import { STAGES } from "../src/data/stages.generated.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -554,6 +555,32 @@ let l11bad = 0;
   }
 }
 
+// ---------- L12：V1.3 错题重练纯逻辑（applyRetry 掌握判定 / reviewQueue 副本） ----------
+let l12bad = 0;
+{
+  const mk = (key, lessonId, expr, answer, wrongCount) => ({ key, lessonId, expr, answer, wrongCount });
+
+  // applyRetry：答对 → null（掌握移除）；答错 → wrongCount+1
+  const m1 = mk("s4l3:25×16×4 =", "s4l3", "25×16×4 =", 1600, 2);
+  if (applyRetry(m1, true) !== null) { l12bad++; console.log("  L12 applyRetry-correct FAIL（应 null）"); }
+  const m2 = applyRetry(m1, false);
+  if (!m2 || m2.wrongCount !== 3) { l12bad++; console.log(`  L12 applyRetry-wrong FAIL: wrongCount=${m2?.wrongCount}（应 3）`); }
+  if (m2 && m2.key !== m1.key || m2 && m2.answer !== 1600) { l12bad++; console.log("  L12 applyRetry-preserve FAIL（其余字段不变）"); }
+  // 边界：wrongCount:0 → 1（I4 防御，pushMistake 不产生 0 但函数应自洽）
+  const m0 = applyRetry(mk("a:1+1 =", "a", "1+1 =", 2, 0), false);
+  if (!m0 || m0.wrongCount !== 1) { l12bad++; console.log("  L12 applyRetry-zero FAIL"); }
+
+  // reviewQueue：副本（引用不等）/ 序保持 / 空入参
+  const arr = [m1, mk("warmup:g1:3+5 =", "warmup:g1", "3+5 =", 8, 1)];
+  const q = reviewQueue(arr);
+  if (q === arr) { l12bad++; console.log("  L12 reviewQueue-copy FAIL（应新数组）"); }
+  if (q.length !== 2 || q[0].key !== arr[0].key || q[1].key !== arr[1].key) { l12bad++; console.log("  L12 reviewQueue-order FAIL"); }
+  if (reviewQueue([]).length !== 0) { l12bad++; console.log("  L12 reviewQueue-empty FAIL"); }
+  // 副本隔离：修改副本不影响入参
+  q.pop();
+  if (arr.length !== 2) { l12bad++; console.log("  L12 reviewQueue-isolation FAIL"); }
+}
+
 // ---------- 输出 ----------
 console.log("== smart_gen 引擎单测 ==");
 console.log(`生成器数: ${NAMES.length} 个（${new Set(NAMES.map((n) => n.split("_").slice(0, -1).join("_"))).size} 方法 × 3 档）`);
@@ -568,7 +595,8 @@ console.log(`L8 weak 纯逻辑: ${l8bad === 0 ? "全部通过" : `${l8bad} 项�
 console.log(`L9 handout 纯逻辑: ${l9bad === 0 ? "全部通过" : `${l9bad} 项失败`}`);
 console.log(`L10 教程库→生成器契约: ${l10bad === 0 ? "全部通过" : `${l10bad} 项失败`}`);
 console.log(`L11 口算热身增强纯逻辑: ${l11bad === 0 ? "全部通过" : `${l11bad} 项失败`}`);
+console.log(`L12 错题重练纯逻辑: ${l12bad === 0 ? "全部通过" : `${l12bad} 项失败`}`);
 const l2fail = l2total - l2ok;
-const totalBad = failed + invalid + l2fail + l4bad + kouInvalid + l5bad + l6bad + l7bad + l8bad + l9bad + l10bad + l11bad;
+const totalBad = failed + invalid + l2fail + l4bad + kouInvalid + l5bad + l6bad + l7bad + l8bad + l9bad + l10bad + l11bad + l12bad;
 console.log(`FAIL 计数: ${totalBad}`);
 process.exit(totalBad ? 1 : 0);
