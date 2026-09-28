@@ -79,3 +79,12 @@ export function importMsg(r: ParseResult): string {
 export function sdProtocol(size: Size, sd: string): string {
   return `SD${size}:${sd}`;
 }
+
+/** 扫码直进 URL（V1.9.0 B8）：含 pathname 的完整 URL——vite base 可含子路径（如 /shudu/），origin 不含 pathname 会指向站根 */
+export function sdUrl(size: Size, sd: string): string {
+  const u = new URL(window.location.href); // href 含 origin + pathname + 当前 search/hash
+  u.search = "";                            // 清当前 query（防与 ?sd= 叠加）
+  u.hash = "";                              // 清 hash
+  u.searchParams.set("sd", sdProtocol(size, sd)); // URLSearchParams 自动百分号编码（: → %3A）
+  return u.href;
+}

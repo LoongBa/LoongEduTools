@@ -7,7 +7,7 @@ import { Btn } from "./ui/kit";
 import { useStore } from "@/lib/store";
 import { cssVar } from "@/lib/theme";
 import { toSDString, type Grid, type Size } from "@/lib/sudoku";
-import { sdProtocol, IMPORT_PROMPT_LABEL } from "@/lib/copy";
+import { sdProtocol, sdUrl, IMPORT_PROMPT_LABEL } from "@/lib/copy";
 import { formatMs } from "./Overlay";
 import qrcode from "@/lib/qrcode.js";
 
@@ -102,8 +102,8 @@ export function SharePuzzleOverlay({
   // 协议串：SD{N}:<sd>（V1.0.4，二维码与「导入编码」行共用，粘贴即被导入分支识别）
   const proto = useMemo(() => sdProtocol(size, sd), [size, sd]);
   const text = `数独思维 · ${size}×${size} 练习题${skillName ? `\n[技巧标签：${skillName}]` : ""}\n${IMPORT_PROMPT_LABEL}：${proto}\n提示：先找「只剩一个位置」的数字，从行和列一起排除。`;
-  /** 二维码内容 = 纯协议串（ASCII 短码，识别稳；无中文混排） */
-  const qrText = proto;
+  /** 二维码内容 = 完整 URL（V1.9.0 B8）：扫码即点开直达练习；含 pathname（子路径部署正确） */
+  const qrText = sdUrl(size, sd);
 
   useEffect(() => {
     const cv = ref.current;
@@ -141,7 +141,7 @@ export function SharePuzzleOverlay({
     ctx.fillStyle = muted;
     ctx.font = `400 21px "PingFang SC","Microsoft YaHei",sans-serif`;
     ctx.textAlign = "center";
-    ctx.fillText("📱 扫码复制题目编码，在「导入题目」粘贴即可练习", side / 2, 90 + tagH + 640 + 250);
+    ctx.fillText("📱 扫码直进练习", side / 2, 90 + tagH + 640 + 250);
   }, [board, solution, size, showAnswer, skillName]);
 
   function copy() {
@@ -180,7 +180,7 @@ export function SharePuzzleOverlay({
           className="h-24 w-full resize-none rounded-xl border border-border bg-secondary/50 p-3 text-[12px] leading-relaxed text-foreground outline-none focus:border-primary"
         />
         <canvas ref={ref} data-qr-text={qrText} className="w-full rounded-xl border border-border bg-card" style={{ aspectRatio: skillName ? "1 / 1.56" : "1 / 1.5" }} />
-        <p className="text-center text-[11px] text-muted-foreground">📸 长按图片可保存或发给朋友 · 📱 二维码扫码复制题目编码</p>
+        <p className="text-center text-[11px] text-muted-foreground">📸 长按图片可保存或发给朋友 · 📱 扫码直进练习</p>
       </div>
     </Overlay>
   );
@@ -212,6 +212,8 @@ export function ShareResultOverlay({
   const ref = useRef<HTMLCanvasElement | null>(null);
   const litCount = Object.keys(store.skills).length + Object.keys(store.advSkills).length;
   const text = `我在数独思维完成了 ${size}×${size}（${level}）练习\n用时 ${formatMs(ms)} 秒 · 获得 ${stars}★\n已点亮 ${litCount} 个推理技巧徽章`;
+  /** 二维码内容 = 完整 URL（V1.9.0 B8）：绘制与 data-qr-text 共用，避免脱钩（I2） */
+  const qrText = sdUrl(size, toSDString(board, size));
 
   useEffect(() => {
     const cv = ref.current;
@@ -301,19 +303,19 @@ export function ShareResultOverlay({
     ctx.font = `500 36px "PingFang SC",sans-serif`;
     ctx.fillText(`已点亮推理技巧 ${litCount} / 16`, W / 2, 840 + bSide + 120);
 
-    // 二维码区（真码：协议串 SD{N}:<sd>，V1.0.4 与分享题卡片一致，扫码复制后在「导入题目」粘贴练习）
+    // 二维码区（真码：完整 URL，V1.9.0 扫码直进练习；V1.0.4 起为协议串，粘贴导入路径不变）
     const qrSize = 260;
     roundRect(ctx, (W - qrSize) / 2 - 26, H - 460, qrSize + 52, qrSize + 52, 28);
     ctx.fillStyle = card;
     ctx.fill();
-    drawRealQr(ctx, sdProtocol(size, toSDString(board, size)), (W - qrSize) / 2, H - 434, qrSize, fg, card);
+    drawRealQr(ctx, qrText, (W - qrSize) / 2, H - 434, qrSize, fg, card);
     ctx.fillStyle = muted;
     ctx.font = `400 30px "PingFang SC",sans-serif`;
-    ctx.fillText("扫码复制题目，在导入题目里粘贴练习", W / 2, H - 130);
+    ctx.fillText("扫码直进练习", W / 2, H - 130);
     ctx.fillStyle = fg;
     ctx.font = `500 32px "PingFang SC",sans-serif`;
     ctx.fillText("龙爸乐学 · 数独思维", W / 2, H - 76);
-  }, [size, level, stars, ms, errors, hints, board, litCount]);
+  }, [size, level, stars, ms, errors, hints, board, litCount, qrText]);
 
   function copy() {
     copyText(text, onToast);
@@ -338,7 +340,7 @@ export function ShareResultOverlay({
       }
     >
       <div className="space-y-3">
-        <canvas ref={ref} data-qr-text={sdProtocol(size, toSDString(board, size))} className="mx-auto w-full max-w-[240px] rounded-xl border border-border shadow-soft" style={{ aspectRatio: "9 / 16" }} />
+        <canvas ref={ref} data-qr-text={qrText} className="mx-auto w-full max-w-[240px] rounded-xl border border-border shadow-soft" style={{ aspectRatio: "9 / 16" }} />
         <textarea
           readOnly
           value={text}

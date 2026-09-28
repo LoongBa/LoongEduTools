@@ -88,13 +88,13 @@ async function main() {
   ok("分享题 canvas 存在且扩高(≥900)", (await cv.count()) >= 1 && h >= 900, `w=${w} h=${h}`);
   ok("无 JS 错误（含 drawRealQr 路径）", jsErrors.length === 0, jsErrors.slice(0, 3).join(";"));
 
-  // V1.0.4（I3/I4）：二维码内容 = 协议串，正则 ^SD4:[0-9.]+$ 且长度 4+16=20
+  // V1.9.0（B8）：二维码内容 = 完整 URL（含 pathname + ?sd= 协议），扫码即直进练习；data-qr-text 为调试钩子应一致
   const qrText = await cv.getAttribute("data-qr-text").catch(() => null);
   ok("data-qr-text 钩子存在", !!qrText, `qr=${qrText}`);
-  ok("二维码内容为协议串 SD4:", !!qrText && /^SD4:[0-9.]+$/.test(qrText), `qr=${qrText}`);
-  ok("协议串长度=4+4²=20", !!qrText && qrText.length === 20, `len=${qrText ? qrText.length : 0}`);
-  ok("协议串与盘面 givens 一致", !!qrText && qrText.slice(4) === toSDString(givens, 4),
-    `qr=${qrText && qrText.slice(4)} givens=${toSDString(givens, 4)}`);
+  ok("二维码内容为 URL 含 ?sd=SD4:", !!qrText && /^https?:\/\/.+\?sd=SD4%3A[0-9.,%]+$/.test(qrText), `qr=${qrText}`);
+  const parsed = qrText ? new URL(qrText).searchParams.get("sd") : null;
+  ok("解码后协议串与盘面 givens 一致", !!parsed && parsed.slice(4) === toSDString(givens, 4),
+    `parsed=${parsed && parsed.slice(4)} givens=${toSDString(givens, 4)}`);
 
   console.log(results.join("\n"));
   console.log(`\n分享题二维码验证 ${results.filter((r) => r.startsWith("PASS")).length}/${results.length}`);

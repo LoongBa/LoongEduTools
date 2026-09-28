@@ -173,8 +173,8 @@ ok("SD4: 少线索被拒", await vis(page, "线索太少"));
   await page.waitForTimeout(300);
 
   // ⑤b URL 直启（V1.1.0）：?sd= 参数打开 → 直达练习页
-  const sdUrl = encodeURIComponent("SD4:1,0,3,4,3,4,0,2,2,1,4,3,4,3,2,1");
-  await page.goto(`${BASE}?sd=${sdUrl}`, { waitUntil: "domcontentloaded" });
+  const encSd4 = encodeURIComponent("SD4:1,0,3,4,3,4,0,2,2,1,4,3,4,3,2,1");
+  await page.goto(`${BASE}?sd=${encSd4}`, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(900);
   ok("URL 直启：直达练习页", await vis(page, "4×4"));
   const directCells = page.locator('button[role="gridcell"]');
@@ -182,6 +182,19 @@ ok("SD4: 少线索被拒", await vis(page, "线索太少"));
   // ⑤b2 URL 直启后 query 已清理（避免刷新重复直启）——在成功路径立即断言
   ok("URL 直启后 query 已清除", !page.url().includes("sd="), `url=${page.url()}`);
   // 回落首页（返回难度两次：练习 → 首页）
+  await tapText(page, "返回难度");
+  await page.waitForTimeout(500);
+
+  // ⑤b3 V1.9.0（B8）：SD9 扫码 URL 直启——最长 URL 形态（QR v9-v10 边界 + 长解析路径），棋盘 81 格
+  const sd9digits =
+    "0,4,1,0,0,0,0,2,0,0,9,0,6,1,0,0,0,5,0,0,0,0,0,7,0,6,0,0,0,0,0,7,3,0,0,0,0,7,0,0,0,0,0,5,0,1,2,5,0,0,4,0,0,3,7,0,2,4,0,0,0,0,0,0,0,9,0,0,0,0,4,6,0,0,0,2,0,0,5,0,9";
+  await page.goto(`${BASE}?sd=${encodeURIComponent(`SD9:${sd9digits}`)}`, { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(1200);
+  ok("扫码 URL 直启（SD9）：直达练习页", await vis(page, "9×9"));
+  const sd9Cells = page.locator('button[role="gridcell"]');
+  ok("扫码 URL 直启（SD9）：棋盘 81 格", (await sd9Cells.count()) === 81, `count=${await sd9Cells.count()}`);
+  ok("扫码 URL 直启（SD9）：query 已清除", !page.url().includes("sd="), `url=${page.url()}`);
+  // 回落首页
   await tapText(page, "返回难度");
   await page.waitForTimeout(500);
 
