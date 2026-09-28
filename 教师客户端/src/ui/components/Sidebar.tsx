@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import {
   ChevronRight,
   Globe,
-  GraduationCap,
   LayoutDashboard,
   LayoutGrid,
   Maximize,
@@ -33,6 +32,7 @@ import { api } from "@/api";
 import { friendlyErr } from "@/errutil";
 import { useThemeCtx } from "@/lib/theme";
 import { RailIconOrFallback, clampMenuLabel } from "@/lib/launch-icon";
+import logo from "@/assets/logo.png";
 import type { CollapseMap } from "@/lib/store";
 import type { LaunchConfigMap, NavGroupConfig, View } from "@/lib/types";
 
@@ -128,9 +128,12 @@ export function Sidebar({
       {/* 品牌区：rail 下保留 logo 图标（RailWrap 是 w-full block，父级 justify-center 无效 → logo 用 mx-auto 居中） */}
       <div className={cn("flex items-center gap-2.5 px-4 pb-4 pt-5", rail && "justify-center px-0")}>
         <RailWrap rail={rail} label="桃李助手">
-          <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand text-on-primary shadow-sm", rail && "mx-auto")}>
-            <GraduationCap size={18} strokeWidth={2} aria-hidden />
-          </span>
+          <img
+            src={logo}
+            alt="桃李助手"
+            className={cn("size-8 shrink-0 rounded-lg object-contain", rail && "mx-auto")}
+            draggable={false}
+          />
         </RailWrap>
         {!rail && (
           <span className="leading-tight">

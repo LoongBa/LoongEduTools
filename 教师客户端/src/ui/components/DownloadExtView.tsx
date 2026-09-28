@@ -254,10 +254,8 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
   const waiting = activeDownloads.filter((a) => a.queued);
 
   const handleDownload = (item: StoreItem) => {
-    if (!loggedIn) {
-      toast.error("请先登录后再下载");
-      return;
-    }
+    // 下载鉴权移交后端按源判定（2026-09-28）：清单 download_url 为公开 URL 匿名放行、
+    // 服务端 api 路径要求登录；前端不再 `!loggedIn` 拦截，错误由 store_download 后端返回。
     startDownload(item.id, (id) => {
       onInstalled(id, item.version);
       toast.success(`「${item.name}」下载完成并已安装`);
@@ -284,10 +282,7 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
   }, [items, installed, toolbox]);
 
   const batch = (list: { id: string; name: string; version: string }[], kind: "pkg" | "tool") => {
-    if (!loggedIn) {
-      toast.error("请先登录后再下载");
-      return;
-    }
+    // 鉴权同 handleDownload：移交后端按源判定，前端不拦截匿名下载。
     for (const x of list) {
       if (kind === "pkg") {
         startDownload(x.id, (id) => {
@@ -375,11 +370,11 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
         </div>
       </div>
 
-      {/* 未登录 banner */}
+      {/* 未登录 banner：公开内容可匿名下载；登录解锁服务端口令/更新校验 */}
       {!loggedIn && (
         <div className="banner print-hide mx-6 mt-3 flex items-center gap-2 rounded-lg border border-warn/40 bg-warn/10 px-3.5 py-2.5 text-[13px] text-foreground max-md:mx-4">
           <Lock size={14} aria-hidden className="shrink-0 text-warn" />
-          登录后即可下载与更新内容和工具。
+          未登录：公开内容可匿名下载；登录后解锁服务端完整能力（口令包/更新校验）。
           <span className="ml-auto whitespace-nowrap text-[12px] text-muted-foreground">
             点右上角头像菜单 →「去登录（模拟）」
           </span>
@@ -546,7 +541,6 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
                     key={item.id}
                     item={item}
                     task={tasks[item.id]}
-                    loggedIn={loggedIn}
                     onDownload={() => handleDownload(item)}
                   />
                 ))}
@@ -915,12 +909,10 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
 function PkgCard({
   item,
   task,
-  loggedIn,
   onDownload,
 }: {
   item: StoreItem;
   task?: { progress: number; done: boolean };
-  loggedIn: boolean;
   onDownload: () => void;
 }) {
   const isTool = sectionOf(item) === "tool";
@@ -991,13 +983,10 @@ function PkgCard({
             {/* 主操作：图标化小按钮（借鉴 1Panel，一行可并排多态） */}
             <button
               type="button"
-              title={item.installed ? "更新到新版本" : loggedIn ? "下载到本地" : "登录后可下载"}
+              title={item.installed ? "更新到新版本" : "下载到本地"}
               aria-label={item.installed ? `更新 ${item.name}` : `下载 ${item.name}`}
               className={cn(
-                "flex size-8 shrink-0 items-center justify-center rounded-md transition-all active:scale-[0.96]",
-                loggedIn
-                  ? "bg-primary text-primary-foreground hover:opacity-90"
-                  : "border border-input bg-card text-muted-foreground hover:bg-accent",
+                "flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground transition-all active:scale-[0.96] hover:opacity-90",
               )}
               onClick={onDownload}
             >
@@ -1016,7 +1005,7 @@ function PkgCard({
               </button>
             )}
             <span className="ml-auto text-[11px] text-muted-foreground">
-              {item.updatable ? "有更新 · 点左侧刷新图标升级" : loggedIn ? "点下载图标获取" : "需登录"}
+              {item.updatable ? "有更新 · 点左侧刷新图标升级" : "点下载图标获取"}
             </span>
           </>
         )}

@@ -278,6 +278,9 @@ export const api = {
 
   testWebview2: () => invoke<string | null>("test_webview2"),
 
+  // ---- 应用版本（单一真源 = Cargo.toml；替代前端硬编码 v0.3.0-demo）----
+  appVersion: () => invoke<string>("get_app_version"),
+
   // ---- P1 auth ----
   authStatus: () => invoke<AuthStatus>("auth_status"),
   authSmsSend: (phone: string) =>
@@ -329,6 +332,9 @@ export const api = {
   // ---- v0.3 教材目录扫描（textbook.rs · 设计源 §3.4，字段对齐 pdf-scan.ts）----
   textbookScan: (dirPath: string) =>
     invoke<TextbookScanResult>("textbook_scan", { dirPath }),
+  /** 教材单文件导入：识别单个 PDF（魔数/版本/Title）→ 1 文件 = 1 本教材 */
+  textbookSniff: (filePath: string) =>
+    invoke<ScannedPdf>("textbook_sniff", { filePath }),
 
   // ---- D11 素材归档（archive.rs · P3 归档移动 / P5 打包索引导出）----
   archiveWatchDir: (dir: string | null) =>

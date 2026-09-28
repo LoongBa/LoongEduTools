@@ -47,16 +47,16 @@ export function ProfileView({
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-3xl space-y-5 px-6 py-8 max-md:px-4">
-        {/* 账号卡片 */}
+        {/* 账号卡片（装饰条仅作头像上沿细色带，不占高度；头像常规文档流排布） */}
         <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-          <div className="h-20 bg-gradient-to-r from-brand to-primary opacity-90" aria-hidden />
-          <div className="-mt-9 flex flex-col gap-3 px-6 pb-6 sm:flex-row sm:items-end">
+          <div className="h-1 bg-gradient-to-r from-brand to-primary opacity-90" aria-hidden />
+          <div className="flex flex-col gap-3 px-6 pb-6 pt-4 sm:flex-row sm:items-end">
             <span className="flex size-[72px] shrink-0 items-center justify-center rounded-2xl border-4 border-card bg-brand-soft text-[26px] font-bold text-brand shadow-sm">
               {(name || acct.name).slice(0, 1)}
             </span>
             <div className="min-w-0 flex-1">
               {editing ? (
-                <div className="flex items-center gap-2 pt-1">
+                <div className="flex items-center gap-2">
                   <input
                     autoFocus
                     value={name}
@@ -87,7 +87,7 @@ export function ProfileView({
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 pt-1">
+                <div className="flex items-center gap-2">
                   <h2 className="font-display truncate text-xl font-bold">{name}</h2>
                   <button
                     type="button"

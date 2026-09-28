@@ -301,6 +301,36 @@ fn find_sub(hay: &str, needle: &str) -> Option<usize> {
 /// 学科归类（前端 guessSubject 保留在 TS 侧调用——Rust 报告已含 title/dir_name 字段，
 /// 由 toTextbook 组合后前端判类，避免双处口径漂移）
 
+// ------------------------------------------------------------------ 单文件导入：textbook_sniff
+
+/// 教材**单文件**导入（教师 U 盘里单个 PDF = 一本教材；整套多文件资源等扩展下载
+/// 功能完成后启用）：识别单个 PDF 文件的魔数/版本/Title，返回 ScannedPdf。
+/// 前端「选择单个 PDF 文件」导入（tauri-plugin-dialog open file filter pdf）。
+#[tauri::command]
+pub fn textbook_sniff(file_path: String) -> Result<ScannedPdf, String> {
+    let p = PathBuf::from(&file_path);
+    if !p.is_file() {
+        return Err(format!("路径不是文件或不存在: {file_path}"));
+    }
+    // 仅接受 .pdf 扩展（避免用户误选其它文件；魔数校验放在 sniff_pdf 内兜底）
+    let ext = p
+        .extension()
+        .map(|e| e.to_string_lossy().to_ascii_lowercase())
+        .unwrap_or_default();
+    if ext != "pdf" {
+        return Err(format!("仅支持 PDF 教材文件（当前: .{ext}）"));
+    }
+    let rel = p
+        .file_name()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_else(|| file_path.clone());
+    let info = sniff_pdf(&rel, &p);
+    if !info.valid {
+        return Err(format!("「{rel}」不是有效的 PDF 文件（头部缺少 %PDF 标识）"));
+    }
+    Ok(info)
+}
+
 // ------------------------------------------------------------------ 单测
 
 #[cfg(test)]

@@ -15,8 +15,9 @@ import type {
   PendingArchive,
   ToolShortcut,
 } from "./types";
-import { MOCK_BOOKMARK_BASELINE, MOCK_TEXTBOOK_BASELINE, QUICKSTART_PIN_SEED, LAUNCH_ICON_SEED_MIGRATION_KEY, LEGACY_SEED_ICON_IDS, MOCK_USER } from "./mockData";
+import { MOCK_BOOKMARK_BASELINE, QUICKSTART_PIN_SEED, LAUNCH_ICON_SEED_MIGRATION_KEY, LEGACY_SEED_ICON_IDS, MOCK_USER } from "./mockData";
 import { detectArchiveMeta, isArchivableExt } from "./archiveDetect";
+import { listen } from "@tauri-apps/api/event";
 import { api } from "@/api";
 
 // localStorage keys —— 折叠态 / 主题 / 登录态 / 探针 / 已装包 / 快捷方式 / 下载任务 / 启动中心
@@ -149,23 +150,32 @@ export function useAccountInfo(): AccountInfo {
     real: false,
   }));
   useEffect(() => {
-    void Promise.allSettled([api.authStatus(), api.licenseStatus()]).then(([a, l]) => {
-      const auth = a.status === "fulfilled" ? a.value : null;
-      const lic = l.status === "fulfilled" ? l.value : null;
-      if (!auth?.teacher) return; // 未登录：保持演示兜底
-      const t = auth.teacher;
-      setAcct({
-        name: t.name ?? "教师",
-        school: lic?.present ? "已授权（本机）" : "未授权",
-        subject: [t.grade, t.subject].filter(Boolean).join(" · ") || "任教信息未填",
-        licenseUntil: lic?.expires_at
-          ? new Date(lic.expires_at).toLocaleDateString("zh-CN")
-          : "—",
-        clientVersion: "教师客户端 v0.3.0",
-        deviceId: auth.device_id || lic?.machine_fp || "—",
-        real: true,
-      });
-    });
+    void Promise.allSettled([api.authStatus(), api.licenseStatus(), api.appVersion()]).then(
+      ([a, l, v]) => {
+        const auth = a.status === "fulfilled" ? a.value : null;
+        const lic = l.status === "fulfilled" ? l.value : null;
+        // 版本号与登录态解耦：无论登录与否都取真实构建版本（Cargo.toml 单一真源；
+        // 命令失败时回退兜底文案）。避免未登录早退导致「版本未获取」。
+        const ver = v.status === "fulfilled" ? `教师客户端 v${v.value}` : MOCK_USER.clientVersion;
+        if (!auth?.teacher) {
+          // 未登录：仅更新版本，其余保持演示兜底（real 仍 false）
+          setAcct((prev) => ({ ...prev, clientVersion: ver }));
+          return;
+        }
+        const t = auth.teacher;
+        setAcct({
+          name: t.name ?? "教师",
+          school: lic?.present ? "已授权（本机）" : "未授权",
+          subject: [t.grade, t.subject].filter(Boolean).join(" · ") || "任教信息未填",
+          licenseUntil: lic?.expires_at
+            ? new Date(lic.expires_at).toLocaleDateString("zh-CN")
+            : "—",
+          clientVersion: ver,
+          deviceId: auth.device_id || lic?.machine_fp || "—",
+          real: true,
+        });
+      },
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return acct;
@@ -312,9 +322,9 @@ export function useBookmarks() {
   return usePersistentState<Bookmark[]>(K.bookmarks, MOCK_BOOKMARK_BASELINE);
 }
 
-// ── 下载中心·原版教材：本机教材目录导入项（不提供云端下载，随工具包打包）──
+// ── 下载中心·原版教材：本机教材导入项（不提供云端下载，随工具包打包；默认空，真实导入产生）──
 export function useLocalTextbooks() {
-  return usePersistentState<LocalTextbook[]>(K.textbooks, MOCK_TEXTBOOK_BASELINE);
+  return usePersistentState<LocalTextbook[]>(K.textbooks, []);
 }
 
 // ── 启动中心：最近使用（跨易教/外部工具，LRU 上限 10）──
@@ -473,6 +483,27 @@ export function useDownloadTasks() {
   const queueRef = useRef<{ id: string; onDone: (id: string) => void }[]>([]);
   const runningRef = useRef(0);
 
+  // 真实进度（2026-09-29 实测反馈 3）：后端 store_download 按 chunk emit
+  // `download:progress` {id, received, total}，替代原模拟 tick（原模拟到 92% 封顶，
+  // 无法反映真实下载/解包进度）。挂载时注册一次监听，按 id 匹配更新任务进度。
+  useEffect(() => {
+    const total = new Map<string, number>();
+    const un = listen<{ id: string; received: number; total: number }>("download:progress", (e) => {
+      const { id, received, total: t } = e.payload;
+      if (t > 0) total.set(id, t);
+      const known = total.get(id) ?? 0;
+      const pct = known > 0 ? Math.min(99, Math.round((received / known) * 100)) : 0;
+      setTasks((prev) => {
+        const cur = prev[id];
+        if (!cur || cur.done) return prev;
+        return { ...prev, [id]: { id, progress: pct, done: false } };
+      });
+    });
+    return () => {
+      un.then((f) => f()).catch(() => {});
+    };
+  }, [setTasks]);
+
   /** 从队列取任务开跑，跑完补位（并发上限 3，其余排队）*/
   const pump = useCallback(() => {
     while (runningRef.current < DOWNLOAD_CONCURRENCY && queueRef.current.length > 0) {
@@ -480,16 +511,8 @@ export function useDownloadTasks() {
       const id = job.id;
       runningRef.current += 1;
       setMeta((m) => (m[id] ? { ...m, [id]: { ...m[id], queued: false } } : m));
-      // 视觉反馈：模拟进度递增（真实 Tauri 命令无逐字节回调）；命令完成即置 100
-      setTasks((t) => ({ ...t, [id]: { id, progress: 5, done: false } }));
-      const tick = setInterval(() => {
-        setTasks((prev) => {
-          const cur = prev[id];
-          if (!cur || cur.done) return prev;
-          const next = Math.min(92, cur.progress + 6 + Math.random() * 8);
-          return { ...prev, [id]: { id, progress: next, done: false } };
-        });
-      }, 260);
+      // 初始 1%：真实进度由后端 download:progress 事件驱动（见上 useEffect），命令完成置 100
+      setTasks((t) => ({ ...t, [id]: { id, progress: 1, done: false } }));
 
       void (async () => {
         try {
@@ -503,7 +526,6 @@ export function useDownloadTasks() {
             await api.storeDownload(id, pkg.package_version);
           }
           // 完成：置 100 → 写历史 → 摘除 → 回调 → 补位
-          clearInterval(tick);
           setTasks((t) => ({ ...t, [id]: { id, progress: 100, done: true } }));
           const info2 = metaRef.current[id];
           setHistory((h) => {
@@ -532,7 +554,6 @@ export function useDownloadTasks() {
           }, 500);
         } catch (e) {
           // 失败：清任务 + 提示（保持 running 计数准确）
-          clearInterval(tick);
           runningRef.current -= 1;
           setTasks((p) => {
             const c = { ...p };

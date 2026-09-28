@@ -233,9 +233,9 @@ export function SettingsView({
 
         {/* ── 关于 ── */}
         <Group title="关于">
-          <Row label="桃李助手 · 龙爸易教 教师客户端" desc="v0.3.0-demo · 依据 R03 v1.1 需求实现（二级导航 / 下载中心 / 启动中心）">
+          <Row label="桃李助手 · 龙爸易教 教师客户端" desc={`${acct.clientVersion} · 依据 R03 v1.1 需求实现（二级导航 / 下载中心 / 启动中心）`}>
             <span className="inline-flex h-7 items-center gap-1 rounded-full bg-muted px-2.5 text-[11px] text-muted-foreground">
-              <Info size={11} aria-hidden /> 网页演示版
+              <Info size={11} aria-hidden /> 桌面版
             </span>
           </Row>
         </Group>

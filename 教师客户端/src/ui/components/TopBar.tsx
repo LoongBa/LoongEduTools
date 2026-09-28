@@ -489,9 +489,13 @@ export function TopBar({
         <div ref={avatarRef} className="relative">
           <button
             type="button"
-            className="flex size-9 items-center justify-center rounded-full bg-brand-soft text-[13px] font-bold text-brand transition-transform hover:scale-105"
+            className={cn(
+              "flex size-9 items-center justify-center rounded-full text-[13px] font-bold transition-transform hover:scale-105",
+              loggedIn ? "bg-brand-soft text-brand" : "bg-muted text-muted-foreground",
+            )}
             aria-haspopup="menu"
             aria-expanded={menuOpen}
+            aria-label={loggedIn ? "账号菜单（已登录）" : "账号菜单（未登录）"}
             onClick={() => setMenuOpen((o) => !o)}
           >
             王
@@ -502,11 +506,16 @@ export function TopBar({
               className="user-menu-panel absolute right-0 top-11 z-20 w-56 overflow-hidden rounded-xl border border-border bg-popover p-1.5 shadow-lg"
             >
                 <div className="flex items-center gap-2.5 border-b border-border px-2.5 pb-2.5 pt-2">
-                  <span className="flex size-9 items-center justify-center rounded-full bg-brand text-[13px] font-bold text-on-primary">
+                  <span
+                    className={cn(
+                      "flex size-9 items-center justify-center rounded-full text-[13px] font-bold",
+                      loggedIn ? "bg-brand text-on-primary" : "bg-muted text-muted-foreground",
+                    )}
+                  >
                     王
                   </span>
                   <span className="leading-tight">
-                    <span className="block text-[13px] font-medium">王老师</span>
+                    <span className="block text-[13px] font-medium">{loggedIn ? "王老师" : "未登录"}</span>
                     <span className="block text-[11px] text-muted-foreground">
                       {loggedIn ? "已登录 · 本机授权" : "未登录 · 仅可浏览"}
                     </span>

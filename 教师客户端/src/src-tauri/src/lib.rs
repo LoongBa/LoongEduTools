@@ -4,7 +4,7 @@ mod webview2;
 
 use crate::commands::{
     archive, auth, close, config, credential, license, package, protocol, recents, report, roster,
-    shell_config, store, textbook, toolbox, window,
+    shell_config, store, textbook, toolbox, version, window, window_state,
 };
 use crate::state::AppState;
 use tauri::Manager as _;
@@ -102,6 +102,12 @@ pub fn run() {
                 let _ = webview.eval(HARDEN_JS);
             }
         })
+        // ---- 窗口位置持久化（实测反馈 2：移动后记住，启动恢复）----
+        .on_window_event(|window, event| {
+            if window.label() == "main" && matches!(event, tauri::WindowEvent::Moved(_)) {
+                window_state::save_position(window.app_handle());
+            }
+        })
         // ---- 内容协议（D09 §2.4/§5.1 M4：edu-content 内存解密、不落盘）----
         // Windows 实际请求形如 http://edu-content.localhost/<path>（wry/
         // WebResourceRequested 拦截）；响应恒带 Cache-Control: no-store + Range
@@ -111,6 +117,14 @@ pub fn run() {
         })
         // ---- 启动流程（D02 §3.4 oracle 修订）----
         .setup(|app| {
+            // ⑥0 标题栏版本号：用构建版本动态覆盖 tauri.conf.json 默认 title（升级只改
+            //     Cargo.toml 一处，标题/托盘/关于自动同步，防配置与代码不同步）
+            if let Some(w) = app.get_webview_window("main") {
+                let v = app.package_info().version.to_string();
+                let _ = w.set_title(&format!("桃李助手 · 龙爸易教·教师端 v{v}"));
+            }
+            // ⑥0b 窗口位置：启动恢复上次位置（无存档/越界 → 保持默认居中，静默跳过）
+            window_state::restore_position(app.handle());
             // ① WebView2 兜底复检（preflight 已在窗口创建前保证 Ready；此处仅留日志，
             //    缺失引导统一走 preflight 原生弹窗，前端 banner 已移除——见 v0.2 修订）
             let wv2 = webview2::ensure_webview2();
@@ -152,6 +166,9 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            // 应用版本（单一真源 = Cargo.toml package_info().version；前端关于/设置/个人页统一引用，
+            // 替代历史硬编码 v0.3.0-demo —— 升级只改 Cargo.toml 一处，标题/托盘/关于自动同步）
+            version::get_app_version,
             package::list_installed,
             package::load,
             package::unload,
@@ -197,6 +214,7 @@ pub fn run() {
             report::report_flush,
             // v0.3 教材目录扫描（设计源 §3.4 · 替换前端 showDirectoryPicker 的 Tauri fs 版）
             textbook::textbook_scan,
+            textbook::textbook_sniff,
             // P3 抽卡/分组 名单持久化（D05 §2.4.1/§2.4.2 · 本地 roster.json 零上报）
             roster::roster_save,
             roster::roster_load,

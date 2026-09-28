@@ -15,5 +15,7 @@ pub mod shell_config;
 pub mod store;
 pub mod textbook;
 pub mod toolbox;
+pub mod version;
 pub mod watermark;
 pub mod window;
+pub mod window_state;

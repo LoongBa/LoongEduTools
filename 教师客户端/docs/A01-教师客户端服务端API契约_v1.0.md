@@ -216,6 +216,8 @@
 | `GET /api/edu/packages/manifest` | 可用内容包清单（简单配置起步，动态化演进） |
 
 > **鉴权（CF 部署阶段放宽 2026-09-27）**：manifest **匿名可读**（未登录可浏览内容区，前端未登录态也拉清单展示）；下载 `GET /packages/:id/:ver` 仍要求 Bearer JWT + 口令级别校验（防扩散骨架不变）。
+>
+> **下载放宽（2026-09-28）**：清单条目 `download_url` 为**绝对 http(s) 公开 URL**（CF Pages/第三方镜像等静态托管）时，客户端 **匿名下载免凭证**（zip 本就公开可读，不新增扩散面）；仅 `download_url` 缺省走 `{api_base}/api/edu/packages/...` 服务端路径时强制 Bearer JWT + 口令级别校验。toolbox 工具下载同此匿名规则（download_url 直连公开资源）。
 
 ```jsonc
 // 响应 200

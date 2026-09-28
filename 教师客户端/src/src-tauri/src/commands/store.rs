@@ -15,6 +15,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use tauri::Emitter;
 
 // ------------------------------------------------------------------ 数据结构（A01 §4.1 / S01 §2.2）
 
@@ -223,7 +224,6 @@ pub async fn store_download(
     package_id: String,
     version: String,
 ) -> Result<InstalledPackage, String> {
-    let cred = load_credential(&app).ok_or("未登录，请先登录后下载内容包")?;
     let base = auth::api_base(&app);
     if base.is_empty() {
         return Err("未配置服务端地址（config.json api_base），当前为 P0 离线模式".into());
@@ -261,17 +261,29 @@ pub async fn store_download(
 
     // 下载源解析：清单条目 download_url（绝对 http(s)，静默托管/第三方镜像可用）
     // 优先于默认 `{api_base}/api/edu/packages/{id}/{ver}`（保留原路径作为缺省兜底）
-    let url = match entry.download_url.as_deref() {
-        Some(u) if u.starts_with("http://") || u.starts_with("https://") => u.to_string(),
-        _ => format!(
-            "{}/api/edu/packages/{}/{}",
-            base.trim_end_matches('/'),
-            package_id,
-            version
-        ),
+    // 鉴权（2026-09-28 CF Pages 静态托管放宽，对齐 A01 §2.1 注记）：download_url 为绝对
+    // http(s) 公开 URL 时**匿名下载**（CF 静态站点 zip 本就公开可读，不新增扩散面）；
+    // 仅走默认 `{api_base}/api/edu/packages/...` 服务端路径时强制 Bearer JWT + 口令级别
+    // 校验（防扩散骨架不变，A01 §4.2）。
+    let (url, jwt): (String, Option<String>) = match entry.download_url.as_deref() {
+        Some(u) if u.starts_with("http://") || u.starts_with("https://") => {
+            (u.to_string(), None)
+        }
+        _ => {
+            let cred = load_credential(&app).ok_or("未登录，请先登录后下载内容包")?;
+            (
+                format!(
+                    "{}/api/edu/packages/{}/{}",
+                    base.trim_end_matches('/'),
+                    package_id,
+                    version
+                ),
+                Some(cred.jwt),
+            )
+        }
     };
     let tmp = temp_zip_path(&package_id, &version);
-    let got_hex = download_stream(&url, &cred.jwt, &tmp).await?;
+    let got_hex = download_stream(&app, &package_id, &url, jwt.as_deref(), &tmp).await?;
 
     if !got_hex.eq_ignore_ascii_case(&expect) {
         let _ = fs::remove_file(&tmp);
@@ -332,18 +344,25 @@ pub async fn store_download(
 }
 
 /// 流式下载到临时文件，返回文件内容 SHA-256 hex（reqwest chunk()，无需 stream feature）
+/// `jwt = Some`：带 Bearer 鉴权（服务端 api 路径）；`None`：匿名下载（CF Pages/镜像公开 URL）。
+/// 进度：按 chunk 累计 → `download:progress` 事件（{ id, received, total }，total 未知为 0，
+/// 前端据此渲染真实进度，替代模拟 tick；下载/解包阶段各占 0-50/50-100 语义由前端处理）。
 async fn download_stream(
+    app: &tauri::AppHandle,
+    package_id: &str,
     url: &str,
-    jwt: &str,
+    jwt: Option<&str>,
     tmp: &Path,
 ) -> Result<String, String> {
     let c = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(300))
         .build()
         .map_err(|e| format!("HTTP 客户端初始化失败: {e}"))?;
-    let mut resp = c
-        .get(url)
-        .bearer_auth(jwt)
+    let mut builder = c.get(url);
+    if let Some(token) = jwt {
+        builder = builder.bearer_auth(token);
+    }
+    let mut resp = builder
         .send()
         .await
         .map_err(|e| format!("网络错误: {e}"))?;
@@ -363,8 +382,11 @@ async fn download_stream(
         }
         return Err(format!("HTTP {status}: {text}"));
     }
+    // Content-Length（可为空 → total=0，前端按未知总量显示 indeterminate 进度）
+    let total: u64 = resp.content_length().unwrap_or(0);
     let mut writer = fs::File::create(tmp).map_err(|e| format!("创建临时文件失败: {e}"))?;
     let mut hasher = Sha256::new();
+    let mut received: u64 = 0;
     loop {
         match resp.chunk().await.map_err(|e| format!("下载中断: {e}"))? {
             Some(chunk) => {
@@ -372,6 +394,14 @@ async fn download_stream(
                 writer
                     .write_all(&chunk)
                     .map_err(|e| format!("写入临时文件失败: {e}"))?;
+                received += chunk.len() as u64;
+                // 进度事件（节流：每 256KB 或最终一次；WebView2 高频 emit 有开销）
+                if received % (256 * 1024) < chunk.len() as u64 || received == total {
+                    let _ = app.emit(
+                        "download:progress",
+                        serde_json::json!({ "id": package_id, "received": received, "total": total }),
+                    );
+                }
             }
             None => break,
         }
@@ -584,10 +614,19 @@ struct ZipEntryInfo {
 }
 
 fn le16(b: &[u8]) -> u16 {
+    // 防御：调用方已保证 ≥2 字节（parse_cd/entry_data 有边界检查）；若仍被传短切片，
+    // 返回 0 而非 panic —— 崩溃调查 2026-09-29：标准 zip EOCD 在文件尾 22 字节时
+    // `buf[eocd+20..]` 仅剩 2 字节，le32 曾越界 panic（panic=abort 下静默退出）。
+    if b.len() < 2 {
+        return 0;
+    }
     u16::from_le_bytes([b[0], b[1]])
 }
 
 fn le32(b: &[u8]) -> u32 {
+    if b.len() < 4 {
+        return 0;
+    }
     u32::from_le_bytes([b[0], b[1], b[2], b[3]])
 }
 
@@ -610,11 +649,15 @@ fn eocd_offset(buf: &[u8]) -> Result<usize, String> {
 /// 解析中央目录条目列表
 fn parse_cd(buf: &[u8]) -> Result<Vec<ZipEntryInfo>, String> {
     let eocd = eocd_offset(buf)?;
-    if eocd + 22 > buf.len() {
+    // EOCD 固定 22 字节（PK\x05\x06 + 10 字段）：cd_size 在 +12、cd_off 在 +16。
+    // 崩溃调查 2026-09-29 修复：原代码把 cd_size 从 eocd+20 读（那是「注释长度」u16，
+    // 且标准 zip EOCD 恰在文件尾 22 字节时 `buf[eocd+20..]` 只剩 2 字节 → le32 越界
+    // panic，panic=abort 下静默退出）。需 eocd+20 ≤ len 即够读 cd_off 的 le32。
+    if eocd + 20 > buf.len() {
         return Err("EOCD 越界".into());
     }
     let cd_off = le32(&buf[eocd + 16..]) as usize;
-    let cd_size = le32(&buf[eocd + 20..]) as usize;
+    let cd_size = le32(&buf[eocd + 12..]) as usize;
     if cd_off.checked_add(cd_size).map(|x| x > buf.len()).unwrap_or(true) {
         return Err("zip 中央目录越界".into());
     }
@@ -742,29 +785,63 @@ fn safe_rel_path(name: &str) -> Result<String, String> {
 }
 
 /// raw DEFLATE 解压（zip 标准无 zlib 头；flate2 Decompress::new(false)）
+/// 2026-09-29 崩溃修复：flate2 的 `decompress`/`decompress_vec` **不会自动扩容输出**，
+/// 调用前必须预留空间（mem.rs "space for the output must be reserved ... before calling"）。
+/// 原实现 `with_capacity(hint)` 后仍 0 输出，因为 `FlushDecompress::Finish` 增量重试
+/// 语义不符（Finish 要求输入输出一次足够）；且空 Vec（无预留）调用必然 BufError/0 输出，
+/// 真实包全量解包失败 → 下载到 92% 静默退出（panic=abort）。
+/// 修复：`resize(hint)` 预留精确输出空间 → Finish 单次调用（输入输出都够则一次完成）；
+/// BufError（hint 不准确）→ 扩容后 None 模式继续（正确增量语义）。
 fn inflate_raw(data: &[u8], hint: usize) -> Result<Vec<u8>, String> {
     const MAX_OUT: usize = 2 * 1024 * 1024 * 1024; // 单条目解压上限 2GiB（防 zip 炸弹）
+    let hint = hint.min(MAX_OUT);
     let mut d = Decompress::new(false);
-    let mut out: Vec<u8> = Vec::with_capacity(hint.min(MAX_OUT).max(1024));
+    let mut out: Vec<u8> = vec![0u8; hint.max(1)]; // 预留精确输出空间（flate2 不自动扩容）
     let mut in_pos = 0;
     loop {
-        let before = d.total_in() as usize;
         let r = d
-            .decompress(&data[in_pos..], &mut out, FlushDecompress::Finish)
+            .decompress(&data[in_pos..], &mut out, FlushDecompress::None)
             .map_err(|e| format!("deflate 解压失败: {e}"))?;
-        in_pos += d.total_in() as usize - before;
+        let new_in = d.total_in() as usize;
+        in_pos = new_in;
         if out.len() > MAX_OUT {
             return Err("解压体积超限".into());
         }
         match r {
-            Status::StreamEnd => return Ok(out),
-            Status::Ok => {
-                if in_pos >= data.len() {
+            Status::StreamEnd => {
+                out.truncate(d.total_out() as usize);
+                return Ok(out);
+            }
+            Status::Ok | Status::BufError => {
+                // 需要更多输出空间 → 扩容后继续（None 模式支持增量输入）
+                if in_pos >= data.len() && d.total_out() as usize == out.len() {
                     return Err("zip 数据不完整（deflate 流未结束）".into());
                 }
-                out.reserve(64 * 1024);
+                out.resize(out.len() + 64 * 1024, 0);
             }
-            Status::BufError => out.reserve(64 * 1024),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    /// 回归测试（2026-09-29 崩溃根因验证）：正式域真实 zip → extract_zip → read_manifest
+    /// 全链路必须通过。曾因 parse_cd EOCD 偏移 bug（le32 越界 panic）+ inflate_raw 输出
+    /// 空间未预留（flate2 不自动扩容）→ 真实包全量解包失败，下载到 92% 静默退出。
+    #[test]
+    fn real_zip_extract_repro() {
+        let zips = [
+            r"C:\Users\coffe\AppData\Local\Temp\opencode\packs\substitute-kit.zip",
+            r"C:\Users\coffe\AppData\Local\Temp\opencode\packs\game-review.zip",
+        ];
+        for z in zips {
+            let buf = std::fs::read(z).expect("read zip");
+            let dest = std::env::temp_dir().join(format!("repro-extract-{}", std::process::id()));
+            let _ = std::fs::remove_dir_all(&dest);
+            super::extract_zip(&buf, &dest).expect("extract_zip");
+            let pkg = super::package::read_manifest(&dest).expect("read_manifest");
+            assert!(!pkg.package_id.is_empty(), "package_id 不应为空");
+            let _ = std::fs::remove_dir_all(&dest);
         }
     }
 }
