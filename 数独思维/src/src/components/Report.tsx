@@ -79,7 +79,7 @@ export function ParentReport({ onBack, onExport }: { onBack: () => void; onExpor
     <div className="pb-4 print-root">
       <h1 className="page-title reveal mb-1 px-1 text-[21px] font-extrabold leading-tight tracking-tight">📊 家长报告</h1>
       <p className="mb-3 px-1 text-[11.5px] leading-relaxed text-muted-foreground">
-        以下数据全部来自本机记录，不上传、不比较、不排名。练习节奏比结果更值得关注。
+        以下数据全部来自本机记录，无云同步、无排行，数据只存本机。练习节奏比结果更值得关注。
       </p>
 
       {/* 今日反馈 */}

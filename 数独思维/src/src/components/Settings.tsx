@@ -202,7 +202,7 @@ export function Settings({ onBack }: { onBack: () => void }) {
       <Card pad="normal" tone="flat" className="mb-3">
         <h2 className="mb-2 text-[13.5px] font-bold">💾 本机数据</h2>
         <ul className="space-y-1.5 px-0.5 text-[11.5px] leading-relaxed text-muted-foreground">
-          <li>· 全部记录保存在这台设备的浏览器里，没有账号、不上传。</li>
+          <li>· 全部记录保存在这台设备的浏览器里，无账号、无云同步，数据只存本机。</li>
           <li>· 换设备或清除浏览器数据会丢失进度，可先「备份到文件」留存。</li>
           <li>· 已记录练习 {store.history.length} 次 · 收藏 {store.favorites.length} 题 · 待巩固 {store.mistakes.length} 题。</li>
         </ul>

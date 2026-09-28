@@ -25,7 +25,7 @@ export function MapView({ completed, onPick, onBack }: { completed: MapDoneItem[
           <span className="tnum text-[11.5px] text-muted-foreground">{progress} / {MAP_LEVELS.length}</span>
         </div>
         <p className="mt-1 mb-2 text-[11px] leading-relaxed text-muted-foreground">
-          从 4×4 到 9×9 逐级推进，每完成一级解锁下一级。不比较、不排名，只按自己的节奏往前走。
+          从 4×4 到 9×9 逐级推进，每完成一级解锁下一级。无排行、不比较，只按自己的节奏往前走。
         </p>
         <Bar value={progress} total={MAP_LEVELS.length} tone="primary" />
       </Card>

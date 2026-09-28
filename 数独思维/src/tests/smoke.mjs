@@ -229,6 +229,42 @@ ok("SD4: 少线索被拒", await vis(page, "线索太少"));
   await tapText(page, "返回难度");
   await page.waitForTimeout(400);
 
+  // ⑧ 组内连做推进断言（V1.4.2 §六遗留-3 A2）：注入同组 2 条错题 → 练这一组 → 「第 1/2 题」→ 完成一题 → 「下一道」→ 「第 2/2 题」
+  // 注入绕过真实做题成本：board 仅缺 1 格，solution 已知，checkComplete 填对即结算（无需引擎求解）
+  const A2_BOARD_A = [1, 0, 3, 4, 3, 4, 1, 2, 2, 1, 4, 3, 4, 3, 2, 1]; // 空格 idx=1 → 填 2
+  const A2_SOL_A = [1, 2, 3, 4, 3, 4, 1, 2, 2, 1, 4, 3, 4, 3, 2, 1];
+  const A2_BOARD_B = [1, 2, 3, 4, 3, 4, 0, 2, 2, 1, 4, 3, 4, 3, 2, 1]; // 空格 idx=6 → 填 1
+  const A2_SOL_B = [1, 2, 3, 4, 3, 4, 1, 2, 2, 1, 4, 3, 4, 3, 2, 1];
+  const a2Store = {
+    version: 1,
+    best: {}, recent: {}, checkin: { dates: [], streak: 0 }, history: [],
+    skills: { "唯一候选": true }, advSkills: {},
+    mistakes: [
+      { id: "a2a", ts: Date.now(), level: "easy", size: 4, board: A2_BOARD_A, solution: A2_SOL_A, errors: 1, hints: 0, errIdx: [1], techniques: ["唯一候选"], migrated14: true },
+      { id: "a2b", ts: Date.now() - 1, level: "easy", size: 4, board: A2_BOARD_B, solution: A2_SOL_B, errors: 1, hints: 0, errIdx: [6], techniques: ["唯一候选"], migrated14: true },
+    ],
+    favorites: [], daily: null, achievements: {}, mapProgress: { completed: [] },
+    settings: { sound: true }, cur: null,
+  };
+  await page.evaluate((s) => localStorage.setItem("redtools.shudu.v1", JSON.stringify(s)), a2Store);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(800);
+  await tapText(page, "错题本");
+  await page.waitForTimeout(500);
+  ok("组内推进：错题分组出现", await vis(page, "唯一候选"));
+  await page.locator('button:has-text("练这一组")').first().evaluate((el) => el.click()).catch(() => false);
+  await page.waitForTimeout(700);
+  ok("组内推进：进入第 1/2 题", await vis(page, "第 1/2 题"));
+  // 完成第一题：唯一空格 idx=1 → 填入 2 → 结算 Overlay「下一道」
+  await page.locator('button[role="gridcell"]').nth(1).evaluate((el) => el.click()).catch(() => {});
+  await page.waitForTimeout(250);
+  await page.locator('button[aria-label^="填入数字 2"]').evaluate((el) => el.click()).catch(() => {});
+  await page.waitForTimeout(950);
+  ok("组内推进：第一题完成结算", await vis(page, "下一道"));
+  await tapText(page, "下一道");
+  await page.waitForTimeout(700);
+  ok("组内推进：推进到第 2/2 题", await vis(page, "第 2/2 题"));
+
   console.log(results.join("\n"));
   const fails = results.filter((r) => r.startsWith("FAIL")).length;
   console.log(`\n冒烟 ${results.length} 项 · PASS ${results.length - fails} · FAIL ${fails} · JS错误 ${jsErrors.length}`);
