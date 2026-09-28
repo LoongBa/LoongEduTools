@@ -107,8 +107,10 @@ def write_json_dual(dst_noext: Path, data: dict):
 
 def build_peilian(out: Path, strict: bool) -> int:
     """点读陪练：前端 dist → peilian/；build/online → peilian/api + lexue/units。"""
-    if not PEILIAN_FRONT.is_dir() or not (PEILIAN_CONTENT / "manifest.json").is_file():
-        msg = f"点读陪练产物缺失（front={PEILIAN_FRONT.is_dir()}, content_manifest={ (PEILIAN_CONTENT / 'manifest.json').is_file() }）"
+    manifest_candidates = [PEILIAN_CONTENT / "manifest", PEILIAN_CONTENT / "manifest.json"]
+    manifest_path = next((p for p in manifest_candidates if p.is_file()), None)
+    if not PEILIAN_FRONT.is_dir() or manifest_path is None:
+        msg = f"点读陪练产物缺失（front={PEILIAN_FRONT.is_dir()}, manifest={'/'.join(p.name for p in manifest_candidates)}）"
         if strict:
             raise SystemExit(f"[strict] 前置校验失败：{msg}")
         warn(msg + " —— 跳过 peilian/")
@@ -130,7 +132,7 @@ def build_peilian(out: Path, strict: bool) -> int:
         log("  peilian/ 前端：已跳过离线内联 units/ 目录（在线内容走 api/）")
 
     # 2) 在线内容 manifest → peilian/api/manifest（双写）
-    manifest = json.loads((PEILIAN_CONTENT / "manifest.json").read_text(encoding="utf-8"))
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     write_json_dual(front_dst / "api" / "manifest", manifest)
     n_units = sum(len(g.get("units", [])) for g in manifest.get("grades", []))
     log(f"  peilian/api/manifest（双写）：{len(manifest.get('grades', []))} 册 / {n_units} 单元")
@@ -139,15 +141,22 @@ def build_peilian(out: Path, strict: bool) -> int:
     units_src = PEILIAN_CONTENT / "units"
     n_copied = 0
     for uj in sorted(units_src.glob("*.json")):
+        if uj.name == "manifest.json":
+            continue
         data = json.loads(uj.read_text(encoding="utf-8"))
         write_json_dual(front_dst / "api" / "units" / uj.stem, data)
         n_copied += 1
     log(f"  peilian/api/units：{n_copied} 单元（双写）")
 
     # 4) 素材 → lexue/units/<uid>/{audio,images,song}（URL base=站点根，align publish_online.py）
-    assets_src = PEILIAN_CONTENT / "assets"
+    #    新产物（publish_online.py v0.9+）素材在 build/online/units/；旧产物在 assets/ —— 兼容两者
+    assets_src = None
+    for cand in (PEILIAN_CONTENT / "units", PEILIAN_CONTENT / "assets"):
+        if cand.is_dir() and any(p.is_dir() for p in cand.iterdir()):
+            assets_src = cand
+            break
     n_files = 0
-    if assets_src.is_dir():
+    if assets_src is not None:
         for uid_dir in assets_src.iterdir():
             if not uid_dir.is_dir():
                 continue
@@ -156,7 +165,7 @@ def build_peilian(out: Path, strict: bool) -> int:
                     dst = out / "units" / uid_dir.name / sub.name
                     copy_recursive(sub, dst)
                     n_files += sum(1 for _ in sub.rglob("*") if _.is_file())
-    log(f"  lexue/units/ 素材：{n_files} 文件")
+    log(f"  lexue/units/ 素材：{n_files} 文件（源 {assets_src.name if assets_src else 'N/A'}）")
     return 1
 
 

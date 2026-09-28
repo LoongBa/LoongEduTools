@@ -273,12 +273,16 @@ function appendGapFallbacks(css: string): string {
  */
 export default defineConfig(({ command, mode }) => {
   const online = mode === "online";
+  // online 子路径部署：站点根下 /peilian/（lexue 分区 peilian 子路径，方案 v0.9）
+  const ONLINE_BASE = "/peilian/";
   return {
-    // 离线包：构建期 base './'（index.html 内资源引用全相对）；dev 保持根路径；在线部署根路径
-    base: online ? "/" : command === "serve" ? "/" : "./",
+    // 离线包：构建期 base './'（index.html 内资源引用全相对）；dev 保持根路径；在线部署子路径 /peilian/
+    base: online ? ONLINE_BASE : command === "serve" ? "/" : "./",
     define: {
       // 构建形态常量：offline 构建折叠为 false → 在线模块（RemoteProvider/AuthProvider）被 tree-shake
       "import.meta.env.VITE_BUILD_TARGET": JSON.stringify(online ? "online" : "offline"),
+      // 在线内容 API base：子路径部署时 RemoteProvider fetch {base}/api/manifest 命中 /peilian/api/manifest
+      "import.meta.env.VITE_API_BASE": JSON.stringify(online ? ONLINE_BASE.replace(/\/$/, "") : ""),
     },
     plugins: [
       tailwindcss(),

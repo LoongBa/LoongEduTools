@@ -54,7 +54,9 @@ async function bootstrap() {
   // 在线形态（pnpm build:online）：注册远程内容 Provider（增量更新 + IndexedDB 缓存）；
   // offline 构建时此分支被 VITE_BUILD_TARGET 常量折叠 tree-shake（离线包不含在线代码）
   if (import.meta.env.VITE_BUILD_TARGET === "online") {
-    registerContentProvider(new RemoteProvider());
+    // 在线内容 API base：构建时注入 /peilian（子路径部署），RemoteProvider fetch {base}/api/*
+    const apiBase: string = import.meta.env.VITE_API_BASE ?? "";
+    registerContentProvider(new RemoteProvider(apiBase));
   }
   await loadCatalog();
   const root = document.getElementById("root");

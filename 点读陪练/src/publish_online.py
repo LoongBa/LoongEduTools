@@ -151,7 +151,8 @@ def main():
     base = args.base.rstrip('/')
     out_root = Path(args.out) if args.out else ROOT / 'build' / 'online'
     global OUT_ASSETS
-    OUT_ASSETS = out_root / 'assets'
+    # 素材输出目录 = units/（对齐 URL 规则 {base}/units/<uid>/audio|images|song，方案 v0.9 §2.2 C5 源头修正）
+    OUT_ASSETS = out_root / 'units'
 
     if out_root.exists():
         shutil.rmtree(out_root)
@@ -192,15 +193,19 @@ def main():
         raise SystemExit(1)
 
     manifest['grades'] = [by_grade[k] for k in sorted(by_grade)]
-    with open(out_root / 'manifest.json', 'w', encoding='utf-8') as f:
-        json.dump(manifest, f, ensure_ascii=False, indent=2)
+    # manifest@2 双写（无后缀 + .json）：前端 RemoteProvider fetch {base}/api/manifest（无后缀），
+    # CF Pages 不补 .json → 静态部署必须提供无后缀副本（方案 v0.9 §2.2 C6）
+    for mf_name in ('manifest', 'manifest.json'):
+        with open(out_root / mf_name, 'w', encoding='utf-8') as f:
+            json.dump(manifest, f, ensure_ascii=False, indent=2)
 
     mb = lambda p: sum(x.stat().st_size for x in p.rglob('*') if x.is_file()) / 1024 / 1024
-    log(f'  ✅ manifest.json（{len(manifest["grades"])} 册 / {n_units} 单元）')
-    log(f'  ✅ assets/ 素材 {mb(OUT_ASSETS):.2f}MB（audio/images/song 复制，待上传 COS）')
+    log(f'  ✅ manifest(.json) 双写（{len(manifest["grades"])} 册 / {n_units} 单元）')
+    log(f'  ✅ units/ 素材 {mb(OUT_ASSETS):.2f}MB（audio/images/song 复制，URL 直引）')
     log('=== 完成 ===')
     log(f'内容目录: {out_root}')
-    log(f'部署：assets/ 上传 COS（同 base 路径）；manifest.json + units/ 托管为 /api/manifest + /api/units/<id>（可纯静态）')
+    log(f'部署：units/ 素材 + manifest(.json) + units/<id>.json 托管静态；'
+        f'前端 fetch {base}/api/manifest 与 {base}/api/units/<id>（由 build_lexue_site.py 映射 peilian/api/ + 站点根 units/）')
 
 
 if __name__ == '__main__':

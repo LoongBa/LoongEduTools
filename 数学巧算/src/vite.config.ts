@@ -190,7 +190,7 @@ function appendGapFallbacks(css: string): string {
 export default defineConfig(({ command, mode }) => {
   const online = mode === "online";
   return {
-    base: online ? "/" : command === "serve" ? "/" : "./",
+    base: online ? "/qiaosuan/" : command === "serve" ? "/" : "./",
     define: {
       "import.meta.env.VITE_BUILD_TARGET": JSON.stringify(online ? "online" : "offline"),
     },

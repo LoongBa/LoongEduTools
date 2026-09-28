@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --port 3014 --host 0.0.0.0 --strictPort",
     "build": "vite build",
+    "build:online": "vite build --mode online",
     "preview": "vite preview --port 3014 --host 0.0.0.0",
     "typecheck": "tsc --noEmit",
     "test": "node tests/smoke.mjs",
