@@ -101,8 +101,11 @@ pub fn run() {
             if payload.event() == tauri::webview::PageLoadEvent::Finished {
                 let _ = webview.eval(HARDEN_JS);
                 // 主窗口页面加载完成 → 显示（2026-09-29 实测：visible:false 创建 + setup 定位
-                // 待命，页面 ready 才 show——启动即完整深色/正确位置，无白窗/浅色闪）
+                // 待命，页面 ready 才 show——启动即完整深色/正确位置，无白窗/浅色闪）。
+                // 注意：隐藏窗口期间 set_position 可能被 WebView2 初始化/窗口管理器重置，
+                // 故 show 前一刻**再次定位**（读存档/居中幂等），确保首帧即正确位置不再跳正。
                 if webview.label() == "main" {
+                    window_state::restore_position(webview.window().app_handle());
                     let _ = webview.window().show();
                 }
             }
