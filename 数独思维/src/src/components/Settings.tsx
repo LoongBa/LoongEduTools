@@ -5,8 +5,8 @@ import { cn } from "@/lib/utils";
 import { SCHEMES, useTheme, type ModeId } from "@/lib/theme";
 import { useStore } from "@/lib/store";
 import { APP_VERSION } from "@/lib/version";
-import { PRIVACY_BADGE, BACKUP_DONE, BACKUP_IOS_HINT, RESTORE_TITLE, RESTORE_SUB, RESTORE_WARN, RESTORE_CONFIRM, RESTORE_CANCEL } from "@/lib/copy";
-import { buildBackup, validateBackup, downloadBackup, importBackup, type BackupFile } from "@/lib/backup";
+import { PRIVACY_BADGE, BACKUP_DONE, BACKUP_IOS_HINT, BACKUP_LAST, BACKUP_LAST_NEVER, BACKUP_NEVER_TIP, BACKUP_DUE_TIP, RESTORE_TITLE, RESTORE_SUB, RESTORE_WARN, RESTORE_CONFIRM, RESTORE_CANCEL } from "@/lib/copy";
+import { buildBackup, validateBackup, downloadBackup, importBackup, saveBackupAt, readBackupAt, clearBackupAt, type BackupFile } from "@/lib/backup";
 import { Card, Btn, Toast } from "./ui/kit";
 import { Overlay } from "./Overlay";
 import { APP_ICON_URL } from "./Shell";
@@ -21,8 +21,14 @@ export function Settings({ onBack }: { onBack: () => void }) {
   const [restorePending, setRestorePending] = useState<BackupFile | null>(null); // 恢复确认
   const [toast, setToast] = useState("");
   const [busy, setBusy] = useState(false); // 备份/恢复操作防双击
+  const [lastBackup, setLastBackup] = useState<number | null>(() => readBackupAt()); // V1.9.1 B9：上次备份时间戳
   const fileRef = useRef<HTMLInputElement | null>(null);
   const soundOn = store.settings.sound;
+
+  // V1.9.1 B9：备份提醒状态（天数；从未备份且已有数据 / 超期才提示，零打扰）
+  const backupDays = lastBackup === null ? null : Math.max(0, Math.floor((Date.now() - lastBackup) / 86400000));
+  const hasData = store.history.length + store.mistakes.length + store.favorites.length > 0;
+  const backupDue = lastBackup === null ? hasData : (backupDays ?? 0) >= 14;
 
   // 恢复完成反馈（V1.2.0）：reload 后读取 sessionStorage 旗标显示摘要
   useEffect(() => {
@@ -47,6 +53,8 @@ export function Settings({ onBack }: { onBack: () => void }) {
     // 若只在 catch 提示则 iOS 用户永远看不到兜底（审核发现 A2）
     downloadBackup(buildBackup(store, APP_VERSION));
     showToast(`${BACKUP_DONE}${BACKUP_IOS_HINT}`);
+    saveBackupAt(Date.now()); // V1.9.1 B9：记录本次备份时间，提醒清零
+    setLastBackup(Date.now());
     window.setTimeout(() => setBusy(false), 800);
   }
 
@@ -84,6 +92,8 @@ export function Settings({ onBack }: { onBack: () => void }) {
       return;
     }
     // 成功：写旗标供 reload 后展示 → 重载全量重建
+    // V1.9.1 B9：恢复后「上次备份」= 备份文件创建时刻（恢复的数据即该快照，诚实一致）
+    saveBackupAt(new Date(restorePending.createdAt).getTime());
     try {
       window.sessionStorage.setItem(RESTORED_FLAG, JSON.stringify(restorePending.stats));
     } catch { /* 旗标写失败仅丢失反馈，不影响恢复 */ }
@@ -205,7 +215,15 @@ export function Settings({ onBack }: { onBack: () => void }) {
           <li>· 全部记录保存在这台设备的浏览器里，无账号、无云同步，数据只存本机。</li>
           <li>· 换设备或清除浏览器数据会丢失进度，可先「备份到文件」留存。</li>
           <li>· 已记录练习 {store.history.length} 次 · 收藏 {store.favorites.length} 题 · 待巩固 {store.mistakes.length} 题。</li>
+          {/* V1.9.1 B9：上次备份状态行（常驻） */}
+          <li>· {lastBackup === null ? BACKUP_LAST_NEVER : BACKUP_LAST(backupDays ?? 0)}。</li>
         </ul>
+        {/* V1.9.1 B9：超期 / 未备份建议行（零打扰：仅设置页内联，不弹窗不推首页） */}
+        {backupDue ? (
+          <p className="mt-2 rounded-lg bg-warning/10 px-2.5 py-2 text-[11px] font-semibold leading-snug text-warning">
+            {lastBackup === null ? BACKUP_NEVER_TIP : BACKUP_DUE_TIP(backupDays ?? 0)}
+          </p>
+        ) : null}
         {/* 备份/恢复（V1.2.0） */}
         <div className="mt-2.5 grid grid-cols-2 gap-2">
           <Btn variant="secondary" size="sm" className="w-full" disabled={busy} onClick={onBackup}>
@@ -258,6 +276,7 @@ export function Settings({ onBack }: { onBack: () => void }) {
               className="w-full"
               onClick={() => {
                 resetAll();
+                clearBackupAt(); // V1.9.1 B9：数据已清，备份提醒状态一并清除
                 setConfirm(false);
                 window.location.reload();
               }}

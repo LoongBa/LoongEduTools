@@ -302,6 +302,25 @@ ok("SD4: 少线索被拒", await vis(page, "线索太少"));
   ok("技巧分布卡渲染", await vis(page, "待巩固技巧分布"));
   ok("技巧分布图渲染（recharts Pie）", (await page.locator(".recharts-wrapper").count()) >= 1, `count=${await page.locator(".recharts-wrapper").count()}`);
 
+  // ⑨ V1.9.1 B9 备份提醒：注入 backupAt=20 天前 → 设置页「上次备份：20 天前」+ 超期建议行；移除 → 「还没备份过」建议行（store 仍 a2Store 有错题数据）
+  await tapText(page, "返回难度");
+  await page.waitForTimeout(500);
+  await page.evaluate((ts) => localStorage.setItem("redtools.shudu.backupAt", String(ts)), Date.now() - 20 * 86400000);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(800);
+  await tapText(page, "外观设置");
+  await page.waitForTimeout(500);
+  ok("备份提醒：上次备份状态行", await vis(page, "上次备份：20 天前"));
+  ok("备份提醒：超期建议行", await vis(page, "距上次备份已 20 天"));
+  await page.evaluate(() => localStorage.removeItem("redtools.shudu.backupAt"));
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(800);
+  await tapText(page, "外观设置");
+  await page.waitForTimeout(500);
+  ok("备份提醒：未备份建议行（有数据）", await vis(page, "还没备份过"));
+  await tapText(page, "返回难度");
+  await page.waitForTimeout(400);
+
   console.log(results.join("\n"));
   const fails = results.filter((r) => r.startsWith("FAIL")).length;
   console.log(`\n冒烟 ${results.length} 项 · PASS ${results.length - fails} · FAIL ${fails} · JS错误 ${jsErrors.length}`);

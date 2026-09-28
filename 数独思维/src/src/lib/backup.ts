@@ -10,6 +10,33 @@ const FORMAT = "sudoku-tutor-backup";
 /** 备份文件名前缀（实际名含日期：数独思维-备份-20260927.json） */
 export const BACKUP_PREFIX = "数独思维-备份";
 
+/* ================= 上次备份时间戳（V1.9.1 B9 备份提醒） ================= */
+/** 单独键（本机行为）：不随 store 备份/恢复，避免备份文件自指与跨设备误同步 */
+const LAST_BACKUP_KEY = "redtools.shudu.backupAt";
+
+export function saveBackupAt(ts: number): void {
+  try {
+    window.localStorage.setItem(LAST_BACKUP_KEY, String(ts));
+  } catch { /* 隐私模式等：忽略，仅丢失提醒状态 */ }
+}
+
+export function readBackupAt(): number | null {
+  try {
+    const raw = window.localStorage.getItem(LAST_BACKUP_KEY);
+    if (!raw) return null;
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearBackupAt(): void {
+  try {
+    window.localStorage.removeItem(LAST_BACKUP_KEY);
+  } catch { /* 忽略 */ }
+}
+
 /** 备份文件结构（v1） */
 export interface BackupFile {
   format: typeof FORMAT;

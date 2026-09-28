@@ -23,6 +23,11 @@ export const RESTORE_WARN = "恢复将覆盖当前全部进度，包括当前正
 export const RESTORE_CONFIRM = "我已确认，恢复";
 export const RESTORE_CANCEL = "再想想";
 export const RESTORE_DONE = "已恢复，页面即将重新加载。";
+/** 备份提醒（V1.9.1 B9）：上次备份状态行 + 超期/未备份建议行（设置页内联，零打扰） */
+export const BACKUP_LAST_NEVER = "从未备份";
+export const BACKUP_LAST = (days: number) => (days === 0 ? "上次备份：今天" : `上次备份：${days} 天前`);
+export const BACKUP_NEVER_TIP = "还没备份过，建议先备份一份——换设备或清除浏览器数据时进度不丢。";
+export const BACKUP_DUE_TIP = (days: number) => `距上次备份已 ${days} 天，建议先备份一份。`;
 
 /** 错题技巧分组视图文案（V1.3.0） */
 export const GROUP_VIEW_TITLE = "按技巧分组";
