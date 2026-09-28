@@ -16,7 +16,7 @@
   3. **实施**：按方案最小化修改，不借机重构。
   4. **验证**：`pnpm typecheck` 0 错误 + `pnpm build` 通过 + `pnpm test:engine` 全过 + `pnpm test`（冒烟）全过 + 0 JS 错误。
   5. **代码审核 + 审核报告**：**亲自（主会话）审核代码**并编写 `docs/V<版本>-审核报告.md`（审核范围 / 验证证据 / 变更摘要 / 意见处置 / 版本建议 / 遗留）——**代码审核不再用 oracle**（成本高且必要性低；oracle 保留用于方案评审与复杂架构 / 疑难问题）。
-  6. **提交发布**：精确 `git add` 本会话文件 → `git diff --cached --name-only` 复核 → commit（`feat()/fix()/docs()`）→ 确认无并行未推提交后 push → **申请 tag**（`数独思维-react-v<版本>`，需用户同意后打）。
+  6. **提交发布**：精确 `git add` 本会话文件 → `git diff --cached --name-only` 复核 → commit（`feat()/fix()/docs()`）→ **push 默认免同意，交付即推**；push 前先 `git log @{u}..HEAD --oneline` 核查归属，若含其它会话 commit 先征得同意（2026-09-29 修订：取消「并行会话只 commit 不 push」，改即时推 + 归属核查）→ **申请 tag**（`数独思维-react-v<版本>`，需用户同意后打）。
   7. 发布时同步 `AGENTS.md`「当前版本」行与 `package.json` version。
 
 ## 硬性约束（勿违反）
