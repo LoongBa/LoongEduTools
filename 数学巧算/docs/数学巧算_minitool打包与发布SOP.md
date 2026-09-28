@@ -72,8 +72,8 @@ RedTools/publish/学科/
 2. **打包**：`python publish_offline.py`（audit PASS + zip ≤10MiB）。
 3. **合规自查**：确认无排行榜/云存档/多人互动；无网络引用。
 4. **测试**：打开解压测试版 index.html 冒烟（file:// 形态）；真机未实测如实标记。
-5. **git**：`git add` 仅本轮文件 → `git diff --cached --name-only` 复核 → commit。
-6. **push + tag**：征求用户同意后 push；tag 名 `数学巧算-v0.3.0`（打 tag 前 `git tag | Select-String '数学巧算'` 核对）。
+5. **git**：`git add` 仅本轮文件 → `git diff --cached --name-only` 复核 → commit（粒度 = 一个逻辑变更单元）。
+6. **push + tag**：**push 默认免同意，交付即推**（push 前 `git log @{u}..HEAD --oneline` 核查归属，含其它会话 commit 先征得同意）；tag 名 `数学巧算-v0.3.0`，**打 tag 必须另行征求用户同意**（打 tag 前 `git tag | Select-String '数学巧算'` 核对）。
 7. **看板回写**：`docs/开发进度看板.md` 数学巧算行更新版本/状态/commit。
 
 ---
