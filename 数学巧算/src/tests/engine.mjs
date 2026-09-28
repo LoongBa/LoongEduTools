@@ -9,6 +9,7 @@ import { checkDue, extend, enough, isLocked, todayReset } from "../src/lib/guard
 import { applyRecite } from "../src/lib/recite.ts";
 import { buildLessonIndex, suggestWeek, topWeakMethods } from "../src/lib/weak.ts";
 import { buildHandout, generatePractice, hashSeed } from "../src/lib/handout.ts";
+import { currentStage, defaultLevel, mistKey, pickType, POOL, QUANTITIES, stageToLevel, TIMES, WARM_LEVELS } from "../src/lib/warmup.ts";
 import { STAGES } from "../src/data/stages.generated.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -484,6 +485,75 @@ let l10bad = 0;
   }
 }
 
+// ---------- L11：V1.2 口算热身增强纯逻辑（六档池/跟随阶段/加权出题/键盘可达性） ----------
+let l11bad = 0;
+{
+  // stageToLevel：1..6 → g1..g6；<1（0/负/NaN）→ g1；>6 → g6（Oracle B2 修订）
+  const stl = stageToLevel;
+  const stlCases = [
+    [1, "g1"], [2, "g2"], [3, "g3"], [4, "g4"], [5, "g5"], [6, "g6"],
+    [0, "g1"], [-1, "g1"], [7, "g6"], [100, "g6"],
+  ];
+  for (const [n, want] of stlCases) {
+    if (stl(n) !== want) { l11bad++; console.log(`  L11 stageToLevel(${n}) FAIL → ${stl(n)}（应 ${want}）`); }
+  }
+  if (stl(NaN) !== "g1") { l11bad++; console.log("  L11 stageToLevel(NaN) FAIL"); }
+
+  // currentStage：warmup 跳过；"X" → 7；多讲取 max；空 → 0
+  if (currentStage({}) !== 0) { l11bad++; console.log("  L11 currentStage-empty FAIL"); }
+  if (currentStage({ "warmup:g1": {} }) !== 0) { l11bad++; console.log("  L11 currentStage-warmup-only FAIL"); }
+  if (currentStage({ "1:s1l1": {}, "3:s3l2": {}, "warmup:g2": {} }) !== 3) { l11bad++; console.log("  L11 currentStage-max FAIL"); }
+  if (currentStage({ "X:sxl1": {} }) !== 7) { l11bad++; console.log("  L11 currentStage-X FAIL"); }
+  if (currentStage({ "1:s1l1": {}, "X:sxl1": {} }) !== 7) { l11bad++; console.log("  L11 currentStage-X-with-main FAIL"); }
+
+  // defaultLevel：空 → g1；学到 s3 → g3；仅拓展 → g6
+  if (defaultLevel({}) !== "g1") { l11bad++; console.log("  L11 defaultLevel-empty FAIL"); }
+  if (defaultLevel({ "3:s3l1": {} }) !== "g3") { l11bad++; console.log("  L11 defaultLevel-s3 FAIL"); }
+  if (defaultLevel({ "X:sxl1": {} }) !== "g6") { l11bad++; console.log("  L11 defaultLevel-X FAIL"); }
+
+  // pickType：均匀覆盖 / 加权提升 / 封顶 / avoid 生效
+  const pool4 = POOL.g6; // 4 型
+  // 均匀：无错题，抽样 400 覆盖全池
+  const seen = new Set();
+  for (let i = 0; i < 400; i++) seen.add(pickType(pool4, {}, "g6"));
+  if (seen.size !== pool4.length) { l11bad++; console.log(`  L11 pickType-uniform FAIL: ${seen.size}/${pool4.length}`); }
+  // 加权：mist 注入 g6_pct=10 → 权重 4 vs 其余 1，命中率应显著高于均匀 25%
+  const weightedMist = { [mistKey("g6", "g6_pct")]: 10 };
+  let wHits = 0;
+  const N = 400;
+  for (let i = 0; i < N; i++) if (pickType(pool4, weightedMist, "g6") === "g6_pct") wHits++;
+  if (wHits <= N * 0.5 || wHits >= N * 0.9) { l11bad++; console.log(`  L11 pickType-weighted FAIL: g6_pct 命中 ${wHits}/${N}（应 >50% 且 <90%）`); }
+  // 封顶：count=100 命中率不显著高于 count=3（权重同为 1+3=4）
+  const mist3 = { [mistKey("g6", "g6_pct")]: 3 };
+  const mist100 = { [mistKey("g6", "g6_pct")]: 100 };
+  let h3 = 0, h100 = 0;
+  for (let i = 0; i < 300; i++) { if (pickType(pool4, mist3, "g6") === "g6_pct") h3++; if (pickType(pool4, mist100, "g6") === "g6_pct") h100++; }
+  if (Math.abs(h3 - h100) > 60) { l11bad++; console.log(`  L11 pickType-cap FAIL: count3=${h3} count100=${h100}（应近似）`); }
+  // avoid 生效：池 2 型 avoid="a" 时结果永不为 "a"
+  const pool2 = ["a", "b"];
+  for (let i = 0; i < 30; i++) {
+    const t = pickType(pool2, {}, "g1", "a");
+    if (t === "a") { l11bad++; console.log("  L11 pickType-avoid FAIL"); break; }
+  }
+
+  // 键盘可达性抽查：POOL 六档全部 type 的 gen 返回 answer 可被键盘输入域表达（整数/小数/分数 a/b）
+  const keyRe = /^-?\d+(\/-?\d+)?(\.\d+)?$/;
+  const keyReAlt = /^\.\d+$/; // "0.75" 归一为 ".75" 兜底（键盘按 . 起头补 0.）
+  for (const lv of WARM_LEVELS) {
+    for (const type of POOL[lv]) {
+      for (let i = 0; i < 10; i++) {
+        const qq = KOU.gen(type);
+        if (!qq) { l11bad++; console.log(`  L11 kou-gen-missing: ${lv}/${type}`); break; }
+        const a = String(qq.answer);
+        if (!keyRe.test(a) && !keyReAlt.test(a)) {
+          l11bad++;
+          console.log(`  L11 keyboard-reach FAIL: ${lv}/${type} answer="${a}"`);
+        }
+      }
+    }
+  }
+}
+
 // ---------- 输出 ----------
 console.log("== smart_gen 引擎单测 ==");
 console.log(`生成器数: ${NAMES.length} 个（${new Set(NAMES.map((n) => n.split("_").slice(0, -1).join("_"))).size} 方法 × 3 档）`);
@@ -497,7 +567,8 @@ console.log(`L7 recite 纯逻辑: ${l7bad === 0 ? "全部通过" : `${l7bad} 项
 console.log(`L8 weak 纯逻辑: ${l8bad === 0 ? "全部通过" : `${l8bad} 项失败`}`);
 console.log(`L9 handout 纯逻辑: ${l9bad === 0 ? "全部通过" : `${l9bad} 项失败`}`);
 console.log(`L10 教程库→生成器契约: ${l10bad === 0 ? "全部通过" : `${l10bad} 项失败`}`);
+console.log(`L11 口算热身增强纯逻辑: ${l11bad === 0 ? "全部通过" : `${l11bad} 项失败`}`);
 const l2fail = l2total - l2ok;
-const totalBad = failed + invalid + l2fail + l4bad + kouInvalid + l5bad + l6bad + l7bad + l8bad + l9bad + l10bad;
+const totalBad = failed + invalid + l2fail + l4bad + kouInvalid + l5bad + l6bad + l7bad + l8bad + l9bad + l10bad + l11bad;
 console.log(`FAIL 计数: ${totalBad}`);
 process.exit(totalBad ? 1 : 0);

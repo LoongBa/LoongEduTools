@@ -27,6 +27,26 @@ const server = createServer((req, res) => {
   res.end(readFileSync(full));
 });
 
+/** 读取当前练习页题面（一年级档加减式），解析并返回答案字符串；无法解析返回 null */
+async function solveG1(page) {
+  return page.evaluate(() => {
+    const body = document.body.innerText;
+    const m = body.match(/(\d+)\s*([+-])\s*(\d+)\s*[=＝]/);
+    if (!m) return null;
+    const a = Number(m[1]), b = Number(m[3]);
+    return String(m[2] === "+" ? a + b : a - b);
+  });
+}
+
+/** 用数字键盘逐位输入答案并提交 */
+async function typeAnswer(page, ans) {
+  for (const ch of String(ans)) {
+    await page.locator(`button:has-text('${ch}')`).first().click();
+    await page.waitForTimeout(50);
+  }
+  await page.locator("button[aria-label='提交']").first().click();
+}
+
 const chromium = process.env.CHROMIUM_PATH;
 if (!chromium || !existsSync(chromium)) {
   console.log("SKIP | 未设置 CHROMIUM_PATH，跳过浏览器冒烟（引擎单测已覆盖逻辑）");
@@ -205,23 +225,70 @@ server.listen(0, "127.0.0.1", async () => {
       ok(`全阶[${st.card}]提交有反馈`, /答对|答案|错题/.test(fbBody));
     }
 
-    // 口算热身入口
+    // 口算热身（V1.2 增强：六档/推荐档/定数 5 题结算/计时挑战到期/薄弱错题持久化）
     await page.goto("file:///" + DIST.replace(/\\/g, "/") + "/index.html", { waitUntil: "load" });
     await page.waitForTimeout(400);
     ok("首页渲染口算热身入口", (await page.locator("text=口算热身").count()) > 0);
     await page.locator("button:has-text('口算热身')").first().click();
     await page.waitForTimeout(400);
-    ok("热身选档页渲染（一年级/二年级/三年级）", (await page.locator("text=一年级").count()) > 0);
+    ok("热身选档页六档渲染（四/五/六年级）", (await page.locator("text=四年级").count()) > 0 && (await page.locator("text=五年级").count()) > 0 && (await page.locator("text=六年级").count()) > 0);
+    ok("热身推荐档标记渲染（跟随教程进度）", (await page.locator("text=按当前进度推荐").count()) > 0);
+
+    // 定数 5 题流程：切 5 题 → 一年级 → 逐题作答（真实读题算答案）→ 结算
+    await page.locator("button:has-text('5 题')").first().click();
+    await page.waitForTimeout(200);
     await page.locator("button:has-text('一年级')").first().click();
     await page.waitForTimeout(500);
-    const warmBody = await page.evaluate(() => document.body.innerText);
-    ok("热身引擎出题（题面含 = 或 □）", /[=＝]/.test(warmBody));
-    // 作答反馈
-    await page.locator("button:has-text('1')").first().click();
-    await page.locator("button:has-text('提交')").first().click();
+    ok("定数模式题头渲染（第 1 / 5 题）", (await page.evaluate(() => document.body.innerText)).includes("第 1 / 5 题"));
+    for (let i = 0; i < 5; i++) {
+      const ans = await solveG1(page);
+      if (ans === null) { ok("定数流程作答推进", false, "无法解析题目"); break; }
+      await typeAnswer(page, ans);
+      await page.waitForTimeout(450);
+    }
+    ok("定数 5 题结算文案（答对 X / 5 题）", /答对 \d+ \/ 5 题/.test(await page.evaluate(() => document.body.innerText)));
+
+    // 计时挑战：clock 加速到期 → 自动结算
+    await page.goto("file:///" + DIST.replace(/\\/g, "/") + "/index.html", { waitUntil: "load" });
     await page.waitForTimeout(400);
-    const warmAfter = await page.evaluate(() => document.body.innerText);
-    ok("热身提交有反馈", /答对|答案|错题/.test(warmAfter));
+    await page.locator("button:has-text('口算热身')").first().click();
+    await page.waitForTimeout(400);
+    await page.locator("button:has-text('计时挑战')").first().click();
+    await page.waitForTimeout(200);
+    await page.locator("button:has-text('30 秒')").first().click();
+    await page.waitForTimeout(200);
+    await page.clock.install(); // 倒计时 setInterval 在点击一年级后注册 → install 须在此之前
+    await page.locator("button:has-text('一年级')").first().click();
+    await page.waitForTimeout(500);
+    ok("计时倒计时条渲染（剩余）", (await page.evaluate(() => document.body.innerText)).includes("剩余"));
+    const ans0 = await solveG1(page);
+    if (ans0 !== null) {
+      await typeAnswer(page, ans0);
+      await page.waitForTimeout(350);
+    }
+    ok("计时作答有反馈", /答对|答案|错题/.test(await page.evaluate(() => document.body.innerText)));
+    await page.clock.runFor(31000); // runFor 连续触发 interval（fastForward 每个 timer 至多 fire 一次）
+    await page.waitForTimeout(400);
+    ok("计时到期自动结算（限时 30 秒文案）", /限时 30 秒/.test(await page.evaluate(() => document.body.innerText)));
+
+    // 薄弱错题持久化：答错 → warmupMist 写入 localStorage（加权出题纯逻辑由 engine L11 覆盖）
+    await page.goto("file:///" + DIST.replace(/\\/g, "/") + "/index.html", { waitUntil: "load" });
+    await page.waitForTimeout(400);
+    await page.locator("button:has-text('口算热身')").first().click();
+    await page.waitForTimeout(400);
+    await page.locator("button:has-text('一年级')").first().click();
+    await page.waitForTimeout(500);
+    await typeAnswer(page, "999999"); // 必然错误
+    await page.waitForSelector("text=/答案是/", { timeout: 2000 });
+    ok("答错即时反馈（答案是 …）", true);
+    const mistStored = await page.evaluate(() => {
+      try {
+        const raw = localStorage.getItem("redtools.qiaosuanlein.v1");
+        const s = raw ? JSON.parse(raw) : {};
+        return !!(s.warmupMist && Object.keys(s.warmupMist).length >= 1);
+      } catch { return false; }
+    });
+    ok("warmupMist 错题计数持久化（V1.2）", mistStored);
 
     // 家长报告（连点 5 次进入）
     await page.goto("file:///" + DIST.replace(/\\/g, "/") + "/index.html", { waitUntil: "load" });

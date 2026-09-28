@@ -3,6 +3,7 @@
 // key: redtools.qiaosuanlein.v1（产品代号「巧算乐学」）
 // V0.3：version 1→2 迁移（补 guard/selfDaily/selfStreak/selfLocked 默认值，B3 修订 load 硬编码 version:1）
 // V0.4：version 2→3（LessonRecord 增 recite/reciteCount 可选字段，无需逐讲补值；saveRecite 走 lib/recite.ts 纯函数）
+// V1.2：version 3→4（新增 warmupMist 口算热身错题知识点计数，load 补默认 {}，类型联合 1|2|3|4）
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
@@ -19,6 +20,7 @@ import {
   type SelfState,
 } from "@/lib/guard";
 import { applyRecite, type ReciteInfo } from "@/lib/recite";
+import { mistKey, type WarmLevel } from "@/lib/warmup";
 
 const KEY = "redtools.qiaosuanlein.v1";
 
@@ -47,6 +49,8 @@ export interface StoreShape {
   streak: number;
   /** 汇总错题（key = `${lessonId}:${expr}`，去重） */
   mistakes: { key: string; lessonId: string; expr: string; answer: number | string; wrongCount: number }[];
+  /** V1.2 口算热身错题知识点计数（key = mistKey(level,type)，如 "g6:g6_pct"）——供热身薄弱优先出题加权 */
+  warmupMist: Record<string, number>;
   /** 防沉迷：今日练习秒数（展示用；跨日由 guard.todayReset 同步清零） */
   todaySec: number;
   /** 防沉迷 guard（对齐契约 §4 字段名，学科类口径=题量档） */
@@ -60,7 +64,7 @@ export interface StoreShape {
   /** 设置 */
   settings: { sound: boolean };
   /** 版本迁移位 */
-  version: 1 | 2 | 3;
+  version: 1 | 2 | 3 | 4;
 }
 
 function emptyStore(): StoreShape {
@@ -69,13 +73,14 @@ function emptyStore(): StoreShape {
     checkin: [],
     streak: 0,
     mistakes: [],
+    warmupMist: {},
     todaySec: 0,
     guard: { ...GUARD_DEFAULT, today: todayStr() },
     selfDaily: [],
     selfStreak: 0,
     selfLocked: false,
     settings: { sound: true },
-    version: 3,
+    version: 4,
   };
 }
 
@@ -104,12 +109,13 @@ function load(): StoreShape {
       lessons: parsed.lessons || {},
       checkin: parsed.checkin || [],
       mistakes: parsed.mistakes || [],
+      warmupMist: parsed.warmupMist || {},
       todaySec: crossedDay ? 0 : parsed.todaySec || 0,
       guard,
       selfDaily: parsed.selfDaily || [],
       selfStreak: parsed.selfStreak || 0,
       selfLocked,
-      version: 3,
+      version: 4,
     };
   } catch {
     return emptyStore();
@@ -143,6 +149,8 @@ export interface ProgressApi {
   recordPractice: (lessonKey: string, level: Level, correct: number, total: number, seconds: number) => string[];
   /** 记一道错题（同 expr 去重置顶，上限 50） */
   pushMistake: (lessonId: string, expr: string, answer: number | string) => void;
+  /** V1.2 口算热身错题知识点计数 +1（供热身薄弱优先出题加权；与 pushMistake 配套调用） */
+  addWarmupMist: (level: WarmLevel, type: string) => void;
   /** 清空全部数据 */
   clearAll: () => void;
   /** 更新设置 */
@@ -219,6 +227,14 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const addWarmupMist = useCallback((level: WarmLevel, type: string) => {
+    setStore((s) => {
+      const k = mistKey(level, type);
+      const warmupMist = { ...s.warmupMist, [k]: (s.warmupMist[k] || 0) + 1 };
+      return { ...s, warmupMist };
+    });
+  }, []);
+
   const clearAll = useCallback(() => {
     setStore(emptyStore());
   }, []);
@@ -292,6 +308,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       store,
       recordPractice,
       pushMistake,
+      addWarmupMist,
       clearAll,
       setSetting,
       setGuardPref,
@@ -303,7 +320,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       addPlayed,
       saveRecite,
     }),
-    [store, recordPractice, pushMistake, clearAll, setSetting, setGuardPref, dueInfo, extendDue, enoughNow, locked, selfStreakCount, addPlayed, saveRecite],
+    [store, recordPractice, pushMistake, addWarmupMist, clearAll, setSetting, setGuardPref, dueInfo, extendDue, enoughNow, locked, selfStreakCount, addPlayed, saveRecite],
   );
 
   return <ProgressContext.Provider value={api}>{children}</ProgressContext.Provider>;

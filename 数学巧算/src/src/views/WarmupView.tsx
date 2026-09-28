@@ -1,12 +1,23 @@
-// 数学巧算 · 口算热身：复用数学口算 generators.js（KOU_GENERATORS），三档年级段知识点池
-// 入口：HomeView「口算热身」→ 选档（一年级/二年级/三年级）→ 连出 10 题 → 即时反馈 → 结算打卡
+// 数学巧算 · 口算热身（V1.2 增强）：复用数学口算 generators.js（KOU_GENERATORS），六档年级知识点池
+// 入口：HomeView「口算热身」→ 推荐档/选档 → 定数（5/10/20）或计时（30/60/120s）→ 即时反馈 → 结算打卡
+// V1.2 新增：① 六档池 g1-g6 全启用 + 跟随教程阶段默认档（lib/warmup.ts defaultLevel）
+//            ② 计时挑战模式（到期自动 finish，成绩口径=正确率，与定数统一 key）
+//            ③ 薄弱优先出题（pickType 按 warmupMist 计数加权，封顶 3）
 // 判题：window.SMART_GENERATORS.normalizeInput（巧算引擎先加载，运行时安全）
-// 防沉迷联动：结算时 todaySec（recordPractice 现有）+ guard.addPlayed({count})（见 lib/guard）
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+// 防沉迷联动：结算时 todaySec（recordPractice 现有）+ guard.addPlayed（定数/计时两 finish 路径同步调用）
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BackBtn, Btn, Panel, Pill, Stars } from "@/components/ui-kit";
 import { useProgress } from "@/lib/store";
-
-type WarmLevel = "g1" | "g2" | "g3";
+import {
+  defaultLevel,
+  LEVEL_LABEL,
+  pickType,
+  POOL,
+  QUANTITIES,
+  TIMES,
+  WARM_LEVELS,
+  type WarmLevel,
+} from "@/lib/warmup";
 
 interface KouQ {
   type: string;
@@ -16,6 +27,9 @@ interface KouQ {
 
 /** 组后二选浮层数据 */
 type DueUi = { kind: "time" | "questions"; canExtend: boolean };
+
+/** 练习模式：定数 / 计时 */
+type Mode = "count" | "time";
 
 /** 引擎存在性检查（离线构建后由 assets/kou_gen/kou_gen.js 挂载） */
 function getKou(): { list: string[]; gen: (type: string) => KouQ | null; validate: (q: KouQ) => boolean } | null {
@@ -30,24 +44,12 @@ function getNormalizer(): ((input: string, answer: number | string) => boolean) 
   return w.SMART_GENERATORS?.normalizeInput || null;
 }
 
-/** 知识点池：档位 → 知识点 id 列表（每档随机 3 个循环出题） */
-const POOL: Record<WarmLevel, string[]> = {
-  g1: ["g1_10addsub", "g1_20add", "g1_20sub", "g1_100"],
-  g2: ["g2_mult", "g2_div", "g2_100", "g2_mixed"],
-  g3: ["g3_wan", "g3_mult1", "g3_mult2", "g3_div1", "g3_frac"],
-};
-
-const LEVEL_LABEL: Record<WarmLevel, string> = {
-  g1: "一年级",
-  g2: "二年级",
-  g3: "三年级",
-};
-
-const TOTAL = 10;
-
 export function WarmupView({ onExit }: { onExit: () => void }) {
-  const { recordPractice, pushMistake, store, dueInfo, extendDue, enoughNow, addPlayed, locked } = useProgress();
+  const { store, recordPractice, pushMistake, addWarmupMist, dueInfo, extendDue, enoughNow, addPlayed, locked } = useProgress();
   const [level, setLevel] = useState<WarmLevel | null>(null); // null = 选档页
+  const [mode, setMode] = useState<Mode>("count");
+  const [quantity, setQuantity] = useState<(typeof QUANTITIES)[number]>(10);
+  const [duration, setDuration] = useState<(typeof TIMES)[number]>(60);
   const [q, setQ] = useState<KouQ | null>(null);
   const [input, setInput] = useState("");
   const [doneCount, setDoneCount] = useState(0);
@@ -62,8 +64,9 @@ export function WarmupView({ onExit }: { onExit: () => void }) {
   const seqRef = useRef(0);
   const startRef = useRef(0);
   const shownDueRef = useRef(false);
+  const prevTypeRef = useRef<string | undefined>(undefined);
 
-  /* 出下一题（从当前档知识点池随机取一个知识点，避免连续同知识点） */
+  /* 出下一题：pickType 按 warmupMist 错题计数加权（薄弱优先，封顶 3），avoid 连续同知识点退避 */
   const nextQ = useCallback(() => {
     setInput("");
     setWrongInfo(null);
@@ -71,13 +74,13 @@ export function WarmupView({ onExit }: { onExit: () => void }) {
     if (!level) return;
     const kou = getKou();
     if (!kou) return;
-    const pool = POOL[level];
-    const type = pool[Math.floor(Math.random() * pool.length)];
+    const type = pickType(POOL[level], store.warmupMist, level, prevTypeRef.current);
+    prevTypeRef.current = type;
     const qq = kou.gen(type);
     if (qq) setQ(qq);
-  }, [level]);
+  }, [level, store.warmupMist]);
 
-  /* 计时 */
+  /* 计时：从 level 选定起计时（定数/计时共用；计时模式到期自动 finish） */
   useEffect(() => {
     if (finished || !level) return;
     startRef.current = performance.now();
@@ -90,7 +93,7 @@ export function WarmupView({ onExit }: { onExit: () => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [level]);
 
-  /* 自律锁检查（mount 时，唯一一处） */
+  /* 自律锁检查（mount 时，唯一一处；V1.2 清理了既有重复 effect） */
   useEffect(() => {
     setLockedState(locked());
   }, [locked]);
@@ -109,10 +112,25 @@ export function WarmupView({ onExit }: { onExit: () => void }) {
     return () => window.clearInterval(t);
   }, [finished, level, dueInfo]);
 
-  /* B1 修复：结算记练习移入 effect（题量累计已在 checkAnswer 内） */
+  /* 计时模式：到期自动 finish（不经过 checkAnswer 的独立路径；addPlayed 同步调用，防沉迷题量档不遗漏） */
+  useEffect(() => {
+    if (mode === "time" && level && !finished && ms >= duration * 1000) {
+      addPlayed(doneCount);
+      setFinished(true);
+      const due = dueInfo();
+      if (due && !shownDueRef.current) {
+        shownDueRef.current = true;
+        setDueChoice(due);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ms, mode, finished, level, duration]);
+
+  /* B3 修复：结算记练习移入 effect（题量累计已在完成路径内） */
   useEffect(() => {
     if (finished && level) {
-      recordPractice(`warmup:${level}`, "basic", correct, TOTAL, Math.round(ms / 1000));
+      const total = mode === "count" ? quantity : doneCount;
+      recordPractice(`warmup:${level}`, "basic", correct, total, Math.round(ms / 1000));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finished]);
@@ -131,9 +149,9 @@ export function WarmupView({ onExit }: { onExit: () => void }) {
           const n = seqRef.current + 1;
           seqRef.current = n;
           setDoneCount(n);
-          if (n >= TOTAL) {
-            // B3 修复：先累计本组题量再判到点
-            addPlayed(TOTAL);
+          if (mode === "count" && n >= quantity) {
+            // 定数完成：先累计本组题量再判到点（B3 语义）
+            addPlayed(quantity);
             setFinished(true);
             const due = dueInfo();
             if (due && !shownDueRef.current) {
@@ -148,10 +166,11 @@ export function WarmupView({ onExit }: { onExit: () => void }) {
         setFlash("wrong");
         setWrongInfo(`答案是 ${q.answer}`);
         pushMistake(`warmup:${level}`, q.text, q.answer);
+        addWarmupMist(level, q.type);
         window.setTimeout(() => setFlash(null), 400);
       }
     },
-    [q, finished, level, nextQ, pushMistake],
+    [q, finished, level, mode, quantity, nextQ, pushMistake, addWarmupMist, addPlayed, dueInfo],
   );
 
   const onKey = (k: string) => {
@@ -178,10 +197,17 @@ export function WarmupView({ onExit }: { onExit: () => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finished, level, q, input]);
 
-  /* 自律锁检查（mount 时） */
-  useEffect(() => {
-    setLockedState(locked());
-  }, [locked]);
+  /* 重新开始（结算页「再热一次」） */
+  const restart = () => {
+    seqRef.current = 0;
+    prevTypeRef.current = undefined;
+    setCorrect(0);
+    setDoneCount(0);
+    setFinished(false);
+    setMs(0);
+    setDueChoice(null);
+    nextQ();
+  };
 
   if (lockedState) {
     return (
@@ -205,7 +231,8 @@ export function WarmupView({ onExit }: { onExit: () => void }) {
 
   /* 结算 */
   if (finished && level) {
-    const rate = TOTAL ? correct / TOTAL : 0;
+    const total = mode === "count" ? quantity : doneCount;
+    const rate = total > 0 ? correct / total : 0;
     const stars = rate >= 0.9 ? 3 : rate >= 0.6 ? 2 : 1;
     const sec = Math.round(ms / 1000);
     return (
@@ -222,16 +249,18 @@ export function WarmupView({ onExit }: { onExit: () => void }) {
             <Stars n={stars} size={28} />
           </div>
           <p className="mt-3 text-[15px] text-muted-foreground">
-            答对 <b className="text-[var(--lit)]">{correct}</b> / {TOTAL} 题 · 用时 {fmtMs(ms)}
+            {mode === "count" ? (
+              <>答对 <b className="text-[var(--lit)]">{correct}</b> / {quantity} 题 · 用时 {fmtMs(ms)}</>
+            ) : (
+              <>限时 {duration} 秒 · 答对 <b className="text-[var(--lit)]">{correct}</b> 题</>
+            )}
           </p>
           <p className="mt-1 text-[12.5px] text-muted-foreground">
             {rate >= 0.9 ? "状态很好！去学巧算新招吧。" : rate >= 0.6 ? "再热热身会更稳。" : "回看口算基础，再试一次。"}
           </p>
           <div className="mt-6 flex justify-center gap-2">
             <Btn variant="soft" onClick={onExit}>回首页</Btn>
-            <Btn variant="primary" onClick={() => { seqRef.current = 0; setCorrect(0); setDoneCount(0); setFinished(false); setMs(0); setDueChoice(null); nextQ(); }}>
-              再热一次
-            </Btn>
+            <Btn variant="primary" onClick={restart}>再热一次</Btn>
           </div>
         </Panel>
         <p className="mt-3 text-center text-[12px] text-muted-foreground">今日已打卡 · 🔥 连续 {store.streak} 天</p>
@@ -267,6 +296,7 @@ export function WarmupView({ onExit }: { onExit: () => void }) {
 
   /* 选档页 */
   if (!level) {
+    const rec = defaultLevel(store.lessons);
     return (
       <div className="anim-fade-in-up pt-2">
         <div className="flex items-center pb-3">
@@ -274,13 +304,25 @@ export function WarmupView({ onExit }: { onExit: () => void }) {
           <span className="flex-1 text-center text-[15px] font-bold">口算热身</span>
           <span className="w-10" />
         </div>
+
+        {/* 推荐档（跟随教程进度） */}
+        <button
+          type="button"
+          onClick={() => setLevel(rec)}
+          className="tap-target panel-border flex w-full items-center justify-between rounded-2xl border border-[var(--lit)]/50 bg-gradient-to-br from-[#FFF7E0] to-[#FFE9C2] px-4 py-3.5 text-left shadow-soft transition-transform active:scale-[0.985]"
+        >
+          <div>
+            <p className="text-[11.5px] font-bold text-[var(--warm)]">⭐ 按当前进度推荐</p>
+            <p className="text-[16px] font-extrabold text-foreground">{LEVEL_LABEL[rec]}档 · {POOL[rec].length} 个知识点</p>
+          </div>
+          <span className="text-2xl">🌟</span>
+        </button>
+
+        <p className="mt-4 mb-2 text-[12.5px] font-bold text-muted-foreground">或自选年级</p>
+
         <Panel className="px-5 py-6">
-          <p className="text-center text-[16px] font-extrabold text-foreground">先热热身</p>
-          <p className="mt-1 text-center text-[13px] text-muted-foreground">
-            10 题口算打底，选你所在的年级。原理先行，练完再学巧算新招。
-          </p>
-          <div className="mt-5 flex flex-col gap-2.5">
-            {(Object.keys(POOL) as WarmLevel[]).map((lv) => (
+          <div className="flex flex-col gap-2.5">
+            {WARM_LEVELS.map((lv) => (
               <button
                 key={lv}
                 type="button"
@@ -290,26 +332,76 @@ export function WarmupView({ onExit }: { onExit: () => void }) {
                 <div>
                   <p className="text-[16px] font-extrabold text-foreground">{LEVEL_LABEL[lv]}</p>
                   <p className="mt-0.5 text-[12px] text-muted-foreground">
-                    {POOL[lv].length} 个知识点 · 10 题
+                    {POOL[lv].length} 个知识点 · {mode === "count" ? `定数 ${quantity} 题` : `计时 ${duration} 秒`}
                   </p>
                 </div>
-                <span className="text-2xl">{lv === "g1" ? "🌱" : lv === "g2" ? "🧩" : "🚀"}</span>
+                <span className="text-2xl">{lv === "g1" ? "🌱" : lv === "g2" ? "🧩" : lv === "g3" ? "🚀" : lv === "g4" ? "⚡" : lv === "g5" ? "🔮" : "🎯"}</span>
               </button>
             ))}
           </div>
+        </Panel>
+
+        {/* 模式/题量/时长配置条 */}
+        <Panel className="mt-3 px-4 py-3 print-hidden">
+          <p className="text-[12.5px] font-bold text-muted-foreground">练习方式</p>
+          <div className="mt-2 flex gap-2">
+            {(["count", "time"] as Mode[]).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                className={`tap-target flex-1 rounded-xl px-3 py-2 text-[13px] font-bold transition-colors ${
+                  mode === m ? "bg-primary text-primary-foreground shadow-soft" : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {m === "count" ? "定数" : "计时挑战"}
+              </button>
+            ))}
+          </div>
+          <div className="mt-2 flex items-center gap-2">
+            <span className="w-12 shrink-0 text-[12px] text-muted-foreground">{mode === "count" ? "题量" : "时长"}</span>
+            <div className="flex flex-1 gap-2">
+              {(mode === "count" ? QUANTITIES : TIMES).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => (mode === "count" ? setQuantity(v as (typeof QUANTITIES)[number]) : setDuration(v as (typeof TIMES)[number]))}
+                  className={`tap-target flex-1 rounded-xl px-2 py-1.5 text-[13px] font-bold transition-colors ${
+                    (mode === "count" ? quantity : duration) === v ? "bg-secondary text-secondary-foreground shadow-soft" : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {mode === "count" ? `${v} 题` : `${v} 秒`}
+                </button>
+              ))}
+            </div>
+          </div>
+          <p className="mt-2 text-center text-[11.5px] text-muted-foreground">
+            {mode === "count" ? "答完即结算，错误自动进错题本" : "限时连答，练口算速度"}
+          </p>
         </Panel>
       </div>
     );
   }
 
   /* 练习页 */
+  const remainMs = mode === "time" ? Math.max(0, duration * 1000 - ms) : 0;
   return (
     <div className="anim-fade-in-up pt-2">
       <div className="flex items-center justify-between pb-3">
         <BackBtn onClick={onExit} />
-        <Pill tone="sky">{LEVEL_LABEL[level]} · 热身</Pill>
+        <Pill tone="sky">
+          {LEVEL_LABEL[level]} · {mode === "count" ? `定数 ${quantity}` : `计时 ${duration}s`}
+        </Pill>
         <span className="w-10" />
       </div>
+
+      {/* 计时倒计时条 */}
+      {mode === "time" && (
+        <div className="mb-3 flex items-center justify-between rounded-2xl border border-[var(--lit)]/40 bg-[#FFF7E0] px-3.5 py-2.5">
+          <span className="text-[13px] font-bold text-[var(--warm)]">⏱ 剩余 {fmtClock(remainMs)}</span>
+          <span className="text-[12px] text-muted-foreground">已答 {doneCount} 题</span>
+        </div>
+      )}
 
       {/* 到点引导条（第一段，非阻塞） */}
       {guideVisible && (
@@ -328,7 +420,7 @@ export function WarmupView({ onExit }: { onExit: () => void }) {
 
       <Panel className="px-4 py-6 text-center">
         <p className="mb-1 text-[12.5px] text-muted-foreground">
-          第 {Math.min(doneCount + 1, TOTAL)} / {TOTAL} 题
+          {mode === "count" ? `第 ${Math.min(doneCount + 1, quantity)} / ${quantity} 题` : `第 ${doneCount + 1} 题`}
         </p>
         {q && <p className="font-num text-[28px] font-extrabold leading-snug text-foreground">{q.text}</p>}
         {flash === "ok" && <p className="mt-2 text-[16px] font-bold text-[var(--lit)]">✓ 答对了</p>}
@@ -384,6 +476,13 @@ function fmtMs(ms: number): string {
   const s = Math.floor(ms / 1000);
   const m = Math.floor(s / 60);
   return m > 0 ? `${m} 分 ${s % 60} 秒` : `${s} 秒`;
+}
+
+/** 倒计时 mm:ss 显示 */
+function fmtClock(ms: number): string {
+  const s = Math.ceil(ms / 1000);
+  const m = Math.floor(s / 60);
+  return `${String(m).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 }
 
 /** 归一判题兜底（与 PracticeView eq 同逻辑；正常走 SMART_GENERATORS.normalizeInput） */
