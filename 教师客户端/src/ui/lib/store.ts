@@ -181,6 +181,48 @@ export function useAccountInfo(): AccountInfo {
   return acct;
 }
 
+// ── 下载中心目录预取（2026-09-29 反馈 2：启动后台加载，切到下载中心不延迟）──
+// Shell 挂载即触发拉取 store_list_available + toolbox_manifest 并缓存；
+// DownloadExtView/LaunchpadView 消费缓存（缓存未就绪时各自降级拉取）。模块级缓存避免重复请求。
+export interface StoreCatalog {
+  storeList: import("@/api").StoreList | null;
+  toolbox: import("@/api").ToolboxManifest | null;
+  /** 是否已加载过一次（失败也算，避免反复拉） */
+  loaded: boolean;
+  refresh: () => void;
+}
+let catalogCache: StoreCatalog | null = null;
+let catalogSubs = new Set<() => void>();
+function publishCatalog(next: StoreCatalog) {
+  catalogCache = next;
+  for (const sub of catalogSubs) sub();
+}
+async function loadCatalog() {
+  const [s, t] = await Promise.allSettled([api.storeListAvailable(), api.toolboxManifest()]);
+  publishCatalog({
+    storeList: s.status === "fulfilled" ? s.value : null,
+    toolbox: t.status === "fulfilled" ? t.value : null,
+    loaded: true,
+    refresh: loadCatalog,
+  });
+}
+export function useStoreCatalog(): StoreCatalog {
+  const [, force] = useState(0);
+  useEffect(() => {
+    const notify = () => force((n) => n + 1);
+    catalogSubs.add(notify);
+    return () => {
+      catalogSubs.delete(notify);
+    };
+  }, []);
+  if (!catalogCache) {
+    catalogCache = { storeList: null, toolbox: null, loaded: false, refresh: loadCatalog };
+    // 首个订阅者挂载即触发预取（后台加载，避免切到下载中心才拉）
+    void loadCatalog();
+  }
+  return catalogCache;
+}
+
 // ── 内容包安装状态：tool → 已装版本号 ──
 export interface InstalledMap {
   [pkgId: string]: string;

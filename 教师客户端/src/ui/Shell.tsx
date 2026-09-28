@@ -28,6 +28,7 @@ import {
   useNavRail,
   useProbeOnline,
   useShortcuts,
+  useStoreCatalog,
   useToolCollapse,
 } from "@/lib/store";
 import { isPinnedMenu, SIDEBAR_MENU_MAX } from "@/components/LaunchConfigDialog";
@@ -137,6 +138,8 @@ function ShellInner() {
   const [loggedIn, setLoggedIn] = useLoggedIn();
   const [probeOnline, refreshProbe] = useProbeOnline();
   const { installed, markInstalled } = useInstalledPackages();
+  // 下载中心目录预取（2026-09-29 反馈 2：启动即后台加载 manifest/toolbox，切 Tab 不延迟）
+  useStoreCatalog();
   const { shortcuts, setShortcuts, addDownloaded, togglePin, markUsed } = useShortcuts();
   const { tasks, start, history: downloadHistory, clearHistory, activeList } = useDownloadTasks();
   const [bookmarks, setBookmarks] = useBookmarks();

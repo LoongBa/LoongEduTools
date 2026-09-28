@@ -32,7 +32,7 @@ import { friendlyErr } from "@/errutil";
 import { EDU_TOOLS } from "@/lib/eduTools";
 import { formatBytes, relativeTime } from "@/lib/format";
 import { AUDIO_EXT, IMAGE_EXT, PDF_EXT, VIDEO_EXT } from "@/lib/archiveDetect";
-import { readBoolPref } from "@/lib/store";
+import { readBoolPref, useStoreCatalog } from "@/lib/store";
 import type { ActiveDownloadView } from "@/components/TopBar";
 import type { InstalledMap } from "@/lib/store";
 import type { DownloadHistoryItem, DownloadKind, LocalTextbook, Notification, StoreItem, ToolboxManifest } from "@/lib/types";
@@ -131,12 +131,12 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
   const [packages, setPackages] = useState<StoreItem[]>([]);
   // 工具清单：真实拉取（与 ToolboxPanel 同源，待办总览「需下载工具」与批量下载用）
   const [toolbox, setToolbox] = useState<ToolboxManifest | null>(null);
+  // 目录预取缓存（2026-09-29 反馈 2：Shell 启动即后台拉取，此处直接消费，切 Tab 不延迟；
+  // 缓存未就绪时仍走下方自身 useEffect 拉取兜底）
+  const catalog = useStoreCatalog();
   useEffect(() => {
-    void api
-      .toolboxManifest()
-      .then(setToolbox)
-      .catch(() => { /* 清单不可达：待办总览工具项降级为空 */ });
-  }, []);
+    if (catalog.toolbox) setToolbox(catalog.toolbox);
+  }, [catalog.toolbox]);
   // D11 §6 素材归档：已归档索引清单（P3 · archive_list 真实拉取）
   const [archives, setArchives] = useState<ArchiveEntry[]>([]);
   const refreshArchives = useCallback(() => {
@@ -239,9 +239,55 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
       .catch(() => setPhase("error"));
   };
   useEffect(() => {
-    refresh();
+    // 预取缓存就绪 → 直接填充（无切换延迟）；未就绪 → 走自身拉取（首挂兜底）
+    if (catalog.storeList) {
+      setPackages(
+        catalog.storeList.packages.map((p: import("@/api").StoreItem) => ({
+          id: p.package_id,
+          name: p.name,
+          version: p.package_version,
+          package_type: p.package_type as "app" | "data",
+          size_bytes: p.size_bytes ?? 0,
+          download_url: p.download_url ?? "",
+          checksum: p.checksum ?? "",
+          updated_at: catalog.storeList!.updated_at,
+          categories: p.categories,
+          description: p.description ?? undefined,
+          installed: p.installed,
+          latest_version: p.package_version,
+          updatable: p.update_available,
+        })),
+      );
+      setPhase("ready");
+    } else {
+      refresh();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // 缓存更新（如加载完成）→ 同步到本地 packages（避免旧数据残留）
+  useEffect(() => {
+    if (catalog.storeList && catalog.loaded) {
+      setPackages(
+        catalog.storeList.packages.map((p: import("@/api").StoreItem) => ({
+          id: p.package_id,
+          name: p.name,
+          version: p.package_version,
+          package_type: p.package_type as "app" | "data",
+          size_bytes: p.size_bytes ?? 0,
+          download_url: p.download_url ?? "",
+          checksum: p.checksum ?? "",
+          updated_at: catalog.storeList!.updated_at,
+          categories: p.categories,
+          description: p.description ?? undefined,
+          installed: p.installed,
+          latest_version: p.package_version,
+          updatable: p.update_available,
+        })),
+      );
+      setPhase("ready");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalog.storeList, catalog.loaded]);
 
   const switchSection = (s: Section) => {
     setSection(s);
@@ -265,7 +311,9 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
 
   // ── 待办总览：需下载 / 缺数据 / 数据有更新 / 有更新 ──
   const todo = useMemo(() => {
-    const needPkg = items.filter((i) => !i.installed && i.package_type === "data" && (i.categories?.length ?? 0) > 0);
+    // 需下载内容包 = 内容区（categories 不含「工具」）未安装项——含 app 与 data 两种
+    // package_type（2026-09-29 实测：manifest 3 个未装包全为 app，原只统计 data 漏计为 0）。
+    const needPkg = items.filter((i) => !i.installed && sectionOf(i) === "content");
     const needTool = (toolbox?.tools ?? []).filter((t) => t.recommend && t.download_url);
     // 缺数据 = 工具要求的配套包「已在服务端发布且本机未装」——配套包未发布（requiresPkgId
     // 在 manifest 中不存在）时补无可补，不计入缺数据，避免「一键补全」加 0 个假动作
@@ -282,6 +330,9 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
   }, [items, installed, toolbox]);
 
   const batch = (list: { id: string; name: string; version: string }[], kind: "pkg" | "tool") => {
+    // 空列表直接返回：避免「一键下载/一键补全」对空分区弹「已加入 0 个下载任务」假动作
+    // （2026-09-29 实测：needPkg 空而 needTool 有 1 项时，首个 batch 弹 0 个误导）。
+    if (list.length === 0) return;
     // 鉴权同 handleDownload：移交后端按源判定，前端不拦截匿名下载。
     for (const x of list) {
       if (kind === "pkg") {

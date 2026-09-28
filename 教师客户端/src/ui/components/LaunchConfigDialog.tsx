@@ -165,7 +165,7 @@ export function LaunchConfigDialog({ itemId, name, config, menuPinnedCount = 0, 
                     ? "border-brand bg-brand-soft font-medium text-brand"
                     : menuFull
                       ? "border-border bg-muted/40 text-muted-foreground/60"
-                      : "border-border bg-muted/40 text-muted-foreground hover:bg-accent",
+                      : "border-input bg-card text-foreground hover:bg-accent",
                 )}
               >
                 <Rocket size={14} aria-hidden />
@@ -182,7 +182,7 @@ export function LaunchConfigDialog({ itemId, name, config, menuPinnedCount = 0, 
                   "flex w-full cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-[13px] transition-colors",
                   pinnedQuick
                     ? "border-brand bg-brand-soft font-medium text-brand"
-                    : "border-border bg-muted/40 text-muted-foreground hover:bg-accent",
+                    : "border-input bg-card text-foreground hover:bg-accent",
                 )}
               >
                 <LayoutGrid size={14} aria-hidden />

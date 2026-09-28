@@ -600,7 +600,7 @@ function QuickLaunch({
                       {badge === "need" ? <Download size={12} aria-hidden /> : <RefreshCw size={12} aria-hidden />}
                     </button>
                   ) : null}
-                  <GearBtn itemId={itemId} name={t.name} onConfig={openCfg} pinned={isPinnedMenu(configs[itemId]) || configs[itemId]?.pinnedQuick} />
+                  {!busy && <GearBtn itemId={itemId} name={t.name} onConfig={openCfg} pinned={isPinnedMenu(configs[itemId]) || configs[itemId]?.pinnedQuick} offset={32} />}
                 </div>
               );
             })}
@@ -914,7 +914,7 @@ function CardIcon({
   );
 }
 
-/** 卡片右上角火箭：hover/focus 出现，打开一键启动配置弹窗；pinned 时常亮（已设为快捷启动） */
+/** 卡片右上角火箭：常显（配置入口可见），点击打开一键启动配置弹窗；pinned 时品牌色（已设为快捷启动） */
 function GearBtn({
   itemId,
   name,
@@ -935,8 +935,8 @@ function GearBtn({
       aria-label={`配置 ${name}`}
       title={pinned ? "已设为快捷启动 · 点击修改配置" : "设为/取消快捷启动 · 修改图标与名称"}
       className={cn(
-        "absolute top-2.5 flex size-6 items-center justify-center rounded-md transition-all hover:bg-accent focus-visible:opacity-100",
-        pinned ? "text-brand opacity-100" : "text-muted-foreground opacity-0 group-hover:opacity-100",
+        "absolute top-2.5 flex size-6 items-center justify-center rounded-md transition-all hover:bg-accent",
+        pinned ? "text-brand" : "text-muted-foreground",
       )}
       style={{ right: `calc(0.625rem + ${offset}px)` }}
       onClick={() => onConfig(itemId, name)}

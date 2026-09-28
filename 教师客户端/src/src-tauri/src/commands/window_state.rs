@@ -18,24 +18,39 @@ fn state_path(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
     Ok(dir.join("window_state.json"))
 }
 
-/// setup 期调用：若存档存在且坐标在任一屏内，恢复 main 窗口位置。
-/// 越界/损坏/无存档 → 保持默认（Tauri 居中）静默跳过，绝不 panic。
+/// setup 期调用：有存档且坐标合法 → 恢复上次位置；无存档/损坏 → **显式居中**
+/// （2026-09-29 实测反馈：Tauri 窗口默认不居中，需显式 `center()`；原实现无存档
+/// 时静默跳过导致首次启动落系统默认位而非屏幕中央）。越界坐标 → 兜底居中。
 pub fn restore_position(app: &tauri::AppHandle) {
     let Some(w) = app.get_webview_window("main") else {
         return;
     };
     let path = match state_path(app) {
         Ok(p) => p,
-        Err(_) => return,
+        Err(_) => {
+            let _ = w.center();
+            return;
+        }
     };
     let raw = match std::fs::read_to_string(path) {
         Ok(r) => r,
-        Err(_) => return,
+        Err(_) => {
+            let _ = w.center();
+            return;
+        }
     };
     let pos: WindowPos = match serde_json::from_str(&raw) {
         Ok(p) => p,
-        Err(_) => return,
+        Err(_) => {
+            let _ = w.center();
+            return;
+        }
     };
+    // 坐标越界（不在任何显示器工作区内）→ 兜底居中
+    if pos.x.abs() > 100_000 || pos.y.abs() > 100_000 {
+        let _ = w.center();
+        return;
+    }
     let _ = w.set_position(tauri::PhysicalPosition::new(pos.x, pos.y));
 }
 
