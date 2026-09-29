@@ -11,6 +11,7 @@ import { buildLessonIndex, suggestWeek, topWeakMethods } from "../src/lib/weak.t
 import { buildHandout, generatePractice, hashSeed } from "../src/lib/handout.ts";
 import { currentStage, defaultLevel, mistKey, pickType, POOL, QUANTITIES, stageToLevel, TIMES, WARM_LEVELS } from "../src/lib/warmup.ts";
 import { applyRetry, reviewQueue } from "../src/lib/review.ts";
+import { buildTrend, mergeReviewDay, mergeWarmDay, pruneDaily } from "../src/lib/report.ts";
 import { STAGES } from "../src/data/stages.generated.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -581,6 +582,45 @@ let l12bad = 0;
   if (arr.length !== 2) { l12bad++; console.log("  L12 reviewQueue-isolation FAIL"); }
 }
 
+// ---------- L13：V1.4 家长报告统计纯逻辑（每日聚合/滚动裁剪/趋势序列） ----------
+let l13bad = 0;
+{
+  // mergeWarmDay：无既有 → 点本身；有既有 → 四字段聚合；undefined 字段默认 0
+  const m1 = mergeWarmDay(undefined, { total: 10, correct: 8, sec: 60, sessions: 1 });
+  if (m1.total !== 10 || m1.correct !== 8 || m1.sec !== 60 || m1.sessions !== 1) { l13bad++; console.log("  L13 mergeWarmDay-fresh FAIL"); }
+  const m2 = mergeWarmDay(m1, { total: 5, correct: 5, sec: 30, sessions: 1 });
+  if (m2.total !== 15 || m2.correct !== 13 || m2.sec !== 90 || m2.sessions !== 2) { l13bad++; console.log("  L13 mergeWarmDay-agg FAIL"); }
+  const m3 = mergeWarmDay({ total: 1, correct: 1, sec: undefined, sessions: 1 }, { total: 2, correct: 2, sec: 3, sessions: 1 });
+  if (m3.sec !== 3 || isNaN(m3.sec)) { l13bad++; console.log("  L13 mergeWarmDay-undefined-sec FAIL"); }
+
+  // mergeReviewDay：聚合
+  const r1 = mergeReviewDay(undefined, { mastered: 2, retried: 1 });
+  const r2 = mergeReviewDay(r1, { mastered: 3, retried: 0 });
+  if (r2.mastered !== 5 || r2.retried !== 1) { l13bad++; console.log("  L13 mergeReviewDay FAIL"); }
+
+  // pruneDaily：超限裁剪 / 恰 N 边界 / 畸形 key 自洽
+  const keys60 = Array.from({ length: 60 }, (_, i) => `2026-${String(Math.floor(i / 28) + 1).padStart(2, "0")}-${String((i % 28) + 1).padStart(2, "0")}`);
+  if (pruneDaily(keys60, 60).length !== 0) { l13bad++; console.log("  L13 pruneDaily-boundary FAIL（恰 60 应删 0）"); }
+  if (pruneDaily(keys60, 30).length !== 30) { l13bad++; console.log("  L13 pruneDaily-30 FAIL"); }
+  if (pruneDaily(["2026-09-01", "2026-09-03", "2026-09-02"], 2).sort().join() !== "2026-09-01") { l13bad++; console.log("  L13 pruneDaily-oldest FAIL（应删最旧 09-01）"); }
+  if (pruneDaily(["2026-9-5", "2026-09-06"], 1).length !== 1) { l13bad++; console.log("  L13 pruneDaily-malformed FAIL（畸形 key 不崩）"); }
+
+  // buildTrend：升序 / 长度恰 days / 补缺失日 / 窗口外剔除
+  const daily = {
+    "2026-09-10": { total: 10, correct: 9, sec: 60, sessions: 1 },
+    "2026-09-12": { total: 10, correct: 5, sec: 60, sessions: 1 },
+    "2026-08-01": { total: 10, correct: 10, sec: 60, sessions: 1 }, // 窗口外应剔除
+  };
+  const t = buildTrend(daily, 5, "2026-09-12");
+  if (t.length !== 5) { l13bad++; console.log(`  L13 buildTrend-length: ${t.length}（应 5）`); }
+  if (t[0].key !== "2026-09-08" || t[4].key !== "2026-09-12") { l13bad++; console.log("  L13 buildTrend-window FAIL（升序 09-08→09-12）"); }
+  if (t[0].rate !== null || t[1].rate !== null) { l13bad++; console.log("  L13 buildTrend-missing FAIL（缺失日 rate=null）"); }
+  if (t[2].rate !== 0.9) { l13bad++; console.log(`  L13 buildTrend-rate: ${t[2].rate}（应 0.9）`); }
+  if (t[4].rate !== 0.5) { l13bad++; console.log("  L13 buildTrend-rate-last FAIL"); }
+  if (t.some((x) => x.key === "2026-08-01")) { l13bad++; console.log("  L13 buildTrend-outside-window FAIL（窗口外未剔除）"); }
+  if (buildTrend(daily, 5, "bad-key").length !== 0) { l13bad++; console.log("  L13 buildTrend-bad-end FAIL"); }
+}
+
 // ---------- 输出 ----------
 console.log("== smart_gen 引擎单测 ==");
 console.log(`生成器数: ${NAMES.length} 个（${new Set(NAMES.map((n) => n.split("_").slice(0, -1).join("_"))).size} 方法 × 3 档）`);
@@ -596,7 +636,8 @@ console.log(`L9 handout 纯逻辑: ${l9bad === 0 ? "全部通过" : `${l9bad} �
 console.log(`L10 教程库→生成器契约: ${l10bad === 0 ? "全部通过" : `${l10bad} 项失败`}`);
 console.log(`L11 口算热身增强纯逻辑: ${l11bad === 0 ? "全部通过" : `${l11bad} 项失败`}`);
 console.log(`L12 错题重练纯逻辑: ${l12bad === 0 ? "全部通过" : `${l12bad} 项失败`}`);
+console.log(`L13 报告统计纯逻辑: ${l13bad === 0 ? "全部通过" : `${l13bad} 项失败`}`);
 const l2fail = l2total - l2ok;
-const totalBad = failed + invalid + l2fail + l4bad + kouInvalid + l5bad + l6bad + l7bad + l8bad + l9bad + l10bad + l11bad + l12bad;
+const totalBad = failed + invalid + l2fail + l4bad + kouInvalid + l5bad + l6bad + l7bad + l8bad + l9bad + l10bad + l11bad + l12bad + l13bad;
 console.log(`FAIL 计数: ${totalBad}`);
 process.exit(totalBad ? 1 : 0);

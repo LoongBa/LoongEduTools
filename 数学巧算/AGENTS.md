@@ -12,7 +12,7 @@
 - 初始版本 **V0.1.0**（用户定夺：V0.1.0 起始迭代）；唯一权威字段 = `src/package.json` 的 `version`（发布/迭代时同步修改）。
 - 升级规则：**微调（bug fix / 样式 / 文案）→ 升子版本号**；**较大调整（新功能 / 交互改进）→ 升次版本号**；**主版本号升级必须经用户同意**。
 - tag 命名：`数学巧算-v0.3.x`；打 tag 前先征得用户同意。
-- 当前版本 **V1.3.0**（2026-09-29：错题重练闭环——HomeView 入口卡 + ReviewView 逐题原题重做 + 答对移出/答错保留 + 结算/空态 + 防沉迷联动，错题只进不出缺口补齐；engine L12 + 冒烟扩展）。
+- 当前版本 **V1.4.0**（2026-09-29：家长报告增强——口算热身面板〔六档分布 + warmupMist 薄弱 TOP3 + 近 14 天进步曲线〕+ 错题重练面板〔近 7 天掌握/累计〕，store v5 warmupDaily/reviewDaily 每日聚合滚动 120 天；engine L13 + 冒烟扩展）。
 
 ## 三架构产品中的位置
 
@@ -123,6 +123,6 @@ node scripts/gen_stages.mjs   # content/*.json → src/data/stages.generated.ts
 - [x] 打印讲义增强（题单 seed 固定〔同讲恒同题，复练价值〕+ 每档勾选/题数 1-10 + 换一组题/恢复默认 + 题单组别页脚；engine L9b/L9c 单测 + 冒烟扩展）→ **V1.1.0**
 - [x] 口算热身增强（六档知识点池 g1-g6 全启用〔g4 简算/小数、g5 小数/分数、g6 分数/百分数/比值〕+ 跟随教程阶段默认档〔推荐档标记〕+ 定数 5/10/20 与计时 30/60/120 双模式 + 薄弱优先出题〔warmupMist 加权，封顶 3〕；engine L11 单测 + 冒烟扩展）→ **V1.2.0**
 - [x] 错题重练闭环（HomeView 入口卡 + ReviewView 逐题原题重做〔normalizeInput 判题〕+ 答对移出错题本/答错保留计数 + 结算〔全部掌握〕/空态表扬 + 防沉迷联动〔逐题 addPlayed + 结算组后二选，不重复打卡〕；engine L12 单测 + 冒烟闭环/答错保留/防沉迷固化断言）→ **V1.3.0**
-- [ ] 家长报告增强（热身进步曲线等；接 V1.2 热身数据）【后续迭代】
-- [ ] 候选：lib/judge.ts 提取 eqFallback/getNormalizer 共享（三视图统一引用）【V1.4 候选】
+- [x] 家长报告增强（口算热身面板〔六档使用分布 + warmupMist 薄弱 TOP3 + 近 14 天进步曲线，补齐 §2.2「进步曲线」〕+ 错题重练面板〔近 7 天掌握/累计〕；store v5 warmupDaily/reviewDaily 按日聚合滚动 120 天 + 打印分页适配；engine L13 单测 + 冒烟扩展）→ **V1.4.0**
+- [ ] 候选：lib/judge.ts 提取 eqFallback/getNormalizer 共享（三视图统一引用）【V1.4+ 候选】
 - [ ] 候选：schema v5 mistakes 加 type? 字段，重练答对联动 warmupMist 递减【V1.4+ 候选】

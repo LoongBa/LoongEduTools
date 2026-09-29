@@ -375,6 +375,11 @@ server.listen(0, "127.0.0.1", async () => {
     ok("家长报告含复述文本（跨页面持久化）", /凑整/.test(reportBody));
     ok("家长报告薄弱方法 Panel 渲染", (await page.locator("text=薄弱方法").count()) > 0);
     ok("家长报告下周建议 Panel 渲染", (await page.locator("text=下周建议").count()) > 0);
+    // V1.4 热身面板：六档分布（前序热身已生成 warmupDaily + practiced）+ 进步曲线
+    ok("家长报告热身面板渲染（六档/曲线）", (await page.locator("text=口算热身").count()) > 0 && (await page.locator("text=近 14 天正确率").count()) > 0);
+    ok("家长报告热身曲线容器存在", (await page.locator("[aria-label='近14天正确率曲线']").count()) > 0);
+    // V1.4 重练面板：前序重练段已清空 8 题 → reviewDaily 有记录
+    ok("家长报告重练面板渲染（累计掌握）", /错题重练/.test(await page.evaluate(() => document.body.innerText)));
 
     // 防沉迷设置区
     await page.goto("file:///" + DIST.replace(/\\/g, "/") + "/index.html", { waitUntil: "load" });

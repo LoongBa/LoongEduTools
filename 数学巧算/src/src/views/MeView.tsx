@@ -242,7 +242,7 @@ export function MeView({ onBack }: { onBack: () => void }) {
         </p>
       </Panel>
 
-      <p className="pb-2 text-center text-[11px] text-muted-foreground">巧算乐学 · V1.3.0</p>
+      <p className="pb-2 text-center text-[11px] text-muted-foreground">巧算乐学 · V1.4.0</p>
     </div>
   );
 }

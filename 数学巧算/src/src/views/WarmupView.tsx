@@ -45,7 +45,7 @@ function getNormalizer(): ((input: string, answer: number | string) => boolean) 
 }
 
 export function WarmupView({ onExit }: { onExit: () => void }) {
-  const { store, recordPractice, pushMistake, addWarmupMist, dueInfo, extendDue, enoughNow, addPlayed, locked } = useProgress();
+  const { store, recordPractice, pushMistake, addWarmupMist, recordWarmupDaily, dueInfo, extendDue, enoughNow, addPlayed, locked } = useProgress();
   const [level, setLevel] = useState<WarmLevel | null>(null); // null = 选档页
   const [mode, setMode] = useState<Mode>("count");
   const [quantity, setQuantity] = useState<(typeof QUANTITIES)[number]>(10);
@@ -126,11 +126,13 @@ export function WarmupView({ onExit }: { onExit: () => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ms, mode, finished, level, duration]);
 
-  /* B3 修复：结算记练习移入 effect（题量累计已在完成路径内） */
+  /* B3 修复：结算记练习移入 effect（题量累计已在完成路径内）；V1.4 家长报告每日聚合同处写入（N4：total/correct/sec 局部算一次共用） */
   useEffect(() => {
     if (finished && level) {
       const total = mode === "count" ? quantity : doneCount;
-      recordPractice(`warmup:${level}`, "basic", correct, total, Math.round(ms / 1000));
+      const sec = Math.round(ms / 1000);
+      recordPractice(`warmup:${level}`, "basic", correct, total, sec);
+      recordWarmupDaily({ total, correct, sec, sessions: 1 });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finished]);

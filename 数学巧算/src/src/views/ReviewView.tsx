@@ -3,6 +3,7 @@
 // 判题：window.SMART_GENERATORS.normalizeInput（巧算引擎先加载，运行时安全）+ eqFallback 兜底
 // 防沉迷：答对推进 addPlayed(1) 逐题累计；dueInfo 引导条 + 结算组后二选；自律锁拦截
 // 不 recordPractice：重练不重复打卡、不新增 lessons 记录（打卡日由新练习驱动）
+// V1.4：结算（队列空）经 useEffect([finished]) 写 reviewDaily（Oracle B1——setTimeout 内联闭包会漏记最后一道的 mastered）
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BackBtn, Btn, Panel, Stars } from "@/components/ui-kit";
 import { useProgress } from "@/lib/store";
@@ -18,11 +19,12 @@ function getNormalizer(): ((input: string, answer: number | string) => boolean) 
 }
 
 export function ReviewView({ onExit }: { onExit: () => void }) {
-  const { store, retryMistake, dueInfo, extendDue, enoughNow, addPlayed, locked } = useProgress();
+  const { store, retryMistake, recordReviewDaily, dueInfo, extendDue, enoughNow, addPlayed, locked } = useProgress();
   // 队列快照：进入时固定（单视图架构下无并发修改，Oracle ② 确认自洽）
   const [queue, setQueue] = useState<ReviewMistake[]>(() => reviewQueue(store.mistakes));
   const initialTotalRef = useRef(queue.length);
   const [mastered, setMastered] = useState(0);
+  const [retriedCount, setRetriedCount] = useState(0); // V1.4 本次答错次数（结算统计用）
   const [input, setInput] = useState("");
   const [flash, setFlash] = useState<"ok" | "wrong" | null>(null);
   const [wrongInfo, setWrongInfo] = useState<string | null>(null);
@@ -33,6 +35,14 @@ export function ReviewView({ onExit }: { onExit: () => void }) {
   const shownDueRef = useRef(false);
 
   const current = queue[0];
+
+  /* V1.4 结算写入 reviewDaily（useEffect 模式，Oracle B1——setTimeout 内联闭包漏记队列清空题的 mastered +1） */
+  useEffect(() => {
+    if (finished) {
+      recordReviewDaily({ mastered, retried: retriedCount });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finished]);
 
   /* 自律锁检查（mount 时） */
   useEffect(() => {
@@ -88,6 +98,7 @@ export function ReviewView({ onExit }: { onExit: () => void }) {
         setFlash("wrong");
         setWrongInfo(`答案是 ${current.answer}`);
         retryMistake(current.key, false); // 保留 + wrongCount+1
+        setRetriedCount((c) => c + 1);
         window.setTimeout(() => setFlash(null), 400);
       }
     },

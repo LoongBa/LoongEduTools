@@ -4,6 +4,7 @@
 // V0.3：version 1→2 迁移（补 guard/selfDaily/selfStreak/selfLocked 默认值，B3 修订 load 硬编码 version:1）
 // V0.4：version 2→3（LessonRecord 增 recite/reciteCount 可选字段，无需逐讲补值；saveRecite 走 lib/recite.ts 纯函数）
 // V1.2：version 3→4（新增 warmupMist 口算热身错题知识点计数，load 补默认 {}，类型联合 1|2|3|4）
+// V1.4：version 4→5（新增 warmupDaily/reviewDaily 家长报告每日聚合，load 显式补默认 {}，滚动 120 天）
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
@@ -21,6 +22,7 @@ import {
 } from "@/lib/guard";
 import { applyRecite, type ReciteInfo } from "@/lib/recite";
 import { applyRetry } from "@/lib/review";
+import { mergeReviewDay, mergeWarmDay, pruneDaily, type ReviewDayPoint, type WarmDayPoint } from "@/lib/report";
 import { mistKey, type WarmLevel } from "@/lib/warmup";
 
 const KEY = "redtools.qiaosuanlein.v1";
@@ -52,6 +54,10 @@ export interface StoreShape {
   mistakes: { key: string; lessonId: string; expr: string; answer: number | string; wrongCount: number }[];
   /** V1.2 口算热身错题知识点计数（key = mistKey(level,type)，如 "g6:g6_pct"）——供热身薄弱优先出题加权 */
   warmupMist: Record<string, number>;
+  /** V1.4 口算热身每日聚合（key = YYYY-MM-DD，滚动 120 天）——供热身进步曲线 */
+  warmupDaily: Record<string, WarmDayPoint>;
+  /** V1.4 错题重练每日聚合（key = YYYY-MM-DD，滚动 120 天）——供重练面板统计 */
+  reviewDaily: Record<string, ReviewDayPoint>;
   /** 防沉迷：今日练习秒数（展示用；跨日由 guard.todayReset 同步清零） */
   todaySec: number;
   /** 防沉迷 guard（对齐契约 §4 字段名，学科类口径=题量档） */
@@ -65,7 +71,7 @@ export interface StoreShape {
   /** 设置 */
   settings: { sound: boolean };
   /** 版本迁移位 */
-  version: 1 | 2 | 3 | 4;
+  version: 1 | 2 | 3 | 4 | 5;
 }
 
 function emptyStore(): StoreShape {
@@ -75,13 +81,15 @@ function emptyStore(): StoreShape {
     streak: 0,
     mistakes: [],
     warmupMist: {},
+    warmupDaily: {},
+    reviewDaily: {},
     todaySec: 0,
     guard: { ...GUARD_DEFAULT, today: todayStr() },
     selfDaily: [],
     selfStreak: 0,
     selfLocked: false,
     settings: { sound: true },
-    version: 4,
+    version: 5,
   };
 }
 
@@ -111,12 +119,14 @@ function load(): StoreShape {
       checkin: parsed.checkin || [],
       mistakes: parsed.mistakes || [],
       warmupMist: parsed.warmupMist || {},
+      warmupDaily: parsed.warmupDaily || {}, // V1.4 显式补默认（Oracle I1，防旧数据 null 覆盖）
+      reviewDaily: parsed.reviewDaily || {},
       todaySec: crossedDay ? 0 : parsed.todaySec || 0,
       guard,
       selfDaily: parsed.selfDaily || [],
       selfStreak: parsed.selfStreak || 0,
       selfLocked,
-      version: 4,
+      version: 5,
     };
   } catch {
     return emptyStore();
@@ -154,6 +164,10 @@ export interface ProgressApi {
   addWarmupMist: (level: WarmLevel, type: string) => void;
   /** V1.3 错题重练结果：答对 → 移出错题本（掌握）；答错 → wrongCount+1（保留）。applyRetry 唯一逻辑源 */
   retryMistake: (key: string, correct: boolean) => void;
+  /** V1.4 口算热身每日聚合写入（mergeWarmDay 今日 + pruneDaily 120 天上限） */
+  recordWarmupDaily: (point: WarmDayPoint) => void;
+  /** V1.4 错题重练每日聚合写入（mergeReviewDay 今日 + pruneDaily 120 天上限） */
+  recordReviewDaily: (point: ReviewDayPoint) => void;
   /** 清空全部数据 */
   clearAll: () => void;
   /** 更新设置 */
@@ -250,6 +264,28 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  /* ---------- V1.4 家长报告每日聚合（纯逻辑在 lib/report.ts，store 只做持久化接线） ---------- */
+
+  const DAILY_MAX = 120; // Oracle I3：整学期 ≈ 126-140 天，120 天覆盖 + 数据量 ~8.4KB 可忽略
+
+  const recordWarmupDaily = useCallback((point: WarmDayPoint) => {
+    setStore((s) => {
+      const key = todayStr();
+      const warmupDaily = { ...s.warmupDaily, [key]: mergeWarmDay(s.warmupDaily[key], point) };
+      for (const k of pruneDaily(Object.keys(warmupDaily), DAILY_MAX)) delete warmupDaily[k];
+      return { ...s, warmupDaily };
+    });
+  }, []);
+
+  const recordReviewDaily = useCallback((point: ReviewDayPoint) => {
+    setStore((s) => {
+      const key = todayStr();
+      const reviewDaily = { ...s.reviewDaily, [key]: mergeReviewDay(s.reviewDaily[key], point) };
+      for (const k of pruneDaily(Object.keys(reviewDaily), DAILY_MAX)) delete reviewDaily[k];
+      return { ...s, reviewDaily };
+    });
+  }, []);
+
   const clearAll = useCallback(() => {
     setStore(emptyStore());
   }, []);
@@ -325,6 +361,8 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       pushMistake,
       addWarmupMist,
       retryMistake,
+      recordWarmupDaily,
+      recordReviewDaily,
       clearAll,
       setSetting,
       setGuardPref,
@@ -336,7 +374,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       addPlayed,
       saveRecite,
     }),
-    [store, recordPractice, pushMistake, addWarmupMist, retryMistake, clearAll, setSetting, setGuardPref, dueInfo, extendDue, enoughNow, locked, selfStreakCount, addPlayed, saveRecite],
+    [store, recordPractice, pushMistake, addWarmupMist, retryMistake, recordWarmupDaily, recordReviewDaily, clearAll, setSetting, setGuardPref, dueInfo, extendDue, enoughNow, locked, selfStreakCount, addPlayed, saveRecite],
   );
 
   return <ProgressContext.Provider value={api}>{children}</ProgressContext.Provider>;

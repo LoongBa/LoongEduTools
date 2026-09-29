@@ -279,6 +279,15 @@ html.dark .panel-border {
     break-inside: avoid;
     page-break-inside: avoid;
   }
+  /* V1.4 家长报告趋势面板：panel 可分页（14 条曲线 + 六档条易超 A4 一页），单条 bar 防切页（Oracle I4） */
+  .report-root .trend-panel {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+  .report-root .trend-panel .trend-bar {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
   .report-root > * {
     break-after: auto;
   }
@@ -311,6 +320,22 @@ html.dark .panel-border {
     break-before: page;
     page-break-before: always;
   }
+}
+
+/* ---------- V1.4 家长报告趋势条形（屏幕态） ---------- */
+.trend-bar {
+  width: 100%;
+  min-width: 6px;
+  border-radius: 4px 4px 0 0;
+}
+.trend-bar-high { background-color: var(--lit); }
+.trend-bar-mid { background-color: var(--warm); }
+.trend-bar-low { background-color: #f0a08a; }
+/* 无数据占位：灰底 + 边框（B&W 打印可辨识，Oracle I4——不只靠色） */
+.trend-bar-empty {
+  background-color: var(--muted);
+  border: 1px dashed #d4c8b0;
+  opacity: 0.6;
 }
 
 /* 屏幕态规则（V0.6 修正 V0.4 遗留：这些规则此前误入 @media print 块内，导致屏上不生效） */

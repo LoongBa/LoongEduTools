@@ -1,10 +1,14 @@
-// 数学巧算 · 家长报告：今日反馈 / 近 7 天 / 阶段掌握度 / 错题摘要（只读本地数据，不写任何 store 字段）
+// 数学巧算 · 家长报告：今日反馈 / 近 7 天 / 阶段掌握度 / 错题摘要 / 薄弱方法 / 下周建议 / 原理复述
+// V1.4：新增 🏃 口算热身面板（六档分布 + warmupMist 薄弱 TOP3 + 近 14 天进步曲线）+ 🔁 错题重练面板
+// 只读本地数据，不写任何 store 字段
 // 打印：window.print + @media print（styles.css），对齐数独思维 v1.23；ReportView 条件渲染保证 print 时 DOM 仅报告
 import { useMemo } from "react";
 import { BackBtn, Btn, Panel, Pill, ProgressBar } from "@/components/ui-kit";
 import { STAGES } from "@/data/stages.generated";
 import { useProgress } from "@/lib/store";
 import { buildLessonIndex, suggestWeek, topWeakMethods } from "@/lib/weak";
+import { LEVEL_LABEL, WARM_LEVELS } from "@/lib/warmup";
+import { buildTrend } from "@/lib/report";
 
 export function ReportView({ onBack }: { onBack: () => void }) {
   const { store } = useProgress();
@@ -72,6 +76,44 @@ export function ReportView({ onBack }: { onBack: () => void }) {
   }, [store.lessons]);
 
   const recentMistakes = useMemo(() => store.mistakes.slice(0, 10), [store.mistakes]);
+
+  // V1.4 口算热身面板：六档使用分布（all-time practiced）+ warmupMist 薄弱 TOP3 + 近 14 天进步曲线
+  const warmLevelRows = useMemo(
+    () =>
+      WARM_LEVELS.map((lv) => ({
+        lv,
+        label: LEVEL_LABEL[lv],
+        practiced: store.lessons["warmup:" + lv]?.practiced || 0,
+      })).filter((x) => x.practiced > 0),
+    [store.lessons],
+  );
+  const warmMistTop = useMemo(
+    () =>
+      Object.entries(store.warmupMist)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([k, count]) => {
+          const [, type] = k.split(":", 2); // Oracle N2 防御
+          return { type, name: kouName(type), count };
+        }),
+    [store.warmupMist],
+  );
+  const warmTrend = useMemo(() => buildTrend(store.warmupDaily, 14, todayKey), [store.warmupDaily, todayKey]);
+  // V1.4 错题重练面板：近 7 天 + 全表累计
+  const reviewRows = useMemo(() => {
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i));
+      const key = todayStr(d);
+      const p = store.reviewDaily[key];
+      return { key, mastered: p?.mastered || 0, retried: p?.retried || 0 };
+    });
+    const sum = Object.values(store.reviewDaily).reduce(
+      (a, p) => ({ mastered: a.mastered + p.mastered, retried: a.retried + p.retried }),
+      { mastered: 0, retried: 0 },
+    );
+    return { days, sum };
+  }, [store.reviewDaily]);
 
   // V0.4 原理复述：STAGES 反查 title/grade（store.lessons 只存 key），recite.date 倒序（YYYY-MM-DD localeCompare 可靠）
   const reciteRows = useMemo(() => {
@@ -171,6 +213,56 @@ export function ReportView({ onBack }: { onBack: () => void }) {
           </div>
         </Panel>
 
+        {/* V1.4 口算热身面板（六档分布 + 薄弱 TOP3 + 近 14 天进步曲线） */}
+        <Panel className="trend-panel mb-4 px-5 py-4">
+          <p className="text-[14px] font-bold text-foreground">
+            🏃 口算热身 <span className="text-[12px] text-muted-foreground">（六档分布 · 薄弱知识点 · 近 14 天正确率）</span>
+          </p>
+          {warmLevelRows.length === 0 && (
+            <p className="mt-3 text-[13px] text-muted-foreground">还没做过口算热身——做完一组后在这里看进步。</p>
+          )}
+          {warmLevelRows.length > 0 && (
+            <>
+              <div className="mt-3 flex flex-col gap-2">
+                {warmLevelRows.map((w) => (
+                  <div key={w.lv} className="flex items-center gap-2.5">
+                    <span className="w-12 shrink-0 text-[12.5px] font-semibold text-muted-foreground">{w.label}</span>
+                    <div className="min-w-0 flex-1">
+                      <ProgressBar value={Math.min(w.practiced / 200, 1)} tone="primary" className="mt-1" />
+                    </div>
+                    <span className="shrink-0 text-[11.5px] text-muted-foreground">{w.practiced} 题</span>
+                  </div>
+                ))}
+              </div>
+              {warmMistTop.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {warmMistTop.map((t) => (
+                    <Pill key={t.type} tone="warm">{t.name} · 错 {t.count} 次</Pill>
+                  ))}
+                </div>
+              )}
+              <div className="mt-3 flex items-end justify-between gap-1" aria-label="近14天正确率曲线">
+                {warmTrend.map((t) => (
+                  <div
+                    key={t.key}
+                    className="flex flex-1 flex-col items-center gap-1"
+                    title={`${t.key}${t.rate === null ? "（未练习）" : ` 正确率 ${Math.round(t.rate * 100)}% · ${t.total} 题`}`}
+                  >
+                    <div
+                      className={
+                        "trend-bar " +
+                        (t.rate === null ? "trend-bar-empty" : t.rate >= 0.9 ? "trend-bar-high" : t.rate >= 0.6 ? "trend-bar-mid" : "trend-bar-low")
+                      }
+                      style={{ height: t.rate === null ? 4 : Math.max(8, Math.round(t.rate * 56)) }}
+                    />
+                    <span className="text-[10px] text-muted-foreground">{Number(t.key.slice(8))}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </Panel>
+
         {/* V0.5 薄弱方法 TOP3（不动 store，纯聚合展示；or​phan 行隐藏） */}
         <Panel className="mb-4 px-5 py-4">
           <p className="text-[14px] font-bold text-foreground">
@@ -221,6 +313,26 @@ export function ReportView({ onBack }: { onBack: () => void }) {
           </div>
         </Panel>
 
+        {/* V1.4 错题重练面板（近 7 天掌握 + 全表累计） */}
+        <Panel className="trend-panel mb-4 px-5 py-4">
+          <p className="text-[14px] font-bold text-foreground">
+            🔁 错题重练 <span className="text-[12px] text-muted-foreground">（近 7 天掌握 · 累计 {reviewRows.sum.mastered} 题 / 重练 {reviewRows.sum.retried} 次）</span>
+          </p>
+          {reviewRows.sum.mastered === 0 && reviewRows.sum.retried === 0 && (
+            <p className="mt-3 text-[13px] text-muted-foreground">还没重练过错题——错题答对即掌握，这里看闭环成果。</p>
+          )}
+          {reviewRows.sum.mastered > 0 && (
+            <div className="mt-3 flex items-end justify-between gap-1">
+              {reviewRows.days.map((d) => (
+                <div key={d.key} className="flex flex-1 flex-col items-center gap-1" title={`${d.key}${d.mastered > 0 ? ` 掌握 ${d.mastered} 题` : ""}`}>
+                  <div className={"trend-bar " + (d.mastered > 0 ? "trend-bar-high" : "trend-bar-empty")} style={{ height: d.mastered > 0 ? Math.max(8, d.mastered * 10) : 4 }} />
+                  <span className="text-[10px] text-muted-foreground">{Number(d.key.slice(8))}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Panel>
+
         <Panel className="mb-4 px-5 py-4 print-truncate">
           <p className="text-[14px] font-bold text-foreground">
             📖 原理复述 <span className="text-[12px] text-muted-foreground">（{reciteRows.length}）</span>
@@ -262,6 +374,12 @@ function todayStr(d = new Date()): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${d.getFullYear()}-${m}-${day}`;
+}
+
+/** 口算知识点中文名（window.KOU_META 运行时读，缺失兜底 type id——R4） */
+function kouName(type: string): string {
+  const w = window as unknown as { KOU_META?: Array<{ id: string; name: string }> };
+  return w.KOU_META?.find((m) => m.id === type)?.name || type;
 }
 
 function fmtSec(sec: number): string {
