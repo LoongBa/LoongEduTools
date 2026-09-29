@@ -597,6 +597,8 @@ mod tests {
             header(&resp, "content-range").as_deref(),
             Some("bytes */10")
         );
+        // R4：416 亦须 no-store（三响应路径 200/206/416 全闭合，2026-09-30）
+        assert_eq!(header(&resp, "cache-control").as_deref(), Some("no-store"));
         let _ = std::fs::remove_dir_all(&root);
     }
 

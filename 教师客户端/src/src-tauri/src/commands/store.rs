@@ -794,7 +794,10 @@ fn safe_rel_path(name: &str) -> Result<String, String> {
 /// BufError（hint 不准确）→ 扩容后 None 模式继续（正确增量语义）。
 fn inflate_raw(data: &[u8], hint: usize) -> Result<Vec<u8>, String> {
     const MAX_OUT: usize = 2 * 1024 * 1024 * 1024; // 单条目解压上限 2GiB（防 zip 炸弹）
-    let hint = hint.min(MAX_OUT);
+    // 初始预留 ≤64MiB：hint 来自 zip 中央目录 usize_un，恶意/损坏包可谎报 2GiB →
+    // 无上限 vec![0; hint] 会启动即分配 2GB（轻量机 OOM 风险，2026-09-30 审计发现）。
+    // 真实超大文件（>64MiB）走下方 BufError 增量扩容路径，语义不变。
+    let hint = hint.min(MAX_OUT).min(64 * 1024 * 1024);
     let mut d = Decompress::new(false);
     let mut out: Vec<u8> = vec![0u8; hint.max(1)]; // 预留精确输出空间（flate2 不自动扩容）
     let mut in_pos = 0;
