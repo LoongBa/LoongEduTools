@@ -16,8 +16,8 @@ const SIGN_PUBKEYS: &[(&str, &str)] = &[(
     "caa4223fd49da00764decc4982dd7a102705232c9079e3bb1fcd7c16802caf7d",
 )];
 
-/// 会话临时目录前缀（解密区，D02 §3.4：系统 TEMP 下 loongedu-<id>-<session>）
-const TEMP_PREFIX: &str = "loongedu-";
+// 历史预留：TEMP_PREFIX（"loongedu-"）曾为「解密到临时文件」例外落点（D09 §9.2-1、
+// D02 §3.4 会话临时目录前缀）；M4 内存解密终稿定案后无使用，2026-09-29 代码质量收尾删除。
 
 /// 扫描预装 + 磁盘内容包目录，构建可用索引
 /// P0 简化：直接扫描 packages-embedded/ 与 packages/ 下每个子目录，读取 manifest.json
