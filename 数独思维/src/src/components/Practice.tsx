@@ -8,7 +8,7 @@ import { Overlay, ResultSummary, OverlayBtns, formatMs } from "./Overlay";
 import { Btn, Card, Toast, Bar } from "./ui/kit";
 import { APP_ICON_URL, OrientationHint } from "./Shell";
 import { HINT_LIMIT, LEVEL_GIVEN, MAP_LEVELS, skillByKey, TECHNIQUE_LESSON_MAP } from "@/lib/content";
-import { GROUP_IN_PROGRESS, GROUP_PROGRESS, GROUP_PROGRESS_DONE } from "@/lib/copy";
+import { GROUP_IN_PROGRESS, GROUP_PROGRESS, GROUP_PROGRESS_DONE, ERROR_MODE_FREE, ERROR_MODE_STRICT, ERROR_MODE_FREE_DESC, ERROR_MODE_STRICT_DESC, STRICT_CHANCES, STRICT_ASK_TITLE, STRICT_ASK_SUB, STRICT_ASK_HINT, STRICT_ASK_THINK, STRICT_ASK_REVIEW, STRICT_CONSOLED, STRICT_WRONG_TIP } from "@/lib/copy";
 import { levelName } from "./Walls";
 import type { PracticeSource } from "@/lib/store";
 import { calcStars, markCheckin, todayStr, useStore, type BookItem, type HistoryItem, type LevelId, type Snapshot } from "@/lib/store";
@@ -103,6 +103,10 @@ export function Practice({ params, onExit, onFinish, onLessonKey }: Props) {
   const [eraserMode, setEraserMode] = useState(false);
   const [history, setHistory] = useState<Move[]>([]);
   const [errors, setErrors] = useState(resumed?.errors ?? 0);
+  // V1.11.0 strict3：3 次用尽后的宽容态 guard（恢复自旧快照 errors≥3 → 直接宽容态不弹不问）
+  const strictExhaustedRef = useRef(false);
+  /** V1.11.0 strict3：3 次用尽后的询问态（"ask"=三出口 / "consoled"=提示也用完的安慰态） */
+  const [strictAsk, setStrictAsk] = useState<"ask" | "consoled" | null>(null);
   const [hints, setHints] = useState(resumed?.hints ?? 0);
   const [ms, setMs] = useState(resumed?.ms ?? 0);
   const [wrong, setWrong] = useState<number[]>([]);
@@ -130,6 +134,13 @@ export function Practice({ params, onExit, onFinish, onLessonKey }: Props) {
   const givenMask = useMemo(() => start.puzzle.map((v) => v > 0), [start.puzzle]);
   const remaining = useMemo(() => remainingMap(board, size), [board, size]);
   const filledCount = useMemo(() => countGiven(board), [board]);
+
+  /* ---------- V1.11.0 练习容错模式（strict3 三次引导） ---------- */
+  // strict3 仅作用于「首次解题」（free/daily/map/import）；replay 重练已有掌握即清机制、教学关走 SkillLesson，均不适用
+  const strictMode = store.settings.errorMode === "strict3" && source !== "replay";
+  const chancesLeft = strictMode ? Math.max(0, 3 - errors) : 0;
+  // 恢复自旧快照（errors≥3 属 free 遗留）→ 直接宽容态：不弹不问、不再计数
+  if (strictMode && errors >= 3) strictExhaustedRef.current = true;
 
   /* ---------- 计时 ---------- */
   useEffect(() => {
@@ -208,6 +219,13 @@ export function Practice({ params, onExit, onFinish, onLessonKey }: Props) {
     window.setTimeout(() => setWrong([]), 400);
   }
 
+  /** V1.11.0 strict3：第 3 次判错（errors 由 2 → 3）触发一次三出口询问；之后置宽容态（不再计数不再弹） */
+  function maybeStrictAsk() {
+    if (!strictMode || strictExhaustedRef.current || errors !== 2) return;
+    strictExhaustedRef.current = true; // 宽容态：errors 锁定在 3，后续判错不再 +1、不再弹
+    setStrictAsk("ask");
+  }
+
   /* ---------- 填数 / 笔记 ---------- */
   const fill = useCallback(
     (v: number) => {
@@ -252,11 +270,25 @@ export function Practice({ params, onExit, onFinish, onLessonKey }: Props) {
       if (clash.length) {
         errLogRef.current.add(selected);
         flashWrong([selected, ...clash]);
-        setErrors((e) => e + 1);
+        // V1.11.0 strict3：宽容态（3 次已用尽）后不再计数
+        if (!(strictMode && strictExhaustedRef.current)) setErrors((e) => e + 1);
         playSound("wrong");
         setWarn(true);
         setMsg(`这里和同${unitName(clash[0], selected, size)}的数字撞上了，看看是不是换个位置更合适。`);
         window.setTimeout(() => setWarn(false), 1200);
+        maybeStrictAsk();
+        return;
+      }
+      // V1.11.0 strict3：非冲突但与答案不符 → 暗计数（不显示正解、不剧透），错误数字留在盘上可覆盖
+      if (strictMode && !strictExhaustedRef.current && nb[selected] !== start.solution[selected]) {
+        errLogRef.current.add(selected);
+        flashWrong([selected]);
+        setErrors((e) => e + 1);
+        playSound("wrong");
+        setWarn(true);
+        setMsg(STRICT_WRONG_TIP);
+        window.setTimeout(() => setWarn(false), 1200);
+        maybeStrictAsk();
         return;
       }
       setWarn(false);
@@ -597,6 +629,11 @@ export function Practice({ params, onExit, onFinish, onLessonKey }: Props) {
         </span>
       </div>
 
+      {/* V1.11.0 strict3：机会指示（低调静态、去游戏化措辞；free 局不显示） */}
+      {strictMode ? (
+        <p className="mt-1.5 px-1 text-center text-[10.5px] font-medium text-muted-foreground">{STRICT_CHANCES(chancesLeft)}</p>
+      ) : null}
+
       {/* 提示行 */}
       <p
         id="practice-msg"
@@ -643,6 +680,56 @@ export function Practice({ params, onExit, onFinish, onLessonKey }: Props) {
         </Btn>
         <span className={cn("tnum ml-auto text-[12px] font-semibold", errors ? "text-destructive" : "text-muted-foreground")}>❌ {errors}</span>
       </div>
+
+      {/* V1.11.0 strict3：3 次用尽后的三出口询问 / 安慰态（不含完成结算；仅一次，宽容态后为 null） */}
+      <Overlay
+        open={strictAsk !== null && !finished}
+        title={STRICT_ASK_TITLE}
+        sub={strictAsk === "consoled" ? STRICT_CONSOLED : STRICT_ASK_SUB}
+        footer={
+          <>
+            {strictAsk === "consoled" ? (
+              /* 提示也耗尽 → 安慰鼓励 + 复盘入口 */
+              <OverlayBtns>
+                <Btn variant="primary" size="lg" onClick={() => { setStrictAsk(null); setReview(true); }}>
+                  {STRICT_ASK_REVIEW}
+                </Btn>
+                <Btn variant="ghost" className="w-full" onClick={() => setStrictAsk(null)}>
+                  再想想
+                </Btn>
+              </OverlayBtns>
+            ) : (
+              <OverlayBtns>
+                <Btn
+                  variant="primary"
+                  size="lg"
+                  onClick={() => {
+                    const limit = HINT_LIMIT[size];
+                    const hintOut = Number.isFinite(limit) && hints >= limit;
+                    if (hintOut) setStrictAsk("consoled");
+                    else {
+                      setStrictAsk(null);
+                      useHint();
+                    }
+                  }}
+                >
+                  {STRICT_ASK_HINT}
+                </Btn>
+                <Btn variant="secondary" size="lg" onClick={() => setStrictAsk(null)}>
+                  {STRICT_ASK_THINK}
+                </Btn>
+                <Btn variant="ghost" className="w-full" onClick={() => { setStrictAsk(null); setReview(true); }}>
+                  {STRICT_ASK_REVIEW}
+                </Btn>
+              </OverlayBtns>
+            )}
+          </>
+        }
+      >
+        <div className="rounded-xl bg-secondary/50 px-3 py-3 text-[12px] leading-relaxed text-muted-foreground">
+          数据照常记录在错题本和成绩里，只是这次我们换种方式继续。
+        </div>
+      </Overlay>
 
       {/* 完成结算 */}
       <Overlay

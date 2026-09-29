@@ -29,6 +29,24 @@ export const BACKUP_LAST = (days: number) => (days === 0 ? "上次备份：今�
 export const BACKUP_NEVER_TIP = "还没备份过，建议先备份一份——换设备或清除浏览器数据时进度不丢。";
 export const BACKUP_DUE_TIP = (days: number) => `距上次备份已 ${days} 天，建议先备份一份。`;
 
+/** 练习容错模式（V1.11.0）：free=自由试错（现状）/ strict3=三次引导。措辞全走教学与训练语系，无游戏化 */
+export const ERROR_MODE_FREE = "自由试错";
+export const ERROR_MODE_STRICT = "三次引导";
+export const ERROR_MODE_FREE_DESC = "和孩子平时一样，放心大胆地试。";
+export const ERROR_MODE_STRICT_DESC = "填错 3 次后，陪孩子提示或复盘这一步。";
+/** 机会指示（低调静态，不做红色心跳 UI） */
+export const STRICT_CHANCES = (n: number) => (n > 0 ? `大胆试错剩 ${n} 次` : "已用尽，可求提示或复盘");
+/** 三出口询问（3 次用尽，仅一次） */
+export const STRICT_ASK_TITLE = "已经大胆试错 3 次啦";
+export const STRICT_ASK_SUB = "这一次先别急着填，我们一起来看看。";
+export const STRICT_ASK_HINT = "🔍 需要提示";
+export const STRICT_ASK_THINK = "🤔 再自己想想";
+export const STRICT_ASK_REVIEW = "🎯 带我复盘这一步";
+/** 提示也耗尽 → 安慰鼓励 + 复盘入口 */
+export const STRICT_CONSOLED = "提示也用完了没关系——重要的是学会怎么推，我们一起看这一步。";
+/** 暗计数温和文案（不显示正解，不剧透） */
+export const STRICT_WRONG_TIP = "这一格这样填还差一点，再想想。";
+
 /** 错题技巧分组视图文案（V1.3.0） */
 export const GROUP_VIEW_TITLE = "按技巧分组";
 export const GROUP_VIEW_HINT = "这类题常涉及的推理环节，点开看看哪里可以再补一补。";

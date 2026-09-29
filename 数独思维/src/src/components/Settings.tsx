@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { SCHEMES, useTheme, type ModeId } from "@/lib/theme";
 import { useStore } from "@/lib/store";
 import { APP_VERSION } from "@/lib/version";
-import { PRIVACY_BADGE, BACKUP_DONE, BACKUP_IOS_HINT, BACKUP_LAST, BACKUP_LAST_NEVER, BACKUP_NEVER_TIP, BACKUP_DUE_TIP, RESTORE_TITLE, RESTORE_SUB, RESTORE_WARN, RESTORE_CONFIRM, RESTORE_CANCEL } from "@/lib/copy";
+import { PRIVACY_BADGE, BACKUP_DONE, BACKUP_IOS_HINT, BACKUP_LAST, BACKUP_LAST_NEVER, BACKUP_NEVER_TIP, BACKUP_DUE_TIP, ERROR_MODE_FREE, ERROR_MODE_STRICT, ERROR_MODE_FREE_DESC, ERROR_MODE_STRICT_DESC, RESTORE_TITLE, RESTORE_SUB, RESTORE_WARN, RESTORE_CONFIRM, RESTORE_CANCEL } from "@/lib/copy";
 import { buildBackup, validateBackup, downloadBackup, importBackup, saveBackupAt, readBackupAt, clearBackupAt, type BackupFile } from "@/lib/backup";
 import { Card, Btn, Toast } from "./ui/kit";
 import { Overlay } from "./Overlay";
@@ -24,6 +24,7 @@ export function Settings({ onBack }: { onBack: () => void }) {
   const [lastBackup, setLastBackup] = useState<number | null>(() => readBackupAt()); // V1.9.1 B9：上次备份时间戳
   const fileRef = useRef<HTMLInputElement | null>(null);
   const soundOn = store.settings.sound;
+  const errorMode = store.settings.errorMode; // V1.11.0：练习容错模式
 
   // V1.9.1 B9：备份提醒状态（天数；从未备份且已有数据 / 超期才提示，零打扰）
   const backupDays = lastBackup === null ? null : Math.max(0, Math.floor((Date.now() - lastBackup) / 86400000));
@@ -205,6 +206,40 @@ export function Settings({ onBack }: { onBack: () => void }) {
               {soundOn ? "开" : "关"}
             </span>
           </button>
+        </div>
+
+        {/* V1.11.0：练习容错模式（free=自由试错现状 / strict3=三次引导；家长按孩子特质选择，两者都不影响任何记录） */}
+        <div className="settings-row py-2">
+          <div className="settings-col min-w-0 pr-3">
+            <p className="settings-label text-[13px] font-semibold">练习容错模式</p>
+            <p className="settings-sub mt-0.5 text-[11px] leading-snug text-muted-foreground">填错后的引导方式，不改变星星与成绩记录。</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {(
+            [
+              { id: "free", name: ERROR_MODE_FREE, desc: ERROR_MODE_FREE_DESC },
+              { id: "strict3", name: ERROR_MODE_STRICT, desc: ERROR_MODE_STRICT_DESC },
+            ] as const
+          ).map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() =>
+                update((d) => {
+                  d.settings.errorMode = m.id;
+                })
+              }
+              aria-pressed={errorMode === m.id}
+              className={cn(
+                "press rounded-xl border px-2.5 py-2 text-left",
+                errorMode === m.id ? "border-primary bg-primary/6" : "border-border bg-secondary",
+              )}
+            >
+              <span className="block text-[12.5px] font-bold">{m.name}</span>
+              <span className="mt-0.5 block text-[10.5px] leading-snug text-muted-foreground">{m.desc}</span>
+            </button>
+          ))}
         </div>
       </Card>
 

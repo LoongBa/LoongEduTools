@@ -58,6 +58,8 @@ export interface Snapshot {
 
 export type LevelId = "easy" | "normal" | "hard";
 export type PracticeSource = "free" | "daily" | "map" | "import" | "replay";
+/** V1.11.0：练习容错模式——free 自由试错（现状）/ strict3 三次引导（填错 3 次后陪孩子提示或复盘） */
+export type ErrorMode = "free" | "strict3";
 
 export interface StoreShape {
   version: 1;
@@ -72,7 +74,7 @@ export interface StoreShape {
   daily: { date: string; level: LevelId } | null;
   achievements: Record<string, string>;
   mapProgress: { completed: { i: number; doneAt: number }[] };
-  settings: { sound: boolean };
+  settings: { sound: boolean; errorMode: ErrorMode };
   cur: Snapshot | null;
   /** V1.8.0：累计练习统计（B6）——无上限聚合计数器（history 仅存最近 30 条明细，累计口径靠本字段） */
   totals: { count: number; ms: number; errors: number; hints: number; stars: number };
@@ -98,7 +100,7 @@ function emptyStore(): StoreShape {
     daily: null,
     achievements: {},
     mapProgress: { completed: [] },
-    settings: { sound: true },
+    settings: { sound: true, errorMode: "free" },
     cur: null,
     totals: { count: 0, ms: 0, errors: 0, hints: 0, stars: 0 },
   };

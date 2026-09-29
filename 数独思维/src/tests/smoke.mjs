@@ -332,6 +332,57 @@ ok("SD4: 少线索被拒", await vis(page, "线索太少"));
   ok(`进阶技巧盘：卡片2「${todayKeys[1]}」`, await vis(page, todayKeys[1]));
   ok("进阶技巧盘：「全部 12 个」跳转链", await vis(page, "全部 12 个"));
 
+  // ⑪ V1.11.0 练习容错模式（strict3 三次引导）：设置页选项 → 注入 fixture 快照（4×4 已知解）→ 错 3 次 → 三出口 → 再想想 → 宽容态
+  // ① 设置页：容错模式选项可见并开启
+  await tapText(page, "外观设置");
+  await page.waitForTimeout(500);
+  ok("容错模式：设置页选项可见", await vis(page, "练习容错模式"));
+  ok("容错模式：「三次引导」选项可见", await vis(page, "三次引导"));
+  await tapText(page, "三次引导");
+  await page.waitForTimeout(300);
+  await tapText(page, "返回难度");
+  await page.waitForTimeout(400);
+  // ② 注入 strict3 + 断点快照（4×4，挖左上宫 4 格 idx0/1/4/5——1/2/3/4 各余 1 配额，三次错填各用不同数字保证按钮可点）→ reload → 继续上次
+  const S_SOL = [1, 2, 3, 4, 3, 4, 1, 2, 2, 1, 4, 3, 4, 3, 2, 1];
+  const S_PUZ = [0, 0, 3, 4, 0, 0, 1, 2, 2, 1, 4, 3, 4, 3, 2, 1]; // 空格 idx0(=1)/idx1(=2)/idx4(=3)/idx5(=4)
+  const strictStore = {
+    version: 1, best: {}, recent: {}, checkin: { dates: [], streak: 0 }, history: [],
+    skills: {}, advSkills: {}, mistakes: [], favorites: [], daily: null, achievements: {},
+    mapProgress: { completed: [] }, totals: { count: 0, ms: 0, errors: 0, hints: 0, stars: 0 },
+    settings: { sound: true, errorMode: "strict3" },
+    cur: { size: 4, level: "easy", puzzle: S_PUZ, solution: S_SOL, board: S_PUZ.slice(), notes: {}, ms: 0, errors: 0, hints: 0, source: "free" },
+  };
+  await page.evaluate((s) => localStorage.setItem("redtools.shudu.v1", JSON.stringify(s)), strictStore);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(700);
+  await tapText(page, "继续上次未完成的题");
+  await page.waitForTimeout(600);
+  ok("容错模式：机会指示显示", await vis(page, "大胆试错剩 3 次"));
+  // ③ 冲突×3（idx0填4 / idx1填2 / idx4填3，各用不同数字配额）→ 三出口询问（仅一次）
+  const s3Fill = async (cell, num) => {
+    await page.locator('button[role="gridcell"]').nth(cell).evaluate((el) => el.click()).catch(() => {});
+    await page.waitForTimeout(250);
+    await page.locator(`button[aria-label^="填入数字 ${num}"]`).evaluate((el) => el.click()).catch(() => {});
+    await page.waitForTimeout(500);
+  };
+  await s3Fill(0, 4); // 与 idx3=4 同行冲突（idx0 答案 1，填 4 错）
+  ok("容错模式：第 1 次错剩 2 次", await vis(page, "大胆试错剩 2 次"));
+  await s3Fill(1, 1); // 与 idx9=1 同列冲突（idx1 答案 2，填 1 错）
+  ok("容错模式：第 2 次错剩 1 次", await vis(page, "大胆试错剩 1 次"));
+  await s3Fill(4, 2); // 与 idx7=2 同行冲突（idx4 答案 3，填 2 错）→ 第 3 次用尽
+  ok("容错模式：三出口询问出现", await vis(page, "已经大胆试错 3 次啦"));
+  ok("容错模式：出口-需要提示", await vis(page, "需要提示"));
+  ok("容错模式：出口-再自己想想", await vis(page, "再自己想想"));
+  ok("容错模式：出口-带我复盘", await vis(page, "带我复盘这一步"));
+  // ④ 「再自己想想」→ 宽容态：机会已用尽、第 4 次错不再弹
+  await tapText(page, "再自己想想");
+  await page.waitForTimeout(400);
+  ok("容错模式：宽容态机会已用尽", await vis(page, "已用尽，可求提示或复盘"));
+  await s3Fill(5, 3); // 与 idx2=3 同宫冲突（第 4 次，宽容态不计）
+  ok("容错模式：宽容态不再重复询问", !(await vis(page, "已经大胆试错 3 次啦")));
+  await tapText(page, "返回难度");
+  await page.waitForTimeout(400);
+
   console.log(results.join("\n"));
   const fails = results.filter((r) => r.startsWith("FAIL")).length;
   console.log(`\n冒烟 ${results.length} 项 · PASS ${results.length - fails} · FAIL ${fails} · JS错误 ${jsErrors.length}`);
