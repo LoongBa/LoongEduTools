@@ -12,7 +12,8 @@
     "test": "node tests/smoke.mjs",
     "test:engine": "node tests/engine.mjs",
     "test:share": "node tests/share.mjs",
-    "test:backup": "node tests/backup.mjs"
+    "test:backup": "node tests/backup.mjs",
+    "test:contrast": "node tests/contrast-precheck.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

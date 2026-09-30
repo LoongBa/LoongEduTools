@@ -5,6 +5,7 @@
 | `pnpm test:engine` | 引擎单测：`src/lib/sudoku.ts` 真实源码（Node 26 原生 TS），断言生成/挖洞/唯一解/SD 往返/导入校验 |
 | `pnpm test` | 浏览器冒烟：自动起 vite dev（3014）→ Playwright 走查核心流程 → 自动停服（19 项，含选中格闪光瞬时断言） |
 | `pnpm test:share` | 分享题二维码专项：解一局 4×4 → 结算 → 分享题浮层 → canvas 扩高断言 + drawRealQr 无 JS 错误 |
+| `pnpm test:contrast` | A2 对比度预检：8 组主题（4 色板 × 浅/深）探针合成 → WCAG 对比度表 + 截图 `docs/对比度预检/` |
 
 ## 冒烟覆盖
 
