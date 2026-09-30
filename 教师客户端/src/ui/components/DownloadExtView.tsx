@@ -24,10 +24,12 @@ import {
   RotateCcw,
   Trash2,
   Wrench,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { api, ArchiveEntry } from "@/api";
+import { api, ArchiveEntry, CredentialStatus } from "@/api";
+import { CredentialDialog } from "@/components/CredentialDialog";
 import { friendlyErr } from "@/errutil";
 import { EDU_TOOLS } from "@/lib/eduTools";
 import { formatBytes, relativeTime } from "@/lib/format";
@@ -105,6 +107,20 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
   const [filter, setFilter] = useState<string>("全部");
   const [tag, setTag] = useState<string>("全部");
   const [phase, setPhase] = useState<"loading" | "ready" | "error">("loading");
+
+  // D15 §4.4：下载加密内容包后的凭证解锁引导（包打开路径尚未接线，下载完即提示；
+  // 凭证已导入未解锁 → 显示引导条 + 可直接拉起解锁对话框）
+  const [credHint, setCredHint] = useState(false);
+  const [credDlg, setCredDlg] = useState(false);
+  const checkCredHint = () => {
+    void api
+      .credentialStatus()
+      .then((s: CredentialStatus) => {
+        // 已导入凭证但内存密钥未就绪 → 提示解锁（明文包下载不误报，提示仅引导）
+        setCredHint(s.present && !s.key_available);
+      })
+      .catch(() => setCredHint(false));
+  };
 
   // 顶栏「前往下载中心」→ 直达任务分区（下载中 / 等待中 / 已下载）
   useEffect(() => {
@@ -306,6 +322,8 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
       onInstalled(id, item.version);
       toast.success(`「${item.name}」下载完成并已安装`);
       notify?.({ kind: "success", channel: "content", title: `「${item.name}」下载完成`, body: "内容包已安装到本机，可立即使用。" });
+      // D15 §4.4：下载完检查凭证——加密包需解锁后才能打开
+      checkCredHint();
     }, { name: item.name, kind: "pkg" });
   };
 
@@ -362,6 +380,28 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
 
   return (
     <div className="flex h-full flex-col">
+      {/* D15 §4.4：凭证未解锁引导条（下载加密包后出现；点击直接解锁） */}
+      {credHint && (
+        <div className="flex flex-wrap items-center gap-2 border-b border-warn/30 bg-warn/10 px-6 py-2 text-[12px] text-warn">
+          <Lock size={13} aria-hidden />
+          已安装的内容包可能为加密包，需解锁凭证后才能打开。
+          <button
+            type="button"
+            onClick={() => setCredDlg(true)}
+            className="rounded-md bg-warn px-2.5 py-1 text-[12px] font-medium text-warn-foreground transition-opacity hover:opacity-90"
+          >
+            去解锁
+          </button>
+          <button
+            type="button"
+            aria-label="关闭提示"
+            onClick={() => setCredHint(false)}
+            className="ml-auto rounded-md px-1.5 text-warn/70 hover:text-warn"
+          >
+            <X size={13} aria-hidden />
+          </button>
+        </div>
+      )}
       {/* toolbar */}
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-6 py-3.5 max-md:px-4">
         {/* 分区 Tab（带数量徽标） */}
@@ -600,6 +640,18 @@ export function DownloadExtView({ loggedIn, installed, onInstalled, tasks, start
           </>
         )}
       </div>
+
+      {/* D15 §4.4：凭证解锁对话框（引导条「去解锁」拉起；成功后刷新引导态） */}
+      {credDlg && (
+        <CredentialDialog
+          mode="unlock"
+          onUnlocked={() => {
+            setCredHint(false);
+            setCredDlg(false);
+          }}
+          onClose={() => setCredDlg(false)}
+        />
+      )}
     </div>
   );
 }

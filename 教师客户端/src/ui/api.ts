@@ -74,6 +74,42 @@ export interface LicenseStatus {
   machine_fp: string;
 }
 
+// ---- D15 凭证（credential.rs · D09 §2 / A01 §4.5；字段与 Rust serde 逐字段对齐）----
+
+export interface CredentialStatus {
+  present: boolean;
+  machine_fp: string;
+  format_ver: string | null;
+  machine_fp_ok: boolean | null;
+  /** "none" | "valid" | "expiring_soon" | "expired" | "clock_rollback" */
+  state: "none" | "valid" | "expiring_soon" | "expired" | "clock_rollback";
+  issued_at: number | null;
+  expires_at: number | null;
+  seq: number | null;
+  quota_ref: string | null;
+  days_left: number | null;
+  last_verified_at: number | null;
+  key_available: boolean;
+}
+
+export interface CredentialMeta {
+  installed: boolean;
+  format_ver: string;
+  machine_fp_ok: boolean;
+  machine_fp: string;
+  issued_at: number;
+  expires_at: number;
+  seq: number;
+  quota_ref: string;
+}
+
+export interface UnlockResult {
+  ok: boolean;
+  expires_at: number;
+  seq: number;
+  key_available: boolean;
+}
+
 // ---- P2 下载扩展（store.rs · A01 §4）----
 
 export interface RemotePkg {
@@ -304,6 +340,13 @@ export const api = {
   licenseRenew: (semester?: string) =>
     invoke<LicenseStatus>("license_renew", { semester: semester ?? null }),
   licenseBindCurrent: () => invoke<unknown>("license_bind_current"),
+
+  // ---- D15 凭证（credential.rs · D09 §2 / A01 §4.5）----
+  credentialStatus: () => invoke<CredentialStatus>("credential_status"),
+  credentialImportFromUsb: (path: string) =>
+    invoke<CredentialMeta>("credential_import_from_usb", { path }),
+  credentialUnlock: (pin: string, classroomPass: string) =>
+    invoke<UnlockResult>("credential_unlock", { pin, classroomPass }),
 
   // ---- P2 下载扩展（store.rs · A01 §4 / S01 §2.4）----
   storeManifest: () => invoke<StoreManifest>("store_manifest"),

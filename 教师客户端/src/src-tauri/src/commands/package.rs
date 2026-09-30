@@ -126,13 +126,41 @@ pub fn load(
 pub fn unload(app: tauri::AppHandle) -> Result<(), String> {
     // D09 §7 步骤4：水印随内容会话销毁（destroy，杜绝陈旧身份残留）
     crate::commands::watermark::hide_watermark(&app);
-    if let Some(w) = app.get_webview_window("content") {
-        w.destroy()
-            .map_err(|e| format!("销毁内容窗口失败: {e}"))?;
+    let destroyed = if let Some(w) = app.get_webview_window("content") {
+        w.destroy().map_err(|e| format!("销毁内容窗口失败: {e}"))?;
+        true
+    } else {
+        false
+    };
+    // 清理链后段（清根 + 清钥）：抽为纯函数以便单测断言时序与容错（D15 §4.5）
+    run_unload_cleanup(destroyed);
+    Ok(())
+}
+
+/// 卸载步骤序（单测断言与日志可读）
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UnloadStep {
+    /// 内容窗口已销毁（AppHandle 侧完成；容错：无窗口时为 false 不出现此步）
+    WindowDestroyed,
+    /// 协议服务根已清除
+    ClearServeRoot,
+    /// 内容密钥已从内存清除
+    ClearContentKey,
+}
+
+/// 清理链后段：清协议服务根 + 清内容密钥（D09 §5.1 M2；恒无条件执行）。
+/// 返回已执行步骤序列（单测断言时序与无窗口容错；hide/destroy 依赖 AppHandle，
+/// 留在命令壳内，真实 renderer 内存释放归真机人工项——D15 §4.5）。
+pub fn run_unload_cleanup(win_destroyed: bool) -> Vec<UnloadStep> {
+    let mut steps = Vec::new();
+    if win_destroyed {
+        steps.push(UnloadStep::WindowDestroyed);
     }
     crate::commands::protocol::clear_serve_root();
+    steps.push(UnloadStep::ClearServeRoot);
     crate::commands::contentkey::clear_content_key();
-    Ok(())
+    steps.push(UnloadStep::ClearContentKey);
+    steps
 }
 
 // ---------------------------------------------------------------- 内部工具
@@ -490,5 +518,42 @@ mod tests {
         assert_eq!(hex_bytes("0aBc0d").unwrap(), vec![0x0a, 0xbc, 0x0d]);
         assert!(hex_bytes("abc").is_err());
         assert!(hex_bytes("zz").is_err());
+    }
+
+    // ---- D15 §4.5：unload 清理链时序与容错 ----
+
+    #[test]
+    fn unload_cleanup_full_sequence() {
+        // 窗口已销毁：全链顺序 = 清根 → 清钥（destroy 步骤由命令壳记录在首）
+        let steps = run_unload_cleanup(true);
+        assert_eq!(
+            steps,
+            vec![
+                UnloadStep::WindowDestroyed,
+                UnloadStep::ClearServeRoot,
+                UnloadStep::ClearContentKey,
+            ],
+            "完整卸载链顺序：destroy → 清根 → 清钥"
+        );
+    }
+
+    #[test]
+    fn unload_cleanup_tolerates_missing_window() {
+        // 无内容窗口（容错）：跳过 destroy 步骤，后续清理不阻断（R6 容错断言）
+        let steps = run_unload_cleanup(false);
+        assert_eq!(
+            steps,
+            vec![UnloadStep::ClearServeRoot, UnloadStep::ClearContentKey],
+            "无窗口时清理链不中断"
+        );
+    }
+
+    #[test]
+    fn unload_cleanup_idempotent() {
+        // 幂等：二次调用仍返回同序（全局清零无残留语义）
+        let a = run_unload_cleanup(true);
+        let b = run_unload_cleanup(true);
+        assert_eq!(a, b);
+        assert_eq!(a.len(), 3);
     }
 }

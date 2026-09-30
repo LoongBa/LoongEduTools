@@ -323,3 +323,42 @@ export interface DownloadHistoryItem {
   kind: DownloadKind;
   at: string;
 }
+
+// ── D15 凭证：credential.rs · D09 §2 / A01 §4.5（字段与 Rust serde 逐字段对齐）──
+
+/** 凭证状态（UI 轮询安全：不触发 Argon2id） */
+export interface CredentialStatus {
+  present: boolean;
+  machine_fp: string;
+  format_ver: string | null;
+  machine_fp_ok: boolean | null;
+  /** "none" | "valid" | "expiring_soon" | "expired" | "clock_rollback" */
+  state: "none" | "valid" | "expiring_soon" | "expired" | "clock_rollback";
+  issued_at: number | null;
+  expires_at: number | null;
+  seq: number | null;
+  quota_ref: string | null;
+  days_left: number | null;
+  last_verified_at: number | null;
+  key_available: boolean;
+}
+
+/** 导入成功元数据（不含任何密钥材料） */
+export interface CredentialMeta {
+  installed: boolean;
+  format_ver: string;
+  machine_fp_ok: boolean;
+  machine_fp: string;
+  issued_at: number;
+  expires_at: number;
+  seq: number;
+  quota_ref: string;
+}
+
+/** unlock 结果（内容密钥仅入 Rust 内存，绝不返回） */
+export interface UnlockResult {
+  ok: boolean;
+  expires_at: number;
+  seq: number;
+  key_available: boolean;
+}
